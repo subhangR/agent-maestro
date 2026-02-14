@@ -33,15 +33,15 @@ fi
 # 3. Build server + binary
 echo ""
 echo "[3/5] Building server..."
-npm run build:server
-cd maestro-server && npm run build:binary && cd ..
+bun run build:server
+cd maestro-server && bun run build:binary && cd ..
 
 # 4. Build Tauri app
 echo ""
 echo "[4/5] Building Tauri app..."
 cd maestro-ui
 VITE_API_URL=http://localhost:2357/api VITE_WS_URL=ws://localhost:2357 \
-  npx tauri build --features custom-protocol --config src-tauri/tauri.conf.prod.json
+  bunx tauri build --features custom-protocol --config src-tauri/tauri.conf.prod.json
 cd ..
 
 # 5. Install to /Applications
@@ -62,4 +62,4 @@ echo "  Installed $APP_BUNDLE to /Applications."
 
 echo ""
 echo "=== Build complete! ==="
-echo "Run 'npm run prod' to launch, or open '$APP_NAME' from Applications."
+echo "Run 'bun run prod' to launch, or open '$APP_NAME' from Applications."

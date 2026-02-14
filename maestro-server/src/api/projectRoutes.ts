@@ -5,7 +5,7 @@ import { AppError } from '../domain/common/Errors';
 /**
  * Create project routes using the ProjectService.
  */
-export function createProjectRoutes(projectService: ProjectService) {
+export function createProjectRoutes(projectService: ProjectService): express.Router {
   const router = express.Router();
 
   // Error handler helper

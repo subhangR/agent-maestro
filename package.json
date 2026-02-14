@@ -9,18 +9,18 @@
     "maestro-cli"
   ],
   "scripts": {
-    "dev:ui": "npm run dev --workspace=maestro-ui",
-    "dev:server": "npm run dev --workspace=maestro-server",
-    "dev:all": "npm run dev:all --workspace=maestro-ui",
-    "build:ui": "npm run build --workspace=maestro-ui",
-    "build:server": "npm run build --workspace=maestro-server",
-    "build:cli": "npm run build --workspace=maestro-cli",
-    "build:all": "npm run build:ui && npm run build:server && npm run build:cli",
-    "prod:server": "PORT=2357 DATA_DIR=~/.maestro/data SESSION_DIR=~/.maestro/sessions NODE_ENV=production node maestro-server/dist/server.js",
+    "dev:ui": "cd maestro-ui && bun run dev",
+    "dev:server": "cd maestro-server && bun run dev",
+    "dev:all": "cd maestro-ui && bun run dev:all",
+    "build:ui": "cd maestro-ui && bun run build",
+    "build:server": "cd maestro-server && bun run build",
+    "build:cli": "cd maestro-cli && bun run build",
+    "build:all": "bun run build:ui && bun run build:server && bun run build:cli",
+    "prod:server": "PORT=2357 DATA_DIR=~/.maestro/data SESSION_DIR=~/.maestro/sessions NODE_ENV=production bun maestro-server/dist/server.js",
     "prod:build": "bash scripts/prod-build.sh",
     "prod": "open -a 'Maestro Prod'",
-    "staging:server": "PORT=3002 DATA_DIR=~/.maestro-staging/data SESSION_DIR=~/.maestro-staging/sessions NODE_ENV=development node maestro-server/dist/server.js",
-    "staging": "concurrently \"npm run staging:server\" \"cd maestro-ui && VITE_API_URL=http://localhost:3002/api VITE_WS_URL=ws://localhost:3002 npx tauri dev\""
+    "staging:server": "PORT=3002 DATA_DIR=~/.maestro-staging/data SESSION_DIR=~/.maestro-staging/sessions NODE_ENV=development bun maestro-server/dist/server.js",
+    "staging": "concurrently \"bun run staging:server\" \"cd maestro-ui && VITE_API_URL=http://localhost:3002/api VITE_WS_URL=ws://localhost:3002 bunx tauri dev\""
   },
   "keywords": [
     "maestro",

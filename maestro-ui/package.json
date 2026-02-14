@@ -9,7 +9,7 @@
     "preview": "vite preview --port 1420 --strictPort",
     "tauri": "tauri",
     "tauri:dev:clear": "tauri dev -- -- --clear-data",
-    "dev:all": "concurrently \"npm run tauri dev\" \"npm run dev --prefix ../maestro-server\""
+    "dev:all": "concurrently \"bun run tauri dev\" \"bun run dev --cwd ../maestro-server\""
   },
   "dependencies": {
     "@crabnebula/tauri-plugin-drag": "^2.1.0",

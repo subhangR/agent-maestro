@@ -13251,9 +13251,10 @@ select.input {
 
 .sessionDetailsGrid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 12px;
   font-size: 11px;
+  max-width: 100%;
 }
 
 .sessionDetailsRow {
@@ -13268,6 +13269,8 @@ select.input {
 .sessionDetailsValue {
   color: var(--text);
   word-break: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
 }
 
 .sessionDetailsValue--mono {
@@ -13791,10 +13794,12 @@ select.input {
 
 .maestroSessionTabContent {
   min-height: 60px;
+  overflow-x: auto;
 }
 
 .maestroSessionTabPane {
   animation: tabFadeIn 0.15s ease;
+  max-width: 100%;
 }
 
 /* Queue Section in Tasks Tab */

@@ -4,7 +4,7 @@ import { ISkillLoader } from '../domain/services/ISkillLoader';
 /**
  * Create skill routes using the ISkillLoader.
  */
-export function createSkillRoutes(skillLoader: ISkillLoader) {
+export function createSkillRoutes(skillLoader: ISkillLoader): express.Router {
   const router = express.Router();
 
   /**

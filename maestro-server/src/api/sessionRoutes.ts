@@ -127,7 +127,7 @@ interface SessionRouteDependencies {
 /**
  * Create session routes using the SessionService.
  */
-export function createSessionRoutes(deps: SessionRouteDependencies) {
+export function createSessionRoutes(deps: SessionRouteDependencies): express.Router {
   const { sessionService, templateService, queueService, projectRepo, taskRepo, eventBus, config } = deps;
   const router = express.Router();
 

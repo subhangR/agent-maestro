@@ -7,7 +7,7 @@ import { AppError } from '../domain/common/Errors';
 /**
  * Create task routes using the TaskService.
  */
-export function createTaskRoutes(taskService: TaskService, sessionService?: SessionService) {
+export function createTaskRoutes(taskService: TaskService, sessionService?: SessionService): express.Router {
   const router = express.Router();
 
   // Error handler helper

@@ -29,22 +29,36 @@ Think of it like a project manager for your Claude agents. You define the work, 
 
 ### What you'll need
 
-- [Node.js](https://nodejs.org/) v18 or newer
+- [Bun](https://bun.sh/) v1.0 or newer
 - [Rust](https://rustup.rs/) (for the desktop app)
 - [Tauri prerequisites](https://tauri.app/start/prerequisites/) (for the desktop app)
 
 > If you only want the server and CLI, you can skip Rust and Tauri.
 
-### 1. Install dependencies
+### 1. Single-command install (recommended)
 
 ```bash
-npm install
+curl -fsSL https://raw.githubusercontent.com/subhangR/agent-maestro/main/.install.sh | bash
 ```
 
-### 2. Start everything
+Optional: also install agent CLIs during setup:
 
 ```bash
-npm run dev:all
+curl -fsSL https://raw.githubusercontent.com/subhangR/agent-maestro/main/.install.sh | bash -s -- --with-agent-tools
+```
+
+The installer keeps noisy command output in log files and prints concise status only.
+
+### 2. Local install (repo already cloned)
+
+```bash
+./install.sh
+```
+
+### 3. Start everything
+
+```bash
+bun run dev:all
 ```
 
 This launches the desktop app and the server together. That's it -- you're running.
@@ -52,15 +66,15 @@ This launches the desktop app and the server together. That's it -- you're runni
 ### Or start things separately
 
 ```bash
-npm run dev:server    # Just the server
-npm run dev:ui        # Just the desktop app
+bun run dev:server    # Just the server
+bun run dev:ui        # Just the desktop app
 ```
 
-### 3. Set up the CLI
+### 4. Set up the CLI
 
 ```bash
 cd maestro-cli
-npm run build && npm link
+bun run build && bun link
 maestro --help
 ```
 
@@ -82,7 +96,7 @@ Maestro supports running two isolated environments simultaneously -- a stable **
 ### Staging (development with hot-reload)
 
 ```bash
-npm run staging
+bun run staging
 ```
 
 Starts the server on port 3002 and opens a Tauri dev window. Code changes in `maestro-ui` are reflected immediately. Data is isolated at `~/.maestro-staging/`.
@@ -92,8 +106,8 @@ Starts the server on port 3002 and opens a Tauri dev window. Code changes in `ma
 **First time setup** -- build and install the Tauri desktop app:
 
 ```bash
-npm run build:server
-npm run prod:build
+bun run build:server
+bun run prod:build
 ```
 
 This compiles the UI with prod server URLs baked in and installs "Maestro Prod" as a macOS app.

@@ -10,7 +10,7 @@ interface TemplateRouteDependencies {
 /**
  * Create template routes using the TemplateService.
  */
-export function createTemplateRoutes(deps: TemplateRouteDependencies) {
+export function createTemplateRoutes(deps: TemplateRouteDependencies): express.Router {
   const { templateService } = deps;
   const router = express.Router();
 

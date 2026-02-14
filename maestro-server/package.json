@@ -5,14 +5,14 @@
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/server.js",
-    "dev": "tsc && node dist/server.js",
+    "start": "bun dist/server.js",
+    "dev": "tsc && bun dist/server.js",
     "watch": "tsc --watch",
-    "test": "jest --verbose",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:report": "jest --coverage --verbose && echo '\n✅ Test report generated: test-report.html\n✅ Coverage report: coverage/index.html'",
-    "build:binary": "npx pkg dist/server.js --targets node20-macos-arm64 --output ../maestro-ui/src-tauri/binaries/maestro-server-aarch64-apple-darwin"
+    "test": "bun test --verbose",
+    "test:watch": "bun test --watch",
+    "test:coverage": "bun test --coverage",
+    "test:report": "bun test --coverage --verbose && echo '\n✅ Test report generated: test-report.html\n✅ Coverage report: coverage/index.html'",
+    "build:binary": "bunx pkg dist/server.js --targets node20-macos-arm64 --output ../maestro-ui/src-tauri/binaries/maestro-server-aarch64-apple-darwin"
   },
   "keywords": [
     "maestro",

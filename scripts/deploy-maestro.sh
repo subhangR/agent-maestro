@@ -5,16 +5,16 @@ set -e
 cd "$(dirname "$0")/../maestro-cli"
 
 echo "Building Maestro CLI..."
-npm install
-npm run build
+bun install
+bun run build
 
 # Ensure binary is executable
 chmod +x bin/maestro.js
 
 echo "Deploying Maestro CLI globally..."
-# Using sudo might be required depending on user setup, 
-# but npm install -g . is the standard way to deploy local package
-npm install -g .
+# Using sudo might be required depending on user setup,
+# but bun install -g . is the standard way to deploy local package
+bun install -g .
 
 # Configure CLI to default to prod server
 CONFIG_DIR="$HOME/.maestro"

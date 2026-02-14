@@ -11,7 +11,7 @@ interface QueueRouteDependencies {
 /**
  * Create queue routes for managing session task queues.
  */
-export function createQueueRoutes(deps: QueueRouteDependencies) {
+export function createQueueRoutes(deps: QueueRouteDependencies): express.Router {
   const { queueService, sessionService } = deps;
   const router = express.Router();
 

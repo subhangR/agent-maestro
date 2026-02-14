@@ -337,6 +337,10 @@ export function ProjectTabBar({
     if (projects.length <= 1) return;
     if (e.button !== 0) return;
 
+    // Don't interfere with button clicks (settings button, etc.)
+    const clickTarget = e.target as HTMLElement;
+    if (clickTarget.closest('button')) return;
+
     const pointerId = e.pointerId;
     const target = e.currentTarget as HTMLElement;
     const startX = e.clientX;
