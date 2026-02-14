@@ -38,16 +38,10 @@ Think of it like a project manager for your Claude agents. You define the work, 
 ### 1. Single-command install (recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/subhangR/agent-maestro/main/.install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/subhangR/agent-maestro/main/install.sh | bash
 ```
 
-Optional: also install agent CLIs during setup:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/subhangR/agent-maestro/main/.install.sh | bash -s -- --with-agent-tools
-```
-
-The installer keeps noisy command output in log files and prints concise status only.
+`install.sh` is fully automatic: installs Bun, installs deps, builds server/CLI, links `maestro`, installs Claude Code + Codex, and starts the server in background. No flags needed.
 
 ### 2. Local install (repo already cloned)
 
