@@ -252,6 +252,7 @@ fn main() {
                 let _ = app_handle.get_webview_window("main").map(|w| w.hide());
                 let _ = app_handle.hide();
             }
+            #[cfg(target_os = "macos")]
             tauri::RunEvent::Reopen { .. } => {
                 // macOS dock icon clicked — show the hidden window.
                 tray::show_main_window(app_handle);

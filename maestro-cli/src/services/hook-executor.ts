@@ -1,4 +1,5 @@
 import { spawn } from 'child_process';
+import { platform } from 'os';
 
 /**
  * Result of executing a hook
@@ -106,7 +107,10 @@ export class HookExecutor {
         spawnOptions.timeout = options.timeout;
       }
 
-      const child = spawn('/bin/sh', ['-c', command.trim()], spawnOptions);
+      const isWindows = platform() === 'win32';
+      const shell = isWindows ? 'cmd.exe' : '/bin/sh';
+      const shellArgs = isWindows ? ['/C', command.trim()] : ['-c', command.trim()];
+      const child = spawn(shell, shellArgs, spawnOptions);
 
       let stdout = '';
       let stderr = '';
@@ -129,9 +133,14 @@ export class HookExecutor {
         });
       });
 
+      let timedOut = false;
+      if (spawnOptions.timeout) {
+        setTimeout(() => { timedOut = true; }, spawnOptions.timeout);
+      }
+
       child.on('close', (code: number | null, signal: string | null) => {
         const exitCode = code ?? 1;
-        const isTimeout = signal === 'SIGTERM';
+        const isTimeout = timedOut || signal === 'SIGTERM';
 
         resolve({
           success: exitCode === 0,

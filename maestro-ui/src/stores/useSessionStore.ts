@@ -1164,15 +1164,34 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       // Build export prefix to inline env vars into the command string.
       // portable-pty's CommandBuilder::env() does not reliably pass env vars
       // to the child process on macOS, so we export them in the shell command.
-      const envExports = Object.entries(sessionInfo.envVars || {})
-        .filter(([k]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k))
-        .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
-        .join('; ');
-      const envPrefix = envExports ? `${envExports}; ` : '';
+      // On Windows, use `set` syntax instead of `export`, and use `&` instead of `;`.
+      const isWindows = /Win/.test(navigator.platform);
+      let command: string | undefined;
+      if (sessionInfo.command) {
+        if (isWindows) {
+          // portable-pty's CommandBuilder::env() is unreliable, so inline env
+          // vars using `set K=V&&` syntax for cmd.exe (analogous to `export` on Unix).
+          // Use `&&` (not `&`) so cmd.exe chains them sequentially, and avoid
+          // quoting around the set assignment to prevent quote-nesting issues.
+          const envSets = Object.entries(sessionInfo.envVars || {})
+            .filter(([k]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k))
+            .map(([k, v]) => `set ${k}=${v}`)
+            .join('&& ');
+          const envPrefix = envSets ? `${envSets}&& ` : '';
+          command = `${envPrefix}${sessionInfo.command}`;
+        } else {
+          const envExports = Object.entries(sessionInfo.envVars || {})
+            .filter(([k]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k))
+            .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
+            .join('; ');
+          const envPrefix = envExports ? `${envExports}; ` : '';
+          command = `${envPrefix}${sessionInfo.command}; exec $SHELL`;
+        }
+      }
 
       const info = await invoke<TerminalSessionInfo>('create_session', {
         name: sessionInfo.name,
-        command: sessionInfo.command ? `${envPrefix}${sessionInfo.command}; exec $SHELL` : sessionInfo.command,
+        command,
         cwd: sessionInfo.cwd,
         cols: 200,
         rows: 50,

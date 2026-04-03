@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { spawn as spawnProcess } from 'child_process';
 import { readFile, mkdir, writeFile } from 'fs/promises';
 import { join, resolve as resolvePath, delimiter as pathDelimiter } from 'path';
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 import { randomUUID } from 'crypto';
 import { SessionService } from '../application/services/SessionService';
 import { GitWorktreeService } from '../application/services/GitWorktreeService';
@@ -41,10 +41,12 @@ function resolveMaestroCliRuntime(cliPathOverride?: string): { maestroBin: strin
   }
   if (!isPkg) {
     const monorepoRoot = resolvePath(__dirname, '..', '..', '..');
-    return {
-      maestroBin: join(monorepoRoot, 'node_modules', '.bin', 'maestro'),
-      monorepoRoot,
-    };
+    // On Windows, node_modules/.bin contains .exe/.cmd shims, not bare names.
+    // Use the CLI entry point directly via node to avoid extension issues.
+    const maestroBin = platform() === 'win32'
+      ? join(monorepoRoot, 'maestro-cli', 'bin', 'maestro.js')
+      : join(monorepoRoot, 'node_modules', '.bin', 'maestro');
+    return { maestroBin, monorepoRoot };
   }
   return { maestroBin: 'maestro', monorepoRoot: null };
 }
@@ -143,20 +145,25 @@ async function generateManifestViaCLI(options: {
   const MAX_OUTPUT_BYTES = 10 * 1024;
 
   return new Promise((resolve, reject) => {
-    // Raise file descriptor limit before spawning to prevent "low max file
-    // descriptors" errors from Claude Code (macOS default of 2560 is too low).
-    // Explicitly set cwd to $HOME so the shell can getcwd() during init —
-    // when launched from Finder the process cwd may be "/" which is
-    // inaccessible due to macOS SIP/TCC restrictions.
-    const child = spawnProcess(
-      '/bin/sh',
-      ['-c', 'ulimit -n 2147483646 2>/dev/null; exec "$@"', 'sh', maestroBin, ...args],
-      {
-        cwd: homedir(),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: spawnEnv as NodeJS.ProcessEnv,
-      },
-    );
+    // On Unix: raise file descriptor limit before spawning to prevent "low max
+    // file descriptors" errors from Claude Code (macOS default of 2560 is too
+    // low). On Windows: spawn the binary directly (ulimit doesn't exist).
+    const isWindows = platform() === 'win32';
+    const child = isWindows
+      ? spawnProcess(process.execPath, [maestroBin, ...args], {
+          cwd: homedir(),
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: spawnEnv as NodeJS.ProcessEnv,
+        })
+      : spawnProcess(
+          '/bin/sh',
+          ['-c', 'ulimit -n 2147483646 2>/dev/null; exec "$@"', 'sh', maestroBin, ...args],
+          {
+            cwd: homedir(),
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: spawnEnv as NodeJS.ProcessEnv,
+          },
+        );
 
     let stdout = '';
     let stderr = '';
@@ -171,10 +178,15 @@ async function generateManifestViaCLI(options: {
       if (stderr.length > MAX_OUTPUT_BYTES) stderr = stderr.slice(-MAX_OUTPUT_BYTES);
     });
 
-    // Timeout: SIGTERM then SIGKILL if still alive
+    // Timeout: kill the process. On Windows child.kill() sends TerminateProcess;
+    // on Unix we try SIGTERM first, then SIGKILL as a fallback.
     const killTimer = setTimeout(() => {
-      child.kill('SIGTERM');
-      setTimeout(() => { if (!child.killed) child.kill('SIGKILL'); }, 5000);
+      if (isWindows) {
+        child.kill();
+      } else {
+        child.kill('SIGTERM');
+        setTimeout(() => { if (!child.killed) child.kill('SIGKILL'); }, 5000);
+      }
     }, MANIFEST_TIMEOUT_MS);
 
     child.on('exit', async (code) => {
@@ -1270,9 +1282,13 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Prepare spawn data
       const resolvedAgentTool = resolvedAgentToolFromMember || 'claude-code';
       const initCommand = isCoordinatorMode(resolvedMode) ? 'orchestrator' : 'worker';
-      const command = `maestro ${initCommand} init`;
       const cwd = worktreeResult?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
+      // On Windows, cmd.exe may not find bare `maestro` even with PATH set,
+      // so use `node <path>` to invoke the CLI entry point directly.
+      const command = platform() === 'win32'
+        ? `node ${maestroBin} ${initCommand} init`
+        : `maestro ${initCommand} init`;
 
       // Pass through auth-related API keys from server environment
       const authEnvKeys = [
@@ -1493,9 +1509,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       // Determine command: resume if session had a Claude session ID, fresh spawn otherwise
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
-      const command = hadClaudeSessionId
-        ? `maestro ${initCommand} resume`
-        : `maestro ${initCommand} init`;
+      const subcommand = hadClaudeSessionId ? 'resume' : 'init';
+      const command = platform() === 'win32'
+        ? `node ${maestroBin} ${initCommand} ${subcommand}`
+        : `maestro ${initCommand} ${subcommand}`;
 
       // Reconstruct env vars — reuse stored env, refresh dynamic values
       const finalEnvVars: Record<string, string> = {
