@@ -1,6 +1,7 @@
 import React from "react";
-import { TeamMember } from "../../../app/types/maestro";
+import { MaestroTask, TeamMember } from "../../../app/types/maestro";
 import { TeamMemberSelector } from "./TeamMemberSelector";
+import type { AutoSaveStatus } from "../../../hooks/useAutoSave";
 
 type TaskModalFooterProps = {
     isEditMode: boolean;
@@ -14,7 +15,33 @@ type TaskModalFooterProps = {
     onWorkOn?: () => void;
     showLaunchConfig: boolean;
     onToggleLaunchConfig: () => void;
+    autoSaveStatus?: AutoSaveStatus;
+    autoCreatedTask?: MaestroTask | null;
 };
+
+function AutoSaveIndicator({ status }: { status: AutoSaveStatus }) {
+    if (status === "idle") return null;
+
+    const config = {
+        saving: { text: "Saving\u2026", color: "var(--theme-text-secondary)" },
+        saved: { text: "Saved", color: "var(--theme-success, #4caf50)" },
+        error: { text: "Save failed", color: "var(--theme-error, #f44336)" },
+    }[status];
+
+    return (
+        <span
+            style={{
+                fontSize: "11px",
+                color: config.color,
+                opacity: status === "saved" ? 0.7 : 1,
+                transition: "opacity 0.3s ease",
+                whiteSpace: "nowrap",
+            }}
+        >
+            {config.text}
+        </span>
+    );
+}
 
 export function TaskModalFooter({
     isEditMode,
@@ -28,8 +55,12 @@ export function TaskModalFooter({
     onWorkOn,
     showLaunchConfig,
     onToggleLaunchConfig,
+    autoSaveStatus,
+    autoCreatedTask,
 }: TaskModalFooterProps) {
     const hasMembers = selectedTeamMemberIds.length > 0;
+    // Task was auto-created in create mode — show hybrid UI
+    const isAutoCreated = !isEditMode && !!autoCreatedTask;
 
     return (
         <div className="themedFormActions" style={{ flexWrap: 'wrap' }}>
@@ -50,11 +81,9 @@ export function TaskModalFooter({
                             {'\u2699'}
                         </button>
                     )}
+                    {autoSaveStatus && <AutoSaveIndicator status={autoSaveStatus} />}
                     <button type="button" className="themedBtn" onClick={onClose}>
                         Close
-                    </button>
-                    <button type="button" className="themedBtn themedBtnPrimary" onClick={onSave}>
-                        Save
                     </button>
                     <button
                         type="button"
@@ -84,25 +113,38 @@ export function TaskModalFooter({
                             {'\u2699'}
                         </button>
                     )}
+                    {isAutoCreated && autoSaveStatus && <AutoSaveIndicator status={autoSaveStatus} />}
                     <button type="button" className="themedBtn" onClick={onClose}>
-                        Cancel
+                        {isAutoCreated ? "Close" : "Cancel"}
                     </button>
-                    <button
-                        type="button"
-                        className="themedBtn themedBtnPrimary"
-                        onClick={() => onSubmit(false)}
-                        disabled={!isValid}
-                    >
-                        Create Task
-                    </button>
-                    <button
-                        type="button"
-                        className="themedBtn themedBtnSuccess"
-                        onClick={() => onSubmit(true)}
-                        disabled={!isValid}
-                    >
-                        Create &amp; Run
-                    </button>
+                    {!isAutoCreated ? (
+                        <>
+                            <button
+                                type="button"
+                                className="themedBtn themedBtnPrimary"
+                                onClick={() => onSubmit(false)}
+                                disabled={!isValid}
+                            >
+                                Create Task
+                            </button>
+                            <button
+                                type="button"
+                                className="themedBtn themedBtnSuccess"
+                                onClick={() => onSubmit(true)}
+                                disabled={!isValid}
+                            >
+                                Create &amp; Run
+                            </button>
+                        </>
+                    ) : (
+                        <button
+                            type="button"
+                            className="themedBtn themedBtnSuccess"
+                            onClick={() => onSubmit(true)}
+                        >
+                            $ exec
+                        </button>
+                    )}
                 </>
             )}
         </div>

@@ -88,7 +88,7 @@ const memberLaunchOverrideSchema = z.object({
 export const createTaskSchema = z.object({
   projectId: safeId,
   parentId: safeId.optional(),
-  title: shortString,
+  title: z.string().optional().default(""),
   description: longString.optional(),
   priority: taskPrioritySchema.optional(),
   initialPrompt: longString.optional(),

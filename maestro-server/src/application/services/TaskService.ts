@@ -27,10 +27,6 @@ export class TaskService {
     if (!input.projectId) {
       throw new ValidationError('Project ID is required');
     }
-    if (!input.title || input.title.trim() === '') {
-      throw new ValidationError('Task title is required');
-    }
-
     // Verify project exists
     const project = await this.projectRepo.findById(input.projectId);
     if (!project) {
@@ -47,7 +43,7 @@ export class TaskService {
 
     const task = await this.taskRepo.create({
       ...input,
-      title: input.title.trim()
+      title: (input.title || '').trim()
     });
 
     await this.eventBus.emit('task:created', task);
@@ -96,11 +92,6 @@ export class TaskService {
    * NOTE: Timeline is now on Session, not Task - use SessionService.addTimelineEvent()
    */
   async updateTask(id: string, updates: UpdateTaskPayload): Promise<Task> {
-    // Validate updates
-    if (updates.title !== undefined && updates.title.trim() === '') {
-      throw new ValidationError('Task title cannot be empty');
-    }
-
     // Fetch old task state for comparison — snapshot values before mutation
     const oldTask = await this.taskRepo.findById(id);
     const oldStatus = oldTask?.status;

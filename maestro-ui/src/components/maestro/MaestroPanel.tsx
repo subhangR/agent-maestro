@@ -417,18 +417,28 @@ export const MaestroPanel = React.memo(function MaestroPanel({
 
     const handleCreateTask = useCallback(async (taskData: any) => {
         try {
-            const newTask = await createTask({
-                projectId,
-                title: taskData.title,
-                description: taskData.description,
-                priority: taskData.priority,
-                skillIds: taskData.skillIds,
-                referenceTaskIds: taskData.referenceTaskIds,
-                parentId: taskData.parentId,
-                teamMemberId: taskData.teamMemberId,
-                teamMemberIds: taskData.teamMemberIds,
-                memberOverrides: taskData.memberOverrides,
-            });
+            let newTask;
+            if (taskData._existingTaskId) {
+                // Task was already auto-created — fetch it from store instead of creating
+                newTask = useMaestroStore.getState().tasks[taskData._existingTaskId];
+                if (!newTask) {
+                    // Fallback: fetch from server
+                    newTask = await maestroClient.getTask(taskData._existingTaskId);
+                }
+            } else {
+                newTask = await createTask({
+                    projectId,
+                    title: taskData.title,
+                    description: taskData.description,
+                    priority: taskData.priority,
+                    skillIds: taskData.skillIds,
+                    referenceTaskIds: taskData.referenceTaskIds,
+                    parentId: taskData.parentId,
+                    teamMemberId: taskData.teamMemberId,
+                    teamMemberIds: taskData.teamMemberIds,
+                    memberOverrides: taskData.memberOverrides,
+                });
+            }
             if (taskData._stagedFiles?.length > 0) {
                 for (const file of taskData._stagedFiles) {
                     try {
@@ -443,6 +453,10 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                     newTask.memberOverrides = taskData.memberOverrides;
                 }
                 await handleWorkOnTask(newTask);
+            } else if (!taskData._existingTaskId) {
+                // Auto-open task detail overlay so further edits auto-save
+                // (skip for auto-created tasks — they're already being edited)
+                useUIStore.getState().setTaskDetailOverlay({ taskId: newTask.id, projectId });
             }
         } catch (err: any) {
             setError("Failed to create task");

@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect, useRef, useLayoutEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef, useLayoutEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { MentionsInput, Mention } from 'react-mentions';
 import { AgentTool, AgentMode, ModelType, TeamMember, TeamMemberScope, CreateTeamMemberPayload, UpdateTeamMemberPayload, InstrumentType } from "../../app/types/maestro";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useProjectStore } from "../../stores/useProjectStore";
+import { useAutoSave, AutoSaveStatus } from "../../hooks/useAutoSave";
 import { ClaudeCodeSkillsSelector } from "./ClaudeCodeSkillsSelector";
 import { soundManager, getNotesForDisplay } from "../../services/soundManager";
 import type { SoundCategory } from "../../services/soundManager";
@@ -306,6 +307,32 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
     const [soundInstrument, setSoundInstrument] = useState<InstrumentType>('piano');
     const [scope, setScope] = useState<TeamMemberScope>('project');
 
+    // Auto-save change tracking
+    const [changeVersion, setChangeVersion] = useState(0);
+    const bumpVersion = useCallback(() => setChangeVersion(v => v + 1), []);
+
+    // Detect if form has changes compared to the saved team member
+    const hasUnsavedChanges = useMemo(() => {
+        if (!isEditMode || !teamMember) return false;
+        return (
+            name !== teamMember.name ||
+            role !== teamMember.role ||
+            avatar !== teamMember.avatar ||
+            identity !== teamMember.identity ||
+            agentTool !== (teamMember.agentTool || "claude-code") ||
+            model !== (teamMember.model || "sonnet") ||
+            mode !== (teamMember.mode || "worker") ||
+            permissionMode !== (teamMember.permissionMode || "acceptEdits") ||
+            JSON.stringify(selectedSkills) !== JSON.stringify(teamMember.skillIds || []) ||
+            JSON.stringify(capabilities) !== JSON.stringify({ ...getDefaultCapabilities(teamMember.mode || 'worker'), ...teamMember.capabilities }) ||
+            JSON.stringify(commandOverrides) !== JSON.stringify(teamMember.commandPermissions?.commands || {}) ||
+            soundInstrument !== (teamMember.soundInstrument || 'piano') ||
+            scope !== (teamMember.scope || 'project') ||
+            workflowTemplateId !== (teamMember.workflowTemplateId || '') ||
+            (useCustomWorkflow ? (customWorkflow !== (teamMember.customWorkflow || '')) : false)
+        );
+    }, [isEditMode, teamMember, name, role, avatar, identity, agentTool, model, mode, permissionMode, selectedSkills, capabilities, commandOverrides, soundInstrument, scope, workflowTemplateId, useCustomWorkflow, customWorkflow]);
+
     // Agent tool dropdown
     const [showAgentDropdown, setShowAgentDropdown] = useState(false);
     const agentBtnRef = useRef<HTMLButtonElement>(null);
@@ -332,12 +359,60 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
         if (isOpen && workflowTemplates.length === 0) fetchWorkflowTemplates();
     }, [isOpen]);
 
+    // Auto-save for edit mode
+    const autoSaveFn = useCallback(async () => {
+        if (!isEditMode || !teamMember) return;
+        const cmdPerms = Object.keys(commandOverrides).length > 0
+            ? { commands: commandOverrides }
+            : undefined;
+        const payload: UpdateTeamMemberPayload = {
+            name: name.trim(),
+            role: role.trim(),
+            avatar: avatar.trim() || "\u{1F916}",
+            identity: identity.trim(),
+            agentTool, model, mode, permissionMode,
+            skillIds: selectedSkills,
+            capabilities,
+            soundInstrument,
+            scope,
+            ...(cmdPerms && { commandPermissions: cmdPerms }),
+            workflowTemplateId: useCustomWorkflow ? undefined : (workflowTemplateId || undefined),
+            customWorkflow: useCustomWorkflow && customWorkflow.trim() ? customWorkflow.trim() : undefined,
+        };
+        await updateTeamMember(teamMember.id, projectId, payload);
+    }, [isEditMode, teamMember, name, role, avatar, identity, agentTool, model, mode, permissionMode, selectedSkills, capabilities, commandOverrides, soundInstrument, scope, workflowTemplateId, useCustomWorkflow, customWorkflow, projectId, updateTeamMember]);
+
+    const { status: autoSaveStatus, saveNow: saveTeamMemberNow } = useAutoSave({
+        changeVersion,
+        hasChanges: hasUnsavedChanges,
+        saveFn: autoSaveFn,
+        debounceMs: 1000,
+        enabled: isEditMode && !!name.trim() && !!role.trim(),
+    });
+
     const filteredTemplates = workflowTemplates.filter(t => t.mode === mode);
     const selectedTemplateObj = workflowTemplates.find(t => t.id === workflowTemplateId);
+
+    // Bump change version when form values change (but not on initial populate)
+    // Use a populate counter instead of a boolean ref to avoid RAF race conditions
+    const populateCounterRef = useRef(0);
+    const lastPopulateCounterRef = useRef(0);
+    useEffect(() => {
+        // Only bump if this render wasn't triggered by a populate cycle
+        if (populateCounterRef.current === lastPopulateCounterRef.current) {
+            bumpVersion();
+        } else {
+            lastPopulateCounterRef.current = populateCounterRef.current;
+        }
+    }, [name, role, avatar, identity, agentTool, model, mode, permissionMode, selectedSkills, capabilities, commandOverrides, soundInstrument, scope, workflowTemplateId, useCustomWorkflow, customWorkflow]);
 
     // ─── Populate form ────────────────────────────────────────────────
     useEffect(() => {
         if (!isOpen) return;
+        // Increment populate counter so the version-bump effect knows to skip
+        populateCounterRef.current += 1;
+        // Reset changeVersion to 0 for a fresh session
+        setChangeVersion(0);
         if (teamMember) {
             setName(teamMember.name);
             setRole(teamMember.role);
@@ -415,8 +490,13 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
 
     const toggleTab = (tab: string) => setActiveTab(prev => prev === tab ? null : tab);
 
-    const handleClose = () => {
-        if (!isSaving) onClose();
+    const handleClose = async () => {
+        if (isSaving) return;
+        // In edit mode, save pending changes before closing
+        if (isEditMode && hasUnsavedChanges) {
+            await saveTeamMemberNow();
+        }
+        onClose();
     };
 
     const handleResetToDefault = () => {
@@ -498,7 +578,11 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
-            handleSubmit();
+            if (isEditMode) {
+                saveTeamMemberNow();
+            } else {
+                handleSubmit();
+            }
         }
     };
 
@@ -1052,20 +1136,32 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                                 Reset Default
                             </button>
                         )}
+                        {isEditMode && autoSaveStatus !== 'idle' && (
+                            <span style={{
+                                fontSize: '11px',
+                                color: autoSaveStatus === 'saved' ? 'var(--theme-success, #4caf50)'
+                                    : autoSaveStatus === 'error' ? 'var(--theme-error, #f44336)'
+                                    : 'var(--theme-text-secondary)',
+                                opacity: autoSaveStatus === 'saved' ? 0.7 : 1,
+                                transition: 'opacity 0.3s ease',
+                                whiteSpace: 'nowrap',
+                            }}>
+                                {autoSaveStatus === 'saving' ? 'Saving\u2026' : autoSaveStatus === 'saved' ? 'Saved' : 'Save failed'}
+                            </span>
+                        )}
                         <button type="button" className="themedBtn" onClick={handleClose} disabled={isSaving}>
-                            Cancel
+                            {isEditMode ? 'Close' : 'Cancel'}
                         </button>
-                        <button
-                            type="button"
-                            className="themedBtn themedBtnPrimary"
-                            onClick={handleSubmit}
-                            disabled={isSaving || !name.trim() || !role.trim()}
-                        >
-                            {isSaving
-                                ? (isEditMode ? "Saving..." : "Creating...")
-                                : (isEditMode ? "Save" : "Create Member")
-                            }
-                        </button>
+                        {!isEditMode && (
+                            <button
+                                type="button"
+                                className="themedBtn themedBtnPrimary"
+                                onClick={handleSubmit}
+                                disabled={isSaving || !name.trim() || !role.trim()}
+                            >
+                                {isSaving ? "Creating..." : "Create Member"}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

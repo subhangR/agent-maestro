@@ -6,14 +6,26 @@ import { MemberConfig, buildDefaultMemberConfig, buildMemberConfigFromOverride, 
 export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: MaestroTask) {
     const isEditMode = mode === "edit" && !!task;
 
-    const [title, setTitle] = useState("");
-    const [prompt, setPrompt] = useState("");
-    const [priority, setPriority] = useState<TaskPriority>("medium");
-    const [selectedTeamMemberIds, setSelectedTeamMemberIds] = useState<string[]>([]);
-    const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+    const [title, _setTitle] = useState("");
+    const [prompt, _setPrompt] = useState("");
+    const [priority, _setPriority] = useState<TaskPriority>("medium");
+    const [selectedTeamMemberIds, _setSelectedTeamMemberIds] = useState<string[]>([]);
+    const [selectedSkills, _setSelectedSkills] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState<string | null>(null);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-    const [dueDate, setDueDate] = useState<string>("");
+    const [dueDate, _setDueDate] = useState<string>("");
+
+    // Change version counter — increments on every user edit to trigger auto-save debounce
+    const [changeVersion, setChangeVersion] = useState(0);
+    const bumpVersion = useCallback(() => setChangeVersion(v => v + 1), []);
+
+    // Wrapped setters that bump the change version
+    const setTitle = useCallback((v: string | ((prev: string) => string)) => { _setTitle(v); bumpVersion(); }, [bumpVersion]);
+    const setPrompt = useCallback((v: string | ((prev: string) => string)) => { _setPrompt(v); bumpVersion(); }, [bumpVersion]);
+    const setPriority = useCallback((v: TaskPriority) => { _setPriority(v); bumpVersion(); }, [bumpVersion]);
+    const setSelectedTeamMemberIds = useCallback((v: string[] | ((prev: string[]) => string[])) => { _setSelectedTeamMemberIds(v); bumpVersion(); }, [bumpVersion]);
+    const setSelectedSkills = useCallback((v: string[] | ((prev: string[]) => string[])) => { _setSelectedSkills(v); bumpVersion(); }, [bumpVersion]);
+    const setDueDate = useCallback((v: string) => { _setDueDate(v); bumpVersion(); }, [bumpVersion]);
 
     // Subtask state
     const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -34,18 +46,19 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
     const [memberConfigs, setMemberConfigs] = useState<Record<string, MemberConfig>>({});
 
     // Pre-fill form when task changes in edit mode
+    // Uses raw setters (_set*) to avoid bumping changeVersion during server-synced updates
     useEffect(() => {
         if (isEditMode && task) {
-            setTitle(task.title);
-            setPrompt(task.description || "");
-            setPriority(task.priority);
-            setSelectedTeamMemberIds(
+            _setTitle(task.title);
+            _setPrompt(task.description || "");
+            _setPriority(task.priority);
+            _setSelectedTeamMemberIds(
                 task.teamMemberIds && task.teamMemberIds.length > 0
                     ? task.teamMemberIds
                     : task.teamMemberId ? [task.teamMemberId] : []
             );
-            setSelectedSkills(task.skillIds || []);
-            setDueDate(task.dueDate || "");
+            _setSelectedSkills(task.skillIds || []);
+            _setDueDate(task.dueDate || "");
         }
     }, [isEditMode, isOpen, task?.id, task?.title, task?.description, task?.priority, task?.teamMemberId, JSON.stringify(task?.teamMemberIds), JSON.stringify(task?.referenceTaskIds), task?.dueDate]);
 
@@ -67,15 +80,15 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         }
     }, [isEditMode, task?.id, JSON.stringify(task?.images)]);
 
-    // Reset form when switching to create mode
+    // Reset form when switching to create mode (raw setters to avoid version bumps)
     useEffect(() => {
         if (mode === "create" && isOpen) {
-            setTitle("");
-            setPrompt("");
-            setPriority("medium");
-            setSelectedTeamMemberIds([]);
-            setSelectedSkills([]);
-            setDueDate("");
+            _setTitle("");
+            _setPrompt("");
+            _setPriority("medium");
+            _setSelectedTeamMemberIds([]);
+            _setSelectedSkills([]);
+            _setDueDate("");
             setActiveTab(null);
         }
     }, [mode, isOpen]);
@@ -90,11 +103,12 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
                 prompt !== (task.description || "") ||
                 priority !== task.priority ||
                 dueDate !== (task.dueDate || "") ||
-                JSON.stringify(selectedTeamMemberIds) !== JSON.stringify(task.teamMemberIds || (task.teamMemberId ? [task.teamMemberId] : []))
+                JSON.stringify(selectedTeamMemberIds) !== JSON.stringify(task.teamMemberIds || (task.teamMemberId ? [task.teamMemberId] : [])) ||
+                JSON.stringify(selectedSkills) !== JSON.stringify(task.skillIds || [])
             );
         }
         return false;
-    }, [mode, isEditMode, task, title, prompt, priority, dueDate, selectedTeamMemberIds]);
+    }, [mode, isEditMode, task, title, prompt, priority, dueDate, selectedTeamMemberIds, selectedSkills]);
 
     const isValid = title.trim() !== "" && prompt.trim() !== "";
 
@@ -165,9 +179,11 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         setShowLaunchConfig(false);
         setMemberConfigs({});
         setTaskImages([]);
-        stagedImagePreviews.forEach(url => URL.revokeObjectURL(url));
         setStagedImageFiles([]);
-        setStagedImagePreviews([]);
+        setStagedImagePreviews(prev => {
+            prev.forEach(url => URL.revokeObjectURL(url));
+            return [];
+        });
     };
 
     const getCreatePayload = (startImmediately: boolean, referenceTaskIds?: string[], parentId?: string) => ({
@@ -219,6 +235,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         selectedSkills, setSelectedSkills,
         activeTab, setActiveTab, toggleTab,
         showConfirmDialog, setShowConfirmDialog,
+        changeVersion,
         newSubtaskTitle, setNewSubtaskTitle,
         showSubtaskInput, setShowSubtaskInput,
         taskDocs,

@@ -38,10 +38,26 @@ describe('TaskService', () => {
       ).rejects.toThrow();
     });
 
-    it('should throw if title is missing', async () => {
-      await expect(
-        container.taskService.createTask({ projectId, title: '' })
-      ).rejects.toThrow();
+    it('should allow empty title for draft/auto-save tasks', async () => {
+      const task = await container.taskService.createTask({ projectId, title: '' });
+      expect(task.id).toBeDefined();
+      expect(task.title).toBe('');
+    });
+
+    it('should allow undefined title (defaults to empty)', async () => {
+      const task = await container.taskService.createTask({ projectId } as any);
+      expect(task.id).toBeDefined();
+    });
+
+    it('should create task with description only (no title)', async () => {
+      const task = await container.taskService.createTask({
+        projectId,
+        title: '',
+        description: 'A task with only a description',
+      });
+      expect(task.id).toBeDefined();
+      expect(task.title).toBe('');
+      expect(task.description).toBe('A task with only a description');
     });
 
     it('should create a task with parentId', async () => {
@@ -107,6 +123,21 @@ describe('TaskService', () => {
 
       expect(updated.title).toBe('Updated Title');
       expect(updated.priority).toBe('high');
+    });
+
+    it('should update empty-title task with a title (auto-save flow)', async () => {
+      const draft = await container.taskService.createTask({ projectId, title: '', description: 'Draft desc' });
+      expect(draft.title).toBe('');
+
+      const updated = await container.taskService.updateTask(draft.id, { title: 'Now has a title' });
+      expect(updated.title).toBe('Now has a title');
+      expect(updated.description).toBe('Draft desc');
+    });
+
+    it('should allow updating title to empty string', async () => {
+      const created = await container.taskService.createTask(createTestTask(projectId));
+      const updated = await container.taskService.updateTask(created.id, { title: '' });
+      expect(updated.title).toBe('');
     });
   });
 

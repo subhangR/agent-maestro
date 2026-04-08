@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { MaestroTask, MaestroProject, TeamMember, MemberLaunchOverride } from "../../app/types/maestro";
 import { maestroClient } from "../../utils/MaestroClient";
 import { ClaudeCodeSkillsSelector } from "./ClaudeCodeSkillsSelector";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useTaskForm } from "../../hooks/useTaskForm";
+import { useAutoSave } from "../../hooks/useAutoSave";
 import { useReferenceTaskPicker } from "../../hooks/useReferenceTaskPicker";
 import { useFileAutocomplete } from "../../hooks/useFileAutocomplete";
 import { useSkillAutocomplete } from "../../hooks/useSkillAutocomplete";
@@ -96,6 +97,119 @@ export function CreateTaskModal({
         [teamMembersMap, project?.id]
     );
 
+    // ==================== AUTO-CREATE (create mode) ====================
+    // When user types content in create mode, auto-create the task on the server
+    // so that all further edits are auto-saved.
+
+    const [autoCreatedTask, setAutoCreatedTask] = useState<MaestroTask | null>(null);
+    const autoCreateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isAutoCreatingRef = useRef(false);
+
+    // "Effective" edit mode — either passed in as edit, or auto-created from create
+    const effectiveEditMode = isEditMode || !!autoCreatedTask;
+    const effectiveTask = isEditMode ? task : autoCreatedTask;
+
+    // Reset auto-created task when modal closes/reopens
+    useEffect(() => {
+        if (!isOpen || mode !== "create") {
+            setAutoCreatedTask(null);
+            isAutoCreatingRef.current = false;
+        }
+    }, [isOpen, mode]);
+
+    // Auto-create: when user types content in create mode, debounce then create on server
+    useEffect(() => {
+        if (mode !== "create" || autoCreatedTask || isAutoCreatingRef.current) return;
+        const hasContent = form.title.trim() !== "" || form.prompt.trim() !== "";
+        if (!hasContent) return;
+
+        if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
+        autoCreateTimerRef.current = setTimeout(async () => {
+            if (isAutoCreatingRef.current) return;
+            isAutoCreatingRef.current = true;
+            try {
+                const storeCreateTask = useMaestroStore.getState().createTask;
+                const newTask = await storeCreateTask({
+                    projectId: project.id,
+                    title: form.title.trim(),
+                    description: form.prompt,
+                    priority: form.priority,
+                    parentId: parentId || undefined,
+                    skillIds: form.selectedSkills.length > 0 ? form.selectedSkills : undefined,
+                    referenceTaskIds: refPicker.selectedReferenceTasks.length > 0
+                        ? refPicker.selectedReferenceTasks.map(t => t.id) : undefined,
+                    teamMemberId: form.selectedTeamMemberIds.length === 1 ? form.selectedTeamMemberIds[0] : undefined,
+                    teamMemberIds: form.selectedTeamMemberIds.length > 0 ? form.selectedTeamMemberIds : undefined,
+                });
+                setAutoCreatedTask(newTask);
+                // Upload staged images if any
+                if (form.stagedImageFiles.length > 0) {
+                    for (const file of form.stagedImageFiles) {
+                        try { await maestroClient.uploadTaskImage(newTask.id, file); } catch { /* silent */ }
+                    }
+                }
+            } catch {
+                // Auto-create failed — user can still manually create via button
+                isAutoCreatingRef.current = false;
+            }
+        }, 1000);
+
+        return () => {
+            if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
+        };
+    }, [mode, autoCreatedTask, form.title, form.prompt, form.priority, form.selectedTeamMemberIds, form.selectedSkills, project?.id, parentId, refPicker.selectedReferenceTasks]);
+
+    // Clean up timer on unmount
+    useEffect(() => {
+        return () => {
+            if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
+        };
+    }, []);
+
+    // ==================== AUTO-SAVE ====================
+
+    // Auto-save works for both edit mode AND auto-created tasks in create mode
+    const autoSaveFn = useCallback(async () => {
+        if (!effectiveEditMode || !effectiveTask || !onUpdateTask) {
+            // For auto-created tasks, use the store's updateTask directly
+            if (autoCreatedTask) {
+                const updateTask = useMaestroStore.getState().updateTask;
+                const refIds = refPicker.selectedReferenceTasks.map(t => t.id);
+                const updates: Partial<MaestroTask> = {};
+                if (form.title.trim() !== (autoCreatedTask.title || "")) updates.title = form.title.trim();
+                if (form.prompt !== (autoCreatedTask.description || "")) updates.description = form.prompt;
+                if (form.priority !== autoCreatedTask.priority) updates.priority = form.priority;
+                if (form.dueDate !== (autoCreatedTask.dueDate || "")) updates.dueDate = form.dueDate || null;
+                const currentIds = autoCreatedTask.teamMemberIds || (autoCreatedTask.teamMemberId ? [autoCreatedTask.teamMemberId] : []);
+                if (JSON.stringify(form.selectedTeamMemberIds) !== JSON.stringify(currentIds)) {
+                    updates.teamMemberIds = form.selectedTeamMemberIds.length > 0 ? form.selectedTeamMemberIds : undefined;
+                    updates.teamMemberId = form.selectedTeamMemberIds.length === 1 ? form.selectedTeamMemberIds[0] : undefined;
+                }
+                if (JSON.stringify(form.selectedSkills) !== JSON.stringify(autoCreatedTask.skillIds || [])) updates.skillIds = form.selectedSkills;
+                if (JSON.stringify(refIds) !== JSON.stringify(autoCreatedTask.referenceTaskIds || [])) updates.referenceTaskIds = refIds;
+                if (Object.keys(updates).length > 0) {
+                    const updated = await updateTask(autoCreatedTask.id, updates);
+                    setAutoCreatedTask(updated);
+                }
+                return;
+            }
+            return;
+        }
+        const refIds = refPicker.selectedReferenceTasks.map(t => t.id);
+        const updates = form.getUpdateDiff(refIds, teamMembers);
+        if (updates) {
+            await onUpdateTask(effectiveTask!.id, updates);
+        }
+    }, [effectiveEditMode, effectiveTask, autoCreatedTask, onUpdateTask, form.title, form.prompt, form.priority, form.dueDate, form.selectedTeamMemberIds, form.selectedSkills, form.memberConfigs, refPicker.selectedReferenceTasks, teamMembers]);
+
+    const { status: autoSaveStatus, saveNow } = useAutoSave({
+        changeVersion: form.changeVersion,
+        hasChanges: effectiveEditMode ? form.hasUnsavedContent : false,
+        saveFn: autoSaveFn,
+        debounceMs: 1000,
+        enabled: effectiveEditMode,
+    });
+
     // Load reference tasks for edit mode
     useEffect(() => {
         if (isEditMode && task?.referenceTaskIds && task.referenceTaskIds.length > 0) {
@@ -123,8 +237,15 @@ export function CreateTaskModal({
 
     // ==================== HANDLERS ====================
 
-    const handleClose = () => {
-        if (form.hasUnsavedContent) {
+    const handleClose = async () => {
+        if (effectiveEditMode) {
+            // Task exists on server (edit mode or auto-created) — save and close
+            if (form.hasUnsavedContent) {
+                await saveNow();
+            }
+            onClose();
+        } else if (form.hasUnsavedContent) {
+            // Create mode, no auto-created task yet — ask to discard
             form.setShowConfirmDialog(true);
         } else {
             onClose();
@@ -132,6 +253,8 @@ export function CreateTaskModal({
     };
 
     const handleConfirmDiscard = () => {
+        // Cancel any pending auto-create
+        if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
         form.resetForm();
         refPicker.reset();
         onClose();
@@ -139,18 +262,52 @@ export function CreateTaskModal({
 
     const handleToggleLaunchConfig = () => {
         if (!form.showLaunchConfig) {
-            // Initialize configs for selected members, restoring saved overrides if editing
             const savedOverrides = isEditMode ? task?.memberOverrides : undefined;
             for (const id of form.selectedTeamMemberIds) {
                 form.initMemberConfig(id, teamMembers, savedOverrides);
             }
-            form.setActiveTab(null); // close any open tab
+            form.setActiveTab(null);
         }
         form.setShowLaunchConfig(!form.showLaunchConfig);
     };
 
     const handleSubmit = async (startImmediately: boolean) => {
-        if (!form.title.trim() || !form.prompt.trim()) return;
+        if (autoCreatedTask) {
+            // Task already exists on server via auto-create
+            // Save any pending changes first
+            if (form.hasUnsavedContent) {
+                await saveNow();
+            }
+            if (startImmediately) {
+                // Pass _existingTaskId so MaestroPanel skips creation and just launches
+                const overrides = form.getMemberOverrides(teamMembers);
+                await onCreate({
+                    title: form.title.trim() || "Untitled",
+                    description: form.prompt,
+                    priority: form.priority,
+                    startImmediately: true,
+                    skillIds: form.selectedSkills.length > 0 ? form.selectedSkills : undefined,
+                    referenceTaskIds: refPicker.selectedReferenceTasks.length > 0
+                        ? refPicker.selectedReferenceTasks.map(t => t.id) : undefined,
+                    parentId,
+                    teamMemberId: form.selectedTeamMemberIds.length === 1 ? form.selectedTeamMemberIds[0] : undefined,
+                    teamMemberIds: form.selectedTeamMemberIds.length > 0 ? form.selectedTeamMemberIds : undefined,
+                    ...(overrides && { memberOverrides: overrides }),
+                    _existingTaskId: autoCreatedTask.id,
+                } as any);
+            }
+            form.resetForm();
+            refPicker.reset();
+            setAutoCreatedTask(null);
+            onClose();
+            return;
+        }
+
+        // No auto-created task — normal create flow
+        if (!form.title.trim() && !form.prompt.trim()) return;
+
+        // Cancel any pending auto-create timer
+        if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
 
         const payload = form.getCreatePayload(
             startImmediately,
@@ -158,7 +315,6 @@ export function CreateTaskModal({
             parentId,
         );
 
-        // Attach member overrides if configured
         const overrides = form.getMemberOverrides(teamMembers);
         if (overrides) {
             (payload as any).memberOverrides = overrides;
@@ -171,13 +327,8 @@ export function CreateTaskModal({
     };
 
     const handleSave = () => {
-        if (!isEditMode || !task) return;
-        const refIds = refPicker.selectedReferenceTasks.map(t => t.id);
-        const updates = form.getUpdateDiff(refIds, teamMembers);
-        if (updates) {
-            onUpdateTask?.(task.id, updates);
-        }
-        onClose();
+        if (!effectiveEditMode) return;
+        saveNow();
     };
 
     const handleAddSubtask = () => {
@@ -191,7 +342,7 @@ export function CreateTaskModal({
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();
-            if (isEditMode) handleSave();
+            if (effectiveEditMode) saveNow();
             else handleSubmit(false);
         }
     };
@@ -212,7 +363,7 @@ export function CreateTaskModal({
                     onTitleChange={form.setTitle}
                     onKeyDown={handleKeyDown}
                     isEditMode={isEditMode}
-                    task={task}
+                    task={effectiveTask || undefined}
                     isOverlay={isOverlay}
                     onClose={handleClose}
                     parentId={parentId}
@@ -245,10 +396,10 @@ export function CreateTaskModal({
                                     skills={skills}
                                     isOverlay={isOverlay}
                                 >
-                                    {isEditMode && task ? (
+                                    {effectiveEditMode && effectiveTask ? (
                                         <ImagesTab
                                             variant="bar"
-                                            taskId={task.id}
+                                            taskId={effectiveTask.id}
                                             images={form.taskImages}
                                             onImagesChange={form.setTaskImages}
                                         />
@@ -368,7 +519,7 @@ export function CreateTaskModal({
                                         dueDate={form.dueDate}
                                         onDueDateChange={form.setDueDate}
                                         isEditMode={isEditMode}
-                                        task={task}
+                                        task={effectiveTask || undefined}
                                     />
                                 )}
                             </div>
@@ -380,7 +531,7 @@ export function CreateTaskModal({
                             onToggleTab={form.toggleTab}
                             onCloseTab={() => form.setActiveTab(null)}
                             isEditMode={isEditMode}
-                            taskId={task?.id}
+                            taskId={effectiveTask?.id}
                             selectedSkillsCount={form.selectedSkills.length}
                             selectedRefTasksCount={refPicker.selectedReferenceTasks.length}
                             taskDocsCount={form.taskDocs.length}
@@ -400,6 +551,8 @@ export function CreateTaskModal({
                     onWorkOn={onWorkOn}
                     showLaunchConfig={form.showLaunchConfig}
                     onToggleLaunchConfig={handleToggleLaunchConfig}
+                    autoSaveStatus={effectiveEditMode ? autoSaveStatus : undefined}
+                    autoCreatedTask={autoCreatedTask}
                 />
             </div>
 
