@@ -162,6 +162,7 @@ export function CreateTaskModal({
                     });
                     setAutoCreatedTask(newTask);
                     autoCreatedTaskRef.current = newTask;
+                    isAutoCreatingRef.current = false;
                     // Upload staged images if any
                     if (form.stagedImageFiles.length > 0) {
                         for (const file of form.stagedImageFiles) {
