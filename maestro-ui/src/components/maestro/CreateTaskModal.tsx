@@ -102,8 +102,11 @@ export function CreateTaskModal({
     // so that all further edits are auto-saved.
 
     const [autoCreatedTask, setAutoCreatedTask] = useState<MaestroTask | null>(null);
+    const autoCreatedTaskRef = useRef<MaestroTask | null>(null);
     const autoCreateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isAutoCreatingRef = useRef(false);
+    // Promise that resolves when the in-flight auto-create completes
+    const autoCreatePromiseRef = useRef<Promise<MaestroTask | null> | null>(null);
 
     // "Effective" edit mode — either passed in as edit, or auto-created from create
     const effectiveEditMode = isEditMode || !!autoCreatedTask;
@@ -113,7 +116,9 @@ export function CreateTaskModal({
     useEffect(() => {
         if (!isOpen || mode !== "create") {
             setAutoCreatedTask(null);
+            autoCreatedTaskRef.current = null;
             isAutoCreatingRef.current = false;
+            autoCreatePromiseRef.current = null;
         }
     }, [isOpen, mode]);
 
@@ -137,34 +142,40 @@ export function CreateTaskModal({
         if (!hasContent) return;
 
         if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
-        autoCreateTimerRef.current = setTimeout(async () => {
+        autoCreateTimerRef.current = setTimeout(() => {
             if (isAutoCreatingRef.current) return;
             isAutoCreatingRef.current = true;
-            try {
-                const storeCreateTask = useMaestroStore.getState().createTask;
-                const newTask = await storeCreateTask({
-                    projectId: project.id,
-                    title: getAutoTitle(),
-                    description: form.prompt,
-                    priority: form.priority,
-                    parentId: parentId || undefined,
-                    skillIds: form.selectedSkills.length > 0 ? form.selectedSkills : undefined,
-                    referenceTaskIds: refPicker.selectedReferenceTasks.length > 0
-                        ? refPicker.selectedReferenceTasks.map(t => t.id) : undefined,
-                    teamMemberId: form.selectedTeamMemberIds.length === 1 ? form.selectedTeamMemberIds[0] : undefined,
-                    teamMemberIds: form.selectedTeamMemberIds.length > 0 ? form.selectedTeamMemberIds : undefined,
-                });
-                setAutoCreatedTask(newTask);
-                // Upload staged images if any
-                if (form.stagedImageFiles.length > 0) {
-                    for (const file of form.stagedImageFiles) {
-                        try { await maestroClient.uploadTaskImage(newTask.id, file); } catch { /* silent */ }
+            const promise = (async () => {
+                try {
+                    const storeCreateTask = useMaestroStore.getState().createTask;
+                    const newTask = await storeCreateTask({
+                        projectId: project.id,
+                        title: getAutoTitle(),
+                        description: form.prompt,
+                        priority: form.priority,
+                        parentId: parentId || undefined,
+                        skillIds: form.selectedSkills.length > 0 ? form.selectedSkills : undefined,
+                        referenceTaskIds: refPicker.selectedReferenceTasks.length > 0
+                            ? refPicker.selectedReferenceTasks.map(t => t.id) : undefined,
+                        teamMemberId: form.selectedTeamMemberIds.length === 1 ? form.selectedTeamMemberIds[0] : undefined,
+                        teamMemberIds: form.selectedTeamMemberIds.length > 0 ? form.selectedTeamMemberIds : undefined,
+                    });
+                    setAutoCreatedTask(newTask);
+                    autoCreatedTaskRef.current = newTask;
+                    // Upload staged images if any
+                    if (form.stagedImageFiles.length > 0) {
+                        for (const file of form.stagedImageFiles) {
+                            try { await maestroClient.uploadTaskImage(newTask.id, file); } catch { /* silent */ }
+                        }
                     }
+                    return newTask;
+                } catch {
+                    // Auto-create failed — user can still manually create via button
+                    isAutoCreatingRef.current = false;
+                    return null;
                 }
-            } catch {
-                // Auto-create failed — user can still manually create via button
-                isAutoCreatingRef.current = false;
-            }
+            })();
+            autoCreatePromiseRef.current = promise;
         }, 1000);
 
         return () => {
@@ -285,7 +296,16 @@ export function CreateTaskModal({
     };
 
     const handleSubmit = async (startImmediately: boolean) => {
-        if (autoCreatedTask) {
+        // If auto-create is in-flight, wait for it to finish so we don't create a duplicate
+        if (isAutoCreatingRef.current && !autoCreatedTaskRef.current && autoCreatePromiseRef.current) {
+            if (autoCreateTimerRef.current) clearTimeout(autoCreateTimerRef.current);
+            await autoCreatePromiseRef.current;
+        }
+
+        // Read from ref — React state may not have updated yet within this async handler
+        const currentAutoCreatedTask = autoCreatedTaskRef.current || autoCreatedTask;
+
+        if (currentAutoCreatedTask) {
             // Task already exists on server via auto-create
             // Save any pending changes first
             if (form.hasUnsavedContent) {
@@ -306,12 +326,14 @@ export function CreateTaskModal({
                     teamMemberId: form.selectedTeamMemberIds.length === 1 ? form.selectedTeamMemberIds[0] : undefined,
                     teamMemberIds: form.selectedTeamMemberIds.length > 0 ? form.selectedTeamMemberIds : undefined,
                     ...(overrides && { memberOverrides: overrides }),
-                    _existingTaskId: autoCreatedTask.id,
+                    _existingTaskId: currentAutoCreatedTask.id,
                 } as any);
             }
             form.resetForm();
             refPicker.reset();
             setAutoCreatedTask(null);
+            autoCreatedTaskRef.current = null;
+            autoCreatePromiseRef.current = null;
             onClose();
             return;
         }
