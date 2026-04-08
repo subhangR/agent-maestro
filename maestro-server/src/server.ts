@@ -44,10 +44,16 @@ async function startServer() {
         'http://localhost:1420',
         'http://localhost:3000',
         'http://localhost:3002',
+        'http://localhost:4567',
+        'http://localhost:4568',
+        'http://localhost:4569',
         'http://localhost:5173',
         'http://127.0.0.1:1420',
         'http://127.0.0.1:3000',
         'http://127.0.0.1:3002',
+        'http://127.0.0.1:4567',
+        'http://127.0.0.1:4568',
+        'http://127.0.0.1:4569',
         'http://127.0.0.1:5173'
       ];
 

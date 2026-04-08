@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:4568",
     "frontendDist": "../dist"
   },
   "app": {
@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc://localhost http://localhost:2357 ws://localhost:2357 http://localhost:3001 ws://localhost:3001 http://localhost:3002 ws://localhost:3002 http://localhost:3000 ws://localhost:3000 https://api.github.com http://127.0.0.1:18321 ws://127.0.0.1:18321; frame-src http://127.0.0.1:18321; media-src 'self'; font-src 'self' https://esm.sh; img-src 'self' data: https://esm.sh"
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc://localhost http://localhost:2357 ws://localhost:2357 http://localhost:3001 ws://localhost:3001 http://localhost:3002 ws://localhost:3002 http://localhost:3000 ws://localhost:3000 http://localhost:4567 ws://localhost:4567 http://localhost:4568 ws://localhost:4568 https://api.github.com http://127.0.0.1:18321 ws://127.0.0.1:18321; frame-src http://127.0.0.1:18321; media-src 'self'; font-src 'self' https://esm.sh; img-src 'self' data: https://esm.sh"
     }
   },
   "bundle": {

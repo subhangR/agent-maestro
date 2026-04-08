@@ -96,7 +96,7 @@ export class Config implements Readonly<ConfigOptions> {
   }
 
   private loadFromEnvironment(): ConfigOptions {
-    const port = parseInt(process.env.PORT || '3000', 10);
+    const port = parseInt(process.env.PORT || '4567', 10);
     const host = process.env.HOST || '0.0.0.0';
 
     return {

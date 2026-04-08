@@ -4,7 +4,7 @@
 // If VITE_WS_URL is not set, it is derived from VITE_API_URL (or its default)
 // so the two can never accidentally point at different ports.
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4567/api';
 
 function deriveWsUrl(apiUrl: string): string {
   try {
@@ -12,7 +12,7 @@ function deriveWsUrl(apiUrl: string): string {
     const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     return `${protocol}//${url.host}`;
   } catch {
-    return 'ws://localhost:3000';
+    return 'ws://localhost:4567';
   }
 }
 
@@ -21,7 +21,7 @@ function deriveServerUrl(apiUrl: string): string {
     const url = new URL(apiUrl);
     return `${url.protocol}//${url.host}`;
   } catch {
-    return 'http://localhost:3000';
+    return 'http://localhost:4567';
   }
 }
 

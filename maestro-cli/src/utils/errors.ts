@@ -109,7 +109,7 @@ export function handleError(err: unknown, json: boolean): never {
       'connection_refused',
       CONNECTION_REFUSED_MESSAGE,
       {
-        server: (cfg?.baseURL as string) || 'http://localhost:3000',
+        server: (cfg?.baseURL as string) || 'http://localhost:4567',
         errno: e.code
       },
       CONNECTION_REFUSED_SUGGESTION

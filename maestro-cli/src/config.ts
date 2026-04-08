@@ -36,7 +36,7 @@ function discoverServerUrl(): string | null {
 
 export const config = {
   get apiUrl() {
-    return process.env.MAESTRO_SERVER_URL || process.env.MAESTRO_API_URL || discoverServerUrl() || 'http://localhost:3000';
+    return process.env.MAESTRO_SERVER_URL || process.env.MAESTRO_API_URL || discoverServerUrl() || 'http://localhost:4567';
   },
   get isOffline() {
     return !process.env.MAESTRO_SERVER_URL && !process.env.MAESTRO_API_URL && !discoverServerUrl();
