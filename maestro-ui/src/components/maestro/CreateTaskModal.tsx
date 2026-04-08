@@ -117,6 +117,19 @@ export function CreateTaskModal({
         }
     }, [isOpen, mode]);
 
+    // Generate "Untitled N" when no title is provided
+    const getAutoTitle = useCallback(() => {
+        if (form.title.trim()) return form.title.trim();
+        const storeTasks = useMaestroStore.getState().tasks;
+        const projectTasks = Object.values(storeTasks).filter(
+            (t: MaestroTask) => t.projectId === project?.id
+        );
+        let n = 1;
+        const existingTitles = new Set(projectTasks.map((t: MaestroTask) => t.title));
+        while (existingTitles.has(`Untitled ${n}`)) n++;
+        return `Untitled ${n}`;
+    }, [form.title, project?.id]);
+
     // Auto-create: when user types content in create mode, debounce then create on server
     useEffect(() => {
         if (mode !== "create" || autoCreatedTask || isAutoCreatingRef.current) return;
@@ -131,7 +144,7 @@ export function CreateTaskModal({
                 const storeCreateTask = useMaestroStore.getState().createTask;
                 const newTask = await storeCreateTask({
                     projectId: project.id,
-                    title: form.title.trim(),
+                    title: getAutoTitle(),
                     description: form.prompt,
                     priority: form.priority,
                     parentId: parentId || undefined,
