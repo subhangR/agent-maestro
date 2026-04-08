@@ -44,7 +44,9 @@ const MODELS_BY_TOOL: Partial<Record<AgentTool, { value: ModelType; label: strin
     "claude-code": [
         { value: "haiku", label: "Haiku" },
         { value: "sonnet", label: "Sonnet" },
+        { value: "sonnet[1m]", label: "Sonnet [1M]" },
         { value: "opus", label: "Opus" },
+        { value: "opus[1m]", label: "Opus [1M]" },
     ],
     "codex": [
         { value: "gpt-5.3-codex", label: "GPT 5.3 Codex" },

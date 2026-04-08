@@ -76,7 +76,9 @@ const AGENT_TOOLS: { id: AgentTool; label: string; symbol: string; models: { id:
         models: [
             { id: 'haiku' as ClaudeModel, label: 'Haiku' },
             { id: 'sonnet' as ClaudeModel, label: 'Sonnet' },
+            { id: 'sonnet[1m]' as ClaudeModel, label: 'Sonnet [1M]' },
             { id: 'opus' as ClaudeModel, label: 'Opus' },
+            { id: 'opus[1m]' as ClaudeModel, label: 'Opus [1M]' },
         ],
     },
     {

@@ -26,7 +26,9 @@ function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
     const modelLabels: Record<string, string> = {
         haiku: "Haiku",
         sonnet: "Sonnet",
+        "sonnet[1m]": "Sonnet [1M]",
         opus: "Opus",
+        "opus[1m]": "Opus [1M]",
         "gpt-5.3-codex": "5.3-codex",
         "gpt-5.2-codex": "5.2-codex",
     };

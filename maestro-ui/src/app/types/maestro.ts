@@ -12,7 +12,7 @@ export type AgentMode = 'worker' | 'coordinator' | 'coordinated-worker' | 'coord
 export type LegacyAgentMode = 'execute' | 'coordinate';
 export type AgentModeInput = AgentMode | LegacyAgentMode;
 // Claude models
-export type ClaudeModel = 'haiku' | 'sonnet' | 'opus';
+export type ClaudeModel = 'haiku' | 'sonnet' | 'sonnet[1m]' | 'opus' | 'opus[1m]';
 // Codex models
 export type CodexModel = 'gpt-5.3-codex' | 'gpt-5.2-codex';
 // Gemini models

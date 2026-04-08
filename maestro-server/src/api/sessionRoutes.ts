@@ -1021,7 +1021,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       }
 
       // Fetch team member defaults from the effective members (after task-level fallback)
-      const MODEL_POWER: Record<string, number> = { 'opus': 3, 'sonnet': 2, 'haiku': 1 };
+      const MODEL_POWER: Record<string, number> = { 'opus[1m]': 4, 'opus': 3, 'sonnet[1m]': 2.5, 'sonnet': 2, 'haiku': 1 };
       let teamMemberDefaults: { mode?: AgentMode; model?: string; agentTool?: AgentTool; permissionMode?: string } = {};
       const teamMemberSnapshots: TeamMemberSnapshot[] = [];
 

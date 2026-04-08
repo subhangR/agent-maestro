@@ -53,8 +53,10 @@ export class CodexSpawner {
     // Map Claude model names to Codex equivalents
     switch (model) {
       case 'opus':
+      case 'opus[1m]':
         return 'gpt-5.3-codex';
       case 'sonnet':
+      case 'sonnet[1m]':
         return 'gpt-5.2-codex';
       case 'haiku':
         return 'gpt-5.1-codex-mini';

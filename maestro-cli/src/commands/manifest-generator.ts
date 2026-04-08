@@ -395,7 +395,7 @@ export class ManifestGeneratorCLICommand {
       } else if (effectiveTeamMemberIds.length > 0) {
         // Multi-identity: fetch all and build profiles array
         const profiles: TeamMemberProfile[] = [];
-        const MODEL_POWER: Record<string, number> = { 'opus': 3, 'sonnet': 2, 'haiku': 1 };
+        const MODEL_POWER: Record<string, number> = { 'opus[1m]': 4, 'opus': 3, 'sonnet[1m]': 2.5, 'sonnet': 2, 'haiku': 1 };
         let highestModelPower = 0;
         let resolvedModelFromProfiles: string | undefined;
         let resolvedAgentToolFromProfiles: AgentTool | undefined;
@@ -698,7 +698,7 @@ export function registerManifestCommands(program: any): void {
     .requiredOption('--project-id <id>', 'Project ID')
     .requiredOption('--task-ids <ids>', 'Comma-separated task IDs')
     .option('--skills <skills>', 'Comma-separated skills', 'maestro-worker')
-    .option('--model <model>', 'Model to use (e.g. sonnet, gpt-5.3-codex, gemini-3-pro-preview)', 'sonnet')
+    .option('--model <model>', 'Model to use (e.g. sonnet, sonnet[1m], opus[1m], gpt-5.3-codex, gemini-3-pro-preview)', 'sonnet')
     .option('--agent-tool <tool>', 'Agent tool to use (claude-code, codex, or gemini)', 'claude-code')
     .option('--reference-task-ids <ids>', 'Comma-separated reference task IDs for context')
     .option('--team-member-id <id>', 'Team member ID for this session')
