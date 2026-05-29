@@ -22,6 +22,7 @@ import { Board } from "./MultiProjectBoard";
 import { SkillsPanel } from "./SkillsPanel";
 import { TaskListsPanel } from "./TaskListsPanel";
 import { TaskGraphPanel } from "./task-graph/TaskGraphPanel";
+import { CollabSpacePanel } from "./CollabSpacePanel";
 import { useTaskLists } from "../../hooks/useTaskLists";
 import { useTaskGraphStore } from "../../stores/useTaskGraphStore";
 import { createLaunchConfig, DEFAULT_MODEL_BY_AGENT_TOOL } from "../../app/constants/agentTools";
@@ -813,6 +814,15 @@ export const MaestroPanel = React.memo(function MaestroPanel({
 
                     {primaryTab === "profiles" && (
                         <ModelProfilesPanel createSignal={modelProfileCreateSignal} />
+                    )}
+
+                    {/* Collab Space Tab */}
+                    {primaryTab === "collab" && (
+                        <CollabSpacePanel
+                            projectId={projectId}
+                            workingDir={project.workingDir}
+                            projectName={project.name}
+                        />
                     )}
                 </div>
 

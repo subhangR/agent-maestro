@@ -17,6 +17,8 @@ import { useAgentShortcutStore } from "./stores/useAgentShortcutStore";
 import { usePersistentSessionStore } from "./stores/usePersistentSessionStore";
 import { useSshStore } from "./stores/useSshStore";
 import { useMaestroStore } from "./stores/useMaestroStore";
+import { useFirebaseAuthStore } from "./stores/useFirebaseAuthStore";
+import { useJoinedSpacesStore } from "./stores/useJoinedSpacesStore";
 
 // Store initialisation
 import { initApp } from "./stores/initApp";
@@ -215,6 +217,21 @@ export default function App() {
   const toggleSpacesPanel = useUIStore((s) => s.toggleSpacesPanel);
   const docOverlay = useUIStore((s) => s.docOverlay);
   const setDocOverlay = useUIStore((s) => s.setDocOverlay);
+
+  // ---------- auth + joined-spaces global subscription ----------
+  const initAuth = useFirebaseAuthStore((s) => s.initAuth);
+  const authUser = useFirebaseAuthStore((s) => s.user);
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
+  useEffect(() => {
+    const { start, stop } = useJoinedSpacesStore.getState();
+    if (authUser) {
+      start(authUser.uid);
+    } else {
+      stop();
+    }
+  }, [authUser]);
   // ---------- projects ----------
   const projects = useProjectStore((s) => s.projects);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);

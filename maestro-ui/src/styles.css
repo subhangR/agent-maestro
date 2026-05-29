@@ -50,6 +50,9 @@
 @import './styles-task-detail-overlay.css';
 @import './styles-panel-icon-bar.css';
 @import './styles-spells.css';
+@import './styles-collab-space.css';
+@import './styles-messaging.css';
+@import './styles-space-window.css';
 
 /* Self-hosted JetBrains Mono */
 @font-face {

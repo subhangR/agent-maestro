@@ -1,0 +1,23 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "collabSpaces",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "githubUrl", "order": "ASCENDING" },
+        { "fieldPath": "visibility", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "collabSpaces",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "githubUrl", "order": "ASCENDING" },
+        { "fieldPath": "memberIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,547 @@
+/* ─── Messaging — Collab Space Channels ─────────────────────────── */
+
+.messagingRoot {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.02));
+  overflow: hidden;
+}
+
+/* ─── Channel sidebar ───────────────────────────────────────────── */
+
+.messagingSidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.messagingSidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.messagingSidebarTitle {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #666);
+  font-weight: 600;
+}
+
+.messagingSidebarAddBtn {
+  background: transparent;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  color: var(--text-secondary, #aaa);
+  font-family: inherit;
+  font-size: 13px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.messagingSidebarAddBtn:hover {
+  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.05));
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.2));
+  color: var(--text-primary, #ddd);
+}
+
+.messagingChannelList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.messagingChannelRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-secondary, #aaa);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.messagingChannelRow:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary, #ddd);
+}
+
+.messagingChannelRowActive {
+  background: rgba(102, 221, 170, 0.12);
+  color: var(--text-primary, #ddd);
+  font-weight: 500;
+}
+
+.messagingChannelRowActive:hover {
+  background: rgba(102, 221, 170, 0.18);
+}
+
+.messagingChannelHash {
+  color: var(--text-muted, #666);
+  font-weight: 400;
+}
+
+.messagingChannelName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.messagingChannelEmpty {
+  font-size: 12px;
+  color: var(--text-muted, #666);
+  font-style: italic;
+  padding: 12px 10px;
+  text-align: center;
+}
+
+.messagingChannelLoading {
+  font-size: 12px;
+  color: var(--text-muted, #666);
+  padding: 12px 10px;
+  text-align: center;
+}
+
+/* ─── Main pane ─────────────────────────────────────────────────── */
+
+.messagingMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.messagingChannelHeader {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.messagingChannelHeaderName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #ddd);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.messagingChannelHeaderDescription {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  border-left: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  padding-left: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Messages timeline ─────────────────────────────────────────── */
+
+.messagingPane {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+}
+
+.messagingPaneInner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+}
+
+.messagingLoadOlderRow {
+  display: flex;
+  justify-content: center;
+  padding: 6px 0;
+}
+
+.messagingLoadOlderBtn {
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary, #aaa);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.messagingLoadOlderBtn:hover:not(:disabled) {
+  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.05));
+  color: var(--text-primary, #ddd);
+}
+
+.messagingLoadOlderBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.messagingEmptyState {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-muted, #888);
+  font-size: 13px;
+  padding: 24px;
+  text-align: center;
+}
+
+.messagingEmptyStateTitle {
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+}
+
+/* ─── Single message bubble ─────────────────────────────────────── */
+
+.messagingBubble {
+  display: flex;
+  gap: 10px;
+  padding: 6px 16px;
+  position: relative;
+}
+
+.messagingBubble:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.messagingBubblePending {
+  opacity: 0.65;
+}
+
+.messagingBubbleFailed {
+  background: rgba(255, 80, 80, 0.06);
+}
+
+.messagingBubbleFailed:hover {
+  background: rgba(255, 80, 80, 0.1);
+}
+
+.messagingAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
+}
+
+.messagingAvatarFallback {
+  background: var(--accent, #66ddaa);
+  color: var(--bg-primary, #111);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.messagingBubbleMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.messagingBubbleHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.messagingBubbleAuthor {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #ddd);
+}
+
+.messagingBubbleTime {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}
+
+.messagingBubbleEdited {
+  font-size: 11px;
+  color: var(--text-muted, #666);
+  font-style: italic;
+}
+
+.messagingBubbleContent {
+  font-size: 13px;
+  color: var(--text-primary, #ddd);
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.messagingBubbleContentPlain {
+  white-space: pre-wrap;
+}
+
+.messagingBubbleContent p {
+  margin: 0;
+}
+
+.messagingBubbleContent p + p {
+  margin-top: 0.4em;
+}
+
+.messagingBubbleContent code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.messagingBubbleContent pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 8px 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+
+.messagingBubbleContent pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+}
+
+.messagingBubbleContent a {
+  color: var(--accent, #66ddaa);
+  text-decoration: underline;
+}
+
+.messagingBubbleDeleted {
+  font-style: italic;
+  color: var(--text-muted, #666);
+}
+
+.messagingBubblePendingTag {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  font-style: italic;
+}
+
+.messagingBubbleFailedTag {
+  font-size: 11px;
+  color: #ff8080;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+/* hover actions */
+
+.messagingBubbleActions {
+  position: absolute;
+  top: -4px;
+  right: 12px;
+  display: none;
+  background: var(--bg-primary, #1a1a1a);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  padding: 1px 2px;
+  gap: 1px;
+}
+
+.messagingBubble:hover .messagingBubbleActions {
+  display: flex;
+}
+
+.messagingBubbleActionBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, #aaa);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.messagingBubbleActionBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary, #ddd);
+}
+
+.messagingBubbleActionBtnDanger:hover {
+  background: rgba(255, 80, 80, 0.15);
+  color: #ff8080;
+}
+
+/* ─── Edit form (inline) ─────────────────────────────────────────── */
+
+.messagingEditForm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.messagingEditTextarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-primary, #ddd);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.15));
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 60px;
+}
+
+.messagingEditTextarea:focus {
+  outline: none;
+  border-color: var(--accent, #66ddaa);
+}
+
+.messagingEditActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.messagingEditHint {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+}
+
+/* ─── Composer ──────────────────────────────────────────────────── */
+
+.messagingComposer {
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.messagingComposerRow {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.messagingComposerTextarea {
+  flex: 1;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-primary, #ddd);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  resize: none;
+  max-height: 200px;
+  min-height: 36px;
+  line-height: 1.4;
+}
+
+.messagingComposerTextarea:focus {
+  outline: none;
+  border-color: var(--accent, #66ddaa);
+}
+
+.messagingComposerTextarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.messagingComposerSendBtn {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  background: var(--accent, #66ddaa);
+  color: var(--bg-primary, #111);
+  border: 1px solid var(--accent, #66ddaa);
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.messagingComposerSendBtn:hover:not(:disabled) {
+  background: var(--accent-hover, #88eebb);
+  border-color: var(--accent-hover, #88eebb);
+}
+
+.messagingComposerSendBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.messagingComposerHint {
+  font-size: 10px;
+  color: var(--text-muted, #666);
+  padding-left: 2px;
+}
+
+.messagingComposerDisabled {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  font-style: italic;
+  text-align: center;
+  padding: 8px 0;
+}
+
+/* ─── Create channel modal (reuses collabSpaceModal* shells) ─────── */
+
+.messagingChannelHint {
+  font-size: 10px;
+  color: var(--text-muted, #666);
+  margin-top: 2px;
+}
+
+/* ─── Responsive: collapse sidebar on narrow widths ─────────────── */
+
+@media (max-width: 640px) {
+  .messagingSidebar {
+    width: 56px;
+  }
+  .messagingSidebarTitle,
+  .messagingChannelName {
+    display: none;
+  }
+  .messagingChannelRow {
+    justify-content: center;
+    padding: 8px;
+  }
+}

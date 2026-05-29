@@ -343,6 +343,34 @@
   background: rgba(76,175,80,0.25);
 }
 
+.terminalShareBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  font-size: 10px;
+  font-family: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--terminal-text-dim, #888);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.terminalShareBtn:hover {
+  border-color: rgba(102, 221, 170, 0.45);
+  color: var(--theme-primary, #66ddaa);
+  background: rgba(102, 221, 170, 0.08);
+}
+.terminalShareBtn__icon {
+  font-size: 11px;
+  line-height: 1;
+}
+.terminalShareBtn__label {
+  letter-spacing: 0.04em;
+}
+
 .terminalTaskMetaFill {
   flex: 1;
   min-width: 8px;

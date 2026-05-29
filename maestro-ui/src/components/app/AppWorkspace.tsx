@@ -20,11 +20,12 @@ import { IS_TAURI } from "../../platform";
 import { TerminalStrip } from "../session-log/TerminalStrip";
 import { ModeChip } from "../maestro/ModeChip";
 import { isCoordinatorRole } from "../../utils/coordinatorRole";
-import { isWhiteboardId, isFileId } from "../../app/types/space";
+import { isWhiteboardId, isFileId, isCollabId, collabActiveIdToFirestoreId } from "../../app/types/space";
 import type { WhiteboardSpace, FileSpace } from "../../app/types/space";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useMobilePanelStore } from "../../stores/useMobilePanelStore";
 const LazyExcalidrawBoard = React.lazy(() => import("../ExcalidrawBoard").then(m => ({ default: m.ExcalidrawBoard })));
+const LazySpaceWindow = React.lazy(() => import("../space-window/SpaceWindow").then(m => ({ default: m.SpaceWindow })));
 
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
@@ -164,8 +165,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   // yield. This is reversible — clicking any tab calls setActiveId, which clears
   // inspectedSessionId (see useSessionStore.setActiveId).
   const hasInspectedSession = Boolean(inspectedMaestroSession);
+  const isActiveCollab = activeId ? isCollabId(activeId) : false;
+  const activeCollabSpaceId = isActiveCollab && activeId ? collabActiveIdToFirestoreId(activeId) : null;
   const isActiveSession =
-    hasInspectedSession || (!isActiveWhiteboard && !isActiveFile);
+    hasInspectedSession || (!isActiveWhiteboard && !isActiveFile && !isActiveCollab);
 
   const activeLogAgentTool = (() => {
     if (!active?.maestroSessionId) return active?.effectId ?? null;
@@ -378,6 +381,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         </ErrorBoundary>
       )}
 
+
+      {/* Inline collab space — Firebase-backed collaboration room */}
+      {isActiveCollab && activeCollabSpaceId && (
+        <ErrorBoundary name="CollabSpace">
+          <Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading space…</div>}>
+            <LazySpaceWindow key={activeCollabSpaceId} spaceId={activeCollabSpaceId} inline />
+          </Suspense>
+        </ErrorBoundary>
+      )}
 
       {/* Inline file space — full-width code editor */}
       {!hasInspectedSession && isActiveFile && activeSpace?.type === "file" && (
