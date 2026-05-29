@@ -1,7 +1,7 @@
 import React from "react";
 import { TeamMember } from "../../app/types/maestro";
 
-export type PrimaryTab = "tasks" | "lists" | "team" | "skills" | "graphs";
+export type PrimaryTab = "tasks" | "lists" | "team" | "skills" | "graphs" | "collab";
 export type TaskSubTab = "current" | "pinned" | "completed" | "archived";
 export type SkillSubTab = "browse" | "installed" | "marketplace";
 export type TeamSubTab = "members" | "teams";
@@ -127,6 +127,19 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                         <path d="M12.8 6.2L11.5 12.8" strokeLinecap="round" />
                     </svg>
                     Graphs
+                </button>
+                <button type="button"
+                    className={`maestroPanelPrimaryTab ${primaryTab === "collab" ? "maestroPanelPrimaryTabActive" : ""}`}
+                    onClick={() => onPrimaryTabChange("collab")}
+                    title="Collab Space"
+                >
+                    <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <circle cx="10" cy="10" r="7" />
+                        <path d="M3 10h14" strokeLinecap="round" />
+                        <path d="M10 3c2.5 2.5 2.5 11.5 0 14" strokeLinecap="round" />
+                        <path d="M10 3c-2.5 2.5-2.5 11.5 0 14" strokeLinecap="round" />
+                    </svg>
+                    Collab
                 </button>
             </div>}
 

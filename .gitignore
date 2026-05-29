@@ -33,5 +33,9 @@ AGENTS.md
 # Firebase service account keys
 *-firebase-adminsdk-*.json
 
+# Firebase env (Web SDK config)
+maestro-ui/.env.local
+maestro-ui/.env.local.*
+
 # Marketing posts
 marketing-posts/

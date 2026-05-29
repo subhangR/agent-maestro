@@ -1,6 +1,20 @@
 import type { DocEntry } from "./maestro";
 
-export type SpaceType = "session" | "whiteboard" | "document" | "file";
+export type SpaceType = "session" | "whiteboard" | "document" | "file" | "collab";
+
+/** Prefix used on the activeId slot for a Collab Space. */
+export const COLLAB_ACTIVE_ID_PREFIX = "cs_";
+
+/** Build the activeId for a Collab Space from its Firestore document id. */
+export function makeCollabActiveId(firestoreId: string): string {
+  return `${COLLAB_ACTIVE_ID_PREFIX}${firestoreId}`;
+}
+
+/** Recover the Firestore document id from a Collab Space activeId. */
+export function collabActiveIdToFirestoreId(activeId: string): string | null {
+  if (!activeId.startsWith(COLLAB_ACTIVE_ID_PREFIX)) return null;
+  return activeId.slice(COLLAB_ACTIVE_ID_PREFIX.length);
+}
 
 export interface WhiteboardSpace {
   id: string;          // "wb_<id>"
@@ -48,13 +62,18 @@ export function isFileId(id: string): boolean {
   return id.startsWith("file_");
 }
 
+export function isCollabId(id: string): boolean {
+  return id.startsWith(COLLAB_ACTIVE_ID_PREFIX);
+}
+
 export function isSessionId(id: string): boolean {
-  return !isWhiteboardId(id) && !isDocumentId(id) && !isFileId(id);
+  return !isWhiteboardId(id) && !isDocumentId(id) && !isFileId(id) && !isCollabId(id);
 }
 
 export function getSpaceType(id: string): SpaceType {
   if (isWhiteboardId(id)) return "whiteboard";
   if (isDocumentId(id)) return "document";
   if (isFileId(id)) return "file";
+  if (isCollabId(id)) return "collab";
   return "session";
 }

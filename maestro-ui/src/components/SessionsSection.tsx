@@ -24,6 +24,9 @@ import { type MaestroTask, type MaestroSession as MaestroSession, type Team } fr
 import { useMaestroStore } from "../stores/useMaestroStore";
 import { useUIStore } from "../stores/useUIStore";
 import { useSpacesStore } from "../stores/useSpacesStore";
+import { useProjectCollabSpaces } from "../hooks/useProjectCollabSpaces";
+import { makeCollabActiveId } from "../app/types/space";
+import { SpaceAvatar } from "./space-window/SpaceAvatar";
 import { MaestroSessionContent } from "./maestro/MaestroSessionContent";
 import { SessionDetailModal } from "./maestro/SessionDetailModal";
 import { SessionLogModal } from "./session-log/SessionLogModal";
@@ -122,15 +125,13 @@ const SortableSessionItem = React.memo(function SortableSessionItem({ id, childr
 function VirtualizedHistoryList({
   historySessions,
   resumingSessionId,
-  setResumingSessionId,
-  resumeSession,
+  onResume,
   setShowHistory,
   maestroTasks,
 }: {
   historySessions: MaestroSession[];
   resumingSessionId: string | null;
-  setResumingSessionId: (id: string | null) => void;
-  resumeSession: (id: string) => Promise<any>;
+  onResume: (id: string) => Promise<void>;
   setShowHistory: (v: boolean) => void;
   maestroTasks: Record<string, MaestroTask>;
 }) {
@@ -201,18 +202,10 @@ function VirtualizedHistoryList({
                     type="button"
                     className="sessionHistoryDropdown__resumeBtn"
                     disabled={isResuming}
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      setResumingSessionId(hs.id);
-                      try {
-                        await resumeSession(hs.id);
-                        setShowHistory(false);
-                      } catch (err) {
-                        console.error('Failed to resume session:', err);
-                        useUIStore.getState().reportError('Failed to resume session', err);
-                      } finally {
-                        setResumingSessionId(null);
-                      }
+                      setShowHistory(false);
+                      void onResume(hs.id);
                     }}
                   >
                     {isResuming ? '...' : 'Resume'}
@@ -450,8 +443,7 @@ const SessionItem = React.memo(function SessionItem({
               <Icon name="log" size={12} />
               <span>Logs</span>
             </button>
-            {maestroSession && ['completed', 'stopped', 'failed', 'idle'].includes(maestroSession.status)
-              && (maestroSession.metadata?.agentTool || 'claude-code') === 'claude-code' && (
+            {maestroSession && (maestroSession.metadata?.agentTool || 'claude-code') === 'claude-code' && (
               <button type="button"
                 className="sessionItemBottomBtn sessionItemBottomBtn--resume"
                 disabled={isResuming}
@@ -565,6 +557,9 @@ export const SessionsSection = React.memo(function SessionsSection({
   // Session close confirmation state
   const [sessionToClose, setSessionToClose] = React.useState<Session | null>(null);
 
+  // Session resume confirmation state (for resuming a session whose PTY is still live)
+  const [sessionToResume, setSessionToResume] = React.useState<{ maestroSessionId: string; label: string } | null>(null);
+
   // Maestro session expansion state
   const [expandedSessions, setExpandedSessions] = React.useState<Set<string>>(new Set());
   const [loadingTasks, setLoadingTasks] = React.useState<Set<string>>(new Set());
@@ -598,11 +593,10 @@ export const SessionsSection = React.memo(function SessionsSection({
     }
   }, [showHistory, computeDropdownPos]);
 
-  // Past sessions eligible for resume (completed/stopped/failed/idle)
+  // All sessions in the project are resumable — live ones will warn before replacing the running process.
   const historySessions = useMemo(() => {
-    const resumableStatuses = new Set(['completed', 'stopped', 'failed', 'idle']);
     return Object.values(maestroSessions)
-      .filter(s => s.projectId === activeProjectId && resumableStatuses.has(s.status))
+      .filter(s => s.projectId === activeProjectId)
       .sort((a, b) => b.lastActivity - a.lastActivity);
   }, [maestroSessions, activeProjectId]);
 
@@ -697,6 +691,9 @@ export const SessionsSection = React.memo(function SessionsSection({
     [allSpaces, activeProjectId],
   );
 
+  // Joined Collab Spaces matching the active project's git remote
+  const { spaces: collabSpaces } = useProjectCollabSpaces();
+
   // Filter sessions based on active filters
   const showTerminals = activeFilters.has('terminals');
   const showSessions = activeFilters.has('sessions');
@@ -732,7 +729,7 @@ export const SessionsSection = React.memo(function SessionsSection({
     }
   }, [onCloseSession]);
 
-  const handleResume = useCallback(async (maestroSessionId: string) => {
+  const doResume = useCallback(async (maestroSessionId: string) => {
     setResumingSessionId(maestroSessionId);
     try {
       await resumeSession(maestroSessionId);
@@ -743,6 +740,19 @@ export const SessionsSection = React.memo(function SessionsSection({
       setResumingSessionId(null);
     }
   }, [resumeSession]);
+
+  const handleResume = useCallback(async (maestroSessionId: string) => {
+    const liveTerminal = sessions.find(
+      (s) => s.maestroSessionId === maestroSessionId && !s.exited && !s.closing
+    );
+    if (liveTerminal) {
+      const ms = maestroSessions[maestroSessionId];
+      const label = ms?.teamMemberSnapshot?.name || ms?.name || liveTerminal.name;
+      setSessionToResume({ maestroSessionId, label });
+      return;
+    }
+    await doResume(maestroSessionId);
+  }, [sessions, maestroSessions, doResume]);
 
   // Helper to render a session item using the extracted SessionItem component
   const renderSessionItem = useCallback((s: Session, teamColor: TeamColor | null) => {
@@ -771,6 +781,34 @@ export const SessionsSection = React.memo(function SessionsSection({
 
   return (
     <>
+      {/* Top: Collab Spaces — header on the left, joined-space avatars on the right */}
+      <div className="sidebarHeader collabSpacesHeader">
+        <div className="title">Spaces</div>
+        <div className="sidebarHeaderActions collabSpacesHeaderRail">
+          {collabSpaces.length === 0 ? (
+            <span className="collabSpacesHeaderEmpty" title="Join a Space from the Collab tab">
+              none yet
+            </span>
+          ) : (
+            collabSpaces.map((cs) => {
+              const activeId = makeCollabActiveId(cs.id);
+              const isActive = activeId === activeSessionId;
+              return (
+                <button
+                  type="button"
+                  key={cs.id}
+                  className={`collabSpacesHeaderButton ${isActive ? "collabSpacesHeaderButton--active" : ""}`}
+                  onClick={() => onSelectSession(activeId)}
+                  title={`${cs.name} · ${cs.githubUrl}`}
+                >
+                  <SpaceAvatar colorKey={cs.id} name={cs.name} size={22} />
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+
       <div className="sidebarHeader">
         <div className="title">Sessions</div>
         <div className="sidebarHeaderActions">
@@ -904,8 +942,7 @@ export const SessionsSection = React.memo(function SessionsSection({
               <VirtualizedHistoryList
                 historySessions={historySessions}
                 resumingSessionId={resumingSessionId}
-                setResumingSessionId={setResumingSessionId}
-                resumeSession={resumeSession}
+                onResume={handleResume}
                 setShowHistory={setShowHistory}
                 maestroTasks={maestroTasks}
               />
@@ -1144,6 +1181,31 @@ export const SessionsSection = React.memo(function SessionsSection({
           onConfirm={() => {
             onCloseSession(sessionToClose.id);
             setSessionToClose(null);
+          }}
+        />,
+        document.body
+      )}
+
+      {sessionToResume && createPortal(
+        <ConfirmActionModal
+          isOpen={true}
+          title="[ RESUME SESSION ]"
+          message={
+            <>
+              <strong>{sessionToResume.label}</strong> is still running. Resuming will stop the current Claude process and start a new one attached to the existing transcript.
+              <div style={{ marginTop: '8px', color: 'var(--warning)' }}>
+                Any in-flight work in the live process will be interrupted.
+              </div>
+            </>
+          }
+          confirmLabel="Stop & Resume"
+          cancelLabel="Cancel"
+          confirmDanger={true}
+          onClose={() => setSessionToResume(null)}
+          onConfirm={() => {
+            const id = sessionToResume.maestroSessionId;
+            setSessionToResume(null);
+            void doResume(id);
           }}
         />,
         document.body

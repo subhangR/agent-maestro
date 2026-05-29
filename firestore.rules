@@ -1,0 +1,163 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSpaceMember(spaceId) {
+      return isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/collabSpaces/$(spaceId)).data.memberIds;
+    }
+
+    function isSpaceOwner(spaceId) {
+      return isSignedIn()
+        && request.auth.uid == get(/databases/$(database)/documents/collabSpaces/$(spaceId)).data.ownerId;
+    }
+
+    // Collab Spaces
+    match /collabSpaces/{spaceId} {
+
+      // Anyone signed in can read public spaces.
+      // Members can read private spaces.
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public' ||
+        request.auth.uid in resource.data.memberIds
+      );
+
+      // Anyone signed in can create a space they own.
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.githubUrl is string
+        && (request.resource.data.visibility == 'public' || request.resource.data.visibility == 'private');
+
+      // Owner can fully update.
+      // Anyone signed in can join a public space (add themselves to memberIds).
+      // A member can leave (remove themselves from memberIds).
+      allow update: if isSignedIn() && (
+        // Owner: full edit
+        resource.data.ownerId == request.auth.uid ||
+        // Self-join on public space
+        (
+          resource.data.visibility == 'public' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'updatedAt']) &&
+          request.auth.uid in request.resource.data.memberIds &&
+          !(request.auth.uid in resource.data.memberIds)
+        ) ||
+        // Self-leave
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members', 'updatedAt']) &&
+          !(request.auth.uid in request.resource.data.memberIds) &&
+          request.auth.uid in resource.data.memberIds
+        )
+      );
+
+      // Only owner can delete.
+      allow delete: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+
+      // Channels — Slack-style channels per space
+      match /channels/{channelId} {
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.spaceId == spaceId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 64;
+
+        // Owner can rename / archive freely.
+        // Members can only bump lastMessageAt / updatedAt (after sending a message).
+        allow update: if isSpaceOwner(spaceId)
+          || (isSpaceMember(spaceId)
+              && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['lastMessageAt', 'updatedAt']));
+
+        allow delete: if isSpaceOwner(spaceId);
+
+        // Messages — one timeline per channel
+        match /messages/{messageId} {
+          allow read: if isSpaceMember(spaceId);
+
+          allow create: if isSpaceMember(spaceId)
+            && request.resource.data.authorUid == request.auth.uid
+            && request.resource.data.spaceId == spaceId
+            && request.resource.data.channelId == channelId
+            && request.resource.data.content is string
+            && request.resource.data.content.size() > 0
+            && request.resource.data.content.size() <= 10000;
+
+          // Author can edit their own content (or soft-delete via deletedAt).
+          allow update: if isSignedIn()
+            && request.auth.uid == resource.data.authorUid
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['content', 'editedAt', 'deletedAt']);
+
+          // Author or space owner can hard-delete (rare; soft-delete preferred).
+          allow delete: if isSignedIn()
+            && (request.auth.uid == resource.data.authorUid || isSpaceOwner(spaceId));
+        }
+      }
+
+      // Shared tasks pushed from local Maestro projects.
+      match /tasks/{taskId} {
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 200;
+
+        allow update: if isSpaceMember(spaceId)
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+
+      // Shared team-member configurations.
+      match /teamMembers/{tmId} {
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120;
+
+        allow update: if isSpaceMember(spaceId)
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+
+      // Shared spells library.
+      match /spells/{spellId} {
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 120;
+
+        allow update: if isSpaceMember(spaceId)
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+    }
+  }
+}

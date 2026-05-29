@@ -28,10 +28,13 @@ export const SpellPicker = React.memo(function SpellPicker() {
   const isCreating = useSpellStore((s) => s.isCreating);
   const createEntityType = useSpellStore((s) => s.createEntityType);
   const createSaving = useSpellStore((s) => s.createSaving);
+  const editingEntityId = useSpellStore((s) => s.editingEntityId);
+  const editInitialValues = useSpellStore((s) => s.editInitialValues);
   const closePicker = useSpellStore((s) => s.closePicker);
   const setActiveEntityType = useSpellStore((s) => s.setActiveEntityType);
   const invokeSpell = useSpellStore((s) => s.invokeSpell);
   const startCreating = useSpellStore((s) => s.startCreating);
+  const startEditing = useSpellStore((s) => s.startEditing);
   const cancelCreating = useSpellStore((s) => s.cancelCreating);
   const saveSpellEntity = useSpellStore((s) => s.saveSpellEntity);
   const deleteSpellEntity = useSpellStore((s) => s.deleteSpellEntity);
@@ -45,15 +48,15 @@ export const SpellPicker = React.memo(function SpellPicker() {
   const [formDescription, setFormDescription] = useState('');
   const [formContent, setFormContent] = useState('');
 
-  // Reset form when creating starts
+  // Reset form when creating starts, or prefill with initial values when editing
   useEffect(() => {
     if (isCreating) {
-      setFormName('');
-      setFormIcon('');
-      setFormDescription('');
-      setFormContent('');
+      setFormName(editInitialValues?.name ?? '');
+      setFormIcon(editInitialValues?.icon ?? '');
+      setFormDescription(editInitialValues?.description ?? '');
+      setFormContent(editInitialValues?.content ?? '');
     }
-  }, [isCreating]);
+  }, [isCreating, editInitialValues]);
 
   // Escape to close
   useEffect(() => {
@@ -119,13 +122,20 @@ export const SpellPicker = React.memo(function SpellPicker() {
     deleteSpellEntity(entityId);
   };
 
+  const handleEdit = (e: React.MouseEvent, entity: SpellEntity) => {
+    e.stopPropagation();
+    startEditing(entity.id, entity.type);
+  };
+
   const isDefault = (entity: SpellEntity) => entity.id.startsWith('default_') || entity.metadata?.isDefault;
 
   const renderEntity = (entity: SpellEntity) => {
     const isExpanded = expandedEntityId === entity.id;
     const hasMultipleSpells = entity.spells.length > 1;
     const entityIsDefault = isDefault(entity);
-    const canDelete = !entityIsDefault && (entity.type === 'maestro' || entity.type === 'custom-prompt');
+    const isUserCustom = !entityIsDefault && (entity.type === 'maestro' || entity.type === 'custom-prompt');
+    const canDelete = isUserCustom;
+    const canEdit = isUserCustom;
 
     return (
       <div key={entity.id} className="spellPicker__entity">
@@ -147,6 +157,15 @@ export const SpellPicker = React.memo(function SpellPicker() {
           <span className="spellPicker__entityType">{ENTITY_TYPE_META[entity.type].label}</span>
           {hasMultipleSpells && (
             <span className="spellPicker__entityExpand">{isExpanded ? '▴' : '▾'}</span>
+          )}
+          {canEdit && (
+            <span
+              className="spellPicker__entityEdit"
+              onClick={(e) => handleEdit(e, entity)}
+              title="Edit"
+            >
+              ✎
+            </span>
           )}
           {canDelete && (
             <span
@@ -182,6 +201,9 @@ export const SpellPicker = React.memo(function SpellPicker() {
 
   const renderCreateForm = () => (
     <div className="spellPicker__createForm">
+      <div className="spellPicker__formHeader">
+        {editingEntityId ? 'Edit Spell' : 'New Spell'}
+      </div>
       <div className="spellPicker__formField">
         <label className="spellPicker__formLabel">Name *</label>
         <input
@@ -236,7 +258,7 @@ export const SpellPicker = React.memo(function SpellPicker() {
           onClick={handleSave}
           disabled={createSaving || !formName.trim() || !formContent.trim()}
         >
-          {createSaving ? 'Saving...' : 'Save'}
+          {createSaving ? 'Saving...' : editingEntityId ? 'Update' : 'Save'}
         </button>
       </div>
     </div>

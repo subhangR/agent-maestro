@@ -6,6 +6,9 @@ import { useSpacesStore } from "../stores/useSpacesStore";
 import { useProjectStore } from "../stores/useProjectStore";
 import { buildTeamGroups, getGroupedSessionOrder } from "../utils/teamGrouping";
 import { NewSpaceDropdown } from "./NewSpaceDropdown";
+import { useProjectCollabSpaces } from "../hooks/useProjectCollabSpaces";
+import { makeCollabActiveId } from "../app/types/space";
+import { SpaceAvatar } from "./space-window/SpaceAvatar";
 
 type RailSession = {
     id: string;
@@ -137,6 +140,8 @@ export const SpacesRail: React.FC<SpacesRailProps> = ({
         [allSpaces, activeProjectId],
     );
 
+    const { spaces: collabSpaces } = useProjectCollabSpaces();
+
     const teamGroupData = useMemo(() => {
         return buildTeamGroups(sessions, maestroSessions, teamsMap);
     }, [sessions, maestroSessions, teamsMap]);
@@ -145,7 +150,7 @@ export const SpacesRail: React.FC<SpacesRailProps> = ({
         return getGroupedSessionOrder(sessions, teamGroupData.groups);
     }, [sessions, teamGroupData.groups]);
 
-    const totalCount = sessions.length + spaces.length;
+    const totalCount = sessions.length + spaces.length + collabSpaces.length;
 
     return (
         <div className="spacesRail">
@@ -225,6 +230,25 @@ export const SpacesRail: React.FC<SpacesRailProps> = ({
                         {space.type === "whiteboard" ? <WhiteboardIcon /> : space.type === "file" ? <FileCodeIcon /> : <DocumentIcon />}
                     </button>
                 ))}
+
+                {/* Joined Collab Spaces matching the active project's git remote */}
+                {collabSpaces.length > 0 && <div className="spacesRailDivider" />}
+                {collabSpaces.map((cs) => {
+                    const activeId = makeCollabActiveId(cs.id);
+                    const isActive = activeId === activeSessionId;
+                    return (
+                        <button
+                            type="button"
+                            key={cs.id}
+                            className={`spacesRailSession spacesRailSpace spacesRailSpace--collab ${isActive ? "spacesRailSession--active" : ""}`}
+                            onClick={() => onSelectSession(activeId)}
+                            title={`${cs.name} · ${cs.githubUrl}`}
+                        >
+                            {isActive && <span className="iconRailActiveIndicator iconRailActiveIndicator--right" />}
+                            <SpaceAvatar colorKey={cs.id} name={cs.name} size={26} />
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

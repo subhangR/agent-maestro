@@ -113,6 +113,22 @@
   color: var(--theme-accent, #bb9af7);
 }
 
+.spacesRailSpace--collab {
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spacesRailSpace--collab:hover .spaceAvatar {
+  border-radius: 30%;
+  transform: scale(1.05);
+}
+
+.spacesRailSpace--collab.spacesRailSession--active .spaceAvatar {
+  border-radius: 30%;
+}
+
 /* ── Columns Container ── */
 
 .taskBoardColumns {

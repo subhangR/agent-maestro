@@ -648,7 +648,7 @@ class MaestroClient {
 
     async updateCustomPrompt(id: string, data: { name?: string; content?: string; description?: string; icon?: string; entityType?: SpellEntityType; tags?: string[] }): Promise<any> {
         return this.fetch<any>(`/spells/custom-prompts/${id}`, {
-            method: 'PATCH',
+            method: 'PUT',
             body: JSON.stringify(data),
         });
     }

@@ -336,12 +336,16 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         }
         set((prev) => ({ sessions: { ...prev.sessions, [session.id]: session } }));
 
-        // Find and remove existing exited terminal tab for this maestro session
+        // Tear down any existing terminal tab for this maestro session before respawn.
+        // Live PTYs must be closed to avoid two claude processes writing the same JSONL transcript.
         const sessionStore = useSessionStore.getState();
         const existingTerminal = sessionStore.sessions.find(
           (s) => s.maestroSessionId === session.id
         );
-        if (existingTerminal && existingTerminal.exited) {
+        if (existingTerminal) {
+          if (!existingTerminal.exited) {
+            void invoke('close_session', { id: existingTerminal.id }).catch(() => {});
+          }
           sessionStore.setSessions((prev) =>
             prev.filter((s) => s.id !== existingTerminal.id)
           );

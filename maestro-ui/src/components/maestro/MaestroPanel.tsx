@@ -21,6 +21,7 @@ import { Board } from "./MultiProjectBoard";
 import { SkillsPanel } from "./SkillsPanel";
 import { TaskListsPanel } from "./TaskListsPanel";
 import { TaskGraphPanel } from "./task-graph/TaskGraphPanel";
+import { CollabSpacePanel } from "./CollabSpacePanel";
 import { useTaskLists } from "../../hooks/useTaskLists";
 import { useTaskGraphStore } from "../../stores/useTaskGraphStore";
 
@@ -701,6 +702,15 @@ export const MaestroPanel = React.memo(function MaestroPanel({
 
                 {/* Graphs Tab */}
                 {primaryTab === "graphs" && <TaskGraphPanel projectId={projectId} createGraphSignal={graphCreateSignal} />}
+
+                {/* Collab Space Tab */}
+                {primaryTab === "collab" && (
+                    <CollabSpacePanel
+                        projectId={projectId}
+                        workingDir={project.workingDir}
+                        projectName={project.name}
+                    />
+                )}
 
                 {/* Team Tab */}
                 {primaryTab === "team" && (

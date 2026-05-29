@@ -14,6 +14,8 @@ import { useAgentShortcutStore } from "./stores/useAgentShortcutStore";
 import { usePersistentSessionStore } from "./stores/usePersistentSessionStore";
 import { useSshStore } from "./stores/useSshStore";
 import { useMaestroStore } from "./stores/useMaestroStore";
+import { useAuthStore } from "./stores/useAuthStore";
+import { useJoinedSpacesStore } from "./stores/useJoinedSpacesStore";
 
 // Store initialisation
 import { initApp } from "./stores/initApp";
@@ -193,6 +195,21 @@ export default function App() {
   const spacesRailActiveSection = useUIStore((s) => s.spacesRailActiveSection);
   const rightPanelWidth = useUIStore((s) => s.rightPanelWidth);
   const toggleSpacesPanel = useUIStore((s) => s.toggleSpacesPanel);
+
+  // ---------- auth + joined-spaces global subscription ----------
+  const initAuth = useAuthStore((s) => s.initAuth);
+  const authUser = useAuthStore((s) => s.user);
+  useEffect(() => {
+    initAuth();
+  }, [initAuth]);
+  useEffect(() => {
+    const { start, stop } = useJoinedSpacesStore.getState();
+    if (authUser) {
+      start(authUser.uid);
+    } else {
+      stop();
+    }
+  }, [authUser]);
   // ---------- projects ----------
   const projects = useProjectStore((s) => s.projects);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);

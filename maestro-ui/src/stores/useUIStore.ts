@@ -76,12 +76,29 @@ function readClampedFromStorage(key: string, min: number, max: number, fallback:
   return fallback;
 }
 
-export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | null;
+export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | null;
+
+export type SpaceSection = 'messages' | 'tasks' | 'team' | 'spells' | 'members' | 'settings';
+
+const SPACE_SECTION_VALUES: SpaceSection[] = ['messages', 'tasks', 'team', 'spells', 'members', 'settings'];
+
+function readSpaceSection(spaceId: string | null): SpaceSection {
+  if (!spaceId) return 'messages';
+  try {
+    const raw = localStorage.getItem(`space.${spaceId}.section`);
+    if (raw && (SPACE_SECTION_VALUES as string[]).includes(raw)) {
+      return raw as SpaceSection;
+    }
+  } catch {
+    // best-effort
+  }
+  return 'messages';
+}
 
 function readIconRailSection(): IconRailSection {
   try {
     const raw = localStorage.getItem(DEFAULTS.STORAGE_ICON_RAIL_SECTION_KEY);
-    if (raw && ['tasks', 'members', 'teams', 'skills', 'lists', 'graphs', 'files'].includes(raw)) {
+    if (raw && ['tasks', 'members', 'teams', 'skills', 'lists', 'graphs', 'files', 'collab'].includes(raw)) {
       return raw as IconRailSection;
     }
   } catch {
@@ -113,6 +130,11 @@ interface UIState {
   reportError: (prefix: string, err: unknown) => void;
   showNotice: (message: string, timeoutMs?: number) => void;
   dismissNotice: () => void;
+
+  // Active section inside a Space (channels/tasks/team/spells)
+  spaceActiveSection: SpaceSection;
+  setSpaceActiveSection: (section: SpaceSection, spaceId?: string) => void;
+  loadSpaceSection: (spaceId: string) => void;
 
   // Icon rail + Maestro sidebar (left panel)
   iconRailActiveSection: IconRailSection;
@@ -222,6 +244,20 @@ export const useUIStore = create<UIState>((set, get) => ({
       noticeTimerRef = null;
     }
   },
+
+  // -- Space window section (used when a collab space is active in the workspace) --
+  spaceActiveSection: 'messages',
+  setSpaceActiveSection: (section, spaceId) => {
+    set({ spaceActiveSection: section });
+    if (spaceId) {
+      try {
+        localStorage.setItem(`space.${spaceId}.section`, section);
+      } catch {
+        // best-effort
+      }
+    }
+  },
+  loadSpaceSection: (spaceId) => set({ spaceActiveSection: readSpaceSection(spaceId) }),
 
   // -- Icon rail + Maestro sidebar --
   iconRailActiveSection: readIconRailSection(),

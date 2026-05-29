@@ -1,0 +1,1930 @@
+/* ------------------------------------------------------------------ */
+/*  Reusable circle-letter Space avatar                                 */
+/* ------------------------------------------------------------------ */
+
+.spaceAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-family: var(--style-font-ui);
+  line-height: 1;
+  user-select: none;
+  letter-spacing: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: border-radius 0.15s ease, transform 0.15s ease;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Right-panel "Spaces" header (top of expanded SpacesPanel)           */
+/* ------------------------------------------------------------------ */
+
+.collabSpacesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.collabSpacesHeaderRail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 70%;
+}
+
+.collabSpacesHeaderButton {
+  position: relative;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 2px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.collabSpacesHeaderButton:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.collabSpacesHeaderButton:hover .spaceAvatar {
+  border-radius: 30%;
+  transform: scale(1.04);
+}
+
+.collabSpacesHeaderButton--active {
+  border-color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.1);
+}
+
+.collabSpacesHeaderButton--active .spaceAvatar {
+  border-radius: 30%;
+}
+
+.collabSpacesHeaderEmpty {
+  font-size: 10px;
+  color: var(--text-muted, #6e7785);
+  font-style: italic;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Inline Space layout (rendered inside the workspace area)            */
+/* ------------------------------------------------------------------ */
+
+.spaceWindow {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary, #0c0e14);
+  color: var(--text-primary, #e6e9f0);
+}
+
+/* Chrome -- top bar */
+
+.spaceWindowChrome {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: #0a0c12;
+  flex-shrink: 0;
+  height: 48px;
+}
+
+.spaceWindowBack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-secondary, #b6bdc7);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+
+.spaceWindowBack:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceWindowChromeTitleWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: center;
+  text-align: center;
+}
+
+.spaceWindowChrome--inline .spaceWindowChromeTitleWrap {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.spaceWindowChromeTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #e6e9f0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.spaceWindowChromeSubtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-muted, #6e7785);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.spaceWindowSettings {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 6px;
+  color: var(--text-muted, #6e7785);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spaceWindowSettings:hover:not(:disabled) {
+  color: var(--text-primary, #e6e9f0);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.spaceWindowSettings:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Top tabs (Tasks / Team / Spells / Members / Settings)               */
+/* ------------------------------------------------------------------ */
+
+.spaceTopTabs {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0 12px;
+  background: #0a0c12;
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  flex-shrink: 0;
+  height: 38px;
+}
+
+.spaceTopTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted, #6e7785);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  letter-spacing: 0.01em;
+}
+
+.spaceTopTab:hover {
+  color: var(--text-primary, #e6e9f0);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.spaceTopTab--active {
+  color: var(--theme-primary, #66ddaa);
+}
+
+.spaceTopTab--active::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  background: var(--theme-primary, #66ddaa);
+  border-radius: 2px 2px 0 0;
+}
+
+.spaceTopTabIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spaceTopTabLabel {
+  letter-spacing: 0.02em;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Single-pane body (full-width active section)                        */
+/* ------------------------------------------------------------------ */
+
+.spaceWindowBody {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  background: var(--bg-primary, #0c0e14);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Messages section (full-width chat)                                  */
+/* ------------------------------------------------------------------ */
+
+.spaceMessagesPane {
+  background: var(--bg-primary, #0c0e14);
+}
+
+.spaceMessagesHeaderHash {
+  color: var(--text-muted, #6e7785);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.spaceMessagesHeaderName {
+  font-weight: 600;
+  color: var(--text-primary, #e6e9f0);
+  font-size: 13px;
+}
+
+.spaceMessagesHeaderSep {
+  color: var(--text-muted, #6e7785);
+  font-size: 12px;
+}
+
+.spaceMessagesHeaderSpace {
+  color: var(--text-muted, #6e7785);
+  font-size: 12px;
+}
+
+.spaceMessagesStream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px 24px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.spaceChatBubble {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0 4px;
+  border-radius: 4px;
+  position: relative;
+}
+
+.spaceChatBubble:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.spaceChatBubble--grouped {
+  padding-top: 1px;
+}
+
+.spaceChatAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.spaceChatAvatarSpacer {
+  width: 32px;
+  height: 1px;
+}
+
+.spaceChatBubbleMain {
+  min-width: 0;
+}
+
+.spaceChatBubbleHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.spaceChatBubbleAuthor {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceChatBubbleTime {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceChatSystemTag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 2px;
+}
+
+.spaceChatSystemTag--task {
+  background: rgba(124, 158, 255, 0.14);
+  color: #9bb8ff;
+}
+
+.spaceChatSystemTag--team-member {
+  background: rgba(192, 132, 252, 0.16);
+  color: #c084fc;
+}
+
+.spaceChatSystemTag--spell {
+  background: rgba(255, 200, 100, 0.16);
+  color: #ffc864;
+}
+
+.spaceChatBubbleContent {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary, #e6e9f0);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.spaceChatBubbleContent code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Composer */
+
+.spaceMessagesComposer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 24px 14px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+  flex-shrink: 0;
+  background: #0a0c12;
+  max-width: 920px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.spaceChatComposerToolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.spaceChatComposerIconBtn {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted, #6e7785);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.spaceChatComposerIconBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceChatComposerIconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.spaceChatComposerInput {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-primary, #e6e9f0);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.08));
+  border-radius: 6px;
+  resize: none;
+  min-height: 36px;
+  max-height: 160px;
+  line-height: 1.45;
+}
+
+.spaceChatComposerInput:focus {
+  outline: none;
+  border-color: rgba(var(--theme-primary-rgb), 0.6);
+}
+
+.spaceChatComposerSend {
+  align-self: flex-end;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  background: var(--theme-primary, #66ddaa);
+  color: var(--bg-primary, #0c0e14);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.spaceChatComposerSend:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Entity pane — shared chrome (header + body)                          */
+/* ------------------------------------------------------------------ */
+
+.spaceEntityPane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.spaceEntityHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+  flex-shrink: 0;
+  height: 38px;
+}
+
+.spaceEntityHeaderLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.spaceEntityHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.spaceEntityTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceEntityCount {
+  font-size: 11px;
+  color: var(--text-secondary, #b6bdc7);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 7px;
+  border-radius: 8px;
+  letter-spacing: 0;
+}
+
+.spaceEntitySearchInput {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-primary, #e6e9f0);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 4px;
+  width: 180px;
+}
+
+.spaceEntitySearchInput:focus {
+  outline: none;
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}
+
+.spaceEntityFilter {
+  font-family: inherit;
+  font-size: 11px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-secondary, #b6bdc7);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 4px;
+  padding: 5px 6px;
+}
+
+.spaceEntityBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+
+.spaceEntityNoResults {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted, #6e7785);
+  padding: 24px 16px;
+  font-style: italic;
+}
+
+.spaceEntityList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spaceEntityList--spells {
+  gap: 8px;
+}
+
+.spaceEntityMetaLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted, #6e7785);
+  font-weight: 600;
+}
+
+/* Buttons (entity pane variants) */
+
+.spaceEntityPrimaryBtn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  background: var(--theme-primary, #66ddaa);
+  color: var(--bg-primary, #0c0e14);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.spaceEntityPrimaryBtn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.spaceEntityPrimaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spaceEntityGhostBtn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  background: transparent;
+  color: var(--text-secondary, #b6bdc7);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.spaceEntityGhostBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #e6e9f0);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.spaceEntityGhostBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spaceEntityGhostBtn--success {
+  color: var(--theme-primary, #66ddaa);
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+}
+
+.spaceEntityGhostBtn--danger {
+  color: #ff8a8a;
+  border-color: rgba(255, 120, 120, 0.25);
+}
+
+.spaceEntityDangerBtn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  background: transparent;
+  color: #ff8a8a;
+  border: 1px solid rgba(255, 120, 120, 0.3);
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.spaceEntityDangerBtn:hover {
+  background: rgba(255, 80, 80, 0.08);
+  border-color: rgba(255, 120, 120, 0.5);
+  color: #ffaaaa;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tasks section                                                       */
+/* ------------------------------------------------------------------ */
+
+.spaceTaskItem {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.spaceTaskItem--expanded {
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+  background: rgba(var(--theme-primary-rgb), 0.03);
+}
+
+.spaceTaskItemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.spaceTaskItemHeader:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.spaceTaskItemTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.spaceTaskItemTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #e6e9f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.spaceTaskItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  flex-shrink: 0;
+}
+
+.spaceTaskItemAuthor {
+  font-weight: 500;
+}
+
+.spaceTaskItemAt {
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceTaskPriorityDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.spaceTaskPriorityDot--high {
+  background: #f06767;
+}
+
+.spaceTaskPriorityDot--medium {
+  background: #ffc864;
+}
+
+.spaceTaskPriorityDot--low {
+  background: rgba(180, 188, 200, 0.5);
+}
+
+.spaceTaskItemDetail {
+  padding: 0 14px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 10px;
+}
+
+.spaceTaskItemDescription {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary, #b6bdc7);
+  margin: 0;
+}
+
+.spaceTaskItemDetailMeta {
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-secondary, #b6bdc7);
+}
+
+.spaceTaskItemActions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Status pills (used in tasks + chat tags) */
+
+.spaceTaskStatus {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.spaceTaskStatus--todo {
+  background: rgba(180, 188, 200, 0.12);
+  color: #b6bdc7;
+}
+
+.spaceTaskStatus--inProgress {
+  background: rgba(255, 200, 100, 0.16);
+  color: #ffc864;
+}
+
+.spaceTaskStatus--blocked {
+  background: rgba(240, 103, 103, 0.16);
+  color: #f08585;
+}
+
+.spaceTaskStatus--done {
+  background: rgba(102, 221, 170, 0.16);
+  color: var(--theme-primary, #66ddaa);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Team Members section                                                */
+/* ------------------------------------------------------------------ */
+
+.spaceTeamItem {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.spaceTeamItem--expanded {
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+  background: rgba(var(--theme-primary-rgb), 0.03);
+}
+
+.spaceTeamItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.spaceTeamItemHeader:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.spaceTeamItemAvatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4a5dff, #c084fc);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.spaceTeamItemTitleWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.spaceTeamItemName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceTeamItemSubtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.spaceTeamItemModel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceTeamItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.spaceTeamItemAdoptions {
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceTeamItemDetail {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.spaceTeamItemSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spaceTeamItemIdentity {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-primary, #e6e9f0);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.spaceTeamItemRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary, #b6bdc7);
+  flex-wrap: wrap;
+}
+
+.spaceTeamItemMono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-secondary, #b6bdc7);
+}
+
+.spaceTeamItemPermsWrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.spaceTeamPermPill {
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary, #b6bdc7);
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.spaceTeamItemActions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.spaceModeBadge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(124, 158, 255, 0.14);
+  color: #9bb8ff;
+  padding: 2px 7px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Spells section                                                      */
+/* ------------------------------------------------------------------ */
+
+.spaceSpellItem {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spaceSpellItem--expanded {
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+  background: rgba(var(--theme-primary-rgb), 0.03);
+}
+
+.spaceSpellItemHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.spaceSpellItemTitleWrap {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.spaceSpellItemName {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-primary, #66ddaa);
+}
+
+.spaceSpellItemTargetWrap {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.spaceSpellTargetPill {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted, #6e7785);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.spaceSpellItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  flex-shrink: 0;
+}
+
+.spaceSpellItemAt,
+.spaceSpellItemInstalls {
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceSpellItemDesc {
+  font-size: 12.5px;
+  color: var(--text-secondary, #b6bdc7);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.spaceSpellItemBody {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-primary, #e6e9f0);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.spaceSpellItemActions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Members section (now a top tab, not a column)                       */
+/* ------------------------------------------------------------------ */
+
+.spaceMembersGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.spaceMembersGroupHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.04));
+  margin-bottom: 6px;
+}
+
+.spaceMembersGroupLabel {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--text-muted, #6e7785);
+  text-transform: uppercase;
+}
+
+.spaceMembersGroupCount {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceMemberFullRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.spaceMemberFullRow:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.spaceMemberFullRow--offline {
+  opacity: 0.6;
+}
+
+.spaceMemberFullAvatarWrap {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.spaceMemberFullAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spaceMemberPresenceDot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-primary, #0c0e14);
+}
+
+.spaceMemberPresenceDot--online {
+  background: #66ddaa;
+}
+
+.spaceMemberPresenceDot--idle {
+  background: #ffc864;
+}
+
+.spaceMemberPresenceDot--offline {
+  background: #6e7785;
+}
+
+.spaceMemberFullMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.spaceMemberFullName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceMemberFullSub {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  margin-top: 2px;
+}
+
+.spaceMemberFullBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.spaceMemberFullBadge--owner {
+  background: rgba(102, 221, 170, 0.16);
+  color: var(--theme-primary, #66ddaa);
+}
+
+.spaceMemberFullBadge--admin {
+  background: rgba(124, 158, 255, 0.16);
+  color: #9bb8ff;
+}
+
+.spaceMemberFullActions {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.spaceMemberMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 180px;
+  background: var(--bg-primary, #0c0e14);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 6px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.spaceMemberMenuItem {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--text-secondary, #b6bdc7);
+  cursor: pointer;
+}
+
+.spaceMemberMenuItem:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceMemberMenuItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spaceMemberMenuItem--danger {
+  color: #ff8a8a;
+}
+
+.spaceMemberMenuSep {
+  height: 1px;
+  background: var(--border-subtle, rgba(255, 255, 255, 0.06));
+  margin: 4px 0;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Settings section                                                    */
+/* ------------------------------------------------------------------ */
+
+.spaceSettingsBody {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding-bottom: 32px;
+}
+
+.spaceSettingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+  border-radius: 8px;
+}
+
+.spaceSettingsGroup--danger {
+  border-color: rgba(255, 120, 120, 0.2);
+  background: rgba(255, 80, 80, 0.03);
+}
+
+.spaceSettingsGroupTitle {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted, #6e7785);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
+}
+
+.spaceSettingsGroupTitle--danger {
+  color: #ff8a8a;
+}
+
+.spaceSettingsField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spaceSettingsLabel {
+  font-size: 12px;
+  color: var(--text-secondary, #b6bdc7);
+  font-weight: 500;
+}
+
+.spaceSettingsInput {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-primary, #e6e9f0);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: 5px;
+}
+
+.spaceSettingsInput:focus {
+  outline: none;
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}
+
+.spaceSettingsInputMono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.spaceSettingsTextarea {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.25));
+  color: var(--text-primary, #e6e9f0);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: 5px;
+  resize: vertical;
+  min-height: 60px;
+  line-height: 1.5;
+}
+
+.spaceSettingsTextarea:focus {
+  outline: none;
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}
+
+.spaceSettingsRadioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.spaceSettingsRadio {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 5px;
+  cursor: pointer;
+  align-items: start;
+}
+
+.spaceSettingsRadio:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.spaceSettingsRadio:has(input:checked) {
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+  background: rgba(var(--theme-primary-rgb), 0.04);
+}
+
+.spaceSettingsRadioBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.spaceSettingsRadioTitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceSettingsRadioHint {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+}
+
+.spaceSettingsActions {
+  display: flex;
+  gap: 8px;
+}
+
+.spaceSettingsInviteRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.spaceSettingsInviteRow .spaceSettingsInput {
+  flex: 1;
+}
+
+.spaceSettingsAdminList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spaceSettingsAdminRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.spaceSettingsAdminName {
+  font-size: 12.5px;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceSettingsDangerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.spaceSettingsDangerCopy {
+  flex: 1;
+}
+
+.spaceSettingsDangerTitle {
+  font-size: 12.5px;
+  color: var(--text-primary, #e6e9f0);
+  font-weight: 500;
+}
+
+.spaceSettingsDangerHint {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  margin-top: 2px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Empty / loading / not-member state                                  */
+/* ------------------------------------------------------------------ */
+
+.spaceWindowEmpty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.spaceWindowEmptyCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+  max-width: 400px;
+}
+
+.spaceWindowEmptyTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceWindowEmptyText {
+  font-size: 12px;
+  color: var(--text-muted, #6e7785);
+  line-height: 1.5;
+}
+
+.spaceWindowEmptyButton {
+  margin-top: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: transparent;
+  color: var(--theme-primary, #66ddaa);
+  border: 1px solid var(--theme-primary, #66ddaa);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.spaceWindowEmptyButton:hover {
+  background: rgba(102, 221, 170, 0.08);
+}
+
+/* Empty state inside an entity body (no items at all) */
+
+.spaceEmptySection {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 40px 20px;
+  margin: auto;
+  max-width: 360px;
+}
+
+.spaceEmptySectionIcon {
+  color: var(--text-muted, #6e7785);
+  margin-bottom: 4px;
+}
+
+.spaceEmptySectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceEmptySectionBody {
+  font-size: 12px;
+  color: var(--text-muted, #6e7785);
+  line-height: 1.55;
+}
+
+.spaceEmptySectionAction {
+  margin-top: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--theme-primary, #66ddaa);
+  color: var(--bg-primary, #0c0e14);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.spaceEmptySectionAction:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Push-from-local CTA (legacy stubs in shared/) — preserved for API   */
+/* ------------------------------------------------------------------ */
+
+.spacePushFromLocalBtn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  background: transparent;
+  color: var(--theme-primary, #66ddaa);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.spacePushFromLocalBtn:hover:not(:disabled) {
+  background: rgba(var(--theme-primary-rgb), 0.06);
+  border-color: var(--theme-primary, #66ddaa);
+}
+
+.spacePushFromLocalBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.spaceTodoBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  background: rgba(255, 200, 100, 0.18);
+  color: #ffc864;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.spaceAdoptBtn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 14px;
+  background: var(--theme-primary, #66ddaa);
+  color: var(--bg-primary, #0c0e14);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.spaceAdoptBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spaceAdoptBtn:hover:not(:disabled) {
+  background: var(--accent-hover, #88eebb);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Push picker modal (used by Tasks, Team)                             */
+/* ------------------------------------------------------------------ */
+
+.spacePushPickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.spacePushPickerRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.spacePushPickerRow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.spacePushPickerRow--checked {
+  background: rgba(var(--theme-primary-rgb), 0.06);
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+}
+
+.spacePushPickerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.spacePushPickerTitle {
+  font-size: 13px;
+  color: var(--text-primary, #e6e9f0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spacePushPickerProject {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Generic SpaceWindow modal (Invite, etc.)                            */
+/* ------------------------------------------------------------------ */
+
+.spaceModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.spaceModal {
+  background: var(--bg-primary, #0c0e14);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 22px 24px;
+  width: 90%;
+  max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.spaceModalTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceModalBody {
+  font-size: 12px;
+  color: var(--text-secondary, #b6bdc7);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.spaceModalHint {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  margin: 0;
+  font-style: italic;
+}
+
+.spaceInviteLinkRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.spaceInviteLinkInput {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.3));
+  color: var(--text-primary, #e6e9f0);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+}
+
+.spaceModalPrimaryBtn {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 14px;
+  background: var(--theme-primary, #66ddaa);
+  color: var(--bg-primary, #0c0e14);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.spaceModalPrimaryBtn:hover {
+  background: var(--accent-hover, #88eebb);
+}
+
+.spaceModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.spaceModalActions .spaceModalPrimaryBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Share-to-space modal                                                */
+/* ------------------------------------------------------------------ */
+
+.spaceModal--share {
+  width: min(440px, calc(100vw - 32px));
+}
+
+.spaceShareEntityPreview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.spaceShareEntityKindLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #6e7785);
+  font-weight: 600;
+}
+
+.spaceShareEntityName {
+  font-size: 13px;
+  color: var(--text-primary, #e6e9f0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spaceShareSpaceListLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted, #6e7785);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.spaceShareSpaceList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.15);
+  margin-bottom: 12px;
+}
+
+.spaceShareSpaceRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: inherit;
+}
+
+.spaceShareSpaceRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.spaceShareSpaceRow--selected {
+  background: rgba(102, 221, 170, 0.1);
+  border-color: rgba(102, 221, 170, 0.35);
+}
+
+.spaceShareSpaceAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--theme-primary, #66ddaa);
+  color: var(--bg-primary, #0c0e14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.spaceShareSpaceMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.spaceShareSpaceName {
+  font-size: 13px;
+  color: var(--text-primary, #e6e9f0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spaceShareSpaceSubtitle {
+  font-size: 11px;
+  color: var(--text-muted, #6e7785);
+  margin-top: 2px;
+}
+
+.spaceShareSpaceCheck {
+  color: var(--theme-primary, #66ddaa);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.spaceShareEmpty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text-muted, #6e7785);
+  font-style: italic;
+  text-align: center;
+}
+
+.spaceShareError {
+  font-size: 12px;
+  color: #f06767;
+  background: rgba(240, 103, 103, 0.08);
+  border: 1px solid rgba(240, 103, 103, 0.3);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.spaceShareSuccess {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px;
+  text-align: center;
+}
+
+.spaceShareSuccessTitle {
+  font-size: 14px;
+  color: var(--text-primary, #e6e9f0);
+}
+
+.spaceShareSuccessBody {
+  font-size: 12px;
+  color: var(--text-muted, #6e7785);
+  line-height: 1.5;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Responsive collapse                                                 */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 720px) {
+  .spaceTopTab {
+    padding: 0 10px;
+  }
+  .spaceTopTabLabel {
+    display: none;
+  }
+}

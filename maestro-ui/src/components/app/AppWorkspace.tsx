@@ -17,10 +17,11 @@ import {
 import { isSshCommandLine, sshTargetFromCommandLine } from "../../app/utils/ssh";
 import { SessionLogStrip } from "../session-log/SessionLogStrip";
 import { SpellButton } from "../maestro/SpellButton";
-import { isWhiteboardId, isDocumentId, isFileId } from "../../app/types/space";
+import { isWhiteboardId, isDocumentId, isFileId, isCollabId, collabActiveIdToFirestoreId } from "../../app/types/space";
 import type { WhiteboardSpace, DocumentSpace, FileSpace } from "../../app/types/space";
 const LazyExcalidrawBoard = React.lazy(() => import("../ExcalidrawBoard").then(m => ({ default: m.ExcalidrawBoard })));
 const LazyDocViewer = React.lazy(() => import("../maestro/DocViewer").then(m => ({ default: m.DocViewer })));
+const LazySpaceWindow = React.lazy(() => import("../space-window/SpaceWindow").then(m => ({ default: m.SpaceWindow })));
 
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
@@ -61,7 +62,9 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const isActiveWhiteboard = activeId ? isWhiteboardId(activeId) : false;
   const isActiveDocument = activeId ? isDocumentId(activeId) : false;
   const isActiveFile = activeId ? isFileId(activeId) : false;
-  const isActiveSession = !isActiveWhiteboard && !isActiveDocument && !isActiveFile;
+  const isActiveCollab = activeId ? isCollabId(activeId) : false;
+  const activeCollabSpaceId = isActiveCollab && activeId ? collabActiveIdToFirestoreId(activeId) : null;
+  const isActiveSession = !isActiveWhiteboard && !isActiveDocument && !isActiveFile && !isActiveCollab;
 
   const activeLogAgentTool = (() => {
     if (!active?.maestroSessionId) return active?.effectId ?? null;
@@ -187,6 +190,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
               doc={(activeSpace as DocumentSpace).doc}
               onClose={() => closeDocument(activeSpace.id)}
             />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+
+      {/* Inline collab space — Firebase-backed collaboration room */}
+      {isActiveCollab && activeCollabSpaceId && (
+        <ErrorBoundary name="CollabSpace">
+          <Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading space…</div>}>
+            <LazySpaceWindow key={activeCollabSpaceId} spaceId={activeCollabSpaceId} inline />
           </Suspense>
         </ErrorBoundary>
       )}

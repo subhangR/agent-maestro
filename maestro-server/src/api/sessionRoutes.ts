@@ -1402,16 +1402,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         });
       }
 
-      // Validate session is resumable
-      const resumableStatuses: SessionStatus[] = ['completed', 'stopped', 'failed', 'idle'];
-      if (!resumableStatuses.includes(session.status)) {
-        return res.status(400).json({
-          error: true,
-          code: 'session_not_resumable',
-          message: `Session status '${session.status}' is not resumable. Must be one of: ${resumableStatuses.join(', ')}`
-        });
-      }
-
       // Generate claudeSessionId if missing (pre-feature sessions get a fresh spawn)
       const hadClaudeSessionId = !!session.claudeSessionId;
       if (!hadClaudeSessionId) {

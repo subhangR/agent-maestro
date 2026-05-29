@@ -13,10 +13,12 @@ interface SpellState {
   targetSessionId: string | null;
   activeEntityType: SpellEntityType | 'all';
 
-  // Create form state
+  // Create / edit form state
   isCreating: boolean;
   createEntityType: SpellEntityType | null;
   createSaving: boolean;
+  editingEntityId: string | null;
+  editInitialValues: { name: string; content: string; description?: string; icon?: string } | null;
 
   // Invocation state
   invoking: boolean;
@@ -32,6 +34,7 @@ interface SpellState {
   setActiveEntityType: (type: SpellEntityType | 'all') => void;
   invokeSpell: (invocation: SpellInvocation) => Promise<void>;
   startCreating: (entityType: SpellEntityType) => void;
+  startEditing: (entityId: string, entityType: SpellEntityType) => Promise<void>;
   cancelCreating: () => void;
   saveSpellEntity: (data: { name: string; content: string; description?: string; icon?: string; entityType: SpellEntityType }) => Promise<void>;
   deleteSpellEntity: (id: string) => Promise<void>;
@@ -90,6 +93,8 @@ export const useSpellStore = create<SpellState>((set, get) => {
     isCreating: false,
     createEntityType: null,
     createSaving: false,
+    editingEntityId: null,
+    editInitialValues: null,
     invoking: false,
     lastInvokedSpell: null,
     recentSpells,
@@ -127,7 +132,7 @@ export const useSpellStore = create<SpellState>((set, get) => {
       get().fetchEntities();
     },
 
-    closePicker: () => set({ isPickerOpen: false, targetSessionId: null, isCreating: false, createEntityType: null }),
+    closePicker: () => set({ isPickerOpen: false, targetSessionId: null, isCreating: false, createEntityType: null, editingEntityId: null, editInitialValues: null }),
 
     setActiveEntityType: (type) => set({ activeEntityType: type }),
 
@@ -152,24 +157,59 @@ export const useSpellStore = create<SpellState>((set, get) => {
       }
     },
 
-    startCreating: (entityType) => set({ isCreating: true, createEntityType: entityType }),
+    startCreating: (entityType) => set({ isCreating: true, createEntityType: entityType, editingEntityId: null, editInitialValues: null }),
 
-    cancelCreating: () => set({ isCreating: false, createEntityType: null, createSaving: false }),
+    startEditing: async (entityId, entityType) => {
+      try {
+        const prompts = await maestroClient.getCustomPrompts();
+        const prompt = (prompts as any[]).find(p => p.id === entityId);
+        if (!prompt) {
+          console.error('Custom prompt not found for editing:', entityId);
+          return;
+        }
+        set({
+          isCreating: true,
+          createEntityType: entityType,
+          editingEntityId: entityId,
+          editInitialValues: {
+            name: prompt.name ?? '',
+            content: prompt.content ?? '',
+            description: prompt.description,
+            icon: prompt.icon,
+          },
+        });
+      } catch (err) {
+        console.error('Failed to load spell for editing:', err);
+      }
+    },
+
+    cancelCreating: () => set({ isCreating: false, createEntityType: null, createSaving: false, editingEntityId: null, editInitialValues: null }),
 
     saveSpellEntity: async (data) => {
+      const { editingEntityId } = get();
       set({ createSaving: true });
       try {
-        await maestroClient.createCustomPrompt({
-          name: data.name,
-          content: data.content,
-          description: data.description,
-          icon: data.icon,
-          entityType: data.entityType,
-        });
-        set({ isCreating: false, createEntityType: null, createSaving: false });
+        if (editingEntityId) {
+          await maestroClient.updateCustomPrompt(editingEntityId, {
+            name: data.name,
+            content: data.content,
+            description: data.description,
+            icon: data.icon,
+            entityType: data.entityType,
+          });
+        } else {
+          await maestroClient.createCustomPrompt({
+            name: data.name,
+            content: data.content,
+            description: data.description,
+            icon: data.icon,
+            entityType: data.entityType,
+          });
+        }
+        set({ isCreating: false, createEntityType: null, createSaving: false, editingEntityId: null, editInitialValues: null });
         await get().fetchEntities();
       } catch (err) {
-        console.error('Failed to create spell entity:', err);
+        console.error('Failed to save spell entity:', err);
         set({ createSaving: false });
       }
     },

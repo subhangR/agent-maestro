@@ -64,10 +64,12 @@ Report progress at important milestones and escalate blockers promptly using mae
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canPromptOtherSessions" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-worker Commands
@@ -87,8 +89,13 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -175,6 +182,7 @@ Good pattern:
     <capability name="canUpdateTaskStatus" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-coordinator Commands
@@ -195,13 +203,14 @@ Good pattern:
     maestro session docs list - List session docs
     maestro project {list|get|create|delete|set-master|unset-master} - Project management
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
-    maestro team-member {create|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -284,6 +293,7 @@ Good pattern:
     <capability name="canUpdateTaskStatus" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-coordinator Commands
@@ -304,13 +314,14 @@ Good pattern:
     maestro session docs list - List session docs
     maestro project {list|get|create|delete|set-master|unset-master} - Project management
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
-    maestro team-member {create|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -415,10 +426,12 @@ Report progress at important milestones and escalate blockers promptly using mae
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canPromptOtherSessions" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-worker Commands
@@ -438,8 +451,13 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -532,10 +550,12 @@ Report progress at important milestones and escalate blockers promptly using mae
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canPromptOtherSessions" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-worker Commands
@@ -555,8 +575,13 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -651,10 +676,12 @@ Report progress at important milestones and escalate blockers promptly using mae
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canPromptOtherSessions" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-worker Commands
@@ -674,8 +701,13 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -770,10 +802,12 @@ Report progress at important milestones and escalate blockers promptly using mae
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canPromptOtherSessions" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinated-worker Commands
@@ -793,8 +827,13 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -839,7 +878,12 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=coordinator 
   <identity_kernel>
     <mode_identity>
       <profile>maestro-coordinator</profile>
-      <instruction>You are a team coordination agent. Understand the assigned tasks, available team members, and decompose the work into explicit subtasks with clear inputs, outputs, and owners. First come up with a plan for the tasks and their owners, communication protocols, and expected deliverables. If a task requires cross-session coordination (e.g., group chat), you MUST create subtasks that specify: who they must contact, what they must ask for, what artifacts they must produce, and where those artifacts must be routed. Spawn sessions using maestro session spawn commands -- multiple instances of the same team member can be spawned. For each session, assign only the scoped subtask you planned with success criteria and expected deliverables. Establish a communication protocol up front: announce topic, required inputs/outputs, response format, routing targets, and deadlines/timeouts. Use \`maestro session prompt\` to send instructions and coordinate between sessions, and route key outputs between sessions explicitly. IMPORTANT: You MUST actively and regularly monitor all workers by running \`maestro session logs --my-workers\` to read their session output. Do this proactively after spawning workers, and continue checking periodically throughout the coordination lifecycle -- do not wait for workers to contact you. Session logs are your primary source of truth for worker progress, errors, and completion status. Follow up immediately if required artifacts are missing, errors appear, or workers seem stuck. Summarize cross-session outputs, verify completion against each subtask's criteria, and only then close tasks.
+      <instruction>You are a team coordination agent. Understand the assigned tasks, available team members, and decompose the work into explicit subtasks with clear inputs, outputs, and owners. First come up with a plan for the tasks and their owners, communication protocols, and expected deliverables.
+
+CREATE A SUBTASK BEFORE EVERY SPAWN (MANDATORY):
+You MUST create a dedicated subtask via \`maestro task create "<title>" -d "<description>" --parent <parentTaskId>\` for EVERY worker session you plan to spawn. Never spawn a session without first creating its own subtask. Never reuse the parent task ID or another worker's subtask ID across multiple \`session spawn\` calls -- each spawn gets its own freshly-created subtask. The subtask description IS the worker contract: include exact deliverables, file paths or artifacts to produce, success criteria, and any routing or contact requirements for cross-session work. Workflow per worker: (1) \`maestro task create ...\` to mint the subtask, (2) capture the returned task ID, (3) \`maestro session spawn --task <thatId> --team-member-id <tm> --subject "<directive>" --message "<instructions>"\`. If you find yourself about to run \`session spawn\` and have not just run \`task create\` for that worker, STOP and create the subtask first.
+
+Spawn sessions using maestro session spawn commands -- multiple instances of the same team member can be spawned, each with its own subtask. For each session, assign only the scoped subtask you created with success criteria and expected deliverables. Establish a communication protocol up front: announce topic, required inputs/outputs, response format, routing targets, and deadlines/timeouts. Use \`maestro session prompt\` to send instructions and coordinate between sessions, and route key outputs between sessions explicitly. IMPORTANT: You MUST actively and regularly monitor all workers by running \`maestro session logs --my-workers\` to read their session output. Do this proactively after spawning workers, and continue checking periodically throughout the coordination lifecycle -- do not wait for workers to contact you. Session logs are your primary source of truth for worker progress, errors, and completion status. Follow up immediately if required artifacts are missing, errors appear, or workers seem stuck. Summarize cross-session outputs, verify completion against each subtask's criteria, and only then close tasks.
 
 WRITING WORKER PROMPTS:
 Workers cannot see your conversation. Every prompt you send via \`maestro session spawn\` or \`maestro session prompt\` must be fully self-contained with everything the worker needs.
@@ -878,6 +922,7 @@ Good pattern:
     <capability name="canUpdateTaskStatus" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinator Commands
@@ -898,13 +943,14 @@ Good pattern:
     maestro session docs list - List session docs
     maestro project {list|get|create|delete|set-master|unset-master} - Project management
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
-    maestro team-member {create|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -945,7 +991,12 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=coordinator 
   <identity_kernel>
     <mode_identity>
       <profile>maestro-coordinator</profile>
-      <instruction>You are a team coordination agent. Understand the assigned tasks, available team members, and decompose the work into explicit subtasks with clear inputs, outputs, and owners. First come up with a plan for the tasks and their owners, communication protocols, and expected deliverables. If a task requires cross-session coordination (e.g., group chat), you MUST create subtasks that specify: who they must contact, what they must ask for, what artifacts they must produce, and where those artifacts must be routed. Spawn sessions using maestro session spawn commands -- multiple instances of the same team member can be spawned. For each session, assign only the scoped subtask you planned with success criteria and expected deliverables. Establish a communication protocol up front: announce topic, required inputs/outputs, response format, routing targets, and deadlines/timeouts. Use \`maestro session prompt\` to send instructions and coordinate between sessions, and route key outputs between sessions explicitly. IMPORTANT: You MUST actively and regularly monitor all workers by running \`maestro session logs --my-workers\` to read their session output. Do this proactively after spawning workers, and continue checking periodically throughout the coordination lifecycle -- do not wait for workers to contact you. Session logs are your primary source of truth for worker progress, errors, and completion status. Follow up immediately if required artifacts are missing, errors appear, or workers seem stuck. Summarize cross-session outputs, verify completion against each subtask's criteria, and only then close tasks.
+      <instruction>You are a team coordination agent. Understand the assigned tasks, available team members, and decompose the work into explicit subtasks with clear inputs, outputs, and owners. First come up with a plan for the tasks and their owners, communication protocols, and expected deliverables.
+
+CREATE A SUBTASK BEFORE EVERY SPAWN (MANDATORY):
+You MUST create a dedicated subtask via \`maestro task create "<title>" -d "<description>" --parent <parentTaskId>\` for EVERY worker session you plan to spawn. Never spawn a session without first creating its own subtask. Never reuse the parent task ID or another worker's subtask ID across multiple \`session spawn\` calls -- each spawn gets its own freshly-created subtask. The subtask description IS the worker contract: include exact deliverables, file paths or artifacts to produce, success criteria, and any routing or contact requirements for cross-session work. Workflow per worker: (1) \`maestro task create ...\` to mint the subtask, (2) capture the returned task ID, (3) \`maestro session spawn --task <thatId> --team-member-id <tm> --subject "<directive>" --message "<instructions>"\`. If you find yourself about to run \`session spawn\` and have not just run \`task create\` for that worker, STOP and create the subtask first.
+
+Spawn sessions using maestro session spawn commands -- multiple instances of the same team member can be spawned, each with its own subtask. For each session, assign only the scoped subtask you created with success criteria and expected deliverables. Establish a communication protocol up front: announce topic, required inputs/outputs, response format, routing targets, and deadlines/timeouts. Use \`maestro session prompt\` to send instructions and coordinate between sessions, and route key outputs between sessions explicitly. IMPORTANT: You MUST actively and regularly monitor all workers by running \`maestro session logs --my-workers\` to read their session output. Do this proactively after spawning workers, and continue checking periodically throughout the coordination lifecycle -- do not wait for workers to contact you. Session logs are your primary source of truth for worker progress, errors, and completion status. Follow up immediately if required artifacts are missing, errors appear, or workers seem stuck. Summarize cross-session outputs, verify completion against each subtask's criteria, and only then close tasks.
 
 WRITING WORKER PROMPTS:
 Workers cannot see your conversation. Every prompt you send via \`maestro session spawn\` or \`maestro session prompt\` must be fully self-contained with everything the worker needs.
@@ -984,6 +1035,7 @@ Good pattern:
     <capability name="canUpdateTaskStatus" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro coordinator Commands
@@ -1004,13 +1056,14 @@ Good pattern:
     maestro session docs list - List session docs
     maestro project {list|get|create|delete|set-master|unset-master} - Project management
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
-    maestro team-member {create|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -1111,9 +1164,11 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro worker Commands
@@ -1133,8 +1188,13 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -1223,9 +1283,11 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro worker Commands
@@ -1245,8 +1307,13 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -1337,9 +1404,11 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro worker Commands
@@ -1359,8 +1428,13 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"
@@ -1451,9 +1525,11 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     <capability name="canManageSessionDocs" enabled="true" />
     <capability name="canManageTaskDocs" enabled="true" />
     <capability name="canManageTasks" enabled="true" />
+    <capability name="canManageTeamMembers" enabled="true" />
     <capability name="canReportProgress" enabled="true" />
     <capability name="canUseMasterCommands" enabled="true" />
     <capability name="canUseModal" enabled="true" />
+    <capability name="canUseSpells" enabled="true" />
   </capability_summary>
   <commands_reference>
     ## Maestro worker Commands
@@ -1473,8 +1549,13 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro session docs add "<title>" --file <filePath> - Add doc to session
     maestro session docs list - List session docs
     maestro master {projects|tasks|sessions|context} - Cross-project workspace commands (master sessions only)
+    maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
+    maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
+    maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
+    maestro spell {entities|list|invoke|create|delete} - Spell management and invocation
     Run \`maestro commands\` for full syntax reference.
   </commands_reference>
 </maestro_system_prompt>"

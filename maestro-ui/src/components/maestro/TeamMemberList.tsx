@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { TeamMember, AgentTool } from "../../app/types/maestro";
+import { ShareToSpaceModal } from "../share/ShareToSpaceModal";
 
 type TeamMemberListProps = {
     teamMembers: TeamMember[];
@@ -60,6 +62,7 @@ function TeamMemberRow({
     setLoadingAction: (v: string | null) => void;
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const isLoading = (action: string) => loadingAction === `${action}:${member.id}`;
 
@@ -211,6 +214,20 @@ function TeamMemberRow({
 
                         {!isArchived && (
                             <button type="button"
+                                className="terminalShareBtn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowShareModal(true);
+                                }}
+                                title="Share this team member to a Collab Space"
+                            >
+                                <span className="terminalShareBtn__icon" aria-hidden="true">↗</span>
+                                <span className="terminalShareBtn__label">Share</span>
+                            </button>
+                        )}
+
+                        {!isArchived && (
+                            <button type="button"
                                 className="terminalArchiveBtn"
                                 onClick={handleArchive}
                                 disabled={!!loadingAction}
@@ -239,6 +256,29 @@ function TeamMemberRow({
                         )}
                     </div>
                 </div>
+            )}
+            {showShareModal && createPortal(
+                <ShareToSpaceModal
+                    payload={{
+                        kind: "team-member",
+                        entityLabel: member.name,
+                        data: {
+                            name: member.name,
+                            role: member.role,
+                            identity: member.identity,
+                            avatar: member.avatar ?? null,
+                            model: member.model ?? null,
+                            agentTool: member.agentTool ?? null,
+                            mode: member.mode ?? null,
+                            skillIds: member.skillIds ?? [],
+                            commandPermissions: member.commandPermissions ?? {},
+                            sourceTeamMemberId: member.id,
+                            sourceProjectId: member.projectId,
+                        },
+                    }}
+                    onClose={() => setShowShareModal(false)}
+                />,
+                document.body
             )}
         </div>
     );

@@ -367,6 +367,17 @@
   gap: 10px;
 }
 
+.spellPicker__formHeader {
+  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
 .spellPicker__formField {
   display: flex;
   flex-direction: column;
@@ -468,8 +479,9 @@
   cursor: not-allowed;
 }
 
-/* ─── Delete Button ─── */
+/* ─── Edit / Delete Buttons ─── */
 
+.spellPicker__entityEdit,
 .spellPicker__entityDelete {
   flex-shrink: 0;
   display: none;
@@ -478,14 +490,24 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--muted);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
+.spellPicker__entityDelete {
+  font-size: 14px;
+}
+
+.spellPicker__entityRow:hover .spellPicker__entityEdit,
 .spellPicker__entityRow:hover .spellPicker__entityDelete {
   display: flex;
+}
+
+.spellPicker__entityEdit:hover {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
 }
 
 .spellPicker__entityDelete:hover {
