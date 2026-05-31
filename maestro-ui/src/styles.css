@@ -1,3 +1,4 @@
+@import './styles-tokens.css';
 @import './styles-sessions.css';
 @import './styles-mentions.css';
 @import './styles-claude-skills.css';

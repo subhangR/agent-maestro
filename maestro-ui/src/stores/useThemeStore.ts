@@ -1,125 +1,56 @@
 import { create } from 'zustand';
-import {
-  StyleId,
-  DEFAULT_STYLE_ID,
-  STYLE_IDS,
-  STYLE_THEMES,
-  buildThemeId,
-  parseThemeId,
-  getColorVariant,
-} from '../app/constants/themes';
-import { STORAGE_THEME_KEY, STORAGE_STYLE_KEY } from '../app/constants/defaults';
+import { StyleId } from '../app/constants/themes';
+
+/**
+ * The swappable multi-theme system (Terminal / Material / Glass / Minimal × 6
+ * colors) has been retired in favor of one confident identity: the graphite
+ * "ink" canvas + a single amber "baton" accent, defined entirely in CSS
+ * (styles-tokens.css). This store is now a thin compatibility shim that locks
+ * the app to that single identity. It no longer writes per-variant color vars;
+ * the CSS aliases own the palette.
+ */
+
+const LOCKED_STYLE_ID: StyleId = 'maestro' as StyleId;
+const LOCKED_COLOR_KEY = 'baton';
 
 interface ThemeState {
   styleId: StyleId;
   colorKey: string;
+  /** No-ops — the identity is fixed. Kept for API compatibility. */
   setStyle: (id: StyleId) => void;
   setColor: (colorKey: string) => void;
   setStyleAndColor: (styleId: StyleId, colorKey: string) => void;
 }
 
-function readStyleFromStorage(): StyleId {
-  try {
-    const raw = localStorage.getItem(STORAGE_STYLE_KEY);
-    if (raw && STYLE_IDS.includes(raw as StyleId)) {
-      return raw as StyleId;
-    }
-    // Legacy migration: if old theme key exists, it's terminal style
-    const legacyTheme = localStorage.getItem('agents-ui-theme-v1');
-    if (legacyTheme) {
-      return 'terminal';
-    }
-  } catch {
-    // best-effort
-  }
-  return DEFAULT_STYLE_ID;
-}
-
-function readColorFromStorage(styleId: StyleId): string {
-  try {
-    const raw = localStorage.getItem(STORAGE_THEME_KEY);
-    if (raw) {
-      const parsed = parseThemeId(raw);
-      // If the style matches, use the saved color
-      if (parsed.styleId === styleId) {
-        const variant = getColorVariant(styleId, parsed.colorKey);
-        if (variant) return parsed.colorKey;
-      }
-      // Legacy: bare color key (e.g. "green") → terminal
-      if (styleId === 'terminal' && !raw.includes('-')) {
-        const variant = getColorVariant('terminal', raw);
-        if (variant) return raw;
-      }
-    }
-  } catch {
-    // best-effort
-  }
-  return STYLE_THEMES[styleId].defaultColorKey;
-}
-
-function applyToDom(styleId: StyleId, colorKey: string): void {
+function applyToDom(): void {
   const el = document.documentElement;
-  el.setAttribute('data-style', styleId);
-  // Set per-color theme vars as a composite key for CSS
-  el.setAttribute('data-theme', buildThemeId(styleId, colorKey));
-
-  // Also apply color CSS vars directly so existing var(--theme-primary) etc. still work
-  const variant = getColorVariant(styleId, colorKey);
-  if (variant) {
-    el.style.setProperty('--theme-primary', variant.colors.primary);
-    el.style.setProperty('--theme-primary-dim', variant.colors.primaryDim);
-    el.style.setProperty('--theme-primary-rgb', variant.colors.primaryRgb);
-    el.style.setProperty('--theme-border', variant.colors.border);
-    el.style.setProperty('--theme-text', variant.colors.text);
-    el.style.setProperty('--theme-text-dim', variant.colors.textDim);
+  // A neutral, fixed value. Legacy `html[data-style="material|glass|minimal"]`
+  // overrides never match, so the single graphite identity always renders.
+  el.setAttribute('data-style', LOCKED_STYLE_ID);
+  el.setAttribute('data-theme', LOCKED_STYLE_ID);
+  // Clear any inline color vars a previous build may have written, so the CSS
+  // token aliases (--theme-* → baton) win.
+  for (const v of [
+    '--theme-primary',
+    '--theme-primary-dim',
+    '--theme-primary-rgb',
+    '--theme-border',
+    '--theme-text',
+    '--theme-text-dim',
+  ]) {
+    el.style.removeProperty(v);
   }
 }
 
-function persistToStorage(styleId: StyleId, colorKey: string): void {
-  try {
-    localStorage.setItem(STORAGE_STYLE_KEY, styleId);
-    localStorage.setItem(STORAGE_THEME_KEY, buildThemeId(styleId, colorKey));
-  } catch {
-    // best-effort
-  }
-}
+export const useThemeStore = create<ThemeState>(() => ({
+  styleId: LOCKED_STYLE_ID,
+  colorKey: LOCKED_COLOR_KEY,
+  setStyle: applyToDom,
+  setColor: applyToDom,
+  setStyleAndColor: applyToDom,
+}));
 
-export const useThemeStore = create<ThemeState>((set, get) => {
-  const initStyle = readStyleFromStorage();
-  const initColor = readColorFromStorage(initStyle);
-
-  return {
-    styleId: initStyle,
-    colorKey: initColor,
-
-    setStyle: (styleId: StyleId) => {
-      // When switching styles, pick that style's default color
-      const colorKey = STYLE_THEMES[styleId].defaultColorKey;
-      set({ styleId, colorKey });
-      applyToDom(styleId, colorKey);
-      persistToStorage(styleId, colorKey);
-    },
-
-    setColor: (colorKey: string) => {
-      const { styleId } = get();
-      set({ colorKey });
-      applyToDom(styleId, colorKey);
-      persistToStorage(styleId, colorKey);
-    },
-
-    setStyleAndColor: (styleId: StyleId, colorKey: string) => {
-      set({ styleId, colorKey });
-      applyToDom(styleId, colorKey);
-      persistToStorage(styleId, colorKey);
-    },
-  };
-});
-
-/**
- * Initialize the theme on app startup.
- * Reads from localStorage and applies to the DOM.
- */
+/** Initialize the locked identity on app startup. */
 export function initTheme(): void {
-  const { styleId, colorKey } = useThemeStore.getState();
-  applyToDom(styleId, colorKey);
+  applyToDom();
 }

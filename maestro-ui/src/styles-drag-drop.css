@@ -87,7 +87,7 @@
   max-width: 320px;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
-  background: #000000;
+  background: var(--bg-app);
   border: 1px solid var(--theme-primary);
   border-radius: 4px;
   padding: 4px;

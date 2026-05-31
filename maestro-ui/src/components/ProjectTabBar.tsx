@@ -1,7 +1,6 @@
 import React, { useState, useRef, useLayoutEffect } from "react";
 import { Icon } from "./Icon";
 import { MaestroProject, ProjectSoundConfig } from "../app/types/maestro";
-import { ThemeSwitcher } from "./ThemeSwitcher";
 import { DisplaySettings } from "./DisplaySettings";
 import { SoundSettingsContent } from "./modals/SoundSettingsModal";
 import { ProjectSoundSettings } from "./modals/ProjectSoundSettings";
@@ -39,7 +38,7 @@ type SettingsDialogProps = {
   onCloseProject: () => void;
 };
 
-type SettingsTab = 'theme' | 'display' | 'sounds' | 'shortcuts';
+type SettingsTab = 'display' | 'sounds' | 'shortcuts';
 type ProjectSettingsTab = 'info' | 'sounds';
 
 type ShortcutRow = {
@@ -64,7 +63,7 @@ const SHORTCUT_ROWS: ShortcutRow[] = [
 ];
 
 function AppSettingsDialog({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('theme');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('display');
 
   return (
     <div className="projectSettingsBackdrop" onClick={onClose}>
@@ -76,13 +75,6 @@ function AppSettingsDialog({ onClose }: { onClose: () => void }) {
 
         <div className="appSettingsBody">
           <div className="appSettingsSidebar">
-            <button
-              type="button"
-              className={`appSettingsTabBtn ${activeTab === 'theme' ? 'appSettingsTabBtnActive' : ''}`}
-              onClick={() => setActiveTab('theme')}
-            >
-              THEME
-            </button>
             <button
               type="button"
               className={`appSettingsTabBtn ${activeTab === 'display' ? 'appSettingsTabBtnActive' : ''}`}
@@ -107,11 +99,6 @@ function AppSettingsDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           <div className="appSettingsTabContent">
-            {activeTab === 'theme' && (
-              <div className="appSettingsContent">
-                <ThemeSwitcher />
-              </div>
-            )}
             {activeTab === 'display' && (
               <div className="appSettingsContent">
                 <DisplaySettings />

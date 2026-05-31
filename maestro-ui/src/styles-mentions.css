@@ -120,7 +120,7 @@
 /* Inner suggestions list — the only styled box */
 .mentionsInput [class*="suggestions__list"],
 .mentionsWrapper [class*="suggestions__list"] {
-    background: #000000 !important;
+    background: var(--bg-app) !important;
     border: 1px solid var(--theme-primary, #00ff41) !important;
     box-shadow:
         0 0 15px rgba(var(--theme-primary-rgb, 0, 255, 65), 0.3),

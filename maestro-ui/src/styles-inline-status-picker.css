@@ -60,7 +60,7 @@
   top: 100%;
   left: 0;
   margin-top: 4px;
-  background: #000000;
+  background: var(--bg-app);
   border: 1px solid var(--theme-primary);
   border-radius: 4px;
   min-width: 140px;

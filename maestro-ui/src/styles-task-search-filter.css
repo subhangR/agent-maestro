@@ -585,7 +585,7 @@
 }
 
 .maestroModal.terminalModal .maestroModalContainer {
-  background: #000000;
+  background: var(--bg-app);
   border: 2px solid var(--terminal-green);
   box-shadow:
     0 0 40px rgba(var(--theme-primary-rgb), 0.4),
@@ -737,7 +737,7 @@
 
 /* Terminal-themed CreateTaskModal */
 .createTaskModal.terminalTheme {
-  background: #000000;
+  background: var(--bg-app);
   border: 2px solid var(--terminal-green);
   box-shadow:
     0 0 40px rgba(var(--theme-primary-rgb), 0.5),
@@ -1004,7 +1004,7 @@
 }
 
 .confirmDialog.terminalTheme {
-  background: #000000;
+  background: var(--bg-app);
   border: 2px solid var(--terminal-amber);
   box-shadow: 0 0 30px rgba(255, 191, 0, 0.3);
 }

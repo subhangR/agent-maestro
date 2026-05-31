@@ -1,0 +1,199 @@
+/* ==========================================================================
+   MAESTRO — DESIGN TOKENS (single source of truth)
+   Ported from maestro-design-system/colors_and_type.css.
+   Dark-first dev tool · graphite ink canvas · amber "baton" signature.
+
+   This file replaces the legacy swappable multi-theme system. The bulk of
+   the app references legacy vars (--theme-*, --style-*, --bg, --panel, etc.);
+   those are aliased onto the new tokens below so the whole UI inherits the
+   new look without rewriting 28k lines of CSS. Imported FIRST in styles.css.
+   (Fonts are declared in styles.css — @font-face is intentionally omitted.)
+   ========================================================================== */
+
+:root {
+  /* 1 · NEUTRALS — graphite ink canvas */
+  --ink-900: #0a0c10;
+  --ink-850: #0e1117;
+  --ink-800: #131720;
+  --ink-750: #181d28;
+  --ink-700: #1e2430;
+  --ink-600: #2a3140;
+  --ink-500: #3a4354;
+  --ink-400: #586073;
+  --ink-300: #8b93a6;
+  --ink-200: #b9c0cf;
+  --ink-100: #e4e8f0;
+  --ink-050: #f5f7fb;
+
+  /* 2 · BRAND "BATON" — signature amber */
+  --baton-500: #f5a524;
+  --baton-400: #ffb845;
+  --baton-600: #d4881a;
+  --baton-300: #ffcd7a;
+  --baton-glow: rgba(245, 165, 36, 0.22);
+  --baton-tint: rgba(245, 165, 36, 0.10);
+  --baton-rgb: 245, 165, 36;
+
+  /* 3 · FUNCTIONAL / STATUS */
+  --signal-run:      #34d399;
+  --signal-run-dim:  rgba(52, 211, 153, 0.14);
+  --signal-wait:     #f5a524;
+  --signal-wait-dim: rgba(245, 165, 36, 0.14);
+  --signal-block:    #fb7185;
+  --signal-block-dim:rgba(251, 113, 133, 0.14);
+  --signal-info:     #60a5fa;
+  --signal-info-dim: rgba(96, 165, 250, 0.14);
+  --signal-idle:     #586073;
+  --signal-idle-dim: rgba(88, 96, 115, 0.18);
+
+  /* 4 · AGENT / TEAM CATEGORICAL PALETTE (8 hues) */
+  --agent-amber:  #f5a524;
+  --agent-teal:   #2dd4bf;
+  --agent-violet: #a78bfa;
+  --agent-rose:   #fb7185;
+  --agent-sky:    #56b6ff;
+  --agent-lime:   #a3e635;
+  --agent-coral:  #ff8a5c;
+  --agent-pink:   #f472b6;
+
+  /* 5 · SEMANTIC TOKENS */
+  --bg-app:     var(--ink-900);
+  --bg-surface: var(--ink-850);
+  --bg-raised:  var(--ink-800);
+  --bg-hover:   var(--ink-750);
+  --bg-active:  var(--ink-700);
+  --bg-overlay: rgba(6, 8, 11, 0.72);
+
+  --fg-1:        var(--ink-100);
+  --fg-2:        var(--ink-200);
+  --fg-3:        var(--ink-300);
+  --fg-4:        var(--ink-400);
+  --fg-disabled: var(--ink-500);
+
+  --border-1:     var(--ink-600);
+  --border-2:     var(--ink-500);
+  --border-focus: var(--baton-500);
+
+  --accent:       var(--baton-500);
+  --accent-hover: var(--baton-400);
+  --accent-press: var(--baton-600);
+  --on-accent:    #1a1206;
+
+  /* 6 · TYPE */
+  --font-ui:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, 'Menlo', monospace;
+
+  --fs-display: 40px;
+  --fs-h1: 28px;
+  --fs-h2: 22px;
+  --fs-h3: 18px;
+  --fs-title: 15px;
+  --fs-body: 14px;
+  --fs-sm: 13px;
+  --fs-label: 12px;
+  --fs-micro: 11px;
+  --fs-mono: 13px;
+
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-body: 1.55;
+
+  --tracking-mega: 0.14em;
+  --tracking-label: 0.06em;
+  --tracking-tight: -0.01em;
+
+  /* 7 · SPACING (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* 8 · RADII (tight, technical) */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* 9 · ELEVATION */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --shadow-pop: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --inner-top: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --glow-baton: 0 0 0 3px var(--baton-glow);
+  --glow-run: 0 0 8px rgba(52, 211, 153, 0.45);
+
+  /* 10 · MOTION */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 280ms;
+}
+
+/* ==========================================================================
+   LEGACY ALIASES — old variable names now resolve to the new tokens.
+   This is the lever that flips the entire app to graphite + baton in one go.
+   Defined here (imported first) and intentionally NOT overridden by the
+   per-style/per-theme blocks that previously lived in styles-variables.css.
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* base surface + text */
+  --bg:            var(--bg-app);
+  --panel:         var(--bg-surface);
+  --panel-2:       var(--bg-raised);
+  --border:        var(--border-1);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --text:          var(--fg-1);
+  --muted:         var(--fg-3);
+
+  /* legacy accents → baton + signal palette */
+  --accent:            var(--baton-500);
+  --accent-2:          var(--signal-info);
+  --accent-3:          var(--agent-violet);
+  --accent-persistent: var(--agent-pink);
+
+  --radius-control: var(--radius-sm);
+  --app-zoom-scale: 1.0;
+
+  /* THE BIG ONE: the whole app's themeable accent now resolves to baton */
+  --theme-primary:     var(--baton-500);
+  --theme-primary-dim: var(--baton-600);
+  --theme-primary-rgb: var(--baton-rgb);
+  --theme-border:      var(--border-1);
+  --theme-text:        var(--fg-1);
+  --theme-text-dim:    var(--fg-3);
+
+  /* ---- single style-personality block (was 4 swappable blocks) ---- */
+  --style-font-ui:        var(--font-ui);
+  --style-font-code:      var(--font-mono);
+  --style-radius-sm:      var(--radius-xs);
+  --style-radius-md:      var(--radius-sm);
+  --style-radius-lg:      var(--radius-md);
+  --style-radius-xl:      var(--radius-lg);
+  --style-shadow-glow:    none;
+  --style-shadow-hover:   var(--shadow-sm);
+  --style-shadow-card:    none;
+  --style-shadow-modal:   var(--shadow-lg);
+  --style-border-accent:  1px solid var(--border-1);
+  --style-surface-1:      var(--bg-app);
+  --style-surface-2:      var(--bg-surface);
+  --style-surface-3:      var(--bg-raised);
+  --style-surface-hover:  var(--bg-hover);
+  --style-surface-active: var(--bg-active);
+  --style-letter-spacing: 0;
+  --style-text-transform: none;
+  --style-transition:     var(--dur-fast) var(--ease-out);
+  --style-backdrop:       none;
+  --style-input-bg:       var(--ink-900);
+}

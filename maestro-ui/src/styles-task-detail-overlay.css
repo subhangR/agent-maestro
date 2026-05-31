@@ -160,7 +160,7 @@
   bottom: 0 !important;
   max-height: none !important;
   overflow-y: auto;
-  background: #000000;
+  background: var(--bg-app);
   border-top: none !important;
   z-index: 5;
 }

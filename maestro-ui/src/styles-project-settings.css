@@ -20,7 +20,7 @@
   right: 0;
   margin-top: 4px;
   min-width: 200px;
-  background: #000000;
+  background: var(--bg-app);
   border: 1px solid var(--theme-border);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 10000;
@@ -126,7 +126,7 @@
 }
 
 .projectSettingsDialog {
-  background: #000000;
+  background: var(--bg-app);
   border: 2px solid var(--theme-primary);
   min-width: 360px;
   max-width: 500px;

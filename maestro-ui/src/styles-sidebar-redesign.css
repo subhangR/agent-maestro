@@ -12,8 +12,8 @@
   --terminal-blue: #6b8afd;
   --terminal-red: #ff3b3b;
   --terminal-gray: #888888;
-  --terminal-bg: #000000;
-  --terminal-bg-alt: #0a0a0a;
+  --terminal-bg: var(--bg-surface);
+  --terminal-bg-alt: var(--bg-raised);
   --terminal-border: var(--theme-border);
   --terminal-text: var(--theme-text);
   --terminal-text-dim: var(--theme-text-dim);
@@ -32,51 +32,9 @@
   border-right: 1px solid var(--terminal-border) !important;
   font-family: var(--style-font-ui);
   position: relative;
-  overflow: hidden; /* For scanlines */
 }
 
-/* Scanline Overlay for Sidebar */
-.sidebar::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.15) 0px,
-      rgba(0, 0, 0, 0.15) 1px,
-      transparent 1px,
-      transparent 2px
-  );
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.2;
-}
-
-/* CRT Glow for Sidebar */
-.sidebar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(
-      ellipse at top left,
-      rgba(var(--theme-primary-rgb), 0.05) 0%,
-      transparent 60%
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* Ensure content is above effects */
-.sidebar > * {
-  position: relative;
-  z-index: 3;
-}
+/* Scanline + CRT glow overlays retired with the graphite redesign. */
 
 .sidebarHeader {
   border-bottom: 1px solid var(--terminal-border) !important;
@@ -85,12 +43,11 @@
 }
 
 .sidebarHeader .title {
-  font-family: var(--style-font-ui);
-  color: var(--terminal-green) !important;
+  font-family: var(--font-mono);
+  color: var(--fg-3) !important;
   text-transform: uppercase;
   font-size: 11px;
-  letter-spacing: 0.1em;
-  text-shadow: 0 0 4px rgba(var(--theme-primary-rgb), 0.4);
+  letter-spacing: 0.12em;
 }
 
 /* Sidebar Buttons */

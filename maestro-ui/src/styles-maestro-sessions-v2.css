@@ -81,7 +81,7 @@
 .workOnModal {
   width: 90%;
   max-width: 480px;
-  background: #000000;
+  background: var(--bg-app);
   border: 2px solid var(--terminal-green);
   border-radius: 12px;
   box-shadow:

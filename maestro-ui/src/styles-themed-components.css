@@ -13,7 +13,7 @@
 }
 
 .themedModal {
-  background: #000000;
+  background: var(--bg-app);
   border: 2px solid var(--theme-primary);
   min-width: 360px;
   max-width: 500px;
@@ -100,7 +100,7 @@
 
 .themedFormSelect {
   border: 1px solid var(--theme-border);
-  background: #000000;
+  background: var(--bg-app);
   color: var(--theme-primary);
   padding: 8px 10px;
   font-family: var(--style-font-ui);
@@ -280,7 +280,7 @@
 
 .themedDropdownMenu {
   position: fixed;
-  background: #000000;
+  background: var(--bg-app);
   border: 1px solid var(--theme-primary);
   box-shadow: 0 0 20px rgba(var(--theme-primary-rgb), 0.3);
   min-width: 160px;
