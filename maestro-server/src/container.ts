@@ -206,6 +206,7 @@ export async function createContainer(): Promise<Container> {
     logger,
     eventBus,
     sessionService,
+    teamMemberRepo,
     voiceState,
     alexaRootTeamMemberId: config.voice.alexaRootTeamMemberId,
     serverUrl: config.serverUrl,

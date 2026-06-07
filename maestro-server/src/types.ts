@@ -158,7 +158,7 @@ export type TeamMemberStatus = 'active' | 'archived';
 export type TeamMemberScope = 'project' | 'global';
 
 // Discriminator for auto-seeded, non-deletable system team members.
-export type SystemTeamMemberKind = 'alexa-coordinator';
+export type SystemTeamMemberKind = 'alexa-coordinator' | 'alexa-debugger';
 
 export interface TeamMember {
   id: string;                          // "tm_<timestamp>_<random>" or deterministic for defaults

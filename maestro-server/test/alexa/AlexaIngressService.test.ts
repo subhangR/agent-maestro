@@ -1,9 +1,10 @@
 import { AlexaIngressService } from '../../src/application/services/AlexaIngressService';
 import { VoiceState } from '../../src/infrastructure/bootstrap/MasterProjectBootstrap';
+import { TeamMember } from '../../src/types';
 import { TestDataDir, createTestContainer, createTestProject, createTestTask, silentLogger } from '../helpers';
 
 const ALEXA_ID = 'tm_system_alexa_coordinator';
-const DEBUGGER_ID = 'tm_1780851408987_447ud5t51';
+const DEBUGGER_ID = 'tm_system_alexa_debugger';
 
 describe('AlexaIngressService', () => {
   let testDataDir: TestDataDir;
@@ -18,6 +19,23 @@ describe('AlexaIngressService', () => {
     masterProjectId = project.id;
     const task = await container.taskService.createTask(createTestTask(masterProjectId, { title: 'Voice Directives' }));
     taskId = task.id;
+
+    // Seed a debugger team member (systemKind-based lookup is the source of truth).
+    const now = new Date().toISOString();
+    await container.teamMemberRepo.create({
+      id: DEBUGGER_ID,
+      projectId: masterProjectId,
+      systemKind: 'alexa-debugger',
+      name: 'Alexa Debugger',
+      role: 'Live voice loopback',
+      avatar: '🎙️',
+      mode: 'worker',
+      isDefault: false,
+      status: 'active',
+      memory: [],
+      createdAt: now,
+      updatedAt: now,
+    } as TeamMember);
   });
 
   afterEach(async () => {
@@ -29,11 +47,11 @@ describe('AlexaIngressService', () => {
       logger: silentLogger,
       eventBus: container.eventBus,
       sessionService: container.sessionService,
+      teamMemberRepo: container.teamMemberRepo,
       voiceState,
       alexaRootTeamMemberId: ALEXA_ID,
       serverUrl: 'http://localhost:4568',
       spawnFn,
-      debuggerTeamMemberId: DEBUGGER_ID,
     });
     return { service, spawnFn };
   }

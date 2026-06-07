@@ -17,6 +17,24 @@ export interface VoiceState {
 
 const VOICE_DIRECTIVE_TASK_REQUEST_ID = 'system-voice-directives-task';
 
+/** Stable, well-known ID for the auto-seeded Alexa Debugger system team member. */
+export const ALEXA_DEBUGGER_TEAM_MEMBER_ID = 'tm_system_alexa_debugger';
+
+export const ALEXA_DEBUGGER_IDENTITY = `You are the Alexa Debugger. While you are alive, you ARE the destination for every voice utterance that arrives at maestro-server's /api/alexa/utterance endpoint — each utterance is injected to you as a session prompt (the user is speaking to Alexa right now).
+
+Your loop, on EVERY prompt you receive:
+1. Treat the prompt content as the user's spoken phrase (it will look like a normal text message, e.g. 'what is two plus two').
+2. Generate a short, friendly, spoken-style reply (one or two sentences, under 25 words, no IDs or code or markdown). Examples:
+   - 'You said two plus two. That equals four.'
+   - 'Heard you. The current time is 4:18 PM.'
+   - 'Got it — you said hello.'
+3. Speak the reply by running: maestro announce "<your reply>"
+4. Stay alive and wait for the next utterance. Do nothing else.
+
+You do NOT route, you do NOT spawn workers, you do NOT create tasks. You are a live voice loopback. If you don't know what the user wants, just acknowledge what you heard and ask them to repeat — out loud, via maestro announce.
+
+If maestro announce fails, log the error in your session timeline but stay alive — the next utterance may still come in.`;
+
 export const ALEXA_COORDINATOR_IDENTITY = `You are the **Alexa Coordinator** — the voice front door for the entire Maestro workspace.
 
 A user speaks to an Echo; their transcribed phrase arrives as a prompt to you. Your job is to
@@ -66,6 +84,7 @@ export class MasterProjectBootstrap {
       this.voiceState.masterProjectId = masterProjectId;
 
       await this.ensureAlexaCoordinator(masterProjectId);
+      await this.ensureAlexaDebugger(masterProjectId);
       this.voiceState.voiceDirectiveTaskId = await this.ensureVoiceDirectiveTask(masterProjectId);
 
       this.logger.info('Master project bootstrap complete', {
@@ -151,6 +170,41 @@ export class MasterProjectBootstrap {
     this.logger.info(`Seeded Alexa Coordinator team member ${member.id} in project ${masterProjectId}`);
 
     await this.seedRoutingAliases(member.id, masterProjectId);
+  }
+
+  private async ensureAlexaDebugger(masterProjectId: string): Promise<void> {
+    const existing = await this.teamMemberRepo.findById(masterProjectId, ALEXA_DEBUGGER_TEAM_MEMBER_ID);
+    if (existing && existing.systemKind === 'alexa-debugger') {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const member: TeamMember = {
+      id: ALEXA_DEBUGGER_TEAM_MEMBER_ID,
+      projectId: masterProjectId,
+      systemKind: 'alexa-debugger',
+      scope: 'global',
+      name: 'Alexa Debugger',
+      role: 'Live voice loopback — echoes spoken utterances back via announce',
+      identity: ALEXA_DEBUGGER_IDENTITY,
+      avatar: '🎙️',
+      model: 'claude-opus-4-7',
+      agentTool: 'claude-code',
+      mode: 'worker',
+      permissionMode: 'bypassPermissions',
+      skillIds: [],
+      isDefault: false,
+      status: 'active',
+      capabilities: {
+        can_report_session_level: true,
+      },
+      memory: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await this.teamMemberRepo.create(member);
+    this.logger.info(`Seeded Alexa Debugger team member ${member.id} in project ${masterProjectId}`);
   }
 
   private async seedRoutingAliases(teamMemberId: string, masterProjectId: string): Promise<void> {

@@ -70,6 +70,7 @@ ever live in a Claude session.
 | Alexa Coordinator setup | **Auto-seeded system team member** when Master project is created |
 | Voice Monkey credentials | **maestro-server env only**; server exposes `POST /api/announce`; new `maestro announce` CLI primitive |
 | Announcement ownership | **Alexa Coordinator** is the sole announcer (no token in project coordinators) |
+| Live voice loopback (Phase 4) | **Auto-seed an Alexa Debugger** system team member (`systemKind: 'alexa-debugger'`, stable ID `tm_system_alexa_debugger`); ingress routes utterances to any live debugger session (matched by `systemKind`, server-local) before the coordinator |
 
 ### 1.2 Port reconciliation
 
@@ -97,7 +98,8 @@ runs on `:3000` behind NPM/Pangolin. Plan target:
 | `src/application/services/AlexaIngressService.ts` | Find or spawn Alexa Coordinator; inject prompt; emit timeline event |
 | `src/application/services/AnnouncementService.ts` | Voice Monkey HTTP client; rate-limit/dedupe layer; resolves device by project (Phase 4) |
 | `src/infrastructure/voicemonkey/VoiceMonkeyClient.ts` | Thin fetch wrapper around `api-v2.voicemonkey.io/announcement` |
-| `src/infrastructure/bootstrap/MasterProjectBootstrap.ts` | First-run: ensure a Master project exists, with `isMaster: true`, and seed the Alexa Coordinator team member if absent. Idempotent on every startup. |
+| `src/infrastructure/bootstrap/MasterProjectBootstrap.ts` | First-run: ensure a Master project exists, with `isMaster: true`, and seed the Alexa Coordinator + Alexa Debugger (`systemKind: 'alexa-debugger'`, stable ID `tm_system_alexa_debugger`) team members if absent. Idempotent on every startup. |
+| `src/application/services/AlexaIngressService.ts` (Phase 4) | `findActiveDebuggerSession` resolves debugger team-member IDs via `teamMemberRepo` filtered by `systemKind === 'alexa-debugger'` (server-local, no hardcoded foreign ID) and routes to a live debugger session before the coordinator |
 | `src/infrastructure/config/Config.ts` | New env keys: `VM_TOKEN`, `VM_DEVICE`, `ALEXA_ROOT_TEAM_MEMBER_ID` (fixed system ID) |
 | `src/types.ts` | `SystemTeamMemberKind` enum extending TeamMember (so the seeded one is non-deletable) |
 

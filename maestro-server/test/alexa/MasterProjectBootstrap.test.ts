@@ -1,4 +1,8 @@
-import { MasterProjectBootstrap, VoiceState } from '../../src/infrastructure/bootstrap/MasterProjectBootstrap';
+import {
+  MasterProjectBootstrap,
+  VoiceState,
+  ALEXA_DEBUGGER_TEAM_MEMBER_ID,
+} from '../../src/infrastructure/bootstrap/MasterProjectBootstrap';
 import { TestDataDir, createTestContainer, silentLogger } from '../helpers';
 
 const ALEXA_ID = 'tm_system_alexa_coordinator';
@@ -52,6 +56,28 @@ describe('MasterProjectBootstrap', () => {
     expect(member?.mode).toBe('coordinator');
 
     await expect(container.teamMemberRepo.delete(ALEXA_ID)).rejects.toMatchObject({ statusCode: 403 });
+  });
+
+  it('idempotently seeds a non-deletable Alexa Debugger with the stable ID', async () => {
+    await container.projectService.createProject({ name: 'Default', workingDir: '/tmp/x' });
+
+    const first: VoiceState = {};
+    await makeBootstrap(first).ensure();
+
+    const second: VoiceState = {};
+    await makeBootstrap(second).ensure();
+
+    const member = await container.teamMemberRepo.findById(first.masterProjectId!, ALEXA_DEBUGGER_TEAM_MEMBER_ID);
+    expect(member).toBeTruthy();
+    expect(member?.id).toBe(ALEXA_DEBUGGER_TEAM_MEMBER_ID);
+    expect(member?.systemKind).toBe('alexa-debugger');
+    expect(member?.mode).toBe('worker');
+
+    const debuggers = (await container.teamMemberRepo.findByProjectId(first.masterProjectId!))
+      .filter(m => m.systemKind === 'alexa-debugger');
+    expect(debuggers).toHaveLength(1);
+
+    await expect(container.teamMemberRepo.delete(ALEXA_DEBUGGER_TEAM_MEMBER_ID)).rejects.toMatchObject({ statusCode: 403 });
   });
 
   it('creates a Voice Directives task in Master', async () => {

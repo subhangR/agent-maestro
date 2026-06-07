@@ -1,18 +1,12 @@
 import { AppError } from '../../domain/common/Errors';
 import { ILogger } from '../../domain/common/ILogger';
 import { IEventBus } from '../../domain/events/IEventBus';
+import { ITeamMemberRepository } from '../../domain/repositories/ITeamMemberRepository';
 import { VoiceState } from '../../infrastructure/bootstrap/MasterProjectBootstrap';
 import { SessionService } from './SessionService';
 
 const TERMINAL_STATUSES = new Set(['completed', 'failed', 'stopped']);
 const COORDINATOR_MODES = new Set(['coordinator', 'coordinated-coordinator', 'coordinate']);
-
-/**
- * Debug routing override: when a live session owned by this team member exists,
- * voice utterances are forwarded to it instead of the system Alexa Coordinator.
- * Data-driven — the mere presence of an active debugger session activates it.
- */
-const DEFAULT_DEBUGGER_TEAM_MEMBER_ID = 'tm_1780851408987_447ud5t51';
 
 export interface AlexaUtterance {
   query: string;
@@ -41,11 +35,11 @@ export interface AlexaIngressServiceDeps {
   logger: ILogger;
   eventBus: IEventBus;
   sessionService: SessionService;
+  teamMemberRepo: ITeamMemberRepository;
   voiceState: VoiceState;
   alexaRootTeamMemberId: string;
   serverUrl: string;
   spawnFn?: SpawnCoordinatorFn;
-  debuggerTeamMemberId?: string;
 }
 
 export class AlexaIngressNotReadyError extends AppError {
@@ -62,21 +56,21 @@ export class AlexaIngressService {
   private readonly logger: ILogger;
   private readonly eventBus: IEventBus;
   private readonly sessionService: SessionService;
+  private readonly teamMemberRepo: ITeamMemberRepository;
   private readonly voiceState: VoiceState;
   private readonly alexaRootTeamMemberId: string;
   private readonly serverUrl: string;
   private readonly spawnFn: SpawnCoordinatorFn;
-  private readonly debuggerTeamMemberId: string;
 
   constructor(deps: AlexaIngressServiceDeps) {
     this.logger = deps.logger;
     this.eventBus = deps.eventBus;
     this.sessionService = deps.sessionService;
+    this.teamMemberRepo = deps.teamMemberRepo;
     this.voiceState = deps.voiceState;
     this.alexaRootTeamMemberId = deps.alexaRootTeamMemberId;
     this.serverUrl = deps.serverUrl;
     this.spawnFn = deps.spawnFn || defaultHttpSpawn;
-    this.debuggerTeamMemberId = deps.debuggerTeamMemberId || DEFAULT_DEBUGGER_TEAM_MEMBER_ID;
   }
 
   async handleUtterance(utterance: AlexaUtterance): Promise<AlexaUtteranceResult> {
@@ -87,7 +81,7 @@ export class AlexaIngressService {
 
     // Debug routing override: if an active debugger session exists anywhere in
     // the workspace, forward the utterance to it instead of the system coordinator.
-    const debuggerSession = await this.findActiveDebuggerSession();
+    const debuggerSession = await this.findActiveDebuggerSession(masterProjectId);
     if (debuggerSession) {
       await this.injectPrompt(debuggerSession.id, utterance);
       this.logger.info(`utterance routed to ${debuggerSession.id} (debugger)`);
@@ -128,16 +122,23 @@ export class AlexaIngressService {
   }
 
   /**
-   * Finds the most-recently-active, non-terminal session owned by the debugger
-   * team member, searched across all projects. Returns null when none exists.
+   * Finds the most-recently-active, non-terminal session owned by any team member
+   * with systemKind 'alexa-debugger' (seeded into the Master project). Searched
+   * across all projects. Returns null when no debugger team member or session exists.
    */
-  private async findActiveDebuggerSession() {
+  private async findActiveDebuggerSession(masterProjectId: string) {
+    const members = await this.teamMemberRepo.findByProjectId(masterProjectId);
+    const debuggerIds = new Set(
+      members.filter(m => m.systemKind === 'alexa-debugger').map(m => m.id),
+    );
+    if (debuggerIds.size === 0) return null;
+
     const sessions = await this.sessionService.listSessions();
     const candidates = sessions.filter(s => {
       const meta = (s.metadata || {}) as Record<string, any>;
       const ownedByDebugger =
-        meta.teamMemberId === this.debuggerTeamMemberId ||
-        (Array.isArray(meta.teamMemberIds) && meta.teamMemberIds.includes(this.debuggerTeamMemberId));
+        debuggerIds.has(meta.teamMemberId) ||
+        (Array.isArray(meta.teamMemberIds) && meta.teamMemberIds.some((id: string) => debuggerIds.has(id)));
       if (!ownedByDebugger) return false;
       return !TERMINAL_STATUSES.has(String(s.status));
     });
