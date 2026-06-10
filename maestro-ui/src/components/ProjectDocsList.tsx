@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useProjectDocsPaginated } from '../hooks/useProjectDocsPaginated';
 import { useUIStore } from '../stores/useUIStore';
+import { useOpenDiagram } from '../hooks/useOpenDiagram';
+import { isDiagramDoc } from '../utils/docHelpers';
 
 interface ProjectDocsListProps {
   projectId: string;
@@ -18,6 +20,7 @@ function formatTimeAgo(timestamp: number): string {
 export const ProjectDocsList: React.FC<ProjectDocsListProps> = ({ projectId, kind }) => {
   const { items, loading, hasMore, loadMore, total } = useProjectDocsPaginated(projectId, kind);
   const setDocOverlay = useUIStore((s) => s.setDocOverlay);
+  const openDiagram = useOpenDiagram();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,7 +55,7 @@ export const ProjectDocsList: React.FC<ProjectDocsListProps> = ({ projectId, kin
             key={doc.id}
             type="button"
             className="projectDocsListItem"
-            onClick={() => setDocOverlay(doc)}
+            onClick={() => (isDiagramDoc(doc) ? openDiagram(doc, projectId) : setDocOverlay(doc))}
           >
             <span className="projectDocsListItem__icon" aria-hidden="true">
               {kind === 'diagram' ? '⬡' : 'M↓'}

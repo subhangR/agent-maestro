@@ -4,12 +4,11 @@ import { MaestroTask, TaskStatus, TaskPriority, MaestroSessionStatus, DocEntry, 
 import { formatLaunchConfigLabel, getAgentToolForLaunchConfig, pickTopMember } from "../../app/constants/agentTools";
 import { useTaskSessions } from "../../hooks/useTaskSessions";
 import { useMaestroStore } from "../../stores/useMaestroStore";
-import { useSpacesStore } from "../../stores/useSpacesStore";
 import { useUIStore } from "../../stores/useUIStore";
-import { useSessionStore } from "../../stores/useSessionStore";
 import { ConfirmActionModal } from "../modals/ConfirmActionModal";
 import { maestroClient } from "../../utils/MaestroClient";
 import { isDiagramDoc } from "../../utils/docHelpers";
+import { useOpenDiagram } from "../../hooks/useOpenDiagram";
 import { LaunchConfigDropdown } from "./LaunchConfigDropdown";
 import { Icon, Glyph, Avatar, Avatars } from "./redesign/kit";
 
@@ -195,9 +194,8 @@ export const TaskListItem = React.memo(function TaskListItem({
     const { sessions: taskSessions, loading: loadingSessions } = useTaskSessions(task.id);
     const tasks = useMaestroStore(s => s.tasks);
     const teamMembersMap = useMaestroStore(s => s.teamMembers);
-    const createWhiteboard = useSpacesStore(s => s.createWhiteboard);
-    const setActiveId = useSessionStore(s => s.setActiveId);
     const setDocOverlay = useUIStore(s => s.setDocOverlay);
+    const openDiagram = useOpenDiagram();
     const [isCreatingDiagram, setIsCreatingDiagram] = useState(false);
     const deleteTask = useMaestroStore(s => s.deleteTask);
     const updateTask = useMaestroStore(s => s.updateTask);
@@ -215,13 +213,13 @@ export const TaskListItem = React.memo(function TaskListItem({
             if (!sessionId) return;
             const doc = await maestroClient.addTaskDoc(task.id, sessionId, title, '{}', 'diagram');
             setTaskDocs(prev => [...prev, doc]);
-            setDocOverlay(doc);
+            openDiagram(doc, task.projectId);
         } catch {
             // best-effort
         } finally {
             setIsCreatingDiagram(false);
         }
-    }, [isCreatingDiagram, task.id, task.projectId, task.sessionIds, setDocOverlay]);
+    }, [isCreatingDiagram, task.id, task.projectId, task.sessionIds, openDiagram]);
 
     const teamMembers = useMemo(() => Object.values(teamMembersMap), [teamMembersMap]);
 
@@ -824,7 +822,7 @@ export const TaskListItem = React.memo(function TaskListItem({
                                     title={doc.filePath}
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setDocOverlay(doc);
+                                        openDiagram(doc, task.projectId);
                                     }}
                                 >
                                     <span className="pn-docpill__ic">⬡</span>

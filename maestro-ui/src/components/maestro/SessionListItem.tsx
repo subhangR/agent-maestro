@@ -16,6 +16,7 @@ import type { SessionSubTab } from "../../utils/sessionLifecycle";
 import { willOpenStatsOnClick } from "../../utils/sessionClickRouting";
 import { copyToClipboard } from "../../utils/domUtils";
 import { isDiagramDoc } from "../../utils/docHelpers";
+import { useOpenDiagram } from "../../hooks/useOpenDiagram";
 import { Icon, Glyph, AgentTile, type AgentKind } from "./redesign/kit";
 
 const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
@@ -112,6 +113,7 @@ export const SessionListItem = React.memo(function SessionListItem({
 
   const updateSessionMode = useMaestroStore((s) => s.updateSessionMode);
   const setDocOverlay = useUIStore((s) => s.setDocOverlay);
+  const openDiagram = useOpenDiagram();
   const showTaskDetails = useUIStore((s) => s.sessionShowTaskDetails);
 
   const status = session.status;
@@ -548,7 +550,11 @@ export const SessionListItem = React.memo(function SessionListItem({
                       title={doc.filePath}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setDocOverlay(doc);
+                        if (isDiagram) {
+                          openDiagram(doc, session.projectId);
+                        } else {
+                          setDocOverlay(doc);
+                        }
                       }}
                     >
                       <span className="pn-docpill__ic">{isDiagram ? "⬡" : isMarkdown ? "M↓" : "{}"}</span>
