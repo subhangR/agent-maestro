@@ -632,40 +632,43 @@ export function ProjectTabBar({
               </div>
             );
           })}
-          <div className="projectAddMenuWrapper" ref={addMenuRef}>
-            <button
-              type="button"
-              className="pn-ib"
-              style={{ width: 26, height: 26 }}
-              onClick={() => setAddMenuOpen((v) => !v)}
-              title="Add project"
-            >
-              <PnIcon name="plus" size={14} />
-            </button>
-            {addMenuOpen && (
-              <div className="projectAddMenu">
-                <button
-                  type="button"
-                  className="projectAddMenuItem"
-                  onClick={() => {
-                    setAddMenuOpen(false);
-                    onNewProject();
-                  }}
-                >
-                  <PnIcon name="plus" size={12} />
-                  NEW PROJECT
-                </button>
-                <button
-                  type="button"
-                  className="projectAddMenuItem"
-                  onClick={() => void handleOpenSavedProjects()}
-                >
-                  <PnIcon name="folder" size={12} />
-                  OPEN SAVED PROJECT
-                </button>
-              </div>
-            )}
-          </div>
+        </div>
+        {/* Add-project menu lives OUTSIDE the .projectTabs scroller: that
+            scroller sets overflow-x:auto, which forces overflow-y to auto too
+            and would clip this dropdown (rendering it unclickable). */}
+        <div className="projectAddMenuWrapper" ref={addMenuRef}>
+          <button
+            type="button"
+            className="pn-ib"
+            style={{ width: 26, height: 26 }}
+            onClick={() => setAddMenuOpen((v) => !v)}
+            title="Add project"
+          >
+            <PnIcon name="plus" size={14} />
+          </button>
+          {addMenuOpen && (
+            <div className="projectAddMenu">
+              <button
+                type="button"
+                className="projectAddMenuItem"
+                onClick={() => {
+                  setAddMenuOpen(false);
+                  onNewProject();
+                }}
+              >
+                <PnIcon name="plus" size={12} />
+                NEW PROJECT
+              </button>
+              <button
+                type="button"
+                className="projectAddMenuItem"
+                onClick={() => void handleOpenSavedProjects()}
+              >
+                <PnIcon name="folder" size={12} />
+                OPEN SAVED PROJECT
+              </button>
+            </div>
+          )}
         </div>
         <div className="pn-top-r">
           {onOpenMultiProjectBoard && (
