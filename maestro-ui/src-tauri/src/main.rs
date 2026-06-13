@@ -19,7 +19,7 @@ use assets::{apply_text_assets, save_session_asset};
 use app_menu::{build_app_menu, handle_app_menu_event};
 use claude_logs::{list_claude_session_logs, read_claude_session_log, tail_claude_session_log};
 use codex_logs::{list_codex_session_logs, read_codex_session_log, tail_codex_session_log};
-use files::{copy_fs_entry, delete_fs_entry, list_fs_entries, list_project_files, read_text_file, rename_fs_entry, write_text_file};
+use files::{copy_fs_entry, delete_fs_entry, list_fs_entries, list_project_files, read_dropped_image_file, read_text_file, rename_fs_entry, write_text_file};
 use file_manager::open_path_in_file_manager;
 use pty::{
     close_session, create_session, detach_session, kill_persistent_session, list_persistent_sessions,
@@ -192,6 +192,7 @@ fn main() {
             list_directories,
             list_fs_entries,
             list_project_files,
+            read_dropped_image_file,
             read_text_file,
             write_text_file,
             rename_fs_entry,
