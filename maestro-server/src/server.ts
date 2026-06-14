@@ -125,6 +125,7 @@ async function startServer() {
     huddleService,
     commandUsageService,
     logDigestService,
+    teamService,
     projectRepo,
     taskRepo,
     teamMemberRepo,

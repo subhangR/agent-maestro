@@ -765,6 +765,8 @@ export interface SpawnSessionPayload {
   permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
   delegatePermissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
   useWorktree?: boolean;
+  cols?: number;                       // Web: browser's measured terminal size so the
+  rows?: number;                       // server PTY boots at the real pane width, not 80x24
 }
 
 /** Input shape for the UI-level session creation callback used by hooks/components. */

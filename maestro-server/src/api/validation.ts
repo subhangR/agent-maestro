@@ -406,6 +406,10 @@ export const modeBodySchema = z.object({
 
 const allStrategySchema = z.enum(['simple', 'tree', 'default', 'intelligent-batching', 'dag']);
 
+// Terminal dimension reported by the browser; clamped so a malformed/hostile
+// client can't drive the PTY winsize to an absurd value.
+export const ptyDimensionSchema = z.number().int().min(1).max(1000);
+
 export const spawnSessionSchema = z.object({
   projectId: safeId.optional(),
   taskIds: z.array(safeId).min(1),
@@ -435,6 +439,13 @@ export const spawnSessionSchema = z.object({
   permissionMode: permissionModeSchema.optional(),
   delegatePermissionMode: permissionModeSchema.optional(),
   useWorktree: z.boolean().optional(),
+  // Web mode: the browser's measured terminal size, so the server-hosted PTY
+  // boots at the real pane width instead of the 80x24 default. Spawning at the
+  // wrong width makes the agent (Ink TUI) author its first frames at 80 cols,
+  // which then desync against the wider xterm grid (overlapping glyphs) until a
+  // manual resize. Optional: legacy/desktop callers omit it and fall back to 80x24.
+  cols: ptyDimensionSchema.optional(),
+  rows: ptyDimensionSchema.optional(),
 }).strict();
 
 // --- Template schemas ---

@@ -1499,3 +1499,122 @@ html[data-redesign] .mermaidDiagramFallback {
     flex-shrink: 0;
   }
 }
+
+/* ─── Session docs bar — tabs pinned to the top of the terminal pane ─── */
+
+.sessionDocsBar {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  /* leave room for the ModeChip pinned top-right */
+  right: 120px;
+  z-index: 29;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  pointer-events: none;
+}
+
+.sessionDocsBar::-webkit-scrollbar {
+  display: none;
+}
+
+.sessionDocsTab {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  max-width: 180px;
+  padding: 2px 9px;
+  border-radius: 9px;
+  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--muted, rgba(255, 255, 255, 0.55));
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease;
+}
+
+.sessionDocsTab:hover {
+  color: var(--terminal-green, #4ec9b0);
+  background: rgba(var(--theme-primary-rgb), 0.12);
+  border-color: rgba(var(--theme-primary-rgb), 0.35);
+}
+
+.sessionDocsTab--active {
+  color: var(--terminal-green, #4ec9b0);
+  background: rgba(var(--theme-primary-rgb), 0.16);
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}
+
+.sessionDocsTabIcon {
+  flex-shrink: 0;
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.sessionDocsTabLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Overlay — the opened doc, covering the terminal area (terminal stays mounted) */
+.sessionDocsOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  background: rgba(0, 0, 0, 0.82);
+  animation: docViewerFadeIn 0.15s ease;
+}
+
+.sessionDocsOverlay .docViewerInline,
+.sessionDocsOverlay > .docViewerInline {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+}
+
+.sessionDocsOverlay .docViewerPanel {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+}
+
+.sessionDocsOverlayClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 41;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted, rgba(255, 255, 255, 0.6));
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.sessionDocsOverlayClose:hover {
+  color: var(--terminal-green, #4ec9b0);
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}

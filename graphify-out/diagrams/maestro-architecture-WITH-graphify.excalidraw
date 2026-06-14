@@ -1,0 +1,122 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "maestro-architecture-with-graphify",
+  "elements": [
+    {"type":"text","id":"title","x":420,"y":12,"width":360,"height":36,"text":"Maestro Architecture","fontSize":30,"textAlign":"center","fontFamily":1},
+    {"type":"text","id":"subtitle","x":260,"y":52,"width":680,"height":24,"text":"Clients  -->  REST + WebSocket  -->  Application Services  -->  Domain  -->  Infrastructure  -->  JSON Storage","fontSize":16,"textAlign":"center","fontFamily":1,"strokeColor":"#555555"},
+
+    {"type":"rectangle","id":"zone-clients","x":20,"y":90,"width":1160,"height":170,"backgroundColor":"#dbe4ff","fillStyle":"solid","strokeColor":"#4a9eed","strokeWidth":1,"opacity":35,"roundness":{"type":3}},
+    {"type":"text","id":"zlbl-clients","x":36,"y":98,"width":200,"height":22,"text":"CLIENTS","fontSize":16,"fontFamily":1,"strokeColor":"#1e3a8a"},
+
+    {"type":"rectangle","id":"c-ui","x":40,"y":130,"width":260,"height":120,"backgroundColor":"#a5d8ff","fillStyle":"solid","strokeColor":"#1971c2","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-ui"}]},
+    {"type":"text","id":"t-ui","x":40,"y":130,"width":260,"height":120,"text":"maestro-ui\n(Tauri Desktop)\n\nReact 18 + Zustand (23 stores)\nxterm.js + Monaco editor","fontSize":16,"textAlign":"center","verticalAlign":"middle","containerId":"c-ui","fontFamily":1},
+
+    {"type":"rectangle","id":"c-web","x":320,"y":130,"width":260,"height":120,"backgroundColor":"#a5d8ff","fillStyle":"solid","strokeColor":"#1971c2","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-web"}]},
+    {"type":"text","id":"t-web","x":320,"y":130,"width":260,"height":120,"text":"maestro-web\n(Browser POC)\n\nVite + xterm.js\nWebSocket PTY streaming","fontSize":16,"textAlign":"center","verticalAlign":"middle","containerId":"c-web","fontFamily":1},
+
+    {"type":"rectangle","id":"c-cli","x":600,"y":130,"width":260,"height":120,"backgroundColor":"#a5d8ff","fillStyle":"solid","strokeColor":"#1971c2","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-cli"}]},
+    {"type":"text","id":"t-cli","x":600,"y":130,"width":260,"height":120,"text":"maestro-cli\n(in-session agent tool)\n\nCommander.js\nworker-init / coordinator","fontSize":16,"textAlign":"center","verticalAlign":"middle","containerId":"c-cli","fontFamily":1},
+
+    {"type":"rectangle","id":"c-claude","x":880,"y":130,"width":280,"height":120,"backgroundColor":"#d0bfff","fillStyle":"solid","strokeColor":"#8b5cf6","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-claude"}]},
+    {"type":"text","id":"t-claude","x":880,"y":130,"width":280,"height":120,"text":"Spawned Claude Agent\n(terminal subprocess)\n\nReads MaestroManifest\nRuns maestro CLI commands","fontSize":16,"textAlign":"center","verticalAlign":"middle","containerId":"c-claude","fontFamily":1},
+
+    {"type":"rectangle","id":"zone-api","x":20,"y":280,"width":1160,"height":140,"backgroundColor":"#e5dbff","fillStyle":"solid","strokeColor":"#8b5cf6","strokeWidth":1,"opacity":35,"roundness":{"type":3}},
+    {"type":"text","id":"zlbl-api","x":36,"y":288,"width":300,"height":22,"text":"API LAYER (maestro-server / Express)","fontSize":16,"fontFamily":1,"strokeColor":"#5b21b6"},
+
+    {"type":"rectangle","id":"a-rest","x":40,"y":320,"width":480,"height":80,"backgroundColor":"#d0bfff","fillStyle":"solid","strokeColor":"#7c3aed","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-rest"}]},
+    {"type":"text","id":"t-rest","x":40,"y":320,"width":480,"height":80,"text":"Express REST routes (Zod-validated)\n/sessions  /tasks  /projects  /spells  /teams  /team-members\n/skills  /master  /git  /alexa  /workflows  /model-profiles","fontSize":15,"textAlign":"center","verticalAlign":"middle","containerId":"a-rest","fontFamily":1},
+
+    {"type":"rectangle","id":"a-ws","x":540,"y":320,"width":320,"height":80,"backgroundColor":"#d0bfff","fillStyle":"solid","strokeColor":"#7c3aed","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-ws"}]},
+    {"type":"text","id":"t-ws","x":540,"y":320,"width":320,"height":80,"text":"WebSocketBridge\n50ms batch, per-entity throttle\nclient subscription filtering","fontSize":15,"textAlign":"center","verticalAlign":"middle","containerId":"a-ws","fontFamily":1},
+
+    {"type":"rectangle","id":"a-pty","x":880,"y":320,"width":280,"height":80,"backgroundColor":"#d0bfff","fillStyle":"solid","strokeColor":"#7c3aed","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-pty"}]},
+    {"type":"text","id":"t-pty","x":880,"y":320,"width":280,"height":80,"text":"PTY WebSocket  /pty\n(server-hosted PTY stream\nfor maestro-web)","fontSize":15,"textAlign":"center","verticalAlign":"middle","containerId":"a-pty","fontFamily":1},
+
+    {"type":"rectangle","id":"zone-app","x":20,"y":440,"width":1160,"height":150,"backgroundColor":"#fff3bf","fillStyle":"solid","strokeColor":"#f59e0b","strokeWidth":1,"opacity":35,"roundness":{"type":3}},
+    {"type":"text","id":"zlbl-app","x":36,"y":448,"width":420,"height":22,"text":"APPLICATION SERVICES (business logic)","fontSize":16,"fontFamily":1,"strokeColor":"#92400e"},
+
+    {"type":"rectangle","id":"s-session","x":40,"y":480,"width":175,"height":95,"backgroundColor":"#ffd8a8","fillStyle":"solid","strokeColor":"#d97706","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-sses"}]},
+    {"type":"text","id":"t-sses","x":40,"y":480,"width":175,"height":95,"text":"SessionService\nspawn / lifecycle\nMaestroManifest","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"s-session","fontFamily":1},
+
+    {"type":"rectangle","id":"s-task","x":225,"y":480,"width":150,"height":95,"backgroundColor":"#ffd8a8","fillStyle":"solid","strokeColor":"#d97706","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-stask"}]},
+    {"type":"text","id":"t-stask","x":225,"y":480,"width":150,"height":95,"text":"TaskService\nTaskGraphService\nTaskListService","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"s-task","fontFamily":1},
+
+    {"type":"rectangle","id":"s-team","x":385,"y":480,"width":190,"height":95,"backgroundColor":"#ffd8a8","fillStyle":"solid","strokeColor":"#d97706","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-steam"}]},
+    {"type":"text","id":"t-steam","x":385,"y":480,"width":190,"height":95,"text":"TeamMemberService\nTeamService\nmodes & permissions","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"s-team","fontFamily":1},
+
+    {"type":"rectangle","id":"s-spell","x":585,"y":480,"width":150,"height":95,"backgroundColor":"#ffd8a8","fillStyle":"solid","strokeColor":"#d97706","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-sspell"}]},
+    {"type":"text","id":"t-sspell","x":585,"y":480,"width":150,"height":95,"text":"SpellService\ncontextual\nprompts","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"s-spell","fontFamily":1},
+
+    {"type":"rectangle","id":"s-pty","x":745,"y":480,"width":160,"height":95,"backgroundColor":"#ffd8a8","fillStyle":"solid","strokeColor":"#d97706","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-spty"}]},
+    {"type":"text","id":"t-spty","x":745,"y":480,"width":160,"height":95,"text":"PtyHostService\nnode-pty\n(headless mode)","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"s-pty","fontFamily":1},
+
+    {"type":"rectangle","id":"s-other","x":915,"y":480,"width":245,"height":95,"backgroundColor":"#ffd8a8","fillStyle":"solid","strokeColor":"#d97706","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-sother"}]},
+    {"type":"text","id":"t-sother","x":915,"y":480,"width":245,"height":95,"text":"ProjectService  ModelProfileService\nAlexaIngressService  GitService\nLogDigestService  AgentLogService","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"s-other","fontFamily":1},
+
+    {"type":"rectangle","id":"zone-domain","x":20,"y":610,"width":1160,"height":100,"backgroundColor":"#c3fae8","fillStyle":"solid","strokeColor":"#06b6d4","strokeWidth":1,"opacity":35,"roundness":{"type":3}},
+    {"type":"text","id":"zlbl-domain","x":36,"y":618,"width":420,"height":22,"text":"DOMAIN INTERFACES (DI seams, no impl)","fontSize":16,"fontFamily":1,"strokeColor":"#0e7490"},
+
+    {"type":"rectangle","id":"d-repos","x":40,"y":645,"width":520,"height":55,"backgroundColor":"#99e9f2","fillStyle":"solid","strokeColor":"#0891b2","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-drepos"}]},
+    {"type":"text","id":"t-drepos","x":40,"y":645,"width":520,"height":55,"text":"ITaskRepository  ISessionRepository  IProjectRepository  ITeamMemberRepository  ITeamRepository  ISpellRepository","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"d-repos","fontFamily":1},
+
+    {"type":"rectangle","id":"d-common","x":580,"y":645,"width":580,"height":55,"backgroundColor":"#99e9f2","fillStyle":"solid","strokeColor":"#0891b2","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-dcommon"}]},
+    {"type":"text","id":"t-dcommon","x":580,"y":645,"width":580,"height":55,"text":"IEventBus    ILogger    IIdGenerator    IClock    IFileSystem    domain events (DomainEvent)","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"d-common","fontFamily":1},
+
+    {"type":"rectangle","id":"zone-infra","x":20,"y":730,"width":1160,"height":130,"backgroundColor":"#eebefa","fillStyle":"solid","strokeColor":"#c026d3","strokeWidth":1,"opacity":30,"roundness":{"type":3}},
+    {"type":"text","id":"zlbl-infra","x":36,"y":738,"width":420,"height":22,"text":"INFRASTRUCTURE (impls wired by DI Container)","fontSize":16,"fontFamily":1,"strokeColor":"#86198f"},
+
+    {"type":"rectangle","id":"i-fsrepos","x":40,"y":770,"width":340,"height":80,"backgroundColor":"#eebefa","fillStyle":"solid","strokeColor":"#a21caf","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-ifs"}]},
+    {"type":"text","id":"t-ifs","x":40,"y":770,"width":340,"height":80,"text":"FileSystem*Repository\nFileSystemTaskRepository, FileSystemSessionRepository,\nFileSystemTeamMemberRepository, ... (atomic writes)","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"i-fsrepos","fontFamily":1},
+
+    {"type":"rectangle","id":"i-evbus","x":390,"y":770,"width":210,"height":80,"backgroundColor":"#eebefa","fillStyle":"solid","strokeColor":"#a21caf","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-iev"}]},
+    {"type":"text","id":"t-iev","x":390,"y":770,"width":210,"height":80,"text":"InMemoryEventBus\nfan-out to\nWebSocketBridge","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"i-evbus","fontFamily":1},
+
+    {"type":"rectangle","id":"i-ws","x":610,"y":770,"width":220,"height":80,"backgroundColor":"#eebefa","fillStyle":"solid","strokeColor":"#a21caf","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-iws"}]},
+    {"type":"text","id":"t-iws","x":610,"y":770,"width":220,"height":80,"text":"WebSocketBridge impl\nbatching, throttling,\nspawn-event bypass","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"i-ws","fontFamily":1},
+
+    {"type":"rectangle","id":"i-config","x":840,"y":770,"width":320,"height":80,"backgroundColor":"#eebefa","fillStyle":"solid","strokeColor":"#a21caf","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-icfg"}]},
+    {"type":"text","id":"t-icfg","x":840,"y":770,"width":320,"height":80,"text":"Config  (env: PORT, MAESTRO_DATA_DIR)\nIdGenerator  Logger\nDI Container wiring (container.ts)","fontSize":13,"textAlign":"center","verticalAlign":"middle","containerId":"i-config","fontFamily":1},
+
+    {"type":"rectangle","id":"zone-storage","x":20,"y":880,"width":1160,"height":80,"backgroundColor":"#d3f9d8","fillStyle":"solid","strokeColor":"#22c55e","strokeWidth":1,"opacity":35,"roundness":{"type":3}},
+    {"type":"text","id":"zlbl-storage","x":36,"y":888,"width":300,"height":22,"text":"STORAGE  (file-based JSON)","fontSize":16,"fontFamily":1,"strokeColor":"#15803d"},
+
+    {"type":"rectangle","id":"st-prod","x":40,"y":915,"width":560,"height":40,"backgroundColor":"#b2f2bb","fillStyle":"solid","strokeColor":"#16a34a","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-stprod"}]},
+    {"type":"text","id":"t-stprod","x":40,"y":915,"width":560,"height":40,"text":"~/.maestro/data/   (prod, server port 3001)","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"st-prod","fontFamily":1},
+
+    {"type":"rectangle","id":"st-stage","x":620,"y":915,"width":540,"height":40,"backgroundColor":"#b2f2bb","fillStyle":"solid","strokeColor":"#16a34a","strokeWidth":2,"roundness":{"type":3},"boundElements":[{"type":"text","id":"t-ststage"}]},
+    {"type":"text","id":"t-ststage","x":620,"y":915,"width":540,"height":40,"text":"~/.maestro-staging/data/   (staging, server 4569 / UI 4568)","fontSize":14,"textAlign":"center","verticalAlign":"middle","containerId":"st-stage","fontFamily":1},
+
+    {"type":"arrow","id":"ar-ui-rest","x":170,"y":250,"width":110,"height":70,"points":[[0,0],[110,70]],"endArrowhead":"arrow","strokeColor":"#1971c2","strokeWidth":2,"startBinding":{"elementId":"c-ui","fixedPoint":[0.5,1]},"endBinding":{"elementId":"a-rest","fixedPoint":[0.3,0]}},
+    {"type":"arrow","id":"ar-rest-ui","x":280,"y":320,"width":-110,"height":-70,"points":[[0,0],[-110,-70]],"endArrowhead":"arrow","strokeColor":"#7c3aed","strokeWidth":2,"strokeStyle":"dashed","startBinding":{"elementId":"a-ws","fixedPoint":[0,0]},"endBinding":{"elementId":"c-ui","fixedPoint":[0.7,1]},"label":{"text":"WS events"}},
+
+    {"type":"arrow","id":"ar-web-pty","x":450,"y":250,"width":560,"height":70,"points":[[0,0],[560,70]],"endArrowhead":"arrow","strokeColor":"#1971c2","strokeWidth":2,"startBinding":{"elementId":"c-web","fixedPoint":[0.5,1]},"endBinding":{"elementId":"a-pty","fixedPoint":[0.5,0]}},
+
+    {"type":"arrow","id":"ar-cli-rest","x":730,"y":250,"width":-450,"height":70,"points":[[0,0],[-450,70]],"endArrowhead":"arrow","strokeColor":"#1971c2","strokeWidth":2,"startBinding":{"elementId":"c-cli","fixedPoint":[0.5,1]},"endBinding":{"elementId":"a-rest","fixedPoint":[0.7,0]}},
+
+    {"type":"arrow","id":"ar-claude-cli","x":1015,"y":130,"width":-275,"height":0,"points":[[0,0],[-275,0]],"endArrowhead":"arrow","startArrowhead":"arrow","strokeColor":"#8b5cf6","strokeWidth":2,"startBinding":{"elementId":"c-claude","fixedPoint":[0,0.4]},"endBinding":{"elementId":"c-cli","fixedPoint":[1,0.4]},"label":{"text":"runs"}},
+
+    {"type":"arrow","id":"ar-ui-claude","x":300,"y":175,"width":580,"height":0,"points":[[0,0],[580,0]],"endArrowhead":"arrow","strokeColor":"#22c55e","strokeWidth":2,"startBinding":{"elementId":"c-ui","fixedPoint":[1,0.5]},"endBinding":{"elementId":"c-claude","fixedPoint":[0,0.5]},"label":{"text":"Tauri spawn (PTY)"}},
+
+    {"type":"arrow","id":"ar-rest-svc","x":280,"y":400,"width":0,"height":80,"points":[[0,0],[0,80]],"endArrowhead":"arrow","strokeColor":"#7c3aed","strokeWidth":2,"startBinding":{"elementId":"a-rest","fixedPoint":[0.5,1]},"endBinding":{"elementId":"s-session","fixedPoint":[0.5,0]}},
+
+    {"type":"arrow","id":"ar-pty-spty","x":1010,"y":400,"width":-170,"height":80,"points":[[0,0],[-170,80]],"endArrowhead":"arrow","strokeColor":"#7c3aed","strokeWidth":2,"startBinding":{"elementId":"a-pty","fixedPoint":[0.5,1]},"endBinding":{"elementId":"s-pty","fixedPoint":[0.5,0]}},
+
+    {"type":"arrow","id":"ar-svc-domain","x":300,"y":575,"width":0,"height":70,"points":[[0,0],[0,70]],"endArrowhead":"arrow","strokeColor":"#d97706","strokeWidth":2,"startBinding":{"elementId":"s-session","fixedPoint":[0.7,1]},"endBinding":{"elementId":"d-repos","fixedPoint":[0.5,0]}},
+
+    {"type":"arrow","id":"ar-domain-infra","x":300,"y":700,"width":0,"height":70,"points":[[0,0],[0,70]],"endArrowhead":"arrow","strokeColor":"#0891b2","strokeWidth":2,"startBinding":{"elementId":"d-repos","fixedPoint":[0.5,1]},"endBinding":{"elementId":"i-fsrepos","fixedPoint":[0.7,0]}},
+
+    {"type":"arrow","id":"ar-infra-storage","x":220,"y":850,"width":0,"height":65,"points":[[0,0],[0,65]],"endArrowhead":"arrow","strokeColor":"#a21caf","strokeWidth":2,"startBinding":{"elementId":"i-fsrepos","fixedPoint":[0.5,1]},"endBinding":{"elementId":"st-prod","fixedPoint":[0.3,0]}},
+
+    {"type":"arrow","id":"ar-ev-ws","x":495,"y":810,"width":115,"height":0,"points":[[0,0],[115,0]],"endArrowhead":"arrow","strokeColor":"#a21caf","strokeWidth":2,"startBinding":{"elementId":"i-evbus","fixedPoint":[1,0.5]},"endBinding":{"elementId":"i-ws","fixedPoint":[0,0.5]}},
+
+    {"type":"arrow","id":"ar-iws-aws","x":720,"y":770,"width":80,"height":-370,"points":[[0,0],[80,-370]],"endArrowhead":"arrow","strokeColor":"#a21caf","strokeWidth":2,"strokeStyle":"dashed","startBinding":{"elementId":"i-ws","fixedPoint":[0.5,0]},"endBinding":{"elementId":"a-ws","fixedPoint":[0.7,1]},"label":{"text":"WS push"}},
+
+    {"type":"text","id":"flow-note","x":40,"y":985,"width":1100,"height":40,"text":"Session spawn flow:  UI POST /sessions/spawn  -->  SessionService builds MaestroManifest  -->  EventBus emits session:spawn_request  -->  WebSocketBridge pushes event  -->  Tauri spawns terminal with manifest path  -->  CLI worker-init reads manifest, composes prompt (PromptComposer + identity/commands/spawner)  -->  Claude starts","fontSize":13,"fontFamily":1,"strokeColor":"#4a5568"}
+  ],
+  "appState": {
+    "viewBackgroundColor": "#ffffff",
+    "gridSize": null
+  },
+  "files": {}
+}

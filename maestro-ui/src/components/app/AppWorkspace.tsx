@@ -19,6 +19,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "../../platform";
 import { TerminalStrip } from "../session-log/TerminalStrip";
 import { ModeChip } from "../maestro/ModeChip";
+import { SessionDocsBar } from "../maestro/SessionDocsBar";
 import { isCoordinatorRole } from "../../utils/coordinatorRole";
 import { isWhiteboardId, isFileId } from "../../app/types/space";
 import type { WhiteboardSpace, FileSpace } from "../../app/types/space";
@@ -358,6 +359,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         {/* Mode chip — shows current session role (coordinator / worker) */}
         {activeMaestroSession && (
           <ModeChip mode={activeMaestroSession.mode} />
+        )}
+        {/* Docs tabs — session/task docs and diagrams, opened as an overlay */}
+        {activeMaestroSession && !inspectedMaestroSession && (
+          <SessionDocsBar session={activeMaestroSession} />
         )}
         {/*
           Center-pane decision:

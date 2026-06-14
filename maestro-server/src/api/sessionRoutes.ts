@@ -13,6 +13,7 @@ import { HuddleService } from '../application/services/HuddleService';
 import { CommandUsageService } from '../application/services/CommandUsageService';
 import { GitService } from '../application/services/GitService';
 import { LogDigestService } from '../application/services/LogDigestService';
+import { TeamService } from '../application/services/TeamService';
 import { IProjectRepository } from '../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../domain/repositories/ITaskRepository';
 import { IEventBus } from '../domain/events/IEventBus';
@@ -471,6 +472,7 @@ interface SessionRouteDependencies {
   huddleService: HuddleService;
   commandUsageService: CommandUsageService;
   logDigestService: LogDigestService;
+  teamService: TeamService;
   projectRepo: IProjectRepository;
   taskRepo: ITaskRepository;
   teamMemberRepo: ITeamMemberRepository;
@@ -484,9 +486,15 @@ interface SessionRouteDependencies {
  * Create session routes using the SessionService.
  */
 export function createSessionRoutes(deps: SessionRouteDependencies) {
-  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config, ptyHostService } = deps;
+  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config, ptyHostService } = deps;
   const gitService = new GitService();
   const router = express.Router();
+
+  // Clamp a browser-reported terminal dimension from an UNVALIDATED body (the
+  // resume route has no body schema). Mirrors ptyDimensionSchema; returns
+  // undefined for anything out of range so spawn falls back to its default.
+  const clampPtyDim = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 1000 ? v : undefined;
 
   // DEV ONLY: spawn a raw interactive shell PTY for browser-streaming tests,
   // bypassing the manifest/CLI pipeline. Gated to server-hosted PTY mode and
@@ -1825,12 +1833,33 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const claudeSessionId = randomUUID();
 
       // Resolve the saved team this session belongs to so the whole spawn tree stays
-      // team-bound: explicit request → inherited from parent (recursive spawn) → task.teamId.
-      const effectiveTeamId: string | null =
-        (requestedTeamId ?? null) ||
-        parentSession?.teamId ||
-        verifiedTasks.find(t => t?.teamId)?.teamId ||
-        null;
+      // team-bound. An explicit request always wins (passing teamId: null clears it);
+      // only when the request omits teamId do we inherit from the parent (recursive
+      // spawn) and then fall back to the task's team.
+      let effectiveTeamId: string | null =
+        requestedTeamId !== undefined
+          ? (requestedTeamId || null)
+          : (parentSession?.teamId || verifiedTasks.find(t => t?.teamId)?.teamId || null);
+
+      // Scope recursion: when a coordinator spawns a member who leads a sub-team within
+      // the bound team, re-root the child to that sub-team so each level only sees and
+      // delegates within its own branch (instead of re-rendering the whole org tree).
+      // Gated to coordinator spawns — only there does a single team member reliably mean
+      // "self" (a worker spawn could carry one member who merely happens to lead a sub-team).
+      if (effectiveTeamId && requestedCoordinatorMode && effectiveTeamMemberIds.length === 1) {
+        try {
+          const subTeamId = await teamService.findSubTeamLedBy(
+            projectId,
+            effectiveTeamId,
+            effectiveTeamMemberIds[0]
+          );
+          if (subTeamId) {
+            effectiveTeamId = subTeamId;
+          }
+        } catch {
+          // Non-fatal: keep the inherited team binding if sub-team lookup fails.
+        }
+      }
 
       const session = await sessionService.createSession({
         projectId,
@@ -2075,6 +2104,11 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             command,
             cwd,
             env: finalEnvVars,
+            // Boot the PTY at the browser's measured size (validated by
+            // spawnSessionSchema) so the agent never renders at the 80x24
+            // default and then desyncs against the wider xterm grid.
+            cols: req.body.cols,
+            rows: req.body.rows,
           });
         } catch (ptyErr) {
           return res.status(500).json({
@@ -2323,6 +2357,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             command,
             cwd,
             env: finalEnvVars,
+            // Resume body is unvalidated — clamp the browser's measured size so
+            // the resumed PTY boots at the real pane width, not the 80x24 default.
+            cols: clampPtyDim(req.body?.cols),
+            rows: clampPtyDim(req.body?.rows),
           });
         } catch (ptyErr) {
           return res.status(500).json({

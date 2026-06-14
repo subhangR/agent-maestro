@@ -9,6 +9,7 @@ import type {
   MasterProjectInfo,
   TeamMemberProfile,
   TeamContextLens,
+  TeamStructureNode,
 } from '../types/manifest.js';
 import {
   isWorkerMode,
@@ -29,6 +30,23 @@ import {
   buildMultiIdentityInstruction,
   ACCEPTANCE_CRITERIA_PLACEHOLDER_PATTERNS,
 } from '../prompts/index.js';
+
+/**
+ * Recursive delegation protocol injected for a coordinator bound to a saved team.
+ */
+const TEAM_COORDINATION_PROTOCOL = [
+  'You lead this team. Your job is to coordinate, not to do every unit of work yourself.',
+  'Match each piece of work to the best-fit member by their role and expertise shown in this structure.',
+  'Delegate to a member by creating a child task and spawning a worker session for them:',
+  '  maestro task create --parent <taskId> "<sub-task title>"',
+  '  maestro session spawn --task <childTaskId> --team-member-id <memberId>',
+  'When an entire sub-domain maps to a sub-team, do NOT micromanage that sub-team\'s members.',
+  'Instead spawn that sub-team\'s leader (its leader_id) as a sub-coordinator:',
+  '  maestro session spawn --task <childTaskId> --team-member-id <subTeamLeaderId>',
+  'The sub-leader inherits this team binding and recursively delegates within its own sub-team.',
+  'Spawn lazily: only spin up a member or sub-team when there is concrete work ready for them.',
+  'Spawned members and sub-coordinators report back up the chain; you synthesize their results and report upward.',
+].join('\n');
 
 /**
  * PromptBuilder - Programmatically constructs prompts from manifest data.
@@ -52,6 +70,8 @@ export class PromptBuilder {
     parts.push(this.buildIdentityKernel(mode, manifest));
     const teamContext = this.buildTeamContext(manifest);
     if (teamContext) parts.push(teamContext);
+    const teamStructure = this.buildTeamStructure(manifest);
+    if (teamStructure) parts.push(teamStructure);
     const coordinationContext = this.buildCoordinationContext(manifest);
     if (coordinationContext) parts.push(coordinationContext);
     const masterContext = this.buildMasterProjectContext(manifest);
@@ -107,6 +127,8 @@ export class PromptBuilder {
     if (teamMemberIdentity) parts.push(teamMemberIdentity);
     const teamMembers = this.buildTeamMembers(manifest.availableTeamMembers, mode, manifest);
     if (teamMembers) parts.push(teamMembers);
+    const teamStructure = this.buildTeamStructure(manifest);
+    if (teamStructure) parts.push(teamStructure);
     const masterContext = this.buildMasterProjectContext(manifest);
     if (masterContext) parts.push(masterContext);
     const coordinatorPromotion = this.buildCoordinatorPromotionBlock(manifest);
@@ -351,6 +373,41 @@ export class PromptBuilder {
     }
 
     lines.push('  </team_context>');
+    return lines.join('\n');
+  }
+
+  /**
+   * Recursive team structure + delegation protocol for a coordinator bound to a
+   * saved team. Renders the full member/sub-team tree and instructs the leader to
+   * route work by expertise and spawn sub-team leaders as sub-coordinators (lazy).
+   */
+  private buildTeamStructure(manifest: MaestroManifest): string | null {
+    const tree = manifest.teamStructure;
+    if (!tree || !isCoordinatorMode(manifest.mode)) return null;
+
+    const selfIds = this.resolveSelfIds(manifest);
+
+    const renderNode = (node: TeamStructureNode, indent: string): string[] => {
+      const out: string[] = [];
+      out.push(`${indent}<team id="${this.esc(node.id)}" name="${this.esc(node.name)}" leader_id="${this.esc(node.leaderId)}">`);
+      for (const m of node.members || []) {
+        const roleAttr = m.role ? ` role="${this.esc(m.role)}"` : '';
+        const selfAttr = selfIds.has(m.id) ? ' self="true"' : '';
+        out.push(`${indent}  <member id="${this.esc(m.id)}" name="${this.esc(m.name)}"${roleAttr} leader="${m.isLeader}"${selfAttr}>`);
+        if (m.identity) out.push(`${indent}    <expertise>${this.raw(m.identity)}</expertise>`);
+        out.push(`${indent}  </member>`);
+      }
+      for (const sub of node.subTeams || []) {
+        out.push(...renderNode(sub, `${indent}  `));
+      }
+      out.push(`${indent}</team>`);
+      return out;
+    };
+
+    const lines: string[] = ['  <team_structure>'];
+    lines.push(`    <protocol>${this.raw(TEAM_COORDINATION_PROTOCOL)}</protocol>`);
+    lines.push(...renderNode(tree, '    '));
+    lines.push('  </team_structure>');
     return lines.join('\n');
   }
 

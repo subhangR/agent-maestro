@@ -470,6 +470,34 @@ export class TeamService {
     return build(id, new Set([id]));
   }
 
+  /**
+   * Find the sub-team (a strict descendant of rootTeamId) led by memberId, if any.
+   * Used at spawn time to re-root a spawned sub-team leader to its own branch.
+   * Returns the sub-team's id, or null. Cycle-safe; does not match the root itself.
+   */
+  async findSubTeamLedBy(projectId: string, rootTeamId: string, memberId: string): Promise<string | null> {
+    if (!projectId || !rootTeamId || !memberId) return null;
+
+    const visited = new Set<string>([rootTeamId]);
+
+    const search = async (teamId: string): Promise<string | null> => {
+      const team = await this.teamRepo.findById(projectId, teamId);
+      if (!team) return null;
+      for (const subTeamId of team.subTeamIds) {
+        if (visited.has(subTeamId)) continue;
+        visited.add(subTeamId);
+        const subTeam = await this.teamRepo.findById(projectId, subTeamId);
+        if (!subTeam) continue;
+        if (subTeam.leaderId === memberId) return subTeam.id;
+        const deeper = await search(subTeamId);
+        if (deeper) return deeper;
+      }
+      return null;
+    };
+
+    return search(rootTeamId);
+  }
+
   // --- Private helpers ---
 
   /**

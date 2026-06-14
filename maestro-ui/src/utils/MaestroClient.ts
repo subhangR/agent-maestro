@@ -48,6 +48,7 @@ import type {
 
 import { API_BASE_URL } from './serverConfig';
 import { IS_TAURI } from '../platform/detect';
+import { measureSpawnTerminalSize } from './terminalSize';
 
 // Sentinel error type so callers can detect 401 without string-matching
 export class UnauthenticatedError extends Error {
@@ -411,16 +412,19 @@ class MaestroClient {
      * Spawn a session (triggers server to generate manifest and emit spawn request)
      */
     async spawnSession(data: SpawnSessionPayload): Promise<SpawnSessionResponse> {
+        // Attach the browser's measured terminal size (caller-provided wins) so
+        // the server-hosted PTY boots at the real pane width — see measureSpawnTerminalSize.
+        const size = measureSpawnTerminalSize();
         return this.fetch<SpawnSessionResponse>('/sessions/spawn', {
             method: 'POST',
-            body: JSON.stringify(data),
+            body: JSON.stringify({ ...size, ...data }),
         });
     }
 
     async resumeSession(sessionId: string): Promise<{ success: boolean; sessionId: string; claudeSessionId: string }> {
         return this.fetch(`/sessions/${sessionId}/resume`, {
             method: 'POST',
-            body: JSON.stringify({}),
+            body: JSON.stringify(measureSpawnTerminalSize()),
         });
     }
 

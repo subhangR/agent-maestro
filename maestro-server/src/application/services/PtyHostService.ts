@@ -64,8 +64,10 @@ export class PtyHostService {
     }
 
     const shell = env.SHELL || process.env.SHELL || '/bin/bash';
-    const initialCols = cols && cols > 0 ? cols : DEFAULT_COLS;
-    const initialRows = rows && rows > 0 ? rows : DEFAULT_ROWS;
+    const clampDim = (v: number | undefined, fallback: number): number =>
+      v && v > 0 ? Math.min(v, 1000) : fallback;
+    const initialCols = clampDim(cols, DEFAULT_COLS);
+    const initialRows = clampDim(rows, DEFAULT_ROWS);
     const proc = pty.spawn(shell, ['-c', command], {
       name: 'xterm-256color',
       cols: initialCols,
@@ -165,6 +167,7 @@ export class PtyHostService {
     const entry = this.sessions.get(sessionId);
     if (!entry || entry.exited) return;
     if (!cols || !rows || cols < 1 || rows < 1) return;
+    if (cols > 1000 || rows > 1000) return;
     try {
       entry.proc.resize(cols, rows);
       entry.cols = cols;

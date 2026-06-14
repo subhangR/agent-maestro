@@ -61,6 +61,19 @@ export const serverPtySizes = new Map<string, { cols: number; rows: number }>();
  */
 export const clientFittedSessions = new Set<string>();
 
+/**
+ * Web mode only: the most recent cols/rows any terminal fit to. All session
+ * terminals share one pane geometry, so this is the exact size the next spawned
+ * terminal will fit to. We send it in the spawn/resume request so the server
+ * boots the PTY at the real width — the agent then never renders at the 80x24
+ * default and the startup glyph-overlap desync disappears. null until the first
+ * terminal fits (the very first spawn falls back to a pane-pixel estimate).
+ */
+export let lastFittedSize: { cols: number; rows: number } | null = null;
+export function setLastFittedSize(size: { cols: number; rows: number }): void {
+  lastFittedSize = size;
+}
+
 /* ------------------------------------------------------------------ */
 /*  DOM-bound refs initialized by App.tsx                               */
 /* ------------------------------------------------------------------ */

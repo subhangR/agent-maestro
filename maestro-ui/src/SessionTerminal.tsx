@@ -4,7 +4,7 @@ import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import type { PendingDataBuffer } from "./app/types/app-state";
 import { useTerminalSettingsStore, buildITheme } from "./stores/useTerminalSettingsStore";
-import { serverPtySizes, clientFittedSessions } from "./stores/useSessionStore";
+import { serverPtySizes, clientFittedSessions, setLastFittedSize } from "./stores/useSessionStore";
 
 export type TerminalRegistry = Map<string, { term: Terminal; fit: FitAddon }>;
 
@@ -558,6 +558,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      // remount adopts the fitted width, not the stale 80x24 spawn snapshot.
 	      clientFittedSessions.add(props.id);
 	      serverPtySizes.set(props.id, { cols, rows });
+	      setLastFittedSize({ cols, rows });
 	      const last = lastSizeRef.current;
 	      if (last && last.cols === cols && last.rows === rows) return;
 	      lastSizeRef.current = { cols, rows };
@@ -702,6 +703,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      const { cols, rows } = term;
 	      clientFittedSessions.add(props.id);
 	      serverPtySizes.set(props.id, { cols, rows });
+	      setLastFittedSize({ cols, rows });
 	      const last = lastSizeRef.current;
 	      if (!last || last.cols !== cols || last.rows !== rows) {
 	        lastSizeRef.current = { cols, rows };
@@ -785,6 +787,21 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         el.style.display = "none";
         void el.offsetHeight;
         el.style.display = prevDisplay;
+      }
+      // A font/spacing change resizes the cell, so fit() may have changed the
+      // grid's cols/rows. The ResizeObserver does NOT fire (the container box is
+      // unchanged), so the PTY would never learn the new size and the grid would
+      // desync from it (overlapping glyphs) until the next manual resize. Ship
+      // the new size to the PTY now and keep the size caches coherent.
+      const { cols, rows } = term;
+      if (cols > 0 && rows > 0) {
+        const last = lastSizeRef.current;
+        if (!last || last.cols !== cols || last.rows !== rows) {
+          lastSizeRef.current = { cols, rows };
+          serverPtySizes.set(props.id, { cols, rows });
+          setLastFittedSize({ cols, rows });
+          void platform.terminal.resize(props.id, cols, rows).catch(() => {});
+        }
       }
     }
   }, [

@@ -1,0 +1,75 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "https://excalidraw.com",
+  "elements": [
+    { "type": "text", "id": "title", "x": 540, "y": 20, "text": "Maestro — End-to-End Architecture (manual exploration, no graphify)", "fontSize": 24, "strokeColor": "#1e1e1e" },
+
+    { "type": "rectangle", "id": "zone_clients", "x": 40, "y": 80, "width": 1520, "height": 220, "backgroundColor": "#dbe4ff", "fillStyle": "solid", "opacity": 35, "strokeColor": "#4a9eed", "strokeWidth": 1, "roundness": { "type": 3 } },
+    { "type": "text", "id": "zone_clients_l", "x": 60, "y": 90, "text": "CLIENTS  (frontend / delivery surfaces)", "fontSize": 18, "strokeColor": "#2563eb" },
+
+    { "type": "rectangle", "id": "ui_tauri", "x": 80, "y": 130, "width": 320, "height": 160, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#4a9eed", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "maestro-ui  (Tauri 2 desktop)\nReact 18 + Vite\n23 Zustand stores\nxterm terminals + Monaco\nPorts: dev 4568 / prod app", "fontSize": 16 } },
+
+    { "type": "rectangle", "id": "ui_web", "x": 430, "y": 130, "width": 320, "height": 160, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#4a9eed", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "maestro-web  (browser POC)\nVite + TS, xterm only\nCalls /api (REST)\nConnects /pty (WS)\nPort 4571 preview", "fontSize": 16 } },
+
+    { "type": "rectangle", "id": "cli_box", "x": 780, "y": 130, "width": 360, "height": 160, "backgroundColor": "#d0bfff", "fillStyle": "solid", "strokeColor": "#8b5cf6", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "maestro-cli  (Commander.js)\nworker init / coordinator init\nmanifest generate\nspawners: claude/codex/gemini\nprompt-composer + skill-loader", "fontSize": 16 } },
+
+    { "type": "rectangle", "id": "agents", "x": 1170, "y": 130, "width": 370, "height": 160, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#f59e0b", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "Spawned Agents (Claude / Codex / Gemini)\nrun INSIDE a PTY session\nuse `maestro …` CLI commands\nreport progress, prompt siblings,\nspawn workers (if coordinator)", "fontSize": 15 } },
+
+    { "type": "rectangle", "id": "zone_server", "x": 40, "y": 340, "width": 1520, "height": 540, "backgroundColor": "#e5dbff", "fillStyle": "solid", "opacity": 30, "strokeColor": "#8b5cf6", "strokeWidth": 1, "roundness": { "type": 3 } },
+    { "type": "text", "id": "zone_server_l", "x": 60, "y": 350, "text": "maestro-server  (Express, Clean Architecture + DI container — staging :4569 / prod :2357)", "fontSize": 18, "strokeColor": "#6d28d9" },
+
+    { "type": "rectangle", "id": "api_layer", "x": 80, "y": 400, "width": 1460, "height": 110, "backgroundColor": "#fff3bf", "fillStyle": "solid", "strokeColor": "#f59e0b", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "API LAYER — Express routes + Zod validation + auth middleware + helmet + CORS\nproject  /  task  /  taskList  /  taskGraph  /  session  /  skill  /  ordering  /  teamMember  /  team  /  modelProfile  /  spell  /  workflowTemplate  /  master  /  alexa  /  git  /  agentLog  /  auth", "fontSize": 15 } },
+
+    { "type": "rectangle", "id": "app_layer", "x": 80, "y": 530, "width": 1000, "height": 130, "backgroundColor": "#b2f2bb", "fillStyle": "solid", "strokeColor": "#22c55e", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "APPLICATION LAYER — services (business logic)\nProjectService · TaskService · TaskListService · TaskGraphService · SessionService\nTeamMemberService · TeamService · ModelProfileService · SpellService · OrderingService\nAgentLogService · LogDigestService · GitService · GitWorktreeService\nPtyHostService · AnnouncementService · AlexaIngressService", "fontSize": 14 } },
+
+    { "type": "rectangle", "id": "ws_bridge", "x": 1100, "y": 530, "width": 440, "height": 60, "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeColor": "#ec4899", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "WebSocketBridge  (domain events → WS clients)\n50ms batching · per-entity throttle · sub filters", "fontSize": 14 } },
+
+    { "type": "rectangle", "id": "pty_ws", "x": 1100, "y": 600, "width": 440, "height": 60, "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeColor": "#ec4899", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "PtyWebSocketServer  (/pty?sessionId=…)\nbinary frames = PTY bytes, text = resize/size", "fontSize": 14 } },
+
+    { "type": "rectangle", "id": "domain_layer", "x": 80, "y": 680, "width": 700, "height": 90, "backgroundColor": "#fff3bf", "fillStyle": "solid", "strokeColor": "#f59e0b", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "DOMAIN LAYER — interfaces only\nIProjectRepository · ITaskRepository · ISessionRepository · ITeamMemberRepository · ITeamRepository\nIEventBus · ILogger · IIdGenerator · IManifestGenerator · ISkillLoader  +  DomainEvents", "fontSize": 13 } },
+
+    { "type": "rectangle", "id": "infra_layer", "x": 80, "y": 790, "width": 1460, "height": 80, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#f59e0b", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "INFRASTRUCTURE — FileSystem*Repository (atomic writes) · InMemoryEventBus · ConsoleLogger · Config · AuthService\nMultiScopeSkillLoader · VoiceMonkeyClient · MasterProjectBootstrap · PtyHostService (node-pty)", "fontSize": 14 } },
+
+    { "type": "rectangle", "id": "data_dir", "x": 800, "y": 680, "width": 740, "height": 90, "backgroundColor": "#c3fae8", "fillStyle": "solid", "strokeColor": "#06b6d4", "strokeWidth": 2, "roundness": { "type": 3 }, "label": { "text": "DATA  (file-based persistence, atomic writes)\n~/.maestro/data  (prod)   |   ~/.maestro-staging/data  (staging)\nsubdirs: projects/ · tasks/ · sessions/ · team-members/ · teams/ · spells/ · …", "fontSize": 14 } },
+
+    { "type": "rectangle", "id": "manifest_zone", "x": 40, "y": 910, "width": 1520, "height": 130, "backgroundColor": "#d3f9d8", "fillStyle": "solid", "opacity": 30, "strokeColor": "#22c55e", "strokeWidth": 1, "roundness": { "type": 3 } },
+    { "type": "text", "id": "manifest_zone_l", "x": 60, "y": 920, "text": "SESSION SPAWN  /  MANIFEST  FLOW", "fontSize": 18, "strokeColor": "#15803d" },
+
+    { "type": "rectangle", "id": "step1", "x": 80, "y": 955, "width": 220, "height": 75, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#4a9eed", "roundness": { "type": 3 }, "label": { "text": "1. UI POST\n/api/sessions/spawn\n(tasks, member, mode)", "fontSize": 14 } },
+    { "type": "rectangle", "id": "step2", "x": 320, "y": 955, "width": 240, "height": 75, "backgroundColor": "#b2f2bb", "fillStyle": "solid", "strokeColor": "#22c55e", "roundness": { "type": 3 }, "label": { "text": "2. SessionService\ncreates Session,\nshells out to CLI", "fontSize": 14 } },
+    { "type": "rectangle", "id": "step3", "x": 580, "y": 955, "width": 240, "height": 75, "backgroundColor": "#d0bfff", "fillStyle": "solid", "strokeColor": "#8b5cf6", "roundness": { "type": 3 }, "label": { "text": "3. maestro manifest generate\n→ manifest.json on disk\n(skills, perms, prompt ctx)", "fontSize": 13 } },
+    { "type": "rectangle", "id": "step4", "x": 840, "y": 955, "width": 240, "height": 75, "backgroundColor": "#eebefa", "fillStyle": "solid", "strokeColor": "#ec4899", "roundness": { "type": 3 }, "label": { "text": "4. EventBus emits\nsession:spawn_request\n→ WebSocketBridge (immediate)", "fontSize": 13 } },
+    { "type": "rectangle", "id": "step5", "x": 1100, "y": 955, "width": 220, "height": 75, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#4a9eed", "roundness": { "type": 3 }, "label": { "text": "5. UI spawns Tauri\nPTY w/ env vars +\nMAESTRO_MANIFEST_PATH", "fontSize": 13 } },
+    { "type": "rectangle", "id": "step6", "x": 1340, "y": 955, "width": 200, "height": 75, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#f59e0b", "roundness": { "type": 3 }, "label": { "text": "6. maestro worker init\n→ reads manifest\n→ spawns Claude agent", "fontSize": 13 } },
+
+    { "type": "arrow", "id": "f1", "x": 300, "y": 992, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow" },
+    { "type": "arrow", "id": "f2", "x": 560, "y": 992, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow" },
+    { "type": "arrow", "id": "f3", "x": 820, "y": 992, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow" },
+    { "type": "arrow", "id": "f4", "x": 1080, "y": 992, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow" },
+    { "type": "arrow", "id": "f5", "x": 1320, "y": 992, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow" },
+
+    { "type": "arrow", "id": "ui_to_api", "x": 240, "y": 290, "width": 0, "height": 110, "points": [[0,0],[0,110]], "endArrowhead": "arrow", "strokeColor": "#4a9eed", "strokeWidth": 2, "label": { "text": "REST /api/*", "fontSize": 14 } },
+    { "type": "arrow", "id": "web_to_api", "x": 590, "y": 290, "width": 0, "height": 110, "points": [[0,0],[0,110]], "endArrowhead": "arrow", "strokeColor": "#4a9eed", "strokeWidth": 2, "label": { "text": "REST + WS", "fontSize": 14 } },
+    { "type": "arrow", "id": "cli_to_api", "x": 960, "y": 290, "width": 0, "height": 110, "points": [[0,0],[0,110]], "endArrowhead": "arrow", "strokeColor": "#8b5cf6", "strokeWidth": 2, "label": { "text": "maestro session report / task report", "fontSize": 13 } },
+    { "type": "arrow", "id": "agents_to_cli", "x": 1320, "y": 230, "width": -180, "height": 0, "points": [[0,0],[-180,0]], "endArrowhead": "arrow", "strokeColor": "#f59e0b", "strokeWidth": 2, "label": { "text": "runs CLI commands", "fontSize": 13 } },
+
+    { "type": "arrow", "id": "api_to_app", "x": 580, "y": 510, "width": 0, "height": 20, "points": [[0,0],[0,20]], "endArrowhead": "arrow", "strokeColor": "#22c55e", "strokeWidth": 2 },
+    { "type": "arrow", "id": "app_to_domain", "x": 430, "y": 660, "width": 0, "height": 20, "points": [[0,0],[0,20]], "endArrowhead": "arrow", "strokeColor": "#f59e0b", "strokeWidth": 2 },
+    { "type": "arrow", "id": "infra_to_domain", "x": 430, "y": 790, "width": 0, "height": -20, "points": [[0,0],[0,-20]], "endArrowhead": "arrow", "strokeColor": "#f59e0b", "strokeWidth": 2, "strokeStyle": "dashed", "label": { "text": "implements", "fontSize": 13 } },
+    { "type": "arrow", "id": "infra_to_data", "x": 1150, "y": 790, "width": 0, "height": -20, "points": [[0,0],[0,-20]], "endArrowhead": "arrow", "strokeColor": "#06b6d4", "strokeWidth": 2, "label": { "text": "JSON files", "fontSize": 13 } },
+
+    { "type": "arrow", "id": "app_to_bridge", "x": 1080, "y": 560, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow", "strokeColor": "#ec4899", "strokeWidth": 2, "label": { "text": "emit", "fontSize": 13 } },
+    { "type": "arrow", "id": "app_to_pty", "x": 1080, "y": 630, "width": 20, "height": 0, "points": [[0,0],[20,0]], "endArrowhead": "arrow", "strokeColor": "#ec4899", "strokeWidth": 2 },
+
+    { "type": "arrow", "id": "bridge_to_ui", "x": 1520, "y": 530, "width": 0, "height": -270, "points": [[0,0],[0,-270]], "endArrowhead": "arrow", "strokeColor": "#ec4899", "strokeWidth": 2, "strokeStyle": "dotted", "label": { "text": "WS events  (sessions / tasks / projects / spells / modals)", "fontSize": 13 } },
+    { "type": "arrow", "id": "pty_to_ui", "x": 1440, "y": 600, "width": 0, "height": -340, "points": [[0,0],[0,-340]], "endArrowhead": "arrow", "strokeColor": "#ec4899", "strokeWidth": 2, "strokeStyle": "dotted", "label": { "text": "PTY bytes (binary)", "fontSize": 13 } },
+
+    { "type": "text", "id": "legend1", "x": 60, "y": 1060, "text": "Layers: blue=clients · purple=server zone · yellow=API/Domain · green=Application · orange=Infra · cyan=Data · pink=WebSocket", "fontSize": 13, "strokeColor": "#555555" }
+  ],
+  "appState": {
+    "gridSize": null,
+    "viewBackgroundColor": "#ffffff"
+  },
+  "files": {}
+}

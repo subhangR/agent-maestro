@@ -250,6 +250,7 @@ export interface TeamStructureNode {
   description?: string;
   avatar?: string;
   leaderId: string;
+  status?: string;
   members: TeamStructureMember[];
   subTeams: TeamStructureNode[];
 }
