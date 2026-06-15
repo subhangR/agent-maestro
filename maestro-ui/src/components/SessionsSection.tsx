@@ -600,6 +600,15 @@ const SessionNodeRenderer = React.memo(function SessionNodeRenderer({
   const isCollapsed = collapsedSessions.has(node.id);
   const link = linkMap.get(node.id) ?? null;
   const teamColor = maestroColorMap.get(node.id) ?? null;
+  const showCompletedSubSessions = useUIStore((s) => s.sessionShowCompletedSubSessions);
+  // On the Open tab, optionally hide finished sub-sessions to declutter active
+  // spawn trees. Done/Archived tabs always show their full subtree.
+  const visibleChildren = useMemo(() => {
+    if (showCompletedSubSessions || tab !== 'open') return node.children;
+    return node.children.filter(
+      (c) => c.status !== 'completed' && !c.humanCompletedAt && !c.archivedAt,
+    );
+  }, [node.children, showCompletedSubSessions, tab]);
   // Exactly one tile is "current", derived from a single source of truth: if a
   // session is being inspected (stats view), that tile is current; otherwise the
   // tile whose terminal is active in the workspace. No sticky local state, so the
@@ -634,9 +643,9 @@ const SessionNodeRenderer = React.memo(function SessionNodeRenderer({
         onOpenTeamView={onOpenTeamView}
         isResuming={resumingSessionId === node.id}
       />
-      {!isCollapsed && node.children.length > 0 && (
+      {!isCollapsed && visibleChildren.length > 0 && (
         <div className="pn-kids pn-kids--st">
-          {node.children.map((child) => (
+          {visibleChildren.map((child) => (
             <SessionNodeRenderer
               key={child.id}
               node={child}
@@ -785,6 +794,22 @@ export const SessionsSection = React.memo(function SessionsSection({
   const [showHistory, setShowHistory] = React.useState(false);
   const showTaskDetails = useUIStore((s) => s.sessionShowTaskDetails);
   const toggleSessionShowTaskDetails = useUIStore((s) => s.toggleSessionShowTaskDetails);
+  const showCompletedSubSessions = useUIStore((s) => s.sessionShowCompletedSubSessions);
+  const toggleSessionShowCompletedSubSessions = useUIStore((s) => s.toggleSessionShowCompletedSubSessions);
+  const showBadges = useUIStore((s) => s.sessionShowBadges);
+  const toggleSessionShowBadges = useUIStore((s) => s.toggleSessionShowBadges);
+  const showElapsed = useUIStore((s) => s.sessionShowElapsed);
+  const toggleSessionShowElapsed = useUIStore((s) => s.toggleSessionShowElapsed);
+  const viewBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const [viewMenuOpen, setViewMenuOpen] = React.useState(false);
+  const [viewMenuPos, setViewMenuPos] = React.useState<{ top: number; right: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (viewMenuOpen) {
+      setViewMenuPos(computeDropdownPos(viewBtnRef));
+    }
+  }, [viewMenuOpen, computeDropdownPos]);
+
   const historyBtnRef = React.useRef<HTMLButtonElement | null>(null);
   const [historyDropdownPos, setHistoryDropdownPos] = React.useState<{ top: number; right: number } | null>(null);
 
@@ -874,19 +899,20 @@ export const SessionsSection = React.memo(function SessionsSection({
   }, [fetchMaestroData]);
 
   React.useEffect(() => {
-    if (!settingsOpen && !showHistory) return;
+    if (!settingsOpen && !showHistory && !viewMenuOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       setSettingsOpen(false);
       setShowHistory(false);
+      setViewMenuOpen(false);
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [settingsOpen, showHistory]);
+  }, [settingsOpen, showHistory, viewMenuOpen]);
 
   // Filter sessions based on active tab
   const showTerminals = activeFilter === 'terminals';
@@ -1458,17 +1484,56 @@ export const SessionsSection = React.memo(function SessionsSection({
               {liveCount} live
             </button>
           )}
-          <button
-            type="button"
-            className={`pn-ib ${showTaskDetails ? "pn-ib--active" : ""}`}
-            onClick={toggleSessionShowTaskDetails}
-            title={showTaskDetails ? "Hide linked task details on session tiles" : "Show linked task details on session tiles"}
-            aria-label="Toggle task details on session tiles"
-            aria-pressed={showTaskDetails}
-            style={liveCount > 0 ? undefined : { marginLeft: 'auto' }}
-          >
-            <Icon name="check-square" />
-          </button>
+          <div className="sidebarActionMenu" style={liveCount > 0 ? undefined : { marginLeft: 'auto' }}>
+            <button
+              ref={viewBtnRef}
+              type="button"
+              className={`pn-ib ${viewMenuOpen || showTaskDetails || showBadges || showElapsed || !showCompletedSubSessions ? "pn-ib--active" : ""}`}
+              onClick={() => setViewMenuOpen((v) => !v)}
+              title="View options"
+              aria-label="Session tile view options"
+              aria-haspopup="menu"
+              aria-expanded={viewMenuOpen}
+            >
+              <Icon name="sliders" />
+            </button>
+            {viewMenuOpen && viewMenuPos && createPortal(
+              <>
+                <div
+                  className="terminalInlineStatusOverlay"
+                  onClick={() => setViewMenuOpen(false)}
+                />
+                <div
+                  className="sidebarActionMenuDropdown sidebarActionMenuDropdown--fixed"
+                  role="menu"
+                  aria-label="View options"
+                  style={{ position: 'fixed', top: viewMenuPos.top, right: viewMenuPos.right }}
+                >
+                  {([
+                    { label: 'Task details', on: showTaskDetails, toggle: toggleSessionShowTaskDetails },
+                    { label: 'Completed sub-sessions', on: showCompletedSubSessions, toggle: toggleSessionShowCompletedSubSessions },
+                    { label: 'Model & mode badges', on: showBadges, toggle: toggleSessionShowBadges },
+                    { label: 'Elapsed time', on: showElapsed, toggle: toggleSessionShowElapsed },
+                  ] as const).map((item) => (
+                    <button
+                      key={item.label}
+                      type="button"
+                      className="sidebarActionMenuItem"
+                      role="menuitemcheckbox"
+                      aria-checked={item.on}
+                      onClick={item.toggle}
+                    >
+                      <span className={`pn-check ${item.on ? "pn-check--on" : ""}`} aria-hidden="true">
+                        {item.on && <Icon name="check" size={11} sw={2.4} />}
+                      </span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>,
+              document.body
+            )}
+          </div>
         </div>
       )}
 

@@ -984,6 +984,23 @@
   opacity: 0.9;
 }
 
+.sidebarActionMenuItem .pn-check {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  color: #fff;
+}
+
+.sidebarActionMenuItem .pn-check--on {
+  background: var(--accent, #b26a2b);
+  border-color: var(--accent, #b26a2b);
+}
+
 .projectList {
   display: flex;
   flex-direction: column;

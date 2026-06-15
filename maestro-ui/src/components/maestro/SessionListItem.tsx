@@ -113,6 +113,8 @@ export const SessionListItem = React.memo(function SessionListItem({
   const updateSessionMode = useMaestroStore((s) => s.updateSessionMode);
   const setDocOverlay = useUIStore((s) => s.setDocOverlay);
   const showTaskDetails = useUIStore((s) => s.sessionShowTaskDetails);
+  const showBadges = useUIStore((s) => s.sessionShowBadges);
+  const showElapsed = useUIStore((s) => s.sessionShowElapsed);
 
   const status = session.status;
   const needsInput = session.needsInput?.active;
@@ -433,6 +435,25 @@ export const SessionListItem = React.memo(function SessionListItem({
           </button>
         </div>
       </div>
+
+      {(showBadges || showElapsed) && (
+        <div className="pn-st__inforow">
+          {showBadges && mode && (
+            <span className="pn-st__infobadge">{MODE_LABELS[mode]}</span>
+          )}
+          {showBadges && session.model && (
+            <span className="pn-st__infobadge pn-st__infobadge--model">{session.model.toUpperCase()}</span>
+          )}
+          {showElapsed && (
+            <span
+              className="pn-st__infotime"
+              title={`Started ${new Date(session.startedAt).toLocaleString()}`}
+            >
+              {elapsed}
+            </span>
+          )}
+        </div>
+      )}
 
       {showTaskDetails && linkedTasks.length > 0 && (
         <div className="pn-st__tasklines">

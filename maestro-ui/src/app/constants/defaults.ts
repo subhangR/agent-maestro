@@ -50,4 +50,7 @@ export const MAX_MAESTRO_SIDEBAR_WIDTH = 600;
 export const STORAGE_MAESTRO_SIDEBAR_WIDTH_KEY = 'agents-ui-maestro-sidebar-width-v1';
 export const STORAGE_ICON_RAIL_SECTION_KEY = 'agents-ui-icon-rail-section-v1';
 export const STORAGE_SESSION_SHOW_TASK_DETAILS_KEY = 'agents-ui-session-show-task-details-v1';
+export const STORAGE_SESSION_SHOW_COMPLETED_SUBSESSIONS_KEY = 'agents-ui-session-show-completed-subsessions-v1';
+export const STORAGE_SESSION_SHOW_BADGES_KEY = 'agents-ui-session-show-badges-v1';
+export const STORAGE_SESSION_SHOW_ELAPSED_KEY = 'agents-ui-session-show-elapsed-v1';
 export const SPACES_RAIL_WIDTH = 48;

@@ -134,9 +134,15 @@ interface UIState {
   setMaestroSidebarWidth: (width: number) => void;
   persistMaestroSidebarWidth: (width: number) => void;
 
-  // Sessions list — show linked task details inline on each session tile
+  // Sessions list — per-tile display toggles (the "View" menu)
   sessionShowTaskDetails: boolean;
   toggleSessionShowTaskDetails: () => void;
+  sessionShowCompletedSubSessions: boolean;
+  toggleSessionShowCompletedSubSessions: () => void;
+  sessionShowBadges: boolean;
+  toggleSessionShowBadges: () => void;
+  sessionShowElapsed: boolean;
+  toggleSessionShowElapsed: () => void;
 
   // Spaces panel (right) — null = collapsed, 'sessions' = expanded
   spacesRailActiveSection: 'sessions' | null;
@@ -286,13 +292,44 @@ export const useUIStore = create<UIState>((set, get) => ({
     }
   },
 
-  // -- Sessions list: inline task details toggle --
+  // -- Sessions list: per-tile display toggles (the "View" menu) --
   sessionShowTaskDetails: readBoolFromStorage(DEFAULTS.STORAGE_SESSION_SHOW_TASK_DETAILS_KEY, false),
   toggleSessionShowTaskDetails: () => {
     const next = !get().sessionShowTaskDetails;
     set({ sessionShowTaskDetails: next });
     try {
       localStorage.setItem(DEFAULTS.STORAGE_SESSION_SHOW_TASK_DETAILS_KEY, next ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+  // Defaults to true: spawn trees show every sub-session until the user opts to hide finished ones.
+  sessionShowCompletedSubSessions: readBoolFromStorage(DEFAULTS.STORAGE_SESSION_SHOW_COMPLETED_SUBSESSIONS_KEY, true),
+  toggleSessionShowCompletedSubSessions: () => {
+    const next = !get().sessionShowCompletedSubSessions;
+    set({ sessionShowCompletedSubSessions: next });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_SESSION_SHOW_COMPLETED_SUBSESSIONS_KEY, next ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+  sessionShowBadges: readBoolFromStorage(DEFAULTS.STORAGE_SESSION_SHOW_BADGES_KEY, false),
+  toggleSessionShowBadges: () => {
+    const next = !get().sessionShowBadges;
+    set({ sessionShowBadges: next });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_SESSION_SHOW_BADGES_KEY, next ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+  sessionShowElapsed: readBoolFromStorage(DEFAULTS.STORAGE_SESSION_SHOW_ELAPSED_KEY, false),
+  toggleSessionShowElapsed: () => {
+    const next = !get().sessionShowElapsed;
+    set({ sessionShowElapsed: next });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_SESSION_SHOW_ELAPSED_KEY, next ? '1' : '0');
     } catch {
       // best-effort
     }
