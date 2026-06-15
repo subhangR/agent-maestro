@@ -756,18 +756,14 @@ export class SpellService {
   // --- Spell Invocation ---
 
   async invoke(payload: SpellInvocationPayload): Promise<SpellInvocationResult> {
-    // 1. Resolve target session: prefer single targetSessionId; otherwise take the
-    //    first id from the multi-target list (full fan-out lands in P2).
-    const targetSessionId = payload.targetSessionId
-      ?? (payload.targetSessionIds && payload.targetSessionIds[0])
-      ?? '';
-    if (!targetSessionId) {
+    // 1. Resolve targets: explicit list takes precedence; legacy single-id is
+    //    promoted into a one-element list so the fan-out path is unified.
+    const targets = this.resolveInvocationTargets(payload);
+    if (targets.length === 0) {
       throw new ValidationError('targetSessionId or targetSessionIds is required');
     }
-    const session = await this.sessionRepo.findById(targetSessionId);
-    if (!session) throw new NotFoundError('Session', targetSessionId);
 
-    // 2. Resolve entity
+    // 2. Resolve entity ONCE — entity data is identical across all targets.
     const entityData = await this.resolveEntity(payload.entityType, payload.entityId, payload.projectId);
 
     // 3. Find spell definition — default to 'send' (the universal pass-through)
@@ -776,33 +772,69 @@ export class SpellService {
     const spellDef = this.getSpellDefinition(payload.entityType, spellName);
     if (!spellDef) throw new NotFoundError('Spell', `${payload.entityType}:${spellName}`);
 
-    // 4. Interpolate template
+    // 4. Interpolate template (one prompt for all targets).
     const prompt = this.interpolateTemplate(spellDef.promptTemplate, entityData);
 
-    // 5. Deliver the prompt via the SINGLE session:prompt_send path.
-    //    UI: spell:invoked is feedback-only — do NOT write it to the PTY.
-    //    (Frozen in DESIGN_BRIEF "invoke contract" to remove the double-inject bug.)
-    await this.eventBus.emit('session:prompt_send', {
-      sessionId: targetSessionId,
-      content: prompt,
-      mode: 'send' as const,
-      senderSessionId: payload.invokerSessionId ?? null,
-      timestamp: Date.now(),
-    });
+    // 5. Fan out — validate each target session exists and deliver via the
+    //    SINGLE session:prompt_send path. senderSessionId is stamped to the
+    //    invoker so the receiving session can attribute the prompt.
+    //    (Frozen in DESIGN_BRIEF "invoke contract" — removes the double-inject bug.)
+    const now = Date.now();
+    const senderSessionId = payload.invokerSessionId ?? null;
+    const senderProjectId = await this.resolveSenderProjectId(senderSessionId);
 
-    // 6. Emit spell:invoked purely for UI feedback (toast/ring pulse, not PTY).
-    const result: SpellInvocationResult = {
-      success: true,
-      prompt,
-      entityType: payload.entityType,
-      entityId: payload.entityId,
-      spellName,
-      targetSessionId,
-      timestamp: Date.now(),
-    };
-    await this.eventBus.emit('spell:invoked', result);
+    for (const targetSessionId of targets) {
+      const session = await this.sessionRepo.findById(targetSessionId);
+      if (!session) throw new NotFoundError('Session', targetSessionId);
 
-    return result;
+      await this.eventBus.emit('session:prompt_send', {
+        sessionId: targetSessionId,
+        content: prompt,
+        mode: 'send' as const,
+        senderSessionId,
+        senderProjectId,
+        targetProjectId: session.projectId ?? null,
+        timestamp: now,
+      });
+    }
+
+    // 6. Emit spell:invoked once per target purely for UI feedback (toast/ring
+    //    pulse, never PTY). UI keys results by targetSessionId so multiple
+    //    rings can light up simultaneously.
+    const primaryTargetId = targets[0];
+    let primaryResult: SpellInvocationResult | null = null;
+    for (const targetSessionId of targets) {
+      const result: SpellInvocationResult = {
+        success: true,
+        prompt,
+        entityType: payload.entityType,
+        entityId: payload.entityId,
+        spellName,
+        targetSessionId,
+        timestamp: now,
+      };
+      await this.eventBus.emit('spell:invoked', result);
+      if (targetSessionId === primaryTargetId) primaryResult = result;
+    }
+
+    return primaryResult!;
+  }
+
+  private resolveInvocationTargets(payload: SpellInvocationPayload): string[] {
+    const out: string[] = [];
+    if (payload.targetSessionId) out.push(payload.targetSessionId);
+    if (payload.targetSessionIds) {
+      for (const id of payload.targetSessionIds) {
+        if (id && !out.includes(id)) out.push(id);
+      }
+    }
+    return out;
+  }
+
+  private async resolveSenderProjectId(senderSessionId: string | null): Promise<string | null> {
+    if (!senderSessionId) return null;
+    const sender = await this.sessionRepo.findById(senderSessionId).catch(() => null);
+    return sender?.projectId ?? null;
   }
 
   // --- Spell CRUD (P1 foundation) ---

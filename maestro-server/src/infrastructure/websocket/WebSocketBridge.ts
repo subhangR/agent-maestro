@@ -23,6 +23,12 @@ const IMMEDIATE_EVENTS = new Set<string>([
   'spell:invoked',
   'spell:activated',
   'spell:deactivated',
+  // Ensemble lifecycle is low-volume and UI must repaint rings immediately
+  // when an ensemble is created/updated/disbanded.
+  'ensemble:created',
+  'ensemble:updated',
+  'ensemble:disbanded',
+  'ensemble:message',
 ]);
 
 /** Subscription filter for per-client event filtering. */
@@ -188,6 +194,11 @@ export class WebSocketBridge {
       'spell:invoked',
       'spell:activated',
       'spell:deactivated',
+      // Ensemble events (P4)
+      'ensemble:created',
+      'ensemble:updated',
+      'ensemble:disbanded',
+      'ensemble:message',
       'custom_prompt:created',
       'custom_prompt:updated',
       'custom_prompt:deleted',

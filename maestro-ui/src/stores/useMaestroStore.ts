@@ -29,6 +29,7 @@ import { useUIStore } from './useUIStore';
 import { WS_URL } from '../utils/serverConfig';
 import { playEventSound, soundManager } from '../services/soundManager';
 import { usePromptAnimationStore, selectPromptSurface, type PromptSurface } from './usePromptAnimationStore';
+import { useActiveSpellsStore } from './useActiveSpellsStore';
 import { buildTeamGroups } from '../utils/teamGrouping';
 
 /**
@@ -69,6 +70,30 @@ function resolvePromptAnimationMeta(
 
   const senderInitial = senderName?.trim()?.[0]?.toUpperCase();
   return { accent, senderName, targetName, senderInitial, edgeTravel };
+}
+
+/**
+ * If a server session payload carries `activeSpells`, mirror it into the
+ * per-session ring store so the borders survive a refetch / reconnect without
+ * waiting for the next `spell:activated`. The session type doesn't formally
+ * declare the field yet (server-side foundation work) so we read it loosely.
+ */
+function hydrateActiveSpellsFromSession(session: MaestroSession | undefined | null) {
+  if (!session) return;
+  const raw = (session as unknown as { activeSpells?: ReadonlyArray<any> }).activeSpells;
+  if (!Array.isArray(raw)) return;
+  useActiveSpellsStore.getState().hydrate(
+    session.id,
+    raw.map((s: any) => ({
+      spellId: s.spellId,
+      spellName: s.spellName,
+      color: s.color,
+      ensembleId: s.ensembleId,
+      castAt: typeof s.castAt === 'number' ? s.castAt : Date.now(),
+      enabled: s.enabled ?? true,
+      iteration: typeof s.iteration === 'number' ? s.iteration : 0,
+    })),
+  );
 }
 
 // Global WebSocket singleton
@@ -362,6 +387,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'session:created': {
         const session = normalizeSession(message.data.session || message.data);
         batchSet((prev) => ({ sessions: { ...prev.sessions, [session.id]: session } }));
+        hydrateActiveSpellsFromSession(session);
         // Play sound using team member instruments when available
         playSessionAwareSound(message.event, session);
         break;
@@ -369,6 +395,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'session:updated': {
         const updatedSession = applyPendingLifecycle(normalizeSession(message.data));
         batchSet((prev) => ({ sessions: { ...prev.sessions, [updatedSession.id]: updatedSession } }));
+        hydrateActiveSpellsFromSession(updatedSession);
         // Play sound using team member instruments (only if not a high-frequency update)
         if (shouldLogDetails) {
           playSessionAwareSound(message.event, updatedSession);
@@ -392,6 +419,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           const { [message.data.id]: _, ...sessions } = prev.sessions;
           return { sessions };
         });
+        useActiveSpellsStore.getState().clearSession(message.data.id);
         playSessionAwareSound(message.event, deletedSession || message.data);
         break;
       }
@@ -514,31 +542,11 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         break;
       }
       case 'spell:invoked': {
-        const { sessionId: maestroSessionId, content, entityType, entityId, spellName } = message.data;
-
-        // Find terminal session for this maestro session
-        const spellSessions = useSessionStore.getState().sessions;
-        const terminalSession = spellSessions.find(
-          (s) => s.maestroSessionId === maestroSessionId && !s.exited
-        );
-        if (!terminalSession) break;
-
-        // Inject prompt into PTY (same pattern as session:prompt_send)
-        const spellPtyId = terminalSession.id;
-        const spellText = content.replace(/[\r\n]+$/, '');
-        (async () => {
-          try {
-            if (spellText) {
-              await platform.terminal.write(spellPtyId, spellText, 'system');
-              await new Promise(r => setTimeout(r, 200));
-            }
-            await platform.terminal.write(spellPtyId, '\r', 'system');
-          } catch {
-            // best-effort
-          }
-        })();
-
-        // Trigger prompt animation (spell delivery has no sender → target pulse only).
+        // Feedback-only since P1 foundation: the server now delivers spell
+        // content through `session:prompt_send` (single-path PTY write). This
+        // event is the cosmetic "spell N landed on session X" signal — never
+        // write to the PTY here, or we double-inject the prompt.
+        const { sessionId: maestroSessionId, content, spellName } = message.data;
         const spellMeta = resolvePromptAnimationMeta(
           get().sessions,
           get().teams,
@@ -549,11 +557,31 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           surface: 'rail',
           senderMaestroSessionId: null,
           targetMaestroSessionId: maestroSessionId,
-          content: `[Spell: ${spellName}] ${content.slice(0, 50)}...`,
+          content: `[Spell: ${spellName}] ${(content ?? '').slice(0, 50)}...`,
           direction: 'forward',
           ...spellMeta,
         });
-
+        break;
+      }
+      case 'spell:activated': {
+        const { sessionIds, spellId, activeSpell } = message.data ?? {};
+        if (!sessionIds || !Array.isArray(sessionIds) || !spellId || !activeSpell) break;
+        useActiveSpellsStore.getState().activate({
+          sessionIds,
+          spellId,
+          spellName: activeSpell.spellName ?? message.data.spellName ?? spellId,
+          color: activeSpell.color,
+          ensembleId: activeSpell.ensembleId,
+          castAt: activeSpell.castAt ?? Date.now(),
+          enabled: activeSpell.enabled ?? true,
+          iteration: activeSpell.iteration ?? 0,
+        });
+        break;
+      }
+      case 'spell:deactivated': {
+        const { sessionIds, spellId } = message.data ?? {};
+        if (!sessionIds || !Array.isArray(sessionIds) || !spellId) break;
+        useActiveSpellsStore.getState().deactivate({ sessionIds, spellId });
         break;
       }
       case 'task:session_added':

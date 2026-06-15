@@ -1,4 +1,4 @@
-import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell } from '../../types';
+import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell, Ensemble } from '../../types';
 
 /**
  * Type-safe domain event definitions.
@@ -277,6 +277,33 @@ export interface SpellDeactivatedEvent {
   data: SpellDeactivatedPayload;
 }
 
+// Ensemble Events (P4 — multi-session coordination unit)
+export interface EnsembleCreatedEvent {
+  type: 'ensemble:created';
+  data: Ensemble;
+}
+
+export interface EnsembleUpdatedEvent {
+  type: 'ensemble:updated';
+  data: Ensemble;
+}
+
+export interface EnsembleDisbandedEvent {
+  type: 'ensemble:disbanded';
+  data: { id: string; memberSessionIds: string[]; spellId: string };
+}
+
+export interface EnsembleMessageEvent {
+  type: 'ensemble:message';
+  data: {
+    ensembleId: string;
+    senderSessionId: string | null;
+    recipients: string[];
+    content: string;
+    timestamp: number;
+  };
+}
+
 export interface CustomPromptCreatedEvent {
   type: 'custom_prompt:created';
   data: CustomPrompt;
@@ -358,6 +385,10 @@ export type DomainEvent =
   | SpellInvokedEvent
   | SpellActivatedEvent
   | SpellDeactivatedEvent
+  | EnsembleCreatedEvent
+  | EnsembleUpdatedEvent
+  | EnsembleDisbandedEvent
+  | EnsembleMessageEvent
   | CustomPromptCreatedEvent
   | CustomPromptUpdatedEvent
   | CustomPromptDeletedEvent
@@ -427,6 +458,10 @@ export interface TypedEventMap {
     content: string;
     mode: 'send' | 'paste';
     senderSessionId: string | null;
+    /** Project the sender lives in (null = UI). */
+    senderProjectId?: string | null;
+    /** Project the target session lives in. */
+    targetProjectId?: string | null;
     timestamp: number;
   };
   // Team member events
@@ -443,6 +478,17 @@ export interface TypedEventMap {
   'spell:invoked': SpellInvocationResult;
   'spell:activated': SpellActivatedPayload;
   'spell:deactivated': SpellDeactivatedPayload;
+  // Ensemble events
+  'ensemble:created': Ensemble;
+  'ensemble:updated': Ensemble;
+  'ensemble:disbanded': { id: string; memberSessionIds: string[]; spellId: string };
+  'ensemble:message': {
+    ensembleId: string;
+    senderSessionId: string | null;
+    recipients: string[];
+    content: string;
+    timestamp: number;
+  };
   'custom_prompt:created': CustomPrompt;
   'custom_prompt:updated': CustomPrompt;
   'custom_prompt:deleted': { id: string };

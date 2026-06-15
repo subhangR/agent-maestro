@@ -29,6 +29,61 @@ const LazyExcalidrawBoard = React.lazy(() => import("../ExcalidrawBoard").then(m
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
 import { SessionStatsView } from "../maestro/SessionStatsView";
+import { spellRingAttrs, type RingSpec } from "../../utils/spellRings";
+import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
+
+/**
+ * Wraps a .terminalContainer so it can render concentric spell rings for the
+ * underlying maestro session. Composes additively with `coordinator-glow`
+ * (UI_SPEC §7) and mounts the +N overflow pill when applicable.
+ */
+function TerminalRingContainer({
+  maestroSessionId,
+  className,
+  dataTerminalId,
+  children,
+}: {
+  maestroSessionId: string | null | undefined;
+  className: string;
+  dataTerminalId: string;
+  children: React.ReactNode;
+}) {
+  const activeSpells = useActiveSpellsForSession(maestroSessionId ?? null);
+  const ringSpecs = useMemo<RingSpec[]>(
+    () => activeSpells.map((s) => ({
+      spellName: s.spellName,
+      colorId: s.colorId,
+      ensembleId: s.ensembleId,
+    })),
+    [activeSpells],
+  );
+  const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
+  const hasRings = ringAttrs['data-spell-rings'] > 0;
+  const overflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+  const finalClassName = hasRings ? `${className} spell-ring` : className;
+  return (
+    <div
+      className={finalClassName}
+      data-terminal-id={dataTerminalId}
+      style={ringAttrs.style}
+      data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
+      data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
+      data-spell-ring-overflow={overflow || undefined}
+    >
+      {children}
+      {overflow > 0 && (
+        <button
+          type="button"
+          className="spell-ring__overflow"
+          aria-label={`Show ${overflow} more spells`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          +{overflow}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export interface AppWorkspaceProps {
   registry: MutableRefObject<TerminalRegistry>;
@@ -377,12 +432,13 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             toggling stats ↔ terminal never unmounts and re-creates every live PTY.
             That remount was the long freeze on every stats → terminal switch. */}
         {inspectedMaestroSession && (
-          <div
+          <TerminalRingContainer
+            maestroSessionId={inspectedMaestroSession.id}
             className={`terminalContainer ${activeIsCoordinator ? "coordinator-glow" : ""}`}
-            data-terminal-id={`maestro:${inspectedMaestroSession.id}`}
+            dataTerminalId={`maestro:${inspectedMaestroSession.id}`}
           >
             <SessionStatsView session={inspectedMaestroSession} />
-          </div>
+          </TerminalRingContainer>
         )}
         {/* Hero shows when no terminal is actually visible: no sessions, or
             activeId is stale/null. Suppressed while inspecting a stats view. */}
@@ -424,9 +480,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
               // map stays mounted underneath without painting over the stats view.
               const visible = s.id === activeId && !inspectedMaestroSession;
               return (
-                <div
+                <TerminalRingContainer
                   key={s.id}
-                  data-terminal-id={s.id}
+                  maestroSessionId={s.maestroSessionId ?? null}
+                  dataTerminalId={s.id}
                   className={`terminalContainer ${visible ? "" : "terminalHidden"} ${visible && activeIsCoordinator ? "coordinator-glow" : ""}`}
                 >
                   {inactiveMaestroSession ? (
@@ -444,7 +501,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                       pendingData={pendingData}
                     />
                   )}
-                </div>
+                </TerminalRingContainer>
               );
             })}
 

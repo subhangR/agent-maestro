@@ -20,6 +20,8 @@ import { createModelProfileRoutes } from './api/modelProfileRoutes';
 import { createWorkflowTemplateRoutes } from './api/workflowTemplateRoutes';
 import { createMasterRoutes } from './api/masterRoutes';
 import { createSpellRoutes } from './api/spellRoutes';
+import { createHookRoutes } from './api/hookRoutes';
+import { createEnsembleRoutes } from './api/ensembleRoutes';
 import { createAlexaRoutes } from './api/alexaRoutes';
 import { createGitRoutes } from './api/gitRoutes';
 import { createAgentLogRoutes } from './api/agentLogRoutes';
@@ -165,6 +167,12 @@ async function startServer() {
   // Spell routes
   const spellRoutes = createSpellRoutes(container.spellService);
   app.use('/api', spellRoutes);
+
+  // Hook dispatcher (P2) — every Claude hook posts here
+  app.use('/api', createHookRoutes(container.hookDispatcherService));
+
+  // Ensemble routes (P4)
+  app.use('/api', createEnsembleRoutes(container.ensembleService));
 
   // Master project cross-project routes
   const masterRoutes = createMasterRoutes(projectService, taskService, sessionService);

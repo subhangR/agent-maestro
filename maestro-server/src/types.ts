@@ -750,6 +750,105 @@ export interface SpellInvocationResult {
   timestamp: number;
 }
 
+// --- P2: Hook Dispatch protocol ---
+//
+// The CLI binds every hook event once to `maestro hook dispatch <EVENT>`, which
+// POSTs to /api/hooks/dispatch and translates DispatchResult into:
+//   - exit 0 + stdout for inject-prompt / feed-context / continue-loop (continue:false)
+//   - exit 2 + stderr "reason" for gate(block:true) or continue-loop(continue:true)
+//   - exit 0 + side effects for run-command / notify-channel
+//
+// Composition (when multiple active spells fire on the same event):
+//   - any spell with block:true wins → exit 2 with composed reasons
+//   - otherwise inject/feed contexts are concatenated in spell-iteration order (join('\n\n'))
+//   - continue-loop signals compose by "any continue wins"; reasons joined
+//   - run-command / notify-channel actions all execute (side effects accumulate)
+//
+// failMode (per spell): on internal error inside that spell's action,
+//   - 'closed' → treated as a block (gate semantics) — fail-closed
+//   - 'open'   → spell is skipped, others continue — fail-open
+//
+// The contract is intentionally small so the CLI can stay dumb: receive a
+// DispatchResult, fold it into exit code + stdout/stderr.
+export interface HookDispatchPayload {
+  sessionId: string;
+  event: SpellHookEvent;
+  /** Arbitrary structured payload forwarded from the Claude hook environment. */
+  payload?: Record<string, any>;
+}
+
+export interface HookDispatchSpellOutcome {
+  spellId: string;
+  action: SpellAction;
+  /** When set, the spell contributed feed-context / inject-prompt text. */
+  stdout?: string;
+  /** When set, the spell wants to block (gate) or continue (loop). */
+  block?: boolean;
+  continue?: boolean;
+  reason?: string;
+  /** Internal error swallowed by failMode handling, surfaced for logging. */
+  error?: string;
+}
+
+export interface DispatchResult {
+  /** Process exit code the CLI should use: 0 = allow, 2 = block/continue. */
+  exitCode: 0 | 2;
+  /** Concatenated stdout payloads from inject-prompt / feed-context actions. */
+  stdout: string;
+  /** Composed reason — gate block reason, or loop continue reason. */
+  reason?: string;
+  /** True when the result represents a gate block. */
+  blocked: boolean;
+  /** True when the result represents a loop continue signal (Stop hook). */
+  continued: boolean;
+  /** Per-spell breakdown, for logging and CLI debug. */
+  spells: HookDispatchSpellOutcome[];
+  timestamp: number;
+}
+
+// --- P4: Ensemble — persisted multi-session coordination unit ---
+export interface Ensemble {
+  id: string;
+  name: string;
+  /** SpellColorSlug so ensemble rings share the spell palette. */
+  color: SpellColorSlug;
+  /** Shared goal communicated to every member at activation. */
+  objective: string;
+  memberSessionIds: string[];
+  leaderSessionId?: string | null;
+  /** The "coordinate" spell that wires members together (default: spell_coordinate). */
+  spellId: string;
+  /** Session ID that created it, or `null` for UI-created. */
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+  disbandedAt?: number | null;
+}
+
+export interface CreateEnsemblePayload {
+  name: string;
+  color: SpellColorSlug;
+  objective: string;
+  memberSessionIds: string[];
+  leaderSessionId?: string | null;
+  spellId: string;
+  createdBy?: string | null;
+}
+
+export interface UpdateEnsemblePayload {
+  name?: string;
+  color?: SpellColorSlug;
+  objective?: string;
+  leaderSessionId?: string | null;
+}
+
+export interface EnsembleMessagePayload {
+  /** Free-form message broadcast to every member session as a prompt. */
+  content: string;
+  /** Session that initiated the message (null = UI). */
+  senderSessionId?: string | null;
+}
+
 export interface CustomPrompt {
   id: string;
   name: string;

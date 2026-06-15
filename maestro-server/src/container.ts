@@ -15,6 +15,7 @@ import { FileSystemTeamMemberRepository } from './infrastructure/repositories/Fi
 import { FileSystemTeamRepository } from './infrastructure/repositories/FileSystemTeamRepository';
 import { FileSystemCustomPromptRepository } from './infrastructure/repositories/FileSystemCustomPromptRepository';
 import { FileSystemSpellRepository } from './infrastructure/repositories/FileSystemSpellRepository';
+import { FileSystemEnsembleRepository } from './infrastructure/repositories/FileSystemEnsembleRepository';
 import { FileSystemModelProfileRepository } from './infrastructure/repositories/FileSystemModelProfileRepository';
 import { FileSystemSessionPromptRepository } from './infrastructure/repositories/FileSystemSessionPromptRepository';
 import { MultiScopeSkillLoader } from './infrastructure/skills/MultiScopeSkillLoader';
@@ -34,6 +35,8 @@ import { HuddleService } from './application/services/HuddleService';
 import { CommandUsageService } from './application/services/CommandUsageService';
 import { FileSystemSessionCommandUsageRepository } from './infrastructure/repositories/FileSystemSessionCommandUsageRepository';
 import { SpellService } from './application/services/SpellService';
+import { EnsembleService } from './application/services/EnsembleService';
+import { HookDispatcherService } from './application/services/HookDispatcherService';
 import { PtyHostService } from './application/services/PtyHostService';
 import { AnnouncementService } from './application/services/AnnouncementService';
 import { AlexaIngressService } from './application/services/AlexaIngressService';
@@ -53,6 +56,7 @@ import { ITeamMemberRepository } from './domain/repositories/ITeamMemberReposito
 import { ITeamRepository } from './domain/repositories/ITeamRepository';
 import { ICustomPromptRepository } from './domain/repositories/ICustomPromptRepository';
 import { ISpellRepository } from './domain/repositories/ISpellRepository';
+import { IEnsembleRepository } from './domain/repositories/IEnsembleRepository';
 import { IModelProfileRepository } from './domain/repositories/IModelProfileRepository';
 import { ISessionPromptRepository } from './domain/repositories/ISessionPromptRepository';
 import { ISkillLoader } from './domain/services/ISkillLoader';
@@ -124,6 +128,7 @@ export interface Container {
   teamRepo: ITeamRepository;
   customPromptRepo: ICustomPromptRepository;
   spellRepo: ISpellRepository;
+  ensembleRepo: IEnsembleRepository;
   modelProfileRepo: IModelProfileRepository;
   sessionPromptRepo: ISessionPromptRepository;
 
@@ -145,6 +150,8 @@ export interface Container {
   huddleService: HuddleService;
   commandUsageService: CommandUsageService;
   spellService: SpellService;
+  ensembleService: EnsembleService;
+  hookDispatcherService: HookDispatcherService;
   ptyHostService: PtyHostService;
   announcementService: AnnouncementService;
   alexaIngressService: AlexaIngressService;
@@ -184,6 +191,7 @@ export async function createContainer(): Promise<Container> {
   const teamRepo = new FileSystemTeamRepository(config.dataDir, idGenerator, logger);
   const customPromptRepo = new FileSystemCustomPromptRepository(config.dataDir, idGenerator, logger);
   const spellRepo = new FileSystemSpellRepository(config.dataDir, idGenerator, logger);
+  const ensembleRepo = new FileSystemEnsembleRepository(config.dataDir, logger);
   const modelProfileRepo = new FileSystemModelProfileRepository(config.dataDir, idGenerator, logger);
   const sessionPromptRepo = new FileSystemSessionPromptRepository(config.dataDir, logger);
 
@@ -215,6 +223,20 @@ export async function createContainer(): Promise<Container> {
     spellRepo,
     eventBus,
     idGenerator,
+  );
+  const ensembleService = new EnsembleService(
+    ensembleRepo,
+    sessionRepo,
+    spellRepo,
+    eventBus,
+    idGenerator,
+    logger,
+  );
+  const hookDispatcherService = new HookDispatcherService(
+    sessionRepo,
+    spellRepo,
+    eventBus,
+    logger,
   );
   const ptyHostService = new PtyHostService(sessionService, logger);
 
@@ -264,6 +286,7 @@ export async function createContainer(): Promise<Container> {
     teamRepo,
     customPromptRepo,
     spellRepo,
+    ensembleRepo,
     modelProfileRepo,
     sessionPromptRepo,
     skillLoader,
@@ -281,6 +304,8 @@ export async function createContainer(): Promise<Container> {
     huddleService,
     commandUsageService,
     spellService,
+    ensembleService,
+    hookDispatcherService,
     ptyHostService,
     announcementService,
     alexaIngressService,
@@ -300,6 +325,7 @@ export async function createContainer(): Promise<Container> {
         teamRepo.initialize(),
         customPromptRepo.initialize(),
         spellRepo.initialize(),
+        ensembleRepo.initialize(),
         modelProfileRepo.initialize(),
         sessionPromptRepo.initialize(),
       ]);

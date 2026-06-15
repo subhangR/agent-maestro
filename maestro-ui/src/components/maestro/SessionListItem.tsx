@@ -17,6 +17,8 @@ import { willOpenStatsOnClick } from "../../utils/sessionClickRouting";
 import { copyToClipboard } from "../../utils/domUtils";
 import { isDiagramDoc } from "../../utils/docHelpers";
 import { Icon, Glyph, AgentTile, type AgentKind } from "./redesign/kit";
+import { spellRingAttrs, type RingSpec } from "../../utils/spellRings";
+import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 
 const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
   spawning: "Spawning",
@@ -227,10 +229,29 @@ export const SessionListItem = React.memo(function SessionListItem({
     ? formatDuration(session.startedAt, session.completedAt)
     : formatTimeAgo(session.lastActivity);
 
+  // Concentric spell rings — feeds the .spell-ring utility on the tile root.
+  // See docs/spell-system-design/UI_SPEC.md §7.
+  const activeSpells = useActiveSpellsForSession(session.id);
+  const ringSpecs = useMemo<RingSpec[]>(
+    () => activeSpells.map((s) => ({
+      spellName: s.spellName,
+      colorId: s.colorId,
+      ensembleId: s.ensembleId,
+    })),
+    [activeSpells],
+  );
+  const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
+  const ringClass = ringAttrs['data-spell-rings'] > 0 ? ' spell-ring' : '';
+  const ringOverflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+
   return (
     <div
-      className={`pn-st${needsInput ? " pn-st--needsInput" : ""}${isSelected ? " pn-st--selected" : ""}${isArchived ? " pn-st--archived" : ""}${isOutOfTab ? " pn-st--outOfTab" : ""}`}
+      className={`pn-st${needsInput ? " pn-st--needsInput" : ""}${isSelected ? " pn-st--selected" : ""}${isArchived ? " pn-st--archived" : ""}${isOutOfTab ? " pn-st--outOfTab" : ""}${ringClass}`}
       onClick={() => onSelect(session, link)}
+      style={ringAttrs.style}
+      data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
+      data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
+      data-spell-ring-overflow={ringOverflow || undefined}
     >
       <div className="pn-st__main">
         {/* Sub-session disclosure arrow + child count */}
@@ -599,6 +620,17 @@ export const SessionListItem = React.memo(function SessionListItem({
             </div>
           </div>
         </div>
+      )}
+
+      {ringOverflow > 0 && (
+        <button
+          type="button"
+          className="spell-ring__overflow"
+          aria-label={`Show ${ringOverflow} more spells`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          +{ringOverflow}
+        </button>
       )}
     </div>
   );

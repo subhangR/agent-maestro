@@ -561,6 +561,45 @@ export const spellActivationSchema = z.object({
   invokerSessionId: safeId.optional(),
 }).strict();
 
+// --- Hook dispatch (P2) ---
+
+export const hookDispatchSchema = z.object({
+  sessionId: safeId,
+  event: spellHookEventSchema,
+  // Hook payloads vary by event (tool_name, file_path, message, …). Accept
+  // arbitrary JSON; the dispatcher pulls out the fields it cares about.
+  payload: z.record(z.string(), z.any()).optional(),
+}).strict();
+
+// --- Ensemble (P4) ---
+
+export const createEnsembleSchema = z.object({
+  name: shortString,
+  color: spellColorSchema,
+  objective: z.string().min(1).max(2000),
+  memberSessionIds: z.array(safeId).min(1),
+  leaderSessionId: safeId.nullable().optional(),
+  spellId: safeId,
+  createdBy: safeId.nullable().optional(),
+}).strict();
+
+export const updateEnsembleSchema = z.object({
+  name: shortString.optional(),
+  color: spellColorSchema.optional(),
+  objective: z.string().min(1).max(2000).optional(),
+  leaderSessionId: safeId.nullable().optional(),
+}).strict();
+
+export const ensembleMemberSchema = z.object({
+  sessionId: safeId,
+  castBy: safeId.nullable().optional(),
+}).strict();
+
+export const ensembleMessageSchema = z.object({
+  content: z.string().min(1).max(50000),
+  senderSessionId: safeId.nullable().optional(),
+}).strict();
+
 // --- Alexa / Voice schemas ---
 
 export const announceSchema = z.object({

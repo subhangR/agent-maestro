@@ -7,6 +7,8 @@ import { useProjectStore } from "../stores/useProjectStore";
 import { buildTeamGroups, getGroupedSessionOrder } from "../utils/teamGrouping";
 import { NewSpaceDropdown } from "./NewSpaceDropdown";
 import { Icon } from "./maestro/redesign/kit";
+import { spellRingAttrs, type RingSpec } from "../utils/spellRings";
+import { useActiveSpellsForSession } from "../stores/useActiveSpellsStore";
 
 type RailSession = {
     id: string;
@@ -56,12 +58,30 @@ function RailSessionButton({
     const needsInput = Boolean(maestroSession?.needsInput?.active);
     const isTerminal = !effect?.iconSrc && !session.maestroSessionId;
 
+    // Concentric spell rings — see docs/spell-system-design/UI_SPEC.md §7.
+    const activeSpells = useActiveSpellsForSession(session.maestroSessionId ?? null);
+    const ringSpecs = useMemo<RingSpec[]>(
+        () => activeSpells.map((s) => ({
+            spellName: s.spellName,
+            colorId: s.colorId,
+            ensembleId: s.ensembleId,
+        })),
+        [activeSpells],
+    );
+    const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
+    const ringClass = ringAttrs['data-spell-rings'] > 0 ? ' spell-ring' : '';
+    const ringOverflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+
     return (
         <button
-            className={`pn-srail-s ${isActive ? "pn-srail-s--active" : ""} ${isExited ? "pn-srail-s--exited" : ""} ${isTerminal ? "pn-agent--term" : ""}`}
+            className={`pn-srail-s ${isActive ? "pn-srail-s--active" : ""} ${isExited ? "pn-srail-s--exited" : ""} ${isTerminal ? "pn-agent--term" : ""}${ringClass}`}
             onClick={onSelect}
             title={session.name}
             type="button"
+            style={ringAttrs.style}
+            data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
+            data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
+            data-spell-ring-overflow={ringOverflow || undefined}
             {...(session.maestroSessionId ? { 'data-maestro-session-id': session.maestroSessionId } : {})}
         >
             {effect?.iconSrc ? (
@@ -73,6 +93,15 @@ function RailSessionButton({
             )}
             {isWorking && <span className="pn-srail-pulse" />}
             {needsInput && <span className="pn-srail-wait" />}
+            {ringOverflow > 0 && (
+                <span
+                    className="spell-ring__overflow"
+                    aria-label={`${ringOverflow} more spells`}
+                    role="img"
+                >
+                    +{ringOverflow}
+                </span>
+            )}
         </button>
     );
 }
