@@ -347,19 +347,9 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
         <div className="termStripRail">
           <div className="termStripRailInner">
             {stats.contextTokens > 0 && <ContextGauge tokens={stats.contextTokens} />}
-            {stats.cacheHitPct > 0 && (
-              <span className="termStripStat termStripStat--cache" title="Cache hit rate">
-                {stats.cacheHitPct}% cache
-              </span>
-            )}
             {stats.totalOutput > 0 && (
               <span className="termStripStat termStripStat--dim" title="Total output tokens">
                 out {formatTokens(stats.totalOutput)}
-              </span>
-            )}
-            {stats.turns > 0 && (
-              <span className="termStripStat termStripStat--dim" title="API turns">
-                {stats.turns} {stats.turns === 1 ? 'turn' : 'turns'}
               </span>
             )}
             {stats.toolCalls > 0 && (
@@ -375,16 +365,18 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           </div>
         </div>
 
-        {/* 3. Model badge — brass pill, kept fully visible */}
+        {/* 3. Docs & diagrams — inline tabs, open in the shared doc overlay */}
+        <SessionDocsMenu maestroSessionId={maestroSessionId} />
+
+        {/* 4. Model badge — brass pill, kept fully visible */}
         {stats.model && (
           <span className="termStripModel" title="Model">
             {stats.model.replace('claude-', '').replace(/-\d{8}$/, '')}
           </span>
         )}
 
-        {/* 4. Actions */}
+        {/* 5. Actions */}
         <div className="termStripActions">
-          <SessionDocsMenu maestroSessionId={maestroSessionId} />
           <button
             type="button"
             className="termStripActionBtn"
