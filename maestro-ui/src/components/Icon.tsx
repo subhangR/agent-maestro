@@ -34,6 +34,8 @@ export type IconName =
   | "volume-off"
   | "paperclip"
   | "pencil"
+  | "sliders"
+  | "check"
   | "log";
 
 type IconProps = {
@@ -261,6 +263,19 @@ export function Icon({ name, size = 16, className }: IconProps) {
         <svg {...common}>
           <rect x="3" y="3" width="18" height="18" rx="2" />
           <path d="M9 12l2 2 4-4" />
+        </svg>
+      );
+    case "check":
+      return (
+        <svg {...common}>
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      );
+    case "sliders":
+      return (
+        <svg {...common}>
+          <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3" />
+          <path d="M1 14h6M9 8h6M17 16h6" />
         </svg>
       );
     case "inbox":

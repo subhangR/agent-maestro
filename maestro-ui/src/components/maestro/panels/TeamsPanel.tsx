@@ -10,6 +10,7 @@ type TeamsPanelProps = {
     topLevelTeams: any[];
     onEdit: (team: any) => void;
     onRun: (team: any) => void;
+    onTeamsStandup?: () => void;
 };
 
 export function TeamsPanel({
@@ -18,6 +19,7 @@ export function TeamsPanel({
     topLevelTeams,
     onEdit,
     onRun,
+    onTeamsStandup,
 }: TeamsPanelProps) {
     const [showModal, setShowModal] = useState(false);
     const [editingTeam, setEditingTeam] = useState<any | null>(null);
@@ -41,13 +43,25 @@ export function TeamsPanel({
                     <div style={{ padding: '40px 16px', textAlign: 'center' }}>
                         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--pn-ink-2)' }}>NO TEAMS YET</p>
                         <p style={{ margin: '4px 0 14px', fontSize: 12, color: 'var(--pn-ink-4)', fontFamily: 'var(--pn-mono)' }}>$ create teams to group your team members</p>
-                        <button type="button"
-                            className="pn-btn pn-btn--primary"
-                            style={{ height: 30 }}
-                            onClick={handleNewTeam}
-                        >
-                            <Icon name="plus" size={14} /> Create Team
-                        </button>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <button type="button"
+                                className="pn-btn pn-btn--primary"
+                                style={{ height: 30 }}
+                                onClick={handleNewTeam}
+                            >
+                                <Icon name="plus" size={14} /> Create Team
+                            </button>
+                            {onTeamsStandup && (
+                                <button type="button"
+                                    className="pn-btn"
+                                    style={{ height: 30 }}
+                                    onClick={onTeamsStandup}
+                                    title="Run a teams standup to organize members into teams and perfect the org structure"
+                                >
+                                    <Icon name="gitBranch" size={14} /> Teams Standup
+                                </button>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -68,13 +82,25 @@ export function TeamsPanel({
                                     <Icon name="gitBranch" size={12} /> Org chart
                                 </button>
                             </div>
-                            <button type="button"
-                                className="pn-btn pn-btn--primary"
-                                style={{ height: 28 }}
-                                onClick={handleNewTeam}
-                            >
-                                <Icon name="plus" size={12} /> Create Team
-                            </button>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {onTeamsStandup && (
+                                    <button type="button"
+                                        className="pn-btn"
+                                        style={{ height: 28 }}
+                                        onClick={onTeamsStandup}
+                                        title="Run a teams standup to organize members into teams and perfect the org structure"
+                                    >
+                                        <Icon name="gitBranch" size={12} /> Standup
+                                    </button>
+                                )}
+                                <button type="button"
+                                    className="pn-btn pn-btn--primary"
+                                    style={{ height: 28 }}
+                                    onClick={handleNewTeam}
+                                >
+                                    <Icon name="plus" size={12} /> Create Team
+                                </button>
+                            </div>
                         </div>
                         {view === 'list' ? (
                             <div>

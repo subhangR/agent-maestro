@@ -363,7 +363,13 @@ export function initApp(
     );
 
     // ──── SYNC PROJECTS WITH MAESTRO SERVER ────
-    // Load closed project IDs from persisted state so we don't re-open them on restart
+    // The tab bar is an allowlist: a project appears as a tab only if the user
+    // explicitly opened it (and it was persisted here) — never just because it
+    // exists on the server. So we restore exactly the projects that were open,
+    // reconcile them against the server, and do NOT auto-add other server
+    // projects. Closing a project drops it from this list, so it stays closed
+    // across reloads; server projects the user never opened stay reachable via
+    // the "+" picker (fetchSavedProjects / reopenProject).
     const closedProjectIds = new Set<string>(
       (state as { closedProjectIds?: string[] }).closedProjectIds ?? [],
     );
@@ -371,31 +377,29 @@ export function initApp(
     try {
       const serverProjects = await maestroClient.getProjects();
       const serverProjectsById = new Map(serverProjects.map((p) => [p.id, p]));
-      const localProjectsById = new Map(state.projects.map((p) => [p.id, p]));
 
       const mergedProjects: MaestroProject[] = [];
 
-      for (const serverProj of serverProjects) {
-        // Skip projects that were explicitly closed by the user
-        if (closedProjectIds.has(serverProj.id)) continue;
-
-        const localProj = localProjectsById.get(serverProj.id);
-        mergedProjects.push({
-          id: serverProj.id,
-          name: serverProj.name,
-          workingDir: serverProj.workingDir,
-          createdAt: serverProj.createdAt,
-          updatedAt: serverProj.updatedAt,
-          basePath: serverProj.workingDir || null,
-          environmentId: localProj?.environmentId ?? null,
-          assetsEnabled: localProj?.assetsEnabled ?? true,
-          soundInstrument: localProj?.soundInstrument ?? 'piano',
-          soundConfig: localProj?.soundConfig,
-        });
-      }
-
       for (const localProj of state.projects) {
-        if (!serverProjectsById.has(localProj.id)) {
+        const serverProj = serverProjectsById.get(localProj.id);
+        if (serverProj) {
+          // Still on the server — keep it open, refreshing server-owned
+          // metadata while preserving local-only preferences.
+          mergedProjects.push({
+            id: serverProj.id,
+            name: serverProj.name,
+            workingDir: serverProj.workingDir,
+            createdAt: serverProj.createdAt,
+            updatedAt: serverProj.updatedAt,
+            basePath: serverProj.workingDir || null,
+            environmentId: localProj.environmentId ?? null,
+            assetsEnabled: localProj.assetsEnabled ?? true,
+            soundInstrument: localProj.soundInstrument ?? 'piano',
+            soundConfig: localProj.soundConfig,
+          });
+        } else {
+          // Open locally but missing from the server — recreate it so the
+          // session/task APIs have a project to reference.
           try {
             const created = await maestroClient.createProject({
               name: localProj.name,
@@ -421,9 +425,7 @@ export function initApp(
         }
       }
 
-      if (mergedProjects.length > 0) {
-        state.projects = mergedProjects;
-      }
+      state.projects = mergedProjects;
     } catch {
     }
 

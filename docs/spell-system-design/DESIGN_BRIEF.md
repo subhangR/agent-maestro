@@ -26,8 +26,8 @@ Claude reads `hooks.json` ONCE at session start — no mid-session hook reload. 
 - **castMode**: single | broadcast (same prompt to all) | coordinate (roles + shared objective).
 - **Ensemble** (new persisted entity): {id, name, color, objective, memberSessionIds[], leaderSessionId?, spellId, createdBy}; `ensemble:created/updated/disbanded` WS. Members carry an `ActiveSpell` with `ensembleId` → shared-color ring + grouping. Persistent, with cross-session channel `maestro ensemble message "<text>"`. Both agents and users can initiate.
 
-## Feasibility gate (verify before building gate/loop)
-Confirm the bundled Claude build honors PreToolUse `exit 2` (gating) and Stop `exit 2` (continuation). Maestro has never used exit-2 (all hooks exit 0). If unsupported → gate/loop fall back to PTY prompts.
+## Feasibility gate — RESOLVED: PASSED (see exit-2-verification-spike.md)
+Verified on Claude Code 2.1.153: PreToolUse `exit 2` blocks the tool + feeds stderr to the model; Stop `exit 2` forces continuation. **gate + continue-loop ship as NATIVE exit-2 actions — no PTY fallback.** Caveat: filter the cosmetic "Stop hook error" tray notification (key `stop-hook-error`) while a continue-loop spell is active.
 
 ## Build phases
 1 Foundation (Spell entity, Session.activeSpells, activate/deactivate routes+WS, fix double-inject + CLI contract bugs) → 2 Dispatcher (`maestro hook dispatch`, bind events, server evaluator; verify exit-2) → 3 Gates & loops → 4 UI (rings on 3 boxes, redesigned picker + details) → 5 Task assignment (Task.spellIds, manifest, auto-activate) + multi-session/ensembles → 6 Custom spell + skill creation.

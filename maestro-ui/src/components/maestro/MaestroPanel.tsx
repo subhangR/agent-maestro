@@ -288,7 +288,7 @@ export const MaestroPanel = React.memo(function MaestroPanel({
 
     const { teamMembers, teamMembersMap, teamMembersLoading, handleArchive: handleArchiveTeamMember, handleUnarchive: handleUnarchiveTeamMember, handleDelete: handleDeleteTeamMember, handleRun: handleRunTeamMember, handleTeamStandup } = useTeamMemberActions(projectId, project, onCreateMaestroSession, createTask, (msg) => setError(msg));
 
-    const { teams, activeTeams, topLevelTeams, handleRun: handleRunTeam } = useTeamActions(projectId, project, teamMembersMap, onCreateMaestroSession, createTask, (msg) => setError(msg));
+    const { teams, activeTeams, topLevelTeams, handleRun: handleRunTeam, handleTeamsStandup } = useTeamActions(projectId, project, teamMembersMap, onCreateMaestroSession, createTask, (msg) => setError(msg));
 
     const execution = useExecutionMode(projectId, project, normalizedTasks, regularTasks, onCreateMaestroSession, createTeam, (msg) => setError(msg));
 
@@ -806,6 +806,7 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                                     topLevelTeams={topLevelTeams}
                                     onEdit={() => {}}
                                     onRun={handleRunTeam}
+                                    onTeamsStandup={handleTeamsStandup}
                                 />
                             )}
                         </>

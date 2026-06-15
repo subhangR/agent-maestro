@@ -120,6 +120,30 @@ const DEFAULT_CONFIGS: Record<string, {
             },
         },
     },
+    teams_standup: {
+        name: "Teams Standup", role: "Team organizer and org-structure architect", avatar: "\u{1F5C2}\u{FE0F}",
+        identity: "You are the teams standup engineer. You organize the existing team members into well-structured teams and perfect the recursive team-of-teams org — assign coordinator leaders, group members, nest sub-teams, and merge or split teams to match the work. You present a diff-style org plan with a tree diagram and wait for confirmation before applying any changes.",
+        agentTool: "claude-code", model: "opus", mode: "worker",
+        commandPermissions: {
+            commands: {
+                "team:list": true,
+                "team:get": true,
+                "team:tree": true,
+                "team:create": true,
+                "team:edit": true,
+                "team:add-member": true,
+                "team:remove-member": true,
+                "team:add-sub-team": true,
+                "team:remove-sub-team": true,
+                "team:archive": true,
+                "team:unarchive": true,
+                "team-member:list": true,
+                "team-member:get": true,
+                "team-member:create": true,
+                "team-member:edit": true,
+            },
+        },
+    },
 };
 
 function getDefaultCapabilities(mode: AgentMode): Record<string, boolean> {

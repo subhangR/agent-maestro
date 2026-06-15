@@ -626,7 +626,7 @@ const SessionNodeRenderer = React.memo(function SessionNodeRenderer({
         session={node}
         depth={depth}
         teamColor={teamColor}
-        childCount={node.children.length}
+        childCount={visibleChildren.length}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => onToggleCollapse(node.id)}
         link={link}
@@ -1524,7 +1524,7 @@ export const SessionsSection = React.memo(function SessionsSection({
                       onClick={item.toggle}
                     >
                       <span className={`pn-check ${item.on ? "pn-check--on" : ""}`} aria-hidden="true">
-                        {item.on && <Icon name="check" size={11} sw={2.4} />}
+                        {item.on && <Icon name="check" size={11} />}
                       </span>
                       <span>{item.label}</span>
                     </button>

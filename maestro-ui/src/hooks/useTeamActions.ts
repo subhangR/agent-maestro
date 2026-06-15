@@ -60,10 +60,38 @@ export function useTeamActions(projectId: string, project: MaestroProject, teamM
         }
     }, [projectId, project, teamMembersMap, createTask, onCreateMaestroSession, onError]);
 
+    const handleTeamsStandup = useCallback(async () => {
+        try {
+            const member = Object.values(teamMembersMap).find(
+                (tm) => tm.isDefault && tm.name === 'Teams Standup'
+            );
+            if (!member) { onError("Teams Standup member not found. Try refreshing."); return; }
+
+            const task = await createTask({
+                projectId,
+                title: 'Teams Standup',
+                description: 'Organize the team members into well-structured teams and perfect the recursive org: assign leaders, group members, nest sub-teams, and present an org plan before applying.',
+                priority: 'medium',
+                teamMemberId: member.id,
+            });
+
+            await onCreateMaestroSession({
+                task,
+                project,
+                mode: 'worker',
+                teamMemberId: member.id,
+            });
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : String(err);
+            onError(`Failed to start teams standup: ${message}`);
+        }
+    }, [teamMembersMap, projectId, project, createTask, onCreateMaestroSession, onError]);
+
     return {
         teams,
         activeTeams,
         topLevelTeams,
         handleRun,
+        handleTeamsStandup,
     };
 }

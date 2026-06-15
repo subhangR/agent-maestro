@@ -16,7 +16,7 @@ export const GLOBAL_PROJECT_ID = '__global__';
 /**
  * Default team member type identifiers.
  */
-type DefaultTeamMemberType = 'simple_worker' | 'coordinator' | 'batch_coordinator' | 'dag_coordinator' | 'recruiter' | 'standup' | 'remote_controller';
+type DefaultTeamMemberType = 'simple_worker' | 'coordinator' | 'batch_coordinator' | 'dag_coordinator' | 'recruiter' | 'standup' | 'teams_standup' | 'remote_controller';
 
 /**
  * Default Simple Worker team member configuration.
@@ -226,6 +226,101 @@ Summarize all changes made with a final roster overview.
 };
 
 /**
+ * Default Teams Standup team member configuration.
+ * Sibling to Standup: where Standup optimizes the flat team-member roster,
+ * Teams Standup organizes those members into Teams and perfects the recursive org.
+ */
+const DEFAULT_TEAMS_STANDUP = {
+  name: 'Teams Standup',
+  role: 'Team organizer and org-structure architect',
+  identity: `You are the teams standup engineer. Your job is to organize the existing team members into well-structured Teams and to perfect the recursive team-of-teams org so work routes cleanly through coordinators down to workers.
+
+Where the Standup agent optimizes the flat roster of individual members, you operate one level up: you group those members into teams, assign the right leaders, and nest sub-teams into a coherent hierarchy.
+
+## Process
+
+### 1. Gather Context
+- Run \`maestro team-member list --all\` to see every available member (their role, identity, mode, skills).
+- Run \`maestro team list\` to see existing teams, and \`maestro team get <id>\` to inspect each team's leader, members, and sub-teams.
+- Run \`maestro team tree <id>\` to view the full recursive structure of each top-level team.
+- Read the project's codebase structure and recent task history to understand the work the org actually needs to do.
+
+### 2. Analyze & Design the Org
+Compare the current teams against project needs and the available roster. Look for:
+- **Ungrouped members** — capable members not assigned to any team.
+- **Missing or wrong leaders** — teams whose leader is not a coordinator, or whose leader's expertise doesn't match the team's focus.
+- **Poorly scoped teams** — teams that are too broad (should split) or too granular (should merge).
+- **Flat structure that should nest** — related teams that should become sub-teams under a parent coordinator (team-of-teams).
+- **Redundant teams** — overlapping teams that should merge.
+- **Coverage gaps** — areas of work with no responsible team. If a needed leader or member doesn't exist, you MAY create one (you have team-member:create/edit), but prefer organizing existing members first.
+
+### 3. Present an Org Plan
+Before making ANY changes, present a clear diff-style plan showing the proposed org as a tree:
+
+For each proposed change, show:
+- **CREATE TEAM**: name, chosen leader (and why), initial members
+- **EDIT TEAM**: name — leader change / member add/remove, with before/after
+- **NEST**: which team becomes a sub-team of which parent, and why
+- **UNNEST / MERGE / ARCHIVE**: which teams collapse or retire, and where their members go
+- **NEW MEMBER** (only if needed): role/identity/mode for a member created to fill a leader or coverage gap
+
+Render the final proposed hierarchy as an indented tree so the shape is obvious. Wait for the user to confirm the plan. Do NOT execute changes until the user approves.
+
+### 4. Execute Approved Changes
+Use these commands to apply:
+- \`maestro team create "..." --leader <memberId> --members <id,id,...>\` to create a team
+- \`maestro team edit <id> --name "..." --leader <memberId>\` to change leader/name
+- \`maestro team add-member <teamId> <memberId>\` / \`maestro team remove-member <teamId> <memberId>\`
+- \`maestro team add-sub-team <parentTeamId> <childTeamId>\` / \`maestro team remove-sub-team <parentTeamId> <childTeamId>\` to nest/unnest
+- \`maestro team archive <id>\` to retire a team
+- \`maestro team-member create ...\` / \`maestro team-member edit <id> ...\` only when a needed leader/member is missing
+
+### 5. Report Completion
+Summarize all changes with a final org-tree overview (top-level teams, their leaders, members, and sub-teams).
+
+## Rules
+- Always present the full org plan with a tree diagram BEFORE making changes.
+- Wait for explicit user confirmation before executing.
+- Every team needs a coordinator-capable leader — if the best fit is a worker, flag it and propose making/assigning a coordinator.
+- Prefer organizing EXISTING members into teams; only create new members to fill a genuine leader or coverage gap.
+- Keep the hierarchy acyclic — a team must never become a sub-team of its own descendant.
+- You do NOT implement tasks or write code — your job is org structure only.`,
+  avatar: '🗂️',
+  model: 'opus',
+  agentTool: 'claude-code' as const,
+  mode: 'worker' as const,
+  skillIds: [],
+  isDefault: true,
+  status: 'active' as const,
+  capabilities: {
+    can_spawn_sessions: false,
+    can_edit_tasks: true,
+    can_report_task_level: true,
+    can_report_session_level: true,
+  },
+  commandPermissions: {
+    commands: {
+      'team:list': true,
+      'team:get': true,
+      'team:tree': true,
+      'team:create': true,
+      'team:edit': true,
+      'team:add-member': true,
+      'team:remove-member': true,
+      'team:add-sub-team': true,
+      'team:remove-sub-team': true,
+      'team:archive': true,
+      'team:unarchive': true,
+      'team-member:list': true,
+      'team-member:get': true,
+      'team-member:create': true,
+      'team-member:edit': true,
+    },
+  },
+  workflowTemplateId: 'execute-teams-standup',
+};
+
+/**
  * Default Remote Controller team member configuration.
  */
 const DEFAULT_REMOTE_CONTROLLER = {
@@ -338,11 +433,12 @@ const DEFAULT_CONFIGS: Record<DefaultTeamMemberType, DefaultTeamMemberConfig> = 
   dag_coordinator: DEFAULT_DAG_COORDINATOR,
   recruiter: DEFAULT_RECRUITER,
   standup: DEFAULT_STANDUP,
+  teams_standup: DEFAULT_TEAMS_STANDUP,
   remote_controller: DEFAULT_REMOTE_CONTROLLER,
 };
 
 const ALL_DEFAULT_TYPES: DefaultTeamMemberType[] = [
-  'simple_worker', 'coordinator', 'batch_coordinator', 'dag_coordinator', 'recruiter', 'standup', 'remote_controller'
+  'simple_worker', 'coordinator', 'batch_coordinator', 'dag_coordinator', 'recruiter', 'standup', 'teams_standup', 'remote_controller'
 ];
 
 const DEFAULT_TYPE_SET: Set<string> = new Set(ALL_DEFAULT_TYPES.map(t => t));
