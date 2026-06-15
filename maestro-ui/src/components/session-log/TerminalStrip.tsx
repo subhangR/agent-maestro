@@ -4,7 +4,8 @@ import type { AgentLogFile } from '../../platform';
 import { parseJsonlText, groupMessages, checkMessagesOngoing } from '../../utils/claude-log';
 import type { ParsedMessage, ConversationGroup } from '../../utils/claude-log';
 import { LogMessageGroup } from './LogMessageGroup';
-import { useSpellStore } from '../../stores/useSpellStore';
+import { useSpellLauncherStore } from '../../stores/useSpellLauncherStore';
+import { ActiveSpellsPanel } from '../spells/ActiveSpellsPanel';
 import { Icon } from '../Icon';
 import { SessionDocsMenu } from '../maestro/SessionDocsMenu';
 
@@ -168,7 +169,7 @@ function ContextGauge({ tokens }: { tokens: number }) {
 
 export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDraw }: TerminalStripProps) {
   const provider = resolveLogProvider(agentTool);
-  const openPicker = useSpellStore((s) => s.openPicker);
+  const openLauncher = useSpellLauncherStore((s) => s.openLauncher);
   const [resolvedProvider, setResolvedProvider] = useState<LogProvider>(provider);
   // The cwd whose project dir actually held the log. May be an ancestor of the
   // live `cwd` prop once the agent has cd'd into a subdirectory.
@@ -323,6 +324,9 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
         </div>
       )}
 
+      {/* Active spells strip — appears above the bar (03 §3.2 surface 1). */}
+      <ActiveSpellsPanel anchor="header-strip" sessionId={maestroSessionId} />
+
       {/* The fused bottom strip */}
       <div className="termStripBar">
         {/* 1. Session Log toggle */}
@@ -402,9 +406,9 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           <button
             type="button"
             className="termStripActionBtn"
-            onClick={() => openPicker(maestroSessionId)}
+            onClick={() => openLauncher({ source: 'workspace', targetSessionIds: [maestroSessionId] })}
             title="Cast spell — inject prompt into session"
-            aria-label="Open spell picker"
+            aria-label="Open spell launcher"
           >
             <span className="termStripActionGlyph">✦</span>
           </button>

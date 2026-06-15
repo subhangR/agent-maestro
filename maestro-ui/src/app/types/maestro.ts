@@ -524,6 +524,9 @@ export interface MaestroTask {
   // Due date for the task (ISO date string "YYYY-MM-DD" or null)
   dueDate?: string | null;
 
+  // Spells attached to this task — baked into manifest at spawn (P1+).
+  spellIds?: string[];
+
   // Docs attached to this task
   docs?: DocEntry[];
 
@@ -585,6 +588,9 @@ export interface MaestroSession {
   teamSessionId?: string;   // Shared ID linking coordinator + workers (= coordinator's session ID)
   teamId?: string;           // Optional saved Team reference
   parentSessionId?: string;
+
+  // Spell system — active spells on this session (P1+).
+  activeSpells?: ActiveSpell[];
 }
 
 // Payloads
@@ -843,39 +849,151 @@ export interface TaskListOrdering {
   updatedAt: number;
 }
 
-// ─── Spell Types ───
+// ─── Spell Types (P1+ — first-class Spell entity, server-aligned) ───
 
-export type SpellEntityType = 'maestro' | 'skill' | 'team-member' | 'task' | 'doc' | 'session' | 'custom-prompt';
+/** Frozen palette — must mirror SPELL_COLORS in maestro-server/src/types.ts. */
+export type SpellColorSlug =
+  | 'amber' | 'rose' | 'violet' | 'sky' | 'emerald'
+  | 'fuchsia' | 'lime' | 'cyan' | 'indigo';
 
-export interface SpellDefinition {
-  name: string;
-  label: string;
-  description?: string;
+export type SpellAction =
+  | 'inject-prompt'
+  | 'feed-context'
+  | 'gate'
+  | 'continue-loop'
+  | 'run-command'
+  | 'notify-channel';
+
+export type SpellLoopType =
+  | 'single-shot'
+  | 'continue-until-done'
+  | 'plan-execute'
+  | 'critic-refine';
+
+export type SpellHookEvent =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'UserPromptSubmit'
+  | 'Stop'
+  | 'Notification'
+  | 'SessionStart';
+
+export interface SpellTrigger {
+  hookEvent: SpellHookEvent;
+  matcher?: string;
+  enabled: boolean;
 }
 
-export interface SpellEntity {
+export type SpellFailMode = 'open' | 'closed';
+
+/** Library category used by SpellLauncher nav. */
+export type SpellCategory =
+  | 'featured'
+  | 'execute'
+  | 'plan'
+  | 'gate'
+  | 'notify'
+  | 'custom'
+  | 'skills';
+
+export interface Spell {
   id: string;
-  type: SpellEntityType;
-  label: string;
+  name: string;
+  description: string;
   icon?: string;
-  spells: SpellDefinition[];
-  metadata?: Record<string, any>;
+  color: SpellColorSlug;
+  action: SpellAction;
+  loopType?: SpellLoopType;
+  trigger?: SpellTrigger;
+  failMode?: SpellFailMode;
+  maxIterations?: number;
+  skillRef?: string;
+  isDefault?: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
-export interface SpellInvocation {
-  entityType: SpellEntityType;
-  entityId: string;
-  spellName: string;
-  targetSessionId: string;
-  projectId: string;
+/** Per-session activation state for a Spell. Mirrors Session.activeSpells. */
+export interface ActiveSpell {
+  spellId: string;
+  color: SpellColorSlug;
+  enabled: boolean;
+  hookEvent?: SpellHookEvent;
+  matcher?: string;
+  iteration: number;
+  ensembleId?: string;
+  castAt: number;
+  castBy: string | null;
 }
 
-export interface SpellInvokedEvent {
-  sessionId: string;
-  content: string;
-  entityType: SpellEntityType;
-  entityId: string;
-  spellName: string;
+export interface CreateSpellPayload {
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  action: SpellAction;
+  loopType?: SpellLoopType;
+  trigger?: SpellTrigger;
+  failMode?: SpellFailMode;
+  maxIterations?: number;
+  skillRef?: string;
+}
+
+export interface UpdateSpellPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  color?: SpellColorSlug;
+  action?: SpellAction;
+  loopType?: SpellLoopType;
+  trigger?: SpellTrigger;
+  failMode?: SpellFailMode;
+  maxIterations?: number;
+  skillRef?: string;
+}
+
+/** Server cast-spell request shape (matches POST /api/spells/:id/activate). */
+export interface CastSpellInput {
+  spellId: string;
+  targetSessionIds: string[];
+  invokerSessionId?: string | null;
+  /** UI-only: castMode selected in the launcher. */
+  castMode?: 'single' | 'broadcast' | 'coordinate';
+  /** UI-only: ensemble name when castMode = coordinate. */
+  ensembleName?: string;
+}
+
+export interface CastResult {
+  spellId: string;
+  activeSpells: ActiveSpell[];
+  sessionIds: string[];
+}
+
+/** Ensemble entity — multi-session coordination unit (P4). */
+export interface Ensemble {
+  id: string;
+  name: string;
+  color: SpellColorSlug;
+  objective: string;
+  memberSessionIds: string[];
+  leaderSessionId?: string | null;
+  spellId: string;
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+  disbandedAt?: number | null;
+}
+
+/** Minimal Skill type (P6, partial — UI manages local list for now). */
+export interface Skill {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  scope: 'project' | 'global';
+  body?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 // ─── Git Types ───

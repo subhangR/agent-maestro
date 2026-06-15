@@ -33,7 +33,8 @@ import { RecordingsListModal } from "../modals/RecordingsListModal";
 import { ReplayModal } from "../modals/ReplayModal";
 import { AgentModalViewer } from "../modals/AgentModalViewer";
 import { useMaestroStore } from "../../stores/useMaestroStore";
-import { SpellPicker } from "../maestro/SpellPicker";
+import { SpellLauncher } from "../spells/SpellLauncher";
+import { UndoToast } from "../spells/UndoToast";
 import { normalizeSmartQuotes } from "../../app/utils/string";
 
 export function AppModals() {
@@ -677,8 +678,9 @@ export function AppModals() {
         />
       )}
 
-      {/* Spell picker */}
-      <SpellPicker />
+      {/* Spell launcher (replaces SpellPicker) */}
+      <SpellLauncher />
+      <UndoToast />
 
       {/* Agent-generated modals */}
       {activeModals.map((modal) => (
