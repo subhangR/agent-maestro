@@ -16,6 +16,7 @@ import type { SessionLifecycleTab } from "../../utils/sessionLifecycle";
 import { willOpenStatsOnClick } from "../../utils/sessionClickRouting";
 import { copyToClipboard } from "../../utils/domUtils";
 import { isDiagramDoc } from "../../utils/docHelpers";
+import { useSessionDocs } from "../../hooks/useSessionDocs";
 import { Icon, Glyph, AgentTile, type AgentKind } from "./redesign/kit";
 
 const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
@@ -146,6 +147,15 @@ export const SessionListItem = React.memo(function SessionListItem({
   );
 
   const docs: DocEntry[] = session.docs ?? [];
+  // The session entity over the websocket carries doc metadata only (no file
+  // content), so opening a diagram from the raw list renders an empty board.
+  // Hydrate content once the meta panel is expanded — mirrors how the task tile
+  // opens docs via getTaskDocs — and keep this session's own doc set/order.
+  const hydratedDocs = useSessionDocs(session, isMetaExpanded);
+  const openableDocs = useMemo(() => {
+    const byId = new Map(hydratedDocs.map((d) => [d.id, d]));
+    return docs.map((d) => byId.get(d.id) ?? d);
+  }, [docs, hydratedDocs]);
   const mode = session.mode;
 
   // Rich hover tooltip: session identity + every linked task's full details.
@@ -436,7 +446,7 @@ export const SessionListItem = React.memo(function SessionListItem({
         </div>
       </div>
 
-      {(showBadges || showElapsed) && (
+      {((showBadges && (mode || session.model)) || showElapsed) && (
         <div className="pn-st__inforow">
           {showBadges && mode && (
             <span className="pn-st__infobadge">{MODE_LABELS[mode]}</span>
@@ -557,7 +567,7 @@ export const SessionListItem = React.memo(function SessionListItem({
             <div className="pn-st__metasec">
               <span className="pn-st__metalabel">Docs</span>
               <div className="pn-st__metacontent">
-                {docs.map((doc) => {
+                {openableDocs.map((doc) => {
                   const isDiagram = isDiagramDoc(doc);
                   const ext = doc.filePath.split(".").pop()?.toLowerCase() || "";
                   const isMarkdown = ["md", "mdx", "markdown"].includes(ext);
