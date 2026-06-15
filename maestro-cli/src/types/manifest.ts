@@ -7,6 +7,29 @@
  */
 
 
+/**
+ * Subset of the server-side `Spell` entity carried in the manifest so the CLI
+ * can auto-activate task-assigned spells at worker init time. Full schema lives
+ * in maestro-server/src/types.ts (Spell).
+ */
+export interface ManifestSpell {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+  action?: string;
+  loopType?: string;
+  trigger?: {
+    hookEvent: string;
+    matcher?: string;
+    enabled?: boolean;
+  };
+  failMode?: 'open' | 'closed';
+  maxIterations?: number;
+  skillRef?: string;
+}
+
 /** Agent mode — four-mode model covering all session scenarios */
 export type AgentMode = 'worker' | 'coordinator' | 'coordinated-worker' | 'coordinated-coordinator';
 
@@ -91,6 +114,13 @@ export interface MaestroManifest {
 
   /** Optional standard skills to load from ~/.skills/ */
   skills?: string[];
+
+  /**
+   * Spells to auto-activate at session start. Mirrors the server-side `Spell`
+   * shape (subset). The worker-init flow calls
+   * `POST /api/spells/:id/activate` for each so the dispatcher can match them.
+   */
+  spells?: ManifestSpell[];
 
   /** Agent tool to use for this session (defaults to 'claude-code') */
   agentTool?: AgentTool;

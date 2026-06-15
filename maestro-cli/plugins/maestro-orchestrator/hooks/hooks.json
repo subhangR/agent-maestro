@@ -9,6 +9,11 @@
             "type": "command",
             "command": "maestro session register",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "maestro hook dispatch SessionStart",
+            "timeout": 5
           }
         ]
       }
@@ -33,6 +38,11 @@
             "type": "command",
             "command": "maestro session needs-input",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "maestro hook dispatch Stop",
+            "timeout": 5
           }
         ]
       }
@@ -45,6 +55,11 @@
             "type": "command",
             "command": "maestro session needs-input",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "maestro hook dispatch Notification",
+            "timeout": 5
           }
         ]
       }
@@ -57,6 +72,23 @@
             "type": "command",
             "command": "maestro session resume-working",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "maestro hook dispatch UserPromptSubmit",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "maestro hook dispatch PreToolUse",
+            "timeout": 5
           }
         ]
       }
@@ -69,6 +101,16 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/bin/track-file",
             "timeout": 2
+          }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "maestro hook dispatch PostToolUse",
+            "timeout": 5
           }
         ]
       }
