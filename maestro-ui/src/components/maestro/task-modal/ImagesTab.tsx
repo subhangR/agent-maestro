@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { TaskImage } from "../../../app/types/maestro";
 import { maestroClient } from "../../../utils/MaestroClient";
-import { extractImageFiles } from "../../../utils/clipboardImages";
+import { dataTransferHasFiles, extractImageFiles, nextImageNameIndex } from "../../../utils/clipboardImages";
 import { Icon } from "../redesign/kit";
 
 type ImagesTabProps = {
@@ -17,24 +17,36 @@ export function ImagesTab({ taskId, images, onImagesChange, variant = 'tab' }: I
     const [uploading, setUploading] = useState(false);
     const [previewImage, setPreviewImage] = useState<TaskImage | null>(null);
 
-    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files;
-        if (!files || files.length === 0) return;
+    const uploadFiles = async (files: File[]) => {
+        const imageFiles = files.filter(file => file.type.startsWith('image/'));
+        if (imageFiles.length === 0) return;
 
         setUploading(true);
         try {
             const newImages: TaskImage[] = [];
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (!file.type.startsWith('image/')) continue;
-                const img = await maestroClient.uploadTaskImage(taskId, file);
-                newImages.push(img);
+            for (const file of imageFiles) {
+                try {
+                    const img = await maestroClient.uploadTaskImage(taskId, file);
+                    newImages.push(img);
+                } catch {
+                    // Keep successful uploads and skip failed files.
+                }
             }
-            onImagesChange([...images, ...newImages]);
-        } catch (err) {
-            // Upload failed
+            if (newImages.length > 0) {
+                onImagesChange([...images, ...newImages]);
+            }
         } finally {
             setUploading(false);
+        }
+    };
+
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        try {
+            await uploadFiles(Array.from(files));
+        } finally {
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
@@ -50,24 +62,27 @@ export function ImagesTab({ taskId, images, onImagesChange, variant = 'tab' }: I
     };
 
     const handlePaste = async (e: React.ClipboardEvent) => {
-        const files = extractImageFiles(e.clipboardData);
-        if (files.length === 0) return;
+        const pastedImages = extractImageFiles(e.clipboardData, {
+            startIndex: nextImageNameIndex(images),
+            renameAll: true,
+        });
+        if (pastedImages.length === 0) return;
         e.preventDefault();
+        await uploadFiles(pastedImages);
+    };
 
-        setUploading(true);
-        try {
-            const newImages: TaskImage[] = [];
-            for (const file of files) {
-                try {
-                    newImages.push(await maestroClient.uploadTaskImage(taskId, file));
-                } catch (err) {
-                    // Paste upload failed — skip this file
-                }
-            }
-            if (newImages.length > 0) onImagesChange([...images, ...newImages]);
-        } finally {
-            setUploading(false);
-        }
+    const handleDragOver = (e: React.DragEvent) => {
+        if (dataTransferHasFiles(e.dataTransfer)) e.preventDefault();
+    };
+
+    const handleDrop = async (e: React.DragEvent) => {
+        const droppedImages = extractImageFiles(e.dataTransfer, {
+            startIndex: nextImageNameIndex(images),
+            renameAll: true,
+        });
+        if (droppedImages.length === 0) return;
+        e.preventDefault();
+        await uploadFiles(droppedImages);
     };
 
     const formatSize = (bytes: number) => {
@@ -175,6 +190,8 @@ export function ImagesTab({ taskId, images, onImagesChange, variant = 'tab' }: I
         <div
             style={{ padding: '8px 12px' }}
             onPaste={handlePaste}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
             tabIndex={0}
         >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>

@@ -4,7 +4,12 @@ import { MaestroTask, MaestroProject, TeamMember, MemberLaunchOverride, TaskImag
 import { ClaudeCodeSkillsSelector } from "./ClaudeCodeSkillsSelector";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { maestroClient } from "../../utils/MaestroClient";
-import { extractImageFiles, dataTransferHasFiles } from "../../utils/clipboardImages";
+import {
+    dataTransferHasFiles,
+    extractDroppedImagePathFiles,
+    extractImageFiles,
+    nextImageNameIndex,
+} from "../../utils/clipboardImages";
 import { Icon } from "./redesign/kit";
 import { useTaskForm } from "../../hooks/useTaskForm";
 import { useReferenceTaskPicker } from "../../hooks/useReferenceTaskPicker";
@@ -93,7 +98,9 @@ export function CreateTaskModal({
     const refPicker = useReferenceTaskPicker(project?.id);
     const files = useFileAutocomplete(project?.basePath, isOpen);
     const skills = useSkillAutocomplete(project?.basePath, isOpen);
+    const modalRef = useRef<HTMLDivElement>(null);
     const stagedFileInputRef = useRef<HTMLInputElement>(null);
+    const [stagedPreviewIndex, setStagedPreviewIndex] = useState<number | null>(null);
     const tasks = useMaestroStore(s => s.tasks);
     const teamMembersMap = useMaestroStore(s => s.teamMembers);
     const teamMembers = useMemo(() =>
@@ -168,6 +175,21 @@ export function CreateTaskModal({
 
     const effectiveEditMode = isEditMode || draft.phase === "created";
     const effectiveTask = isEditMode ? task : draft.draftTask;
+    const getNextImageIndex = useCallback(() => {
+        return nextImageNameIndex([...form.taskImages, ...form.stagedImageFiles]);
+    }, [form.taskImages, form.stagedImageFiles]);
+
+    useEffect(() => {
+        if (stagedPreviewIndex !== null && stagedPreviewIndex >= form.stagedImagePreviews.length) {
+            setStagedPreviewIndex(null);
+        }
+    }, [stagedPreviewIndex, form.stagedImagePreviews.length]);
+
+    const formatImageSize = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
 
     // Trigger auto-create when user starts typing (or attaches/pastes an image) in create mode
     useEffect(() => {
@@ -341,17 +363,19 @@ export function CreateTaskModal({
 
     // ==================== IMAGE PASTE / DROP ====================
 
-    const modalRef = useRef<HTMLDivElement>(null);
     const [imageUploading, setImageUploading] = useState(false);
 
     // Route incoming images: upload directly when the task exists on the
     // server (edit mode or created draft), otherwise stage them locally —
     // staging triggers draft auto-create, which uploads them on creation.
     const acceptImageFiles = useCallback(async (files: File[]) => {
+        const imageFiles = files.filter(file => file.type.startsWith("image/"));
+        if (imageFiles.length === 0) return;
+
         if (effectiveEditMode && effectiveTask) {
             setImageUploading(true);
             try {
-                for (const file of files) {
+                for (const file of imageFiles) {
                     try {
                         const img = await maestroClient.uploadTaskImage(effectiveTask.id, file);
                         form.setTaskImages(prev => [...prev, img]);
@@ -361,17 +385,22 @@ export function CreateTaskModal({
                 setImageUploading(false);
             }
         } else {
-            form.addStagedFiles(files);
+            form.addStagedFiles(imageFiles);
         }
     }, [effectiveEditMode, effectiveTask?.id, form.setTaskImages, form.addStagedFiles]);
 
     // Ref so the document-level listener never sees a stale closure
     const acceptImageFilesRef = useRef(acceptImageFiles);
     acceptImageFilesRef.current = acceptImageFiles;
+    const getNextImageIndexRef = useRef(getNextImageIndex);
+    getNextImageIndexRef.current = getNextImageIndex;
 
     // Paste anywhere inside the modal (title, description, any focused element)
     const handlePaste = (e: React.ClipboardEvent) => {
-        const images = extractImageFiles(e.clipboardData);
+        const images = extractImageFiles(e.clipboardData, {
+            startIndex: getNextImageIndex(),
+            renameAll: true,
+        });
         if (images.length === 0) return;
         // Claim the paste: screenshots / copied images / copied files should
         // attach, not leak file paths into the focused text field.
@@ -393,7 +422,10 @@ export function CreateTaskModal({
                 if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
                 if (typeof target.closest === 'function' && target.closest('.xterm')) return;
             }
-            const images = extractImageFiles(e.clipboardData);
+            const images = extractImageFiles(e.clipboardData, {
+                startIndex: getNextImageIndexRef.current(),
+                renameAll: true,
+            });
             if (images.length === 0) return;
             e.preventDefault();
             acceptImageFilesRef.current(images);
@@ -407,11 +439,91 @@ export function CreateTaskModal({
         if (dataTransferHasFiles(e.dataTransfer)) e.preventDefault();
     };
     const handleDrop = (e: React.DragEvent) => {
-        const images = extractImageFiles(e.dataTransfer);
+        const images = extractImageFiles(e.dataTransfer, {
+            startIndex: getNextImageIndex(),
+            renameAll: true,
+        });
         if (images.length === 0) return;
         e.preventDefault();
         acceptImageFiles(images);
     };
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        let unlistenWebview: (() => void) | null = null;
+        let unlistenWindow: (() => void) | null = null;
+        let cancelled = false;
+        let lastDropSignature = "";
+        let lastDropAt = 0;
+
+        const pointIsInsideModal = (x: number, y: number) => {
+            const root = modalRef.current;
+            if (!root) return false;
+            const element = document.elementFromPoint(x, y);
+            return !!element && root.contains(element);
+        };
+
+        const dropPositionIsInsideModal = (position: { x: number; y: number } | undefined) => {
+            const root = modalRef.current;
+            if (!root) return false;
+            if (!position) return root.matches(":hover");
+
+            const scale = window.devicePixelRatio || 1;
+            return (
+                pointIsInsideModal(position.x / scale, position.y / scale) ||
+                pointIsInsideModal(position.x, position.y) ||
+                root.matches(":hover")
+            );
+        };
+
+        const handleNativeDrop = async (event: { payload: any }) => {
+            if (cancelled) return;
+            const payload = event.payload;
+            if (payload?.type !== "drop") return;
+            if (!dropPositionIsInsideModal(payload.position)) return;
+
+            const paths = Array.isArray(payload.paths) ? payload.paths.filter((p: unknown): p is string => typeof p === "string") : [];
+            if (paths.length === 0) return;
+
+            const signature = `${paths.join("\n")}@${payload.position?.x ?? ""},${payload.position?.y ?? ""}`;
+            const now = Date.now();
+            if (signature === lastDropSignature && now - lastDropAt < 300) return;
+            lastDropSignature = signature;
+            lastDropAt = now;
+
+            const files = await extractDroppedImagePathFiles(paths, {
+                startIndex: getNextImageIndexRef.current(),
+                renameAll: true,
+            });
+            if (!cancelled && files.length > 0) {
+                acceptImageFilesRef.current(files);
+            }
+        };
+
+        const setupNativeDrop = async () => {
+            try {
+                const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+                unlistenWebview = await getCurrentWebview().onDragDropEvent(handleNativeDrop);
+            } catch {
+                // Browser dev mode or an older runtime: DOM drop handling remains active.
+            }
+
+            try {
+                const { getCurrentWindow } = await import("@tauri-apps/api/window");
+                unlistenWindow = await getCurrentWindow().onDragDropEvent(handleNativeDrop);
+            } catch {
+                // Browser dev mode or an older runtime: DOM drop handling remains active.
+            }
+        };
+
+        void setupNativeDrop();
+        return () => {
+            cancelled = true;
+            unlistenWebview?.();
+            unlistenWindow?.();
+        };
+    }, [isOpen]);
 
     // ==================== EARLY RETURNS ====================
 
@@ -483,8 +595,9 @@ export function CreateTaskModal({
                                                 <span
                                                     key={i}
                                                     className="pn-mchip pn-mchip--ref"
-                                                    style={{ maxWidth: '120px' }}
+                                                    style={{ maxWidth: '120px', cursor: 'pointer' }}
                                                     title={form.stagedImageFiles[i]?.name}
+                                                    onClick={() => setStagedPreviewIndex(i)}
                                                 >
                                                     <img
                                                         src={preview}
@@ -496,7 +609,10 @@ export function CreateTaskModal({
                                                     </span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => form.removeStagedFile(i)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            form.removeStagedFile(i);
+                                                        }}
                                                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '0', display: 'inline-flex', lineHeight: 1, flexShrink: 0 }}
                                                     ><Icon name="x" size={11} /></button>
                                                 </span>
@@ -648,6 +764,37 @@ export function CreateTaskModal({
                 onConfirm={handleConfirmDiscard}
                 onCancel={() => form.setShowConfirmDialog(false)}
             />
+
+            {stagedPreviewIndex !== null && form.stagedImagePreviews[stagedPreviewIndex] && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.8)',
+                        zIndex: 10000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        cursor: 'pointer',
+                    }}
+                    onClick={() => setStagedPreviewIndex(null)}
+                >
+                    <img
+                        src={form.stagedImagePreviews[stagedPreviewIndex]}
+                        alt={form.stagedImageFiles[stagedPreviewIndex]?.name}
+                        style={{ maxWidth: '90vw', maxHeight: '80vh', objectFit: 'contain', borderRadius: '8px' }}
+                    />
+                    <div style={{ color: '#fff', marginTop: '8px', fontSize: '12px', textAlign: 'center' }}>
+                        {form.stagedImageFiles[stagedPreviewIndex]?.name}
+                        {' '}&middot;{' '}
+                        {formatImageSize(form.stagedImageFiles[stagedPreviewIndex]?.size ?? 0)}
+                    </div>
+                </div>
+            )}
         </>
     );
 
