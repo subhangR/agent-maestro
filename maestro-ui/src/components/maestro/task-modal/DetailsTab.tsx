@@ -1,6 +1,7 @@
 import React from "react";
 import { TaskPriority, MaestroTask } from "../../../app/types/maestro";
 import { Icon } from "../redesign/kit";
+import { TaskSpellAssignment } from "../../spells/TaskSpellAssignment";
 
 const STATUS_LABELS: Record<string, string> = {
     todo: "Todo",
@@ -105,6 +106,10 @@ export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChang
                     </button>
                 </div>
             </div>
+
+            {isEditMode && task && (
+                <TaskSpellAssignment taskId={task.id} editable />
+            )}
 
             {isEditMode && task && (
                 <div className="pn-fhint" style={{ display: 'flex', gap: '16px' }}>

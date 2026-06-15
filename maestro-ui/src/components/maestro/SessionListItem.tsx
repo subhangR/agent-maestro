@@ -19,6 +19,7 @@ import { isDiagramDoc } from "../../utils/docHelpers";
 import { Icon, Glyph, AgentTile, type AgentKind } from "./redesign/kit";
 import { spellRingAttrs, type RingSpec } from "../../utils/spellRings";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
+import { useSpellbookStore } from "../../stores/useSpellbookStore";
 
 const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
   spawning: "Spawning",
@@ -627,7 +628,10 @@ export const SessionListItem = React.memo(function SessionListItem({
           type="button"
           className="spell-ring__overflow"
           aria-label={`Show ${ringOverflow} more spells`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            useSpellbookStore.getState().openSpellbook({ scrollToSessionId: session.id });
+          }}
         >
           +{ringOverflow}
         </button>

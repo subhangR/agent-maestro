@@ -11,6 +11,8 @@ import { useAssetStore } from "../stores/useAssetStore";
 import { usePathPickerStore } from "../stores/usePathPickerStore";
 import { useSecureStorageStore } from "../stores/useSecureStorageStore";
 import { useUIStore } from "../stores/useUIStore";
+import { useSpellbookStore } from "../stores/useSpellbookStore";
+import { useSpellLauncherStore } from "../stores/useSpellLauncherStore";
 
 export function useKeyboardShortcuts() {
     // ── Read modal open states reactively ──
@@ -198,9 +200,25 @@ export function useKeyboardShortcuts() {
                 return;
             }
 
-            // Cmd+Shift+B / Ctrl+Shift+B - Toggle right spaces panel
-            // (Note: this overrides the old multi-project board shortcut which moved to App.tsx overlay)
-            // Use Cmd+. / Ctrl+. instead to avoid conflict
+            // Cmd+Shift+B / Ctrl+Shift+B — Toggle the SpellbookDrawer (spell-system).
+            if (modKey && e.shiftKey && e.key.toLowerCase() === "b") {
+                e.preventDefault();
+                useSpellbookStore.getState().toggleSpellbook();
+                return;
+            }
+
+            // Cmd+Shift+S / Ctrl+Shift+S — Open the SpellLauncher targeted at the focused session.
+            if (modKey && e.shiftKey && e.key.toLowerCase() === "s") {
+                e.preventDefault();
+                const { activeId } = useSessionStore.getState();
+                useSpellLauncherStore.getState().openLauncher({
+                    source: 'command-palette',
+                    targetSessionIds: activeId ? [activeId] : [],
+                });
+                return;
+            }
+
+            // Cmd+. / Ctrl+. — Toggle right spaces panel
             if (modKey && !e.shiftKey && e.key === ".") {
                 e.preventDefault();
                 useUIStore.getState().toggleSpacesPanel();

@@ -34,7 +34,9 @@ import { ReplayModal } from "../modals/ReplayModal";
 import { AgentModalViewer } from "../modals/AgentModalViewer";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { SpellLauncher } from "../spells/SpellLauncher";
+import { SpellbookDrawer } from "../spells/SpellbookDrawer";
 import { UndoToast } from "../spells/UndoToast";
+import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { normalizeSmartQuotes } from "../../app/utils/string";
 
 export function AppModals() {
@@ -680,6 +682,7 @@ export function AppModals() {
 
       {/* Spell launcher (replaces SpellPicker) */}
       <SpellLauncher />
+      <SpellbookHost />
       <UndoToast />
 
       {/* Agent-generated modals */}
@@ -691,5 +694,18 @@ export function AppModals() {
         />
       ))}
     </>
+  );
+}
+
+function SpellbookHost() {
+  const isOpen = useSpellbookStore((s) => s.isOpen);
+  const scrollToSessionId = useSpellbookStore((s) => s.scrollToSessionId);
+  const close = useSpellbookStore((s) => s.closeSpellbook);
+  return (
+    <SpellbookDrawer
+      isOpen={isOpen}
+      scrollToSessionId={scrollToSessionId}
+      onClose={close}
+    />
   );
 }

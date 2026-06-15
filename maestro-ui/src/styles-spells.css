@@ -1,705 +1,1658 @@
-/* ═══════════════════════════════════════════════════
-   SPELLS — Terminal Overlay Button & Picker
-   ═══════════════════════════════════════════════════ */
+/* ============================================================================
+   SPELLS — Component CSS (sp-*)
+   ----------------------------------------------------------------------------
+   Source of truth: docs/spell-system-design/UI_SPEC.md + uispec/01..03.
+   Scope: html[data-redesign] (warm-paper light + warm-graphite dark cascade
+   handled by redesign-tokens.css). All visual values come from --pn-*
+   (Atelier) and --spell-<id>-* (spell palette). No hardcoded hex.
+   Coexists with .spell-ring (rings) in styles-spell-ring.css and
+   --spell-<id>-* in styles-spell-colors.css.
+   ============================================================================ */
 
-/* ─── Session Action Bar (Terminal Overlay) ─── */
+/* Local design tokens — spell-specific scale (01 §3.1-3.3). Stay scoped. */
+html[data-redesign] {
+  --spell-type-eyebrow-size: 10.5px;
+  --spell-type-eyebrow-tracking: 0.12em;
+  --spell-type-name-size: 13.5px;
+  --spell-type-desc-size: 12.5px;
+  --spell-type-meta-size: 10px;
+  --spell-type-iter-size: 11px;
+  --spell-type-badge-size: 9px;
 
-.sessionActionBar {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  z-index: 100;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
+  --spell-gap-tile: 9px;
+  --spell-gap-row: 4px;
+  --spell-pad-card: 14px;
+  --spell-pad-modal: 20px;
+  --spell-pad-badge-x: 6px;
+  --spell-pad-badge-y: 2px;
+
+  --spell-drawer-z:  1010;
+  --spell-flyout-z:  1050;
+  --spell-toast-z:   1090;
+  --spell-tooltip-z: 1100;
+  --spell-launcher-backdrop-z: 1000;
+  --spell-launcher-z:          1001;
 }
 
-.sessionActionBtn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 50%;
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.3);
-  background: rgba(var(--theme-primary-rgb), 0.08);
-  color: var(--theme-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  opacity: 0.6;
-  backdrop-filter: blur(4px);
-}
+/* ============================================================================
+   1. SpellLauncher (Cast Sheet) — 03 §1
+   ============================================================================ */
 
-.sessionActionBtn:hover {
-  opacity: 1;
-  border-color: var(--theme-primary);
-  background: rgba(var(--theme-primary-rgb), 0.15);
-  box-shadow: 0 0 12px rgba(var(--theme-primary-rgb), 0.3);
-  transform: scale(1.1);
-}
-
-.sessionActionBtn:active {
-  transform: scale(0.95);
-}
-
-.sessionActionBtn__icon {
-  font-size: 16px;
-  line-height: 1;
-}
-
-/* ─── Spell Button (Terminal Overlay) ─── */
-
-.spellButton {
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  z-index: 100;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.3);
-  background: rgba(var(--theme-primary-rgb), 0.08);
-  color: var(--theme-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  opacity: 0.6;
-  backdrop-filter: blur(4px);
-}
-
-.spellButton:hover {
-  opacity: 1;
-  border-color: var(--theme-primary);
-  background: rgba(var(--theme-primary-rgb), 0.15);
-  box-shadow: 0 0 12px rgba(var(--theme-primary-rgb), 0.3);
-  transform: scale(1.1);
-}
-
-.spellButton:active {
-  transform: scale(0.95);
-}
-
-.spellButton__icon {
-  font-size: 16px;
-  line-height: 1;
-}
-
-/* ─── Spell Picker Backdrop ─── */
-
-.spellPicker__backdrop {
+html[data-redesign] .sp-launcher__backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  animation: spellFadeIn 0.1s ease-out;
+  z-index: var(--spell-launcher-backdrop-z);
+  background: rgba(20, 16, 10, 0.42);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  animation: sp-fade-in 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ─── Spell Picker Modal ─── */
+html[data-redesign] .sp-launcher {
+  position: relative;
+  z-index: var(--spell-launcher-z);
+  width: min(960px, 92vw);
+  max-height: min(680px, 86vh);
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-lg);
+  box-shadow: var(--pn-sh-pop);
+  font-family: var(--pn-ui);
+  overflow: hidden;
+  animation: sp-slide-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-.spellPicker {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(520px, calc(100% - 32px));
-  max-height: 70vh;
-  background: linear-gradient(180deg,
-    var(--style-surface-2, rgba(16, 21, 30, 0.98)),
-    var(--style-surface-1, rgba(10, 14, 22, 0.98)));
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.2);
-  border-radius: var(--style-radius-xl, 16px);
-  box-shadow:
-    0 24px 80px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(var(--theme-primary-rgb), 0.06),
-    0 0 30px rgba(var(--theme-primary-rgb), 0.05);
+html[data-redesign] .sp-launcher__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pn-line);
+}
+
+html[data-redesign] .sp-launcher__title {
+  font-family: var(--pn-serif);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--pn-ink);
+  white-space: nowrap;
+}
+
+html[data-redesign] .sp-launcher__search {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-surface);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+html[data-redesign] .sp-launcher__search:focus {
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+html[data-redesign] .sp-launcher__search::placeholder { color: var(--pn-ink-4); }
+
+html[data-redesign] .sp-launcher__close {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pn-r-sm);
+  color: var(--pn-ink-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+html[data-redesign] .sp-launcher__close:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+  border-color: var(--pn-line);
+}
+
+html[data-redesign] .sp-launcher__main {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
+
+html[data-redesign] .sp-launcher__nav {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  z-index: 1001;
-  animation: spellSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 1px;
+  padding: 10px 8px;
+  border-right: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+  overflow-y: auto;
 }
 
-@keyframes spellSlideIn {
-  from {
-    transform: translate(-50%, -48%) scale(0.96);
-    opacity: 0;
-  }
-  to {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
+html[data-redesign] .sp-launcher__nav-btn {
+  appearance: none;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--pn-ink-2);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+html[data-redesign] .sp-launcher__nav-btn:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-launcher__nav-btn:focus-visible {
+  outline: none;
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 2px var(--pn-brand-soft);
+}
+html[data-redesign] .sp-launcher__nav-btn--active {
+  background: var(--pn-active);
+  color: var(--pn-ink);
+  border-color: var(--pn-line-2);
 }
 
-@keyframes spellFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+html[data-redesign] .sp-launcher__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spell-gap-row);
+  padding: 12px 14px;
+  overflow-y: auto;
+  min-height: 240px;
 }
 
-/* ─── Header ─── */
+html[data-redesign] .sp-launcher__loading,
+html[data-redesign] .sp-launcher__empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--pn-ink-3);
+  font-size: 13px;
+}
 
-.spellPicker__header {
+html[data-redesign] .sp-launcher__targets {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+
+html[data-redesign] .sp-launcher__targets-label {
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-eyebrow-size);
+  letter-spacing: var(--spell-type-eyebrow-tracking);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--pn-ink-3);
+  margin: 0;
+}
+
+html[data-redesign] .sp-launcher__ensemble {
+  display: flex;
+  align-items: center;
+}
+html[data-redesign] .sp-launcher__ensemble-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-meta-size);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pn-ink-3);
+  flex: 1;
+}
+html[data-redesign] .sp-launcher__ensemble-label input {
+  flex: 1;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  outline: none;
+  text-transform: none;
+  letter-spacing: 0;
+}
+html[data-redesign] .sp-launcher__ensemble-label input:focus {
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+
+html[data-redesign] .sp-launcher__cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--pn-line);
+  background: var(--pn-card);
+}
+html[data-redesign] .sp-launcher__cta-row button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+html[data-redesign] .sp-launcher__cta-row button:hover { background: var(--pn-hover); }
+html[data-redesign] .sp-launcher__cta-row button:focus-visible {
+  outline: none;
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+html[data-redesign] .sp-launcher__cta {
+  background: var(--pn-brand) !important;
+  color: var(--pn-card) !important;
+  border-color: var(--pn-brand) !important;
+}
+html[data-redesign] .sp-launcher__cta:hover { background: var(--pn-brand-2) !important; border-color: var(--pn-brand-2) !important; }
+html[data-redesign] .sp-launcher__cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--pn-line) !important;
+  color: var(--pn-ink-3) !important;
+  border-color: var(--pn-line-2) !important;
+}
+
+html[data-redesign] .sp-launcher__error {
+  color: var(--pn-block);
+  font-size: 12.5px;
+  margin: 0;
+  flex: 1;
+}
+
+html[data-redesign] .sp-launcher__risky {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
-}
-
-.spellPicker__title {
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--theme-primary);
-  letter-spacing: var(--style-letter-spacing, 0.5px);
-  text-transform: var(--style-text-transform, uppercase);
-}
-
-.spellPicker__close {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--muted);
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  transition: all 0.15s ease;
-}
-
-.spellPicker__close:hover {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text);
-}
-
-/* ─── Type Tabs ─── */
-
-.spellPicker__tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 8px 16px;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.spellPicker__tab {
-  flex-shrink: 0;
-  padding: 5px 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--muted);
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.spellPicker__tab:hover {
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--text);
-}
-
-.spellPicker__tab--active {
-  background: rgba(var(--theme-primary-rgb), 0.1);
-  border-color: rgba(var(--theme-primary-rgb), 0.25);
-  color: var(--theme-primary);
-}
-
-/* ─── Entity List ─── */
-
-.spellPicker__list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-  min-height: 0;
-}
-
-.spellPicker__list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.spellPicker__list::-webkit-scrollbar-thumb {
-  background: rgba(var(--theme-primary-rgb), 0.15);
-  border-radius: 3px;
-}
-
-.spellPicker__list::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--theme-primary-rgb), 0.25);
-}
-
-/* ─── Sections (grouped view) ─── */
-
-.spellPicker__section {
-  margin-bottom: 12px;
-}
-
-.spellPicker__sectionHeader {
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 6px 12px 4px;
-}
-
-/* ─── Entity Row ─── */
-
-.spellPicker__entity {
-  margin-bottom: 1px;
-}
-
-.spellPicker__entityRow {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 8px 12px;
-  background: transparent;
-  border: none;
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--text);
+  padding: 10px 18px;
+  background: var(--pn-wait-soft);
+  border-top: 1px solid var(--pn-line);
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-launcher__risky p { margin: 0; font-size: 12.5px; }
+html[data-redesign] .sp-launcher__risky div { display: flex; gap: 8px; }
+html[data-redesign] .sp-launcher__risky button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
   cursor: pointer;
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 13px;
-  text-align: left;
-  transition: background 0.1s ease;
+  font-size: 12.5px;
 }
 
-.spellPicker__entityRow:hover {
-  background: rgba(255, 255, 255, 0.04);
+/* ============================================================================
+   2. SpellCard — 03 §1.7
+   ============================================================================ */
+
+html[data-redesign] .sp-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 8px 36px 1fr auto;
+  align-items: center;
+  gap: var(--spell-gap-tile);
+  padding: var(--spell-pad-card);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-md);
+  background: var(--pn-card);
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+  --sp-card-color: var(--pn-brand);
+  --sp-card-dim:   var(--pn-brand-soft);
+  --sp-card-border: var(--pn-line-2);
+}
+html[data-redesign] .sp-card:hover {
+  background: var(--pn-hover);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .sp-card:focus-visible,
+html[data-redesign] .sp-card[aria-selected="true"] {
+  outline: none;
+  border-color: var(--sp-card-color);
+  box-shadow: 0 0 0 2px var(--sp-card-dim);
+}
+html[data-redesign] .sp-card--compact {
+  padding: 10px var(--spell-pad-card);
+  grid-template-columns: 6px 28px 1fr auto;
 }
 
-.spellPicker__entityRow:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* Color rail (8px stripe at left) */
+html[data-redesign] .sp-card__rail {
+  align-self: stretch;
+  border-radius: var(--pn-r-xs);
+  background: var(--sp-card-color);
 }
 
-.spellPicker__entityRow--recent {
-  opacity: 0.8;
+html[data-redesign] .sp-card__icon {
+  width: 36px; height: 36px;
+  display: grid; place-items: center;
+  border-radius: var(--pn-r-sm);
+  background: var(--sp-card-dim);
+  color: var(--sp-card-color);
+  font-family: var(--pn-mono);
+  font-size: 16px;
+  line-height: 1;
 }
+html[data-redesign] .sp-card--compact .sp-card__icon { width: 28px; height: 28px; font-size: 14px; }
 
-.spellPicker__entityRow--recent:hover {
-  opacity: 1;
-}
-
-.spellPicker__entityIcon {
-  flex-shrink: 0;
-  width: 20px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.spellPicker__entityLabel {
-  flex: 1;
+html[data-redesign] .sp-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
+}
+html[data-redesign] .sp-card__name {
+  font-family: var(--pn-ui);
+  font-size: var(--spell-type-name-size);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--pn-ink);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+html[data-redesign] .sp-card__desc {
+  font-size: var(--spell-type-desc-size);
+  color: var(--pn-ink-2);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-.spellPicker__entityType {
-  flex-shrink: 0;
-  font-size: 10px;
-  color: var(--muted);
-  opacity: 0.6;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.spellPicker__entityExpand {
-  flex-shrink: 0;
-  font-size: 10px;
-  color: var(--muted);
-}
-
-.spellPicker__spellBadge {
-  flex-shrink: 0;
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: rgba(var(--theme-primary-rgb), 0.1);
-  color: var(--theme-primary);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.2);
-}
-
-/* ─── Spell List (expanded) ─── */
-
-.spellPicker__spellList {
-  padding-left: 42px;
-  margin-bottom: 4px;
-}
-
-.spellPicker__spellRow {
+html[data-redesign] .sp-card__chips {
   display: flex;
+  gap: 6px;
   align-items: center;
-  width: 100%;
-  padding: 6px 12px;
-  background: transparent;
-  border: none;
-  border-left: 2px solid rgba(var(--theme-primary-rgb), 0.15);
-  color: var(--muted);
-  cursor: pointer;
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 12px;
-  text-align: left;
-  transition: all 0.1s ease;
+  flex-wrap: nowrap;
 }
-
-.spellPicker__spellRow:hover {
-  color: var(--theme-primary);
-  border-left-color: var(--theme-primary);
-  background: rgba(var(--theme-primary-rgb), 0.05);
-}
-
-.spellPicker__spellRow:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.spellPicker__spellName {
-  font-size: 12px;
-}
-
-/* ─── Empty State ─── */
-
-.spellPicker__empty {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 13px;
-  opacity: 0.6;
-}
-
-/* ─── Create Button ─── */
-
-.spellPicker__createBtn {
-  flex-shrink: 0;
-  margin-left: auto;
-  padding: 5px 12px;
-  background: rgba(var(--theme-primary-rgb), 0.1);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.25);
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--theme-primary);
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 11px;
+html[data-redesign] .sp-card__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 var(--spell-pad-badge-x);
+  border-radius: var(--pn-r-pill);
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink-3);
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-meta-size);
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
   white-space: nowrap;
 }
-
-.spellPicker__createBtn:hover {
-  background: rgba(var(--theme-primary-rgb), 0.2);
-  border-color: var(--theme-primary);
+html[data-redesign] .sp-card__chip--trigger {
+  background: var(--sp-card-dim);
+  color: var(--sp-card-color);
+  border-color: transparent;
 }
 
-/* ─── Create Form ─── */
+/* ============================================================================
+   3. SessionTargetChips — 03 §1.8
+   ============================================================================ */
 
-.spellPicker__createForm {
-  padding: 12px;
+html[data-redesign] .sp-targets {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+html[data-redesign] .sp-targets__empty {
+  font-size: 12px;
+  color: var(--pn-ink-4);
+  margin: 0;
+}
+
+html[data-redesign] .sp-target-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--pn-r-pill);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink-2);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms, transform 80ms ease;
+}
+html[data-redesign] .sp-target-chip:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-target-chip:focus-visible {
+  outline: none;
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 2px var(--pn-brand-soft);
+}
+html[data-redesign] .sp-target-chip:active { transform: translateY(0.5px); }
+html[data-redesign] .sp-target-chip--selected {
+  background: var(--pn-brand);
+  color: var(--pn-card);
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .sp-target-chip--selected:hover {
+  background: var(--pn-brand-2);
+  color: var(--pn-card);
+  border-color: var(--pn-brand-2);
+}
+html[data-redesign] .sp-target-chip__index {
+  font-family: var(--pn-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  padding: 1px 5px;
+  border-radius: var(--pn-r-pill);
+  background: rgba(0, 0, 0, 0.08);
+}
+html[data-redesign] .sp-target-chip--selected .sp-target-chip__index {
+  background: rgba(255, 255, 255, 0.22);
+  opacity: 0.92;
+}
+html[data-redesign] .sp-target-chip__name {
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   4. CastModeToggle — 03 §1.9
+   ============================================================================ */
+
+html[data-redesign] .sp-cast-mode {
+  display: inline-flex;
+  align-items: center;
   gap: 10px;
 }
+html[data-redesign] .sp-cast-mode__btn {
+  appearance: none;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--pn-line-2);
+  border-right-width: 0;
+  background: var(--pn-card);
+  color: var(--pn-ink-2);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+html[data-redesign] .sp-cast-mode__btn:first-of-type { border-top-left-radius: var(--pn-r-sm); border-bottom-left-radius: var(--pn-r-sm); }
+html[data-redesign] .sp-cast-mode__btn:last-of-type  { border-right-width: 1px; border-top-right-radius: var(--pn-r-sm); border-bottom-right-radius: var(--pn-r-sm); }
+html[data-redesign] .sp-cast-mode__btn:hover:not(:disabled) {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-cast-mode__btn:focus-visible {
+  outline: none;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 0 2px var(--pn-brand-soft);
+}
+html[data-redesign] .sp-cast-mode__btn--active {
+  background: var(--pn-ink);
+  color: var(--pn-paper);
+  border-color: var(--pn-ink);
+}
+html[data-redesign] .sp-cast-mode__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+html[data-redesign] .sp-cast-mode__helper {
+  font-size: 11.5px;
+  color: var(--pn-ink-3);
+}
 
-.spellPicker__formField {
+/* ============================================================================
+   5. SpellDetailFlyout — 03 §2
+   ============================================================================ */
+
+html[data-redesign] .sp-detail {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 360px;
+  z-index: var(--spell-flyout-z);
+  display: flex;
+  flex-direction: column;
+  background: var(--pn-card);
+  border-left: 1px solid var(--pn-line-2);
+  box-shadow: var(--pn-sh-md);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  animation: sp-flyout-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html[data-redesign] .sp-detail--modal {
+  position: fixed;
+  inset: 8% 12%;
+  width: auto;
+  border-left: none;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-lg);
+  box-shadow: var(--pn-sh-pop);
+  animation: sp-slide-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+html[data-redesign] .sp-detail--anchor-cast-sheet,
+html[data-redesign] .sp-detail--anchor-spellbook {
+  z-index: calc(var(--spell-flyout-z) + 5);
+}
+
+html[data-redesign] .sp-detail__header {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .sp-detail__swatch {
+  width: 26px; height: 26px;
+  display: grid; place-items: center;
+  border-radius: var(--pn-r-sm);
+  background: var(--sp-card-dim, var(--pn-brand-soft));
+  color: var(--sp-card-color, var(--pn-brand));
+  font-family: var(--pn-mono);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+}
+/* Per-color swatch fills (matches detail header colorization) */
+html[data-redesign] .sp-detail__swatch--brass     { background: var(--spell-brass-dim);     color: var(--spell-brass-text); }
+html[data-redesign] .sp-detail__swatch--vermilion { background: var(--spell-vermilion-dim); color: var(--spell-vermilion-text); }
+html[data-redesign] .sp-detail__swatch--moss      { background: var(--spell-moss-dim);      color: var(--spell-moss-text); }
+html[data-redesign] .sp-detail__swatch--lapis     { background: var(--spell-lapis-dim);     color: var(--spell-lapis-text); }
+html[data-redesign] .sp-detail__swatch--amber     { background: var(--spell-amber-dim);     color: var(--spell-amber-text); }
+html[data-redesign] .sp-detail__swatch--aubergine { background: var(--spell-aubergine-dim); color: var(--spell-aubergine-text); }
+html[data-redesign] .sp-detail__swatch--teal      { background: var(--spell-teal-dim);      color: var(--spell-teal-text); }
+html[data-redesign] .sp-detail__swatch--clay      { background: var(--spell-clay-dim);      color: var(--spell-clay-text); }
+html[data-redesign] .sp-detail__swatch--slate     { background: var(--spell-slate-dim);     color: var(--spell-slate-text); }
+html[data-redesign] .sp-detail__swatch--plum      { background: var(--spell-plum-dim);      color: var(--spell-plum-text); }
+
+html[data-redesign] .sp-detail__icon {
+  font-size: 14px;
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .sp-detail__title {
+  font-family: var(--pn-serif);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--pn-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+html[data-redesign] .sp-detail__menu,
+html[data-redesign] .sp-detail__close {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pn-r-sm);
+  color: var(--pn-ink-3);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+html[data-redesign] .sp-detail__menu:hover,
+html[data-redesign] .sp-detail__close:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+  border-color: var(--pn-line);
+}
+
+html[data-redesign] .sp-detail__menu-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+html[data-redesign] .sp-detail__menu-btn:hover { background: var(--pn-hover); }
+html[data-redesign] .sp-detail__delete { color: var(--pn-block); }
+
+html[data-redesign] .sp-detail__desc {
+  padding: 14px 18px 4px;
+  color: var(--pn-ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+html[data-redesign] .sp-detail__props {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px 14px;
+  padding: 12px 18px 16px;
+  font-size: 12.5px;
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .sp-detail__props dt {
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-meta-size);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pn-ink-3);
+  align-self: center;
+}
+html[data-redesign] .sp-detail__props dd {
+  margin: 0;
+  color: var(--pn-ink);
+  font-size: 12.5px;
+}
+
+html[data-redesign] .sp-detail__expand {
+  padding: 6px 18px 0;
+}
+html[data-redesign] .sp-detail__expand button {
+  background: transparent;
+  border: none;
+  color: var(--pn-ink-3);
+  font-size: 11.5px;
+  font-family: var(--pn-mono);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+html[data-redesign] .sp-detail__expand button:hover { color: var(--pn-ink); }
+
+html[data-redesign] .sp-detail__actions {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .sp-detail__actions button {
+  flex: 1;
+  height: 34px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+html[data-redesign] .sp-detail__actions button:hover { background: var(--pn-hover); }
+html[data-redesign] .sp-detail__cta {
+  background: var(--pn-brand) !important;
+  color: var(--pn-card) !important;
+  border-color: var(--pn-brand) !important;
+}
+html[data-redesign] .sp-detail__cta:hover { background: var(--pn-brand-2) !important; border-color: var(--pn-brand-2) !important; }
+
+/* ============================================================================
+   6. ActiveSpellsPanel — chip strip (03 §3)
+   ============================================================================ */
+
+html[data-redesign] .sp-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-family: var(--pn-ui);
+}
+html[data-redesign] .sp-strip--header-strip {
+  border-bottom: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .sp-strip--session-detail {
+  padding: 8px 12px;
+  background: transparent;
+}
+html[data-redesign] .sp-strip--ring-popover {
+  padding: 8px;
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-md);
+}
+html[data-redesign] .sp-strip--empty {
+  padding: 8px 12px;
+  color: var(--pn-ink-4);
+  font-size: 12px;
+}
+
+html[data-redesign] .sp-strip__cast {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--pn-r-pill);
+  border: 1px dashed var(--pn-line-2);
+  background: transparent;
+  color: var(--pn-ink-3);
+  font-family: var(--pn-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms, border-style 120ms;
+}
+html[data-redesign] .sp-strip__cast:hover {
+  background: var(--pn-brand-soft);
+  color: var(--pn-brand);
+  border-color: var(--pn-brand);
+  border-style: solid;
+}
+
+/* ============================================================================
+   7. ActiveSpellChip — compact chip used in strips (03 §3.6)
+   ============================================================================ */
+
+html[data-redesign] .sp-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px 0 8px;
+  border-radius: var(--pn-r-pill);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
+  font-family: var(--pn-ui);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pn-ink);
+  --sp-chip-color: var(--pn-brand);
+  --sp-chip-dim:   var(--pn-brand-soft);
+}
+html[data-redesign] .sp-chip:hover { background: var(--pn-hover); }
+html[data-redesign] .sp-chip--paused { opacity: 0.6; }
+
+html[data-redesign] .sp-chip__dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--sp-chip-color);
+  flex: 0 0 auto;
+}
+html[data-redesign] .sp-chip__name {
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html[data-redesign] .sp-chip__iter {
+  font-family: var(--pn-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pn-ink-3);
+  padding: 1px 5px;
+  border-radius: var(--pn-r-pill);
+  background: var(--sp-chip-dim);
+}
+html[data-redesign] .sp-chip__paused {
+  font-family: var(--pn-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .sp-chip__kebab {
+  width: 18px; height: 18px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--pn-r-pill);
+  color: var(--pn-ink-3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+html[data-redesign] .sp-chip__kebab:hover { background: var(--pn-active); color: var(--pn-ink); }
+
+/* Chip quick menu (03 §3.4.1) */
+html[data-redesign] .sp-chip-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: var(--spell-tooltip-z);
+  min-width: 180px;
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  box-shadow: var(--pn-sh-md);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+html[data-redesign] .sp-chip-menu button {
+  appearance: none;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: var(--pn-r-xs);
+  border: none;
+  background: transparent;
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+html[data-redesign] .sp-chip-menu button:hover { background: var(--pn-hover); }
+
+/* ============================================================================
+   8. ActiveSpellRow — expanded row in SpellbookDrawer (03 §3.6)
+   ============================================================================ */
+
+html[data-redesign] .sp-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  --sp-row-color: var(--pn-brand);
+}
+html[data-redesign] .sp-row + .sp-row { margin-top: 4px; }
+html[data-redesign] .sp-row__dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--sp-row-color);
+}
+html[data-redesign] .sp-row__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-row__desc {
+  display: block;
+  font-size: 11.5px;
+  color: var(--pn-ink-3);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 28ch;
+}
+html[data-redesign] .sp-row__beads {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+html[data-redesign] .sp-row__bead {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  border: 1px solid var(--sp-row-color);
+  background: transparent;
+}
+html[data-redesign] .sp-row__bead--on { background: var(--sp-row-color); }
+
+html[data-redesign] .sp-row__switch {
+  appearance: none;
+  width: 28px; height: 16px;
+  border-radius: var(--pn-r-pill);
+  background: var(--pn-line-2);
+  position: relative;
+  cursor: pointer;
+  transition: background 140ms ease;
+  border: none;
+  flex: 0 0 auto;
+}
+html[data-redesign] .sp-row__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--pn-card);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  transition: transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+html[data-redesign] .sp-row__switch[aria-checked="true"] { background: var(--sp-row-color); }
+html[data-redesign] .sp-row__switch[aria-checked="true"]::after { transform: translateX(12px); }
+html[data-redesign] .sp-row__switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--pn-brand-soft);
+}
+
+html[data-redesign] .sp-row__reset,
+html[data-redesign] .sp-row__remove {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--pn-ink-3);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+html[data-redesign] .sp-row__reset:hover { background: var(--pn-hover); color: var(--pn-ink); }
+html[data-redesign] .sp-row__remove:hover { background: var(--pn-block-soft); color: var(--pn-block); border-color: var(--pn-block-soft); }
+
+/* ============================================================================
+   9. SpellbookDrawer — 03 §3.5
+   ============================================================================ */
+
+html[data-redesign] .sp-spellbook__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--spell-drawer-z);
+  background: transparent;
+}
+html[data-redesign] .sp-spellbook {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 480px;
+  max-width: 96vw;
+  z-index: calc(var(--spell-drawer-z) + 1);
+  display: flex;
+  flex-direction: column;
+  background: var(--pn-card);
+  border-left: 1px solid var(--pn-line-2);
+  box-shadow: var(--pn-sh-md);
+  font-family: var(--pn-ui);
+  animation: sp-flyout-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+html[data-redesign] .sp-spellbook__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .sp-spellbook__header h3 {
+  margin: 0;
+  font-family: var(--pn-serif);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+html[data-redesign] .sp-spellbook__header button {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pn-r-sm);
+  color: var(--pn-ink-3);
+  font-size: 14px;
+  cursor: pointer;
+}
+html[data-redesign] .sp-spellbook__header button:hover {
+  background: var(--pn-hover); color: var(--pn-ink); border-color: var(--pn-line);
+}
+
+html[data-redesign] .sp-spellbook__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+html[data-redesign] .sp-spellbook__empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--pn-ink-3);
+  font-size: 13px;
+}
+html[data-redesign] .sp-spellbook__empty button {
+  margin-top: 12px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-brand);
+  background: var(--pn-brand);
+  color: var(--pn-card);
+  font-family: var(--pn-ui);
+  cursor: pointer;
+}
+html[data-redesign] .sp-spellbook__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+html[data-redesign] .sp-spellbook__group[aria-current="true"] {
+  outline: 2px solid var(--pn-brand-soft);
+  outline-offset: 4px;
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .sp-spellbook__group-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 4px;
+  font-family: var(--pn-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .sp-spellbook__count {
+  font-size: 10.5px;
+  color: var(--pn-ink-4);
+}
+html[data-redesign] .sp-spellbook__footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+  display: flex;
+  justify-content: flex-end;
+}
+html[data-redesign] .sp-spellbook__footer button {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-brand);
+  background: transparent;
+  color: var(--pn-brand);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+html[data-redesign] .sp-spellbook__footer button:hover {
+  background: var(--pn-brand);
+  color: var(--pn-card);
+}
+
+/* ============================================================================
+   10. EnsembleGroup / EnsembleDock / EnsembleMessageComposer — 03 §5
+   ============================================================================ */
+
+html[data-redesign] .sp-ensemble-dock {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px dashed var(--ensemble-border, var(--pn-line-2));
+  border-radius: var(--pn-r-md);
+  background: var(--ensemble-dim, var(--pn-surface));
+  font-family: var(--pn-ui);
+}
+html[data-redesign] .sp-ensemble-dock__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+html[data-redesign] .sp-ensemble-dock__header h4 {
+  margin: 0;
+  font-family: var(--pn-serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ensemble-text, var(--pn-ink));
+  letter-spacing: -0.01em;
+}
+html[data-redesign] .sp-ensemble-dock__leader {
+  font-family: var(--pn-mono);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: var(--pn-r-pill);
+  background: var(--pn-card);
+  color: var(--ensemble-text, var(--pn-ink-2));
+  border: 1px solid var(--ensemble-border, var(--pn-line-2));
+}
+html[data-redesign] .sp-ensemble-dock__objective {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--pn-ink-2);
+  font-style: italic;
+}
+html[data-redesign] .sp-ensemble-dock__members {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-
-.spellPicker__formLabel {
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+html[data-redesign] .sp-ensemble-dock__member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--pn-card);
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-line);
 }
-
-.spellPicker__formInput {
-  padding: 7px 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--text);
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s ease;
+html[data-redesign] .sp-ensemble-dock__member-name {
+  font-size: 12.5px;
+  color: var(--pn-ink);
+  font-weight: 500;
 }
-
-.spellPicker__formInput:focus {
-  border-color: rgba(var(--theme-primary-rgb), 0.4);
+html[data-redesign] .sp-ensemble-dock__actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
 }
-
-.spellPicker__formInput--icon {
-  width: 60px;
-  text-align: center;
-}
-
-.spellPicker__formTextarea {
-  padding: 8px 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--text);
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
+html[data-redesign] .sp-ensemble-dock__actions button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink-2);
+  font-family: var(--pn-ui);
   font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+html[data-redesign] .sp-ensemble-dock__actions button:hover {
+  background: var(--pn-hover); color: var(--pn-ink);
+}
+html[data-redesign] .sp-ensemble-dock__disband {
+  color: var(--pn-block) !important;
+  border-color: var(--pn-block-soft) !important;
+}
+html[data-redesign] .sp-ensemble-dock__disband:hover {
+  background: var(--pn-block-soft) !important;
+  color: var(--pn-block) !important;
+}
+
+/* Ensemble message composer */
+html[data-redesign] .sp-ensemble-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+html[data-redesign] .sp-ensemble-composer textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 10px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 13px;
   resize: vertical;
-  min-height: 80px;
   outline: none;
-  transition: border-color 0.15s ease;
 }
-
-.spellPicker__formTextarea:focus {
-  border-color: rgba(var(--theme-primary-rgb), 0.4);
+html[data-redesign] .sp-ensemble-composer textarea:focus {
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
 }
-
-.spellPicker__formActions {
+html[data-redesign] .sp-ensemble-composer__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  padding-top: 4px;
+  gap: 6px;
 }
-
-.spellPicker__formBtnCancel {
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--muted);
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.spellPicker__formBtnCancel:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: var(--text);
-}
-
-.spellPicker__formBtnSave {
-  padding: 6px 14px;
-  background: rgba(var(--theme-primary-rgb), 0.15);
-  border: 1px solid rgba(var(--theme-primary-rgb), 0.3);
-  border-radius: var(--style-radius-sm, 6px);
-  color: var(--theme-primary);
-  font-family: var(--style-font-ui, 'JetBrains Mono', monospace);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.spellPicker__formBtnSave:hover:not(:disabled) {
-  background: rgba(var(--theme-primary-rgb), 0.25);
-  border-color: var(--theme-primary);
-}
-
-.spellPicker__formBtnSave:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ─── Delete Button ─── */
-
-.spellPicker__entityDelete {
-  flex-shrink: 0;
-  display: none;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  font-size: 14px;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.spellPicker__entityRow:hover .spellPicker__entityDelete {
-  display: flex;
-}
-
-.spellPicker__entityDelete:hover {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.1);
-}
-
-/* ─── Default Badge ─── */
-
-.spellPicker__defaultBadge {
-  flex-shrink: 0;
-  font-size: 9px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
-  opacity: 0.5;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-/* ===================================================================
-   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
-   The base .spellPicker__* styles above are neon-terminal (green
-   --theme-primary, dark surface-2 popup, black scrim, white-alpha borders)
-   so they render dark/neon in the warm-paper redesign. These overrides
-   repoint the offending selectors to --pn-* tokens. Token-only; no hex.
-   Mirrors the override style in styles-mentions.css. Used by SpellPicker.tsx.
-   =================================================================== */
-html[data-redesign] .spellPicker__backdrop {
-  background: rgba(40, 34, 24, 0.4);
-}
-html[data-redesign] .spellPicker {
-  background: var(--pn-card);
-  border: 1px solid var(--pn-line);
-  box-shadow: var(--pn-sh-md);
-}
-html[data-redesign] .spellPicker__header {
-  border-bottom: 1px solid var(--pn-line);
-}
-html[data-redesign] .spellPicker__title {
-  font-family: var(--pn-ui);
-  color: var(--pn-brand);
-}
-html[data-redesign] .spellPicker__close {
-  color: var(--pn-ink-3);
-}
-html[data-redesign] .spellPicker__close:hover {
-  border-color: var(--pn-line-2);
-  background: var(--pn-hover);
-  color: var(--pn-ink);
-}
-html[data-redesign] .spellPicker__tabs {
-  border-bottom: 1px solid var(--pn-line);
-}
-html[data-redesign] .spellPicker__tab {
-  color: var(--pn-ink-3);
-  font-family: var(--pn-ui);
-}
-html[data-redesign] .spellPicker__tab:hover {
-  background: var(--pn-hover);
-  color: var(--pn-ink);
-}
-html[data-redesign] .spellPicker__tab--active {
-  background: var(--pn-brand-soft);
-  border-color: var(--pn-brand);
-  color: var(--pn-brand);
-}
-html[data-redesign] .spellPicker__list::-webkit-scrollbar-thumb {
-  background: var(--pn-line-2);
-}
-html[data-redesign] .spellPicker__list::-webkit-scrollbar-thumb:hover {
+html[data-redesign] .sp-ensemble-composer__actions button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-brand);
   background: var(--pn-brand);
-}
-html[data-redesign] .spellPicker__sectionHeader {
+  color: var(--pn-card);
   font-family: var(--pn-ui);
-  color: var(--pn-ink-3);
+  font-size: 12px;
+  cursor: pointer;
 }
-html[data-redesign] .spellPicker__entityRow {
+html[data-redesign] .sp-ensemble-composer__actions button:hover { background: var(--pn-brand-2); border-color: var(--pn-brand-2); }
+html[data-redesign] .sp-ensemble-composer__error {
+  color: var(--pn-block);
+  font-size: 11.5px;
+  margin: 0;
+}
+
+/* ============================================================================
+   11. CustomSpellEditor / CustomSkillEditor — 03 §6
+   ============================================================================ */
+
+html[data-redesign] .sp-editor__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--spell-flyout-z);
+  background: rgba(20, 16, 10, 0.42);
+  backdrop-filter: blur(2px);
+  display: grid;
+  place-items: center;
+  animation: sp-fade-in 100ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+html[data-redesign] .sp-editor {
+  width: min(720px, 92vw);
+  max-height: 88vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-lg);
+  box-shadow: var(--pn-sh-pop);
   color: var(--pn-ink);
   font-family: var(--pn-ui);
+  overflow: hidden;
+  animation: sp-slide-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-html[data-redesign] .spellPicker__entityRow:hover {
-  background: var(--pn-hover);
+html[data-redesign] .sp-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--pn-line);
 }
-html[data-redesign] .spellPicker__entityType {
+html[data-redesign] .sp-editor__header h3 {
+  margin: 0;
+  font-family: var(--pn-serif);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+html[data-redesign] .sp-editor__header button {
+  width: 28px; height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pn-r-sm);
+  color: var(--pn-ink-3);
+  font-size: 14px;
+  cursor: pointer;
+}
+html[data-redesign] .sp-editor__header button:hover { background: var(--pn-hover); color: var(--pn-ink); border-color: var(--pn-line); }
+
+html[data-redesign] .sp-editor__body {
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+html[data-redesign] .sp-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+html[data-redesign] .sp-editor__field label {
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-eyebrow-size);
+  letter-spacing: var(--spell-type-eyebrow-tracking);
+  font-weight: 600;
+  text-transform: uppercase;
   color: var(--pn-ink-3);
 }
-html[data-redesign] .spellPicker__entityExpand {
-  color: var(--pn-ink-3);
-}
-html[data-redesign] .spellPicker__spellBadge {
-  background: var(--pn-brand-soft);
-  color: var(--pn-brand);
-  border: 1px solid var(--pn-line);
-}
-html[data-redesign] .spellPicker__spellRow {
-  border-left: 2px solid var(--pn-line);
-  color: var(--pn-ink-3);
+html[data-redesign] .sp-editor__field input,
+html[data-redesign] .sp-editor__field select,
+html[data-redesign] .sp-editor__field textarea {
   font-family: var(--pn-ui);
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
 }
-html[data-redesign] .spellPicker__spellRow:hover {
-  color: var(--pn-brand);
-  border-left-color: var(--pn-brand);
-  background: var(--pn-brand-soft);
+html[data-redesign] .sp-editor__field textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: var(--pn-mono);
+  font-size: 12.5px;
 }
-html[data-redesign] .spellPicker__empty {
-  color: var(--pn-ink-3);
-}
-html[data-redesign] .spellPicker__createBtn {
-  background: var(--pn-brand-soft);
-  border: 1px solid var(--pn-brand);
-  color: var(--pn-brand);
-  font-family: var(--pn-ui);
-}
-html[data-redesign] .spellPicker__createBtn:hover {
-  background: var(--pn-brand-soft);
+html[data-redesign] .sp-editor__field input:focus,
+html[data-redesign] .sp-editor__field select:focus,
+html[data-redesign] .sp-editor__field textarea:focus {
   border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
 }
-html[data-redesign] .spellPicker__formLabel {
-  font-family: var(--pn-ui);
-  color: var(--pn-ink-3);
+
+html[data-redesign] .sp-editor__colors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-html[data-redesign] .spellPicker__formInput {
+html[data-redesign] .sp-editor__color {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  outline: none;
+  transition: transform 120ms ease, border-color 120ms;
+}
+html[data-redesign] .sp-editor__color:hover { transform: scale(1.08); }
+html[data-redesign] .sp-editor__color:focus-visible {
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+html[data-redesign] .sp-editor__color--active {
+  border-color: var(--pn-ink);
+  transform: scale(1.06);
+}
+/* Per-color background — uses the spell-colors palette */
+html[data-redesign] .sp-editor__color--brass     { background: var(--spell-brass-primary); }
+html[data-redesign] .sp-editor__color--vermilion { background: var(--spell-vermilion-primary); }
+html[data-redesign] .sp-editor__color--moss      { background: var(--spell-moss-primary); }
+html[data-redesign] .sp-editor__color--lapis     { background: var(--spell-lapis-primary); }
+html[data-redesign] .sp-editor__color--amber     { background: var(--spell-amber-primary); }
+html[data-redesign] .sp-editor__color--aubergine { background: var(--spell-aubergine-primary); }
+html[data-redesign] .sp-editor__color--teal      { background: var(--spell-teal-primary); }
+html[data-redesign] .sp-editor__color--clay      { background: var(--spell-clay-primary); }
+html[data-redesign] .sp-editor__color--slate     { background: var(--spell-slate-primary); }
+html[data-redesign] .sp-editor__color--plum      { background: var(--spell-plum-primary); }
+
+html[data-redesign] .sp-editor__err {
+  color: var(--pn-block);
+  font-size: 11.5px;
+  margin: 0;
+}
+html[data-redesign] .sp-editor__readonly {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--pn-wait-soft);
+  border-left: 3px solid var(--pn-wait);
+  color: var(--pn-ink-2);
+  font-size: 12.5px;
+  border-radius: 0 var(--pn-r-sm) var(--pn-r-sm) 0;
+}
+
+html[data-redesign] .sp-editor__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--pn-line);
   background: var(--pn-surface);
-  border: 1px solid var(--pn-line);
+}
+html[data-redesign] .sp-editor__footer button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--pn-r-sm);
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
   color: var(--pn-ink);
   font-family: var(--pn-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
 }
-html[data-redesign] .spellPicker__formInput:focus {
-  border-color: var(--pn-brand);
+html[data-redesign] .sp-editor__footer button:hover { background: var(--pn-hover); }
+html[data-redesign] .sp-editor__save {
+  background: var(--pn-brand) !important;
+  color: var(--pn-card) !important;
+  border-color: var(--pn-brand) !important;
 }
-html[data-redesign] .spellPicker__formTextarea {
-  background: var(--pn-surface);
-  border: 1px solid var(--pn-line);
-  color: var(--pn-ink);
+html[data-redesign] .sp-editor__save:hover { background: var(--pn-brand-2) !important; border-color: var(--pn-brand-2) !important; }
+html[data-redesign] .sp-editor__save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--pn-line) !important;
+  color: var(--pn-ink-3) !important;
+  border-color: var(--pn-line-2) !important;
+}
+html[data-redesign] .sp-editor__discard { color: var(--pn-block) !important; }
+
+/* ============================================================================
+   12. UndoToast — 03 §1.10.1
+   ============================================================================ */
+
+html[data-redesign] .spell-undo-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--spell-toast-z);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--pn-ink);
+  color: var(--pn-paper);
+  border-radius: var(--pn-r-pill);
+  box-shadow: var(--pn-sh-pop);
   font-family: var(--pn-ui);
+  font-size: 13px;
+  animation: sp-toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-html[data-redesign] .spellPicker__formTextarea:focus {
-  border-color: var(--pn-brand);
+html[data-redesign] .spell-undo-toast__msg {
+  font-weight: 500;
+  letter-spacing: -0.005em;
 }
-html[data-redesign] .spellPicker__formBtnCancel {
-  border: 1px solid var(--pn-line);
+html[data-redesign] .spell-undo-toast__undo,
+html[data-redesign] .spell-undo-toast__secondary {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: var(--pn-r-pill);
+  padding: 4px 10px;
+  color: var(--pn-paper);
+  font-family: var(--pn-ui);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+html[data-redesign] .spell-undo-toast__undo:hover,
+html[data-redesign] .spell-undo-toast__secondary:hover { background: rgba(255, 255, 255, 0.25); }
+html[data-redesign] .spell-undo-toast__undo:disabled { opacity: 0.5; cursor: wait; }
+html[data-redesign] .spell-undo-toast__disabled {
+  font-family: var(--pn-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.6);
+}
+html[data-redesign] .spell-undo-toast__close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+html[data-redesign] .spell-undo-toast__close:hover { color: var(--pn-paper); }
+
+/* ============================================================================
+   13. TaskSpellAssignment — 03 §7
+   ============================================================================ */
+
+html[data-redesign] .sp-task-spells {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+html[data-redesign] .sp-task-spells__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+html[data-redesign] .sp-task-spells__header h4 {
+  margin: 0;
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-eyebrow-size);
+  letter-spacing: var(--spell-type-eyebrow-tracking);
+  text-transform: uppercase;
+  font-weight: 600;
   color: var(--pn-ink-3);
-  font-family: var(--pn-ui);
 }
-html[data-redesign] .spellPicker__formBtnCancel:hover {
-  border-color: var(--pn-line-2);
-  color: var(--pn-ink);
+html[data-redesign] .sp-task-spells__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-html[data-redesign] .spellPicker__formBtnSave {
+html[data-redesign] .sp-task-spells__empty {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--pn-ink-4);
+}
+html[data-redesign] .sp-task-spells__item {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+}
+html[data-redesign] .sp-task-spells__icon {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
   background: var(--pn-brand-soft);
-  border: 1px solid var(--pn-brand);
   color: var(--pn-brand);
-  font-family: var(--pn-ui);
+  border-radius: var(--pn-r-xs);
+  font-family: var(--pn-mono);
+  font-size: 12px;
 }
-html[data-redesign] .spellPicker__formBtnSave:hover:not(:disabled) {
-  background: var(--pn-brand-soft);
-  border-color: var(--pn-brand);
+/* Color the icon tile by the spell's palette id if exposed. */
+html[data-redesign] .sp-task-spells__item[data-spell-color="brass"]     .sp-task-spells__icon { background: var(--spell-brass-dim);     color: var(--spell-brass-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="vermilion"] .sp-task-spells__icon { background: var(--spell-vermilion-dim); color: var(--spell-vermilion-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="moss"]      .sp-task-spells__icon { background: var(--spell-moss-dim);      color: var(--spell-moss-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="lapis"]     .sp-task-spells__icon { background: var(--spell-lapis-dim);     color: var(--spell-lapis-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="amber"]     .sp-task-spells__icon { background: var(--spell-amber-dim);     color: var(--spell-amber-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="aubergine"] .sp-task-spells__icon { background: var(--spell-aubergine-dim); color: var(--spell-aubergine-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="teal"]      .sp-task-spells__icon { background: var(--spell-teal-dim);      color: var(--spell-teal-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="clay"]      .sp-task-spells__icon { background: var(--spell-clay-dim);      color: var(--spell-clay-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="slate"]     .sp-task-spells__icon { background: var(--spell-slate-dim);     color: var(--spell-slate-text); }
+html[data-redesign] .sp-task-spells__item[data-spell-color="plum"]      .sp-task-spells__icon { background: var(--spell-plum-dim);      color: var(--spell-plum-text); }
+
+html[data-redesign] .sp-task-spells__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pn-ink);
 }
-html[data-redesign] .spellPicker__entityDelete {
+html[data-redesign] .sp-task-spells__action {
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-meta-size);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--pn-ink-3);
-}
-html[data-redesign] .spellPicker__defaultBadge {
+  padding: 2px 6px;
   background: var(--pn-surface);
-  color: var(--pn-ink-3);
+  border-radius: var(--pn-r-pill);
   border: 1px solid var(--pn-line);
+}
+html[data-redesign] .sp-task-spells__remove {
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--pn-r-sm);
+  color: var(--pn-ink-3);
+  cursor: pointer;
+  font-size: 13px;
+}
+html[data-redesign] .sp-task-spells__remove:hover {
+  background: var(--pn-block-soft);
+  color: var(--pn-block);
+  border-color: var(--pn-block-soft);
+}
+html[data-redesign] .sp-task-spells__add {
+  align-self: flex-start;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--pn-r-pill);
+  border: 1px dashed var(--pn-line-2);
+  background: transparent;
+  color: var(--pn-ink-2);
+  font-family: var(--pn-ui);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-style 120ms, border-color 120ms;
+}
+html[data-redesign] .sp-task-spells__add:hover {
+  background: var(--pn-brand-soft);
+  color: var(--pn-brand);
+  border-color: var(--pn-brand);
+  border-style: solid;
+}
+
+/* Per-color overrides driven by data-spell-color (set by ActiveSpellChip + ActiveSpellRow). */
+html[data-redesign] [data-spell-color="brass"]     { --sp-chip-color: var(--spell-brass-primary);     --sp-chip-dim: var(--spell-brass-dim);     --sp-row-color: var(--spell-brass-primary); }
+html[data-redesign] [data-spell-color="vermilion"] { --sp-chip-color: var(--spell-vermilion-primary); --sp-chip-dim: var(--spell-vermilion-dim); --sp-row-color: var(--spell-vermilion-primary); }
+html[data-redesign] [data-spell-color="moss"]      { --sp-chip-color: var(--spell-moss-primary);      --sp-chip-dim: var(--spell-moss-dim);      --sp-row-color: var(--spell-moss-primary); }
+html[data-redesign] [data-spell-color="lapis"]     { --sp-chip-color: var(--spell-lapis-primary);     --sp-chip-dim: var(--spell-lapis-dim);     --sp-row-color: var(--spell-lapis-primary); }
+html[data-redesign] [data-spell-color="amber"]     { --sp-chip-color: var(--spell-amber-primary);     --sp-chip-dim: var(--spell-amber-dim);     --sp-row-color: var(--spell-amber-primary); }
+html[data-redesign] [data-spell-color="aubergine"] { --sp-chip-color: var(--spell-aubergine-primary); --sp-chip-dim: var(--spell-aubergine-dim); --sp-row-color: var(--spell-aubergine-primary); }
+html[data-redesign] [data-spell-color="teal"]      { --sp-chip-color: var(--spell-teal-primary);      --sp-chip-dim: var(--spell-teal-dim);      --sp-row-color: var(--spell-teal-primary); }
+html[data-redesign] [data-spell-color="clay"]      { --sp-chip-color: var(--spell-clay-primary);      --sp-chip-dim: var(--spell-clay-dim);      --sp-row-color: var(--spell-clay-primary); }
+html[data-redesign] [data-spell-color="slate"]     { --sp-chip-color: var(--spell-slate-primary);     --sp-chip-dim: var(--spell-slate-dim);     --sp-row-color: var(--spell-slate-primary); }
+html[data-redesign] [data-spell-color="plum"]      { --sp-chip-color: var(--spell-plum-primary);      --sp-chip-dim: var(--spell-plum-dim);      --sp-row-color: var(--spell-plum-primary); }
+
+/* ============================================================================
+   14. Keyframes & motion gating
+   ============================================================================ */
+
+@keyframes sp-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sp-slide-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes sp-flyout-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes sp-toast-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-redesign] .sp-launcher,
+  html[data-redesign] .sp-launcher__backdrop,
+  html[data-redesign] .sp-detail,
+  html[data-redesign] .sp-spellbook,
+  html[data-redesign] .sp-editor,
+  html[data-redesign] .sp-editor__backdrop,
+  html[data-redesign] .spell-undo-toast,
+  html[data-redesign] .sp-strip__cast {
+    animation: none !important;
+    transition: none !important;
+  }
+  html[data-redesign] .sp-row__switch::after,
+  html[data-redesign] .sp-editor__color {
+    transition: none !important;
+  }
 }

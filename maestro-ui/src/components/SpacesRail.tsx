@@ -9,6 +9,7 @@ import { NewSpaceDropdown } from "./NewSpaceDropdown";
 import { Icon } from "./maestro/redesign/kit";
 import { spellRingAttrs, type RingSpec } from "../utils/spellRings";
 import { useActiveSpellsForSession } from "../stores/useActiveSpellsStore";
+import { useSpellbookStore } from "../stores/useSpellbookStore";
 
 type RailSession = {
     id: string;
@@ -98,6 +99,11 @@ function RailSessionButton({
                     className="spell-ring__overflow"
                     aria-label={`${ringOverflow} more spells`}
                     role="img"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const sid = session.maestroSessionId;
+                        if (sid) useSpellbookStore.getState().openSpellbook({ scrollToSessionId: sid });
+                    }}
                 >
                     +{ringOverflow}
                 </span>

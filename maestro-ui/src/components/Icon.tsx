@@ -34,22 +34,26 @@ export type IconName =
   | "volume-off"
   | "paperclip"
   | "pencil"
-  | "log";
+  | "log"
+  | "sliders"
+  | "check";
 
 type IconProps = {
   name: IconName;
   size?: number;
   className?: string;
+  /** Optional override for stroke-width (parity with redesign/kit Icon). */
+  sw?: number;
 };
 
-export function Icon({ name, size = 16, className }: IconProps) {
+export function Icon({ name, size = 16, className, sw }: IconProps) {
   const common = {
     width: size,
     height: size,
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 1.8,
+    strokeWidth: sw ?? 1.8,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
     className,
@@ -314,6 +318,23 @@ export function Icon({ name, size = 16, className }: IconProps) {
         <svg {...common}>
           <path d="M12 20h9" />
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+        </svg>
+      );
+    case "sliders":
+      return (
+        <svg {...common}>
+          <path d="M4 7h11" />
+          <path d="M18 7h2" />
+          <circle cx="16.5" cy="7" r="2.5" />
+          <path d="M4 17h4" />
+          <path d="M11 17h9" />
+          <circle cx="9.5" cy="17" r="2.5" />
+        </svg>
+      );
+    case "check":
+      return (
+        <svg {...common}>
+          <path d="M5 12.5L10 17.5 19.5 6.5" />
         </svg>
       );
     default:

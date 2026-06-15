@@ -31,6 +31,7 @@ const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").
 import { SessionStatsView } from "../maestro/SessionStatsView";
 import { spellRingAttrs, type RingSpec } from "../../utils/spellRings";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
+import { useSpellbookStore } from "../../stores/useSpellbookStore";
 
 /**
  * Wraps a .terminalContainer so it can render concentric spell rings for the
@@ -76,7 +77,12 @@ function TerminalRingContainer({
           type="button"
           className="spell-ring__overflow"
           aria-label={`Show ${overflow} more spells`}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (maestroSessionId) {
+              useSpellbookStore.getState().openSpellbook({ scrollToSessionId: maestroSessionId });
+            }
+          }}
         >
           +{overflow}
         </button>
