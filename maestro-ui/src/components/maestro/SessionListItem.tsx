@@ -17,7 +17,9 @@ import { willOpenStatsOnClick } from "../../utils/sessionClickRouting";
 import { copyToClipboard } from "../../utils/domUtils";
 import { isDiagramDoc } from "../../utils/docHelpers";
 import { Icon, Glyph, AgentTile, type AgentKind } from "./redesign/kit";
-import { spellRingAttrs, type RingSpec } from "../../utils/spellRings";
+import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../../utils/spellRings";
+import { useEnsembleStore } from "../../stores/useEnsembleStore";
+import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 
@@ -233,17 +235,18 @@ export const SessionListItem = React.memo(function SessionListItem({
   // Concentric spell rings — feeds the .spell-ring utility on the tile root.
   // See docs/spell-system-design/UI_SPEC.md §7.
   const activeSpells = useActiveSpellsForSession(session.id);
+  // Subscribe to the ensemble store so ring re-renders when ensemble color changes.
+  const ensembles = useEnsembleStore((s) => s.ensembles);
   const ringSpecs = useMemo<RingSpec[]>(
-    () => activeSpells.map((s) => ({
-      spellName: s.spellName,
-      colorId: s.colorId,
-      ensembleId: s.ensembleId,
-    })),
-    [activeSpells],
+    () => buildRingSpecsFromActive(activeSpells),
+    [activeSpells, ensembles],
   );
   const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
-  const ringClass = ringAttrs['data-spell-rings'] > 0 ? ' spell-ring' : '';
+  const ringHasRings = ringAttrs['data-spell-rings'] > 0;
+  const justCast = useSpellCastPulse(session.id);
+  const ringClass = ringHasRings ? (justCast ? ' spell-ring spell-ring--just-cast' : ' spell-ring') : '';
   const ringOverflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+  const ringAriaLabel = spellRingAriaLabel(`Session ${title}`, activeSpells);
 
   return (
     <div
@@ -253,6 +256,7 @@ export const SessionListItem = React.memo(function SessionListItem({
       data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
       data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
       data-spell-ring-overflow={ringOverflow || undefined}
+      aria-label={ringAriaLabel || undefined}
     >
       <div className="pn-st__main">
         {/* Sub-session disclosure arrow + child count */}

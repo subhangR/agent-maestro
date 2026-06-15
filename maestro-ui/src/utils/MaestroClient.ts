@@ -787,7 +787,7 @@ class MaestroClient {
         await this.fetch<{ success: boolean }>(`/spells/${id}`, { method: 'DELETE' });
     }
 
-    async activateSpell(spellId: string, targetSessionIds: string[], invokerSessionId?: string | null): Promise<{ activeSpells: ActiveSpell[]; sessionIds: string[] }> {
+    async activateSpell(spellId: string, targetSessionIds: string[], invokerSessionId?: string | null): Promise<{ spell: Spell; sessions: Array<{ sessionId: string; activeSpell: ActiveSpell }> }> {
         return this.fetch(`/spells/${spellId}/activate`, {
             method: 'POST',
             body: JSON.stringify({ targetSessionIds, invokerSessionId: invokerSessionId ?? null }),

@@ -20,7 +20,6 @@ export const ActiveSpellChip = React.memo(function ActiveSpellChip({
   onEditTrigger,
 }: ActiveSpellChipProps) {
   const spell = useSpellLibraryStore((s) => s.spellById(active.spellId));
-  const setSpellEnabled = useSpellActivationStore((s) => s.setSpellEnabled);
   const removeActiveSpell = useSpellActivationStore((s) => s.removeActiveSpell);
   const resetIteration = useSpellActivationStore((s) => s.resetIteration);
   const openLauncher = useSpellLauncherStore((s) => s.openLauncher);
@@ -61,8 +60,6 @@ export const ActiveSpellChip = React.memo(function ActiveSpellChip({
       <ActiveSpellChipMenu
         open={menuOpen}
         isLoop={Boolean(isLoop)}
-        enabled={active.enabled}
-        onToggle={() => void setSpellEnabled(sessionId, active.spellId, !active.enabled)}
         onResetLoop={isLoop ? () => void resetIteration(sessionId, active.spellId) : undefined}
         onDeactivate={() => void removeActiveSpell(sessionId, active.spellId)}
         onViewInSpellbook={() => onViewInSpellbook(sessionId)}

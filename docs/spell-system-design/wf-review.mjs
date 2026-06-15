@@ -11,7 +11,7 @@ export const meta = {
   ],
 }
 
-const CTX = `Agent Maestro. The spell-system redesign has just been implemented. Review the working-tree diff against main (\`git diff main...HEAD\` and uncommitted changes). Ground truth: docs/spell-system-design/DESIGN_BRIEF.md + the 6 *.excalidraw diagrams. Use \`graphify query\` before grepping.`
+const CTX = `Agent Maestro. The spell-system redesign has just been implemented on branch feat/spell-system-server-dispatch (HEAD 345435e), all three packages typecheck clean. Review the spell-system diff: \`git diff 3733ca6...HEAD\` (3733ca6 is the pre-spell base; this excludes unrelated WIP). Ground truth: docs/spell-system-design/DESIGN_BRIEF.md + UI_SPEC.md + the 6 *.excalidraw diagrams. Known-deferred (do NOT re-report as blockers): /api/skills not wired (P6 stub), resetIteration server endpoint (P3), ensemble-create UI stub (server P4 drives it), Task.spellIds Zod acceptance (verify in P5). Use \`graphify query\` before grepping.`
 
 const FINDINGS_SCHEMA = {
   type: 'object', additionalProperties: false,

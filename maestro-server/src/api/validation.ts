@@ -477,7 +477,8 @@ export const invokeSpellSchema = z.object({
   // Either targetSessionId (single) or targetSessionIds[] (multi, P2 forward-compat).
   targetSessionId: safeId.optional(),
   targetSessionIds: z.array(safeId).optional(),
-  invokerSessionId: safeId.optional(),
+  // Match spellActivationSchema: clients may send `null` to mean "no invoker".
+  invokerSessionId: safeId.nullable().optional(),
   projectId: safeId,
   // Loose passthrough for future per-spell args (CLI --args JSON).
   args: z.record(z.string(), z.any()).optional(),
@@ -524,9 +525,49 @@ const spellHookEventSchema = z.enum([
   'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'Notification', 'SessionStart',
 ]);
 const spellFailModeSchema = z.enum(['open', 'closed']);
+/**
+ * Reject regular-expression patterns prone to catastrophic backtracking.
+ * The spell matcher runs `new RegExp(matcher).test(target)` on the hot hook
+ * dispatch path; a pathological pattern (e.g. `(a+)+$`) would stall the
+ * single-threaded Node event loop. Heuristic detection without an extra dep:
+ *   1. pattern must compile as a valid RegExp
+ *   2. reject nested quantifiers around groups: `(...+)+`, `(...*)*`, `(...+)*`, etc.
+ *   3. reject quantifier on a disjunction-with-overlap: `(a|a)+`, `(a|ab)+`
+ *   4. cap stars-of-stars constructs like `(a*)+`
+ * Patterns failing these checks are rare in practice; legitimate matchers
+ * (`Bash`, `Edit|Write`, `^src/.*\\.ts$`) all pass.
+ */
+function isSafeRegex(pattern: string): boolean {
+  try {
+    // eslint-disable-next-line no-new
+    new RegExp(pattern);
+  } catch {
+    return false;
+  }
+  // Nested quantifiers on a group: (X+)+ / (X*)* / (X+)* / (X*)+
+  if (/\([^()]*[+*]\)[+*?]/.test(pattern)) return false;
+  // Nested quantifier separated by a quantifier-friendly token, e.g. (a+){2,}
+  if (/\([^()]*[+*]\)\{\d+,?\d*\}/.test(pattern)) return false;
+  // Alternation where one branch is a prefix of another, quantified: (a|ab)+
+  const altMatch = pattern.match(/\(([^()|]+)\|([^()|]+)\)[+*]/);
+  if (altMatch) {
+    const [, left, right] = altMatch;
+    if (left === right || left.startsWith(right) || right.startsWith(left)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 const spellTriggerSchema = z.object({
   hookEvent: spellHookEventSchema,
-  matcher: z.string().max(500).optional(),
+  matcher: z
+    .string()
+    .max(500)
+    .refine(isSafeRegex, {
+      message: 'matcher must be a valid, non-backtracking regular expression',
+    })
+    .optional(),
   enabled: z.boolean(),
 }).strict();
 
@@ -558,7 +599,10 @@ export const updateSpellSchema = z.object({
 
 export const spellActivationSchema = z.object({
   targetSessionIds: z.array(safeId).min(1),
-  invokerSessionId: safeId.optional(),
+  // UI always sends `invokerSessionId: null` for UI-cast (no invoker session). The
+  // route handler already does `invokerSessionId ?? null`, so the schema accepts
+  // both `null` and omitted/string to keep the wire contract aligned.
+  invokerSessionId: safeId.nullable().optional(),
 }).strict();
 
 // --- Hook dispatch (P2) ---

@@ -132,6 +132,7 @@ async function startServer() {
     taskRepo,
     teamMemberRepo,
     modelProfileRepo,
+    spellRepo: container.spellRepo,
     eventBus,
     config,
     ptyHostService

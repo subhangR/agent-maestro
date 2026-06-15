@@ -65,7 +65,10 @@ export const SPELL_LIBRARY: Spell[] = [
     color: 'sky',
     action: 'continue-loop',
     loopType: 'plan-execute',
-    trigger: { hookEvent: 'UserPromptSubmit', enabled: true },
+    // continue-loop is only meaningful on Stop / SubagentStop — exit 2 means
+    // "keep going" there. On UserPromptSubmit the same exit code BLOCKS the
+    // user's prompt, so bind plan-execute to Stop like spell_self_critic.
+    trigger: { hookEvent: 'Stop', enabled: true },
     failMode: 'open',
     maxIterations: 2,
     isDefault: true,

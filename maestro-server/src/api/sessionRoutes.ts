@@ -22,6 +22,7 @@ import { AppError } from '../domain/common/Errors';
 import { SessionStatus, AgentTool, AgentMode, TeamMember, TeamMemberSnapshot, MemberLaunchOverride, LaunchConfig, isCoordinatorMode, normalizeMode } from '../types';
 import { ITeamMemberRepository } from '../domain/repositories/ITeamMemberRepository';
 import { IModelProfileRepository } from '../domain/repositories/IModelProfileRepository';
+import { ISpellRepository } from '../domain/repositories/ISpellRepository';
 import { SessionFilter } from '../domain/repositories/ISessionRepository';
 import { handleRouteError } from './middleware/errorHandler';
 import {
@@ -477,6 +478,7 @@ interface SessionRouteDependencies {
   taskRepo: ITaskRepository;
   teamMemberRepo: ITeamMemberRepository;
   modelProfileRepo: IModelProfileRepository;
+  spellRepo: ISpellRepository;
   eventBus: IEventBus;
   config: Config;
   ptyHostService: PtyHostService;
@@ -486,7 +488,7 @@ interface SessionRouteDependencies {
  * Create session routes using the SessionService.
  */
 export function createSessionRoutes(deps: SessionRouteDependencies) {
-  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config, ptyHostService } = deps;
+  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, spellRepo, eventBus, config, ptyHostService } = deps;
   const gitService = new GitService();
   const router = express.Router();
 
@@ -2000,6 +2002,76 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         });
         manifestPath = result.manifestPath;
         manifest = result.manifest;
+
+        // P5: Populate manifest.spells from Task.spellIds so the CLI's
+        // spell-auto-activator (worker-init / orchestrator-init) can fire each
+        // task-attached spell at session start. The CLI's manifest generator
+        // doesn't know about spells; the server owns Spell + Task state, so we
+        // resolve here and patch the on-disk manifest.
+        try {
+          const uniqueSpellIds: string[] = [];
+          const seen = new Set<string>();
+          for (const task of verifiedTasks) {
+            const ids = (task as any)?.spellIds as string[] | undefined;
+            if (!Array.isArray(ids)) continue;
+            for (const id of ids) {
+              if (typeof id === 'string' && id && !seen.has(id)) {
+                seen.add(id);
+                uniqueSpellIds.push(id);
+              }
+            }
+          }
+          if (uniqueSpellIds.length > 0) {
+            const resolvedSpells: Array<{
+              id: string;
+              name: string;
+              description?: string;
+              icon?: string;
+              color?: string;
+              action?: string;
+              loopType?: string;
+              trigger?: { hookEvent: string; matcher?: string; enabled?: boolean };
+              failMode?: 'open' | 'closed';
+              maxIterations?: number;
+              skillRef?: string;
+            }> = [];
+            for (const id of uniqueSpellIds) {
+              try {
+                const spell = await spellRepo.findById(id);
+                if (!spell) continue;
+                resolvedSpells.push({
+                  id: spell.id,
+                  name: spell.name,
+                  description: spell.description,
+                  icon: spell.icon,
+                  color: spell.color,
+                  action: spell.action,
+                  loopType: spell.loopType,
+                  trigger: spell.trigger
+                    ? {
+                        hookEvent: spell.trigger.hookEvent,
+                        matcher: spell.trigger.matcher,
+                        enabled: spell.trigger.enabled,
+                      }
+                    : undefined,
+                  failMode: spell.failMode,
+                  maxIterations: spell.maxIterations,
+                  skillRef: spell.skillRef,
+                });
+              } catch {
+                // Missing/broken spell: skip silently so spawn isn't blocked.
+              }
+            }
+            if (resolvedSpells.length > 0) {
+              manifest.spells = resolvedSpells;
+              await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+            }
+          }
+        } catch (spellInjectErr: unknown) {
+          // Non-fatal: a broken spell-injection step must not block spawn.
+          const msg = spellInjectErr instanceof Error ? spellInjectErr.message : String(spellInjectErr);
+          console.warn('[spawn] Failed to inject spells into manifest:', msg);
+        }
 
       } catch (manifestError: unknown) {
         const msg = manifestError instanceof Error ? manifestError.message : 'Unknown error';

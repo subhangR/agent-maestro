@@ -7,9 +7,11 @@ import { useProjectStore } from "../stores/useProjectStore";
 import { buildTeamGroups, getGroupedSessionOrder } from "../utils/teamGrouping";
 import { NewSpaceDropdown } from "./NewSpaceDropdown";
 import { Icon } from "./maestro/redesign/kit";
-import { spellRingAttrs, type RingSpec } from "../utils/spellRings";
+import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../utils/spellRings";
 import { useActiveSpellsForSession } from "../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../stores/useSpellbookStore";
+import { useEnsembleStore } from "../stores/useEnsembleStore";
+import { useSpellCastPulse } from "../utils/useSpellCastPulse";
 
 type RailSession = {
     id: string;
@@ -61,17 +63,18 @@ function RailSessionButton({
 
     // Concentric spell rings — see docs/spell-system-design/UI_SPEC.md §7.
     const activeSpells = useActiveSpellsForSession(session.maestroSessionId ?? null);
+    // Subscribe to ensembles so ring color updates when an ensemble changes.
+    const ensembles = useEnsembleStore((s) => s.ensembles);
     const ringSpecs = useMemo<RingSpec[]>(
-        () => activeSpells.map((s) => ({
-            spellName: s.spellName,
-            colorId: s.colorId,
-            ensembleId: s.ensembleId,
-        })),
-        [activeSpells],
+        () => buildRingSpecsFromActive(activeSpells),
+        [activeSpells, ensembles],
     );
     const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
-    const ringClass = ringAttrs['data-spell-rings'] > 0 ? ' spell-ring' : '';
+    const ringHasRings = ringAttrs['data-spell-rings'] > 0;
+    const justCast = useSpellCastPulse(session.maestroSessionId ?? null);
+    const ringClass = ringHasRings ? (justCast ? ' spell-ring spell-ring--just-cast' : ' spell-ring') : '';
     const ringOverflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+    const ringAriaLabel = spellRingAriaLabel(`Session ${session.name}`, activeSpells);
 
     return (
         <button
@@ -83,6 +86,7 @@ function RailSessionButton({
             data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
             data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
             data-spell-ring-overflow={ringOverflow || undefined}
+            aria-label={ringAriaLabel || undefined}
             {...(session.maestroSessionId ? { 'data-maestro-session-id': session.maestroSessionId } : {})}
         >
             {effect?.iconSrc ? (

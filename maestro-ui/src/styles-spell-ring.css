@@ -128,10 +128,7 @@ html[data-redesign] .terminalContainer .spell-ring__overflow {
 
 @media (prefers-reduced-motion: reduce) {
   html[data-redesign] .spell-ring,
-  html[data-redesign] .spell-ring__overflow,
-  html[data-redesign] .spell-ring__overflow--ticking,
-  html[data-redesign] .spell-ring__tick,
-  html[data-redesign] .spell-ring__tick--active {
+  html[data-redesign] .spell-ring__overflow {
     animation: none !important;
     transition: none !important;
   }

@@ -44,16 +44,17 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
         input.targetSessionIds,
         input.invokerSessionId ?? null,
       );
+      const sessionIds = result.sessions.map((s) => s.sessionId);
       // ui-borders' useActiveSpellsStore will receive WS spell:activated and update.
       const library = useSpellLibraryStore.getState();
       library.trackRecent(input.spellId);
       const spell = library.spellById(input.spellId);
-      const name = spell?.name ?? 'spell';
-      const count = result.sessionIds.length;
+      const name = spell?.name ?? result.spell?.name ?? 'spell';
+      const count = sessionIds.length;
       const summary = `Cast ${name} on ${count} ${count === 1 ? 'session' : 'sessions'}`;
       const castId = `cast_${Date.now()}_${input.spellId}`;
       const undoAction = async () => {
-        await maestroClient.deactivateSpell(input.spellId, result.sessionIds);
+        await maestroClient.deactivateSpell(input.spellId, sessionIds);
       };
       const receipt: CastReceipt = { castId, summary, undoAction };
       set({
@@ -61,7 +62,7 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
         lastCastAt: Date.now(),
         lastCastReceipt: receipt,
       });
-      return { spellId: input.spellId, sessionIds: result.sessionIds };
+      return { spellId: input.spellId, sessionIds };
     } catch (e: any) {
       set({ casting: false, error: e?.message ?? 'Cast failed' });
       throw e;

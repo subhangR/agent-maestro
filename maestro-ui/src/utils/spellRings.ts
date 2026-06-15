@@ -9,7 +9,9 @@
  */
 
 import type { CSSProperties } from 'react';
-import type { SpellColorId } from '../app/constants/spellColors';
+import { resolveSpellColorId, type SpellColorId } from '../app/constants/spellColors';
+import { useEnsembleStore } from '../stores/useEnsembleStore';
+import type { ActiveSpellView } from '../stores/useActiveSpellsStore';
 
 export const RING_CAP = 4;
 const RING_W = 1; // px, stroke width per ring
@@ -88,4 +90,43 @@ export function spellRingAttrs(rings: ReadonlyArray<RingSpec>): SpellRingAttrs {
 /** Style-only convenience wrapper. */
 export function spellRingStyle(rings: ReadonlyArray<RingSpec>): CSSProperties {
   return spellRingAttrs(rings).style;
+}
+
+/**
+ * Build RingSpecs from a session's ActiveSpellViews, resolving the ensemble's
+ * palette color (when applicable) via the ensemble store. Centralises the
+ * ensembleColorId lookup so each ring host doesn't have to repeat it.
+ *
+ * Reads the ensemble store via getState() — this is a derivation helper, not
+ * a hook. Use `useEnsembleRingSpecs` below if you need reactive updates when
+ * the ensemble's color/state changes.
+ */
+export function buildRingSpecsFromActive(
+  activeSpells: ReadonlyArray<ActiveSpellView>,
+): RingSpec[] {
+  const ensembleColorById = (id: string): SpellColorId | undefined => {
+    const e = useEnsembleStore.getState().ensembleById(id);
+    return e ? resolveSpellColorId(e.color) : undefined;
+  };
+  return activeSpells.map((s) => ({
+    spellName: s.spellName,
+    colorId: s.colorId,
+    ensembleId: s.ensembleId,
+    ensembleColorId: s.ensembleId ? ensembleColorById(s.ensembleId) : undefined,
+  }));
+}
+
+/**
+ * Compose the WCAG aria-label for a ringed host announcing active spells
+ * (spec 01 §5). Returns an empty string when there are no active spells so
+ * callers can fall back to their own labelling.
+ */
+export function spellRingAriaLabel(
+  hostName: string,
+  activeSpells: ReadonlyArray<{ spellName: string }>,
+): string {
+  if (activeSpells.length === 0) return '';
+  const names = activeSpells.map((s) => s.spellName).join(', ');
+  const count = activeSpells.length;
+  return `${hostName} — ${count} ${count === 1 ? 'spell' : 'spells'}: ${names}`;
 }

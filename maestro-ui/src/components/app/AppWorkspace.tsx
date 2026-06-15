@@ -29,9 +29,11 @@ const LazyExcalidrawBoard = React.lazy(() => import("../ExcalidrawBoard").then(m
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
 import { SessionStatsView } from "../maestro/SessionStatsView";
-import { spellRingAttrs, type RingSpec } from "../../utils/spellRings";
+import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../../utils/spellRings";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
+import { useEnsembleStore } from "../../stores/useEnsembleStore";
+import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
 
 /**
  * Wraps a .terminalContainer so it can render concentric spell rings for the
@@ -50,18 +52,20 @@ function TerminalRingContainer({
   children: React.ReactNode;
 }) {
   const activeSpells = useActiveSpellsForSession(maestroSessionId ?? null);
+  // Subscribe to ensembles so the outermost ring color tracks ensemble updates.
+  const ensembles = useEnsembleStore((s) => s.ensembles);
   const ringSpecs = useMemo<RingSpec[]>(
-    () => activeSpells.map((s) => ({
-      spellName: s.spellName,
-      colorId: s.colorId,
-      ensembleId: s.ensembleId,
-    })),
-    [activeSpells],
+    () => buildRingSpecsFromActive(activeSpells),
+    [activeSpells, ensembles],
   );
   const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
   const hasRings = ringAttrs['data-spell-rings'] > 0;
   const overflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
-  const finalClassName = hasRings ? `${className} spell-ring` : className;
+  const justCast = useSpellCastPulse(maestroSessionId ?? null);
+  const finalClassName = hasRings
+    ? `${className} spell-ring${justCast ? ' spell-ring--just-cast' : ''}`
+    : className;
+  const ringAriaLabel = spellRingAriaLabel(`Session terminal`, activeSpells);
   return (
     <div
       className={finalClassName}
@@ -70,6 +74,7 @@ function TerminalRingContainer({
       data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
       data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
       data-spell-ring-overflow={overflow || undefined}
+      aria-label={ringAriaLabel || undefined}
     >
       {children}
       {overflow > 0 && (

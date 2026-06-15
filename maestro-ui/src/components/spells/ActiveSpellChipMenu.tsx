@@ -3,8 +3,6 @@ import React, { useEffect, useRef } from 'react';
 export interface ActiveSpellChipMenuProps {
   open: boolean;
   isLoop: boolean;
-  enabled: boolean;
-  onToggle: () => void;
   onResetLoop?: () => void;
   onDeactivate: () => void;
   onViewInSpellbook: () => void;
@@ -16,8 +14,6 @@ export interface ActiveSpellChipMenuProps {
 export const ActiveSpellChipMenu = React.memo(function ActiveSpellChipMenu({
   open,
   isLoop,
-  enabled,
-  onToggle,
   onResetLoop,
   onDeactivate,
   onViewInSpellbook,
@@ -46,9 +42,6 @@ export const ActiveSpellChipMenu = React.memo(function ActiveSpellChipMenu({
 
   return (
     <div ref={ref} className="sp-chip-menu" role="menu">
-      <button type="button" role="menuitem" onClick={() => { onToggle(); onClose(); }}>
-        {enabled ? 'Pause' : 'Resume'}
-      </button>
       {isLoop && onResetLoop && (
         <button type="button" role="menuitem" onClick={() => { onResetLoop(); onClose(); }}>
           Reset loop

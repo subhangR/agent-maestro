@@ -109,7 +109,7 @@ export class HookDispatcherService {
       }
     }
 
-    return this.composeResult(outcomes);
+    return this.composeResult(outcomes, payload.event);
   }
 
   // --- Matching ---
@@ -155,13 +155,22 @@ export class HookDispatcherService {
     );
   }
 
+  /** Cap on target length fed to user-supplied regex (ReDoS hardening). */
+  private static readonly MATCHER_TARGET_MAX = 4096;
+
   private matcherMatches(matcher: string, target: string): boolean {
     if (!target) return false;
+    // Cap target length so a pre-existing/legacy unsafe pattern can't stall the
+    // event loop on an attacker-influenced long input. Validation now also
+    // rejects catastrophic-backtracking patterns at create/update time.
+    const t = target.length > HookDispatcherService.MATCHER_TARGET_MAX
+      ? target.slice(0, HookDispatcherService.MATCHER_TARGET_MAX)
+      : target;
     try {
       const re = new RegExp(matcher);
-      return re.test(target);
+      return re.test(t);
     } catch {
-      return target.includes(matcher);
+      return t.includes(matcher);
     }
   }
 
@@ -216,10 +225,10 @@ export class HookDispatcherService {
     return {
       spellId: spell.id,
       action: 'inject-prompt',
-      // Some hooks (UserPromptSubmit) also surface stdout into the model context;
-      // returning the text is harmless for non-stdout hooks since the CLI only
-      // forwards stdout for feed-context outcomes.
-      stdout: text,
+      // Do NOT return stdout: the CLI's applyResult writes any stdout from this
+      // dispatch back to the terminal unconditionally, and we've already emitted
+      // session:prompt_send above — returning text here would double-deliver on
+      // any hook that surfaces stdout (UserPromptSubmit, SessionStart, etc.).
     };
   }
 
@@ -366,7 +375,7 @@ export class HookDispatcherService {
     return `${base}.`;
   }
 
-  private composeResult(outcomes: HookDispatchSpellOutcome[]): DispatchResult {
+  private composeResult(outcomes: HookDispatchSpellOutcome[], event?: SpellHookEvent): DispatchResult {
     const blocking = outcomes.filter(o => o.block);
     const continuing = outcomes.filter(o => o.continue);
 
@@ -386,7 +395,9 @@ export class HookDispatcherService {
       };
     }
 
-    // Continue-loop signal: exit 2 on Stop tells Claude to keep going.
+    // Continue-loop signal: exit 2 on Stop/SubagentStop tells Claude to keep
+    // going. On any other event, exit 2 BLOCKS instead of continues, so
+    // downgrade to exit 0 and surface the reason via stdout (hint, not block).
     if (continuing.length > 0) {
       const reason = continuing
         .map(o => o.reason || `Continue from ${o.spellId}.`)
@@ -395,12 +406,24 @@ export class HookDispatcherService {
         .map(o => o.stdout ?? '')
         .filter(Boolean)
         .join('\n\n');
+      const isStopEvent = event === 'Stop' || (event as string) === 'SubagentStop';
+      if (isStopEvent) {
+        return {
+          exitCode: 2,
+          stdout,
+          reason,
+          blocked: false,
+          continued: true,
+          spells: outcomes,
+          timestamp: Date.now(),
+        };
+      }
+      // Non-Stop event: emit hint via stdout, do NOT block.
       return {
-        exitCode: 2,
-        stdout,
-        reason,
+        exitCode: 0,
+        stdout: [stdout, reason].filter(Boolean).join('\n\n'),
         blocked: false,
-        continued: true,
+        continued: false,
         spells: outcomes,
         timestamp: Date.now(),
       };

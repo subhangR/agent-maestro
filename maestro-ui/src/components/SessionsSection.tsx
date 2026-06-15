@@ -29,6 +29,8 @@ import { SessionDetailModal } from "./maestro/SessionDetailModal";
 import { SessionLogModal } from "./session-log/SessionLogModal";
 import { ConfirmActionModal } from "./modals/ConfirmActionModal";
 import { buildTeamGroups, type TeamGroup } from "../utils/teamGrouping";
+import { EnsembleGroup, type EnsembleRole } from "./spells/EnsembleGroup";
+import { useEnsembleStore } from "../stores/useEnsembleStore";
 import type { TeamColor } from "../app/constants/teamColors";
 import { ProjectDocsList } from "./ProjectDocsList";
 import { useProjectDocsPaginated } from "../hooks/useProjectDocsPaginated";
@@ -790,6 +792,19 @@ export const SessionsSection = React.memo(function SessionsSection({
     for (const g of teamGroupData.groups) m.set(g.coordinatorMaestroSessionId, g);
     return m;
   }, [teamGroupData.groups]);
+
+  // Ensemble grouping — non-disbanded ensembles render as dashed-frame
+  // EnsembleGroups alongside the team-grouped session tree (03 §5).
+  const ensembles = useEnsembleStore((s) => s.ensembles);
+  const [expandedEnsembles, setExpandedEnsembles] = React.useState<Set<string>>(new Set());
+  const toggleEnsembleExpanded = useCallback((ensembleId: string) => {
+    setExpandedEnsembles((prev) => {
+      const next = new Set(prev);
+      if (next.has(ensembleId)) next.delete(ensembleId);
+      else next.add(ensembleId);
+      return next;
+    });
+  }, []);
 
   const [showHistory, setShowHistory] = React.useState(false);
   const showTaskDetails = useUIStore((s) => s.sessionShowTaskDetails);
@@ -1582,6 +1597,33 @@ export const SessionsSection = React.memo(function SessionsSection({
                 </div>
               ) : (
                 <div className="pn-list">
+                  {/* Ensemble grouping (P4 §5) — dashed-frame groups listed above
+                      the session tree, alongside team grouping below. Members
+                      render as lightweight rows so the canonical tree remains
+                      the source of truth for live status. */}
+                  {ensembles.filter((e) => !e.disbandedAt).map((e) => {
+                    const expanded = expandedEnsembles.has(e.id);
+                    return (
+                      <EnsembleGroup
+                        key={`ensemble-${e.id}`}
+                        ensembleId={e.id}
+                        expanded={expanded}
+                        onToggleExpanded={() => toggleEnsembleExpanded(e.id)}
+                        renderMember={(sid: string, role: EnsembleRole) => {
+                          const s = maestroSessions[sid];
+                          const memberLabel = s?.name ?? sid;
+                          return (
+                            <span className="pn-ensemble__member-row" data-role={role}>
+                              <span className="pn-ensemble__member-name">{memberLabel}</span>
+                              {role === 'leader' && (
+                                <span className="pn-ensemble__member-leader" aria-label="Leader">★</span>
+                              )}
+                            </span>
+                          );
+                        }}
+                      />
+                    );
+                  })}
                   {visibleRoots.map((root) => {
                     const node = (
                       <SessionNodeRenderer

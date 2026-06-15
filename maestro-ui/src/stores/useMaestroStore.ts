@@ -30,6 +30,7 @@ import { WS_URL } from '../utils/serverConfig';
 import { playEventSound, soundManager } from '../services/soundManager';
 import { usePromptAnimationStore, selectPromptSurface, type PromptSurface } from './usePromptAnimationStore';
 import { useActiveSpellsStore } from './useActiveSpellsStore';
+import { useSpellCastPulseStore } from '../utils/useSpellCastPulse';
 import { buildTeamGroups } from '../utils/teamGrouping';
 
 /**
@@ -576,6 +577,10 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           enabled: activeSpell.enabled ?? true,
           iteration: activeSpell.iteration ?? 0,
         });
+        // Trigger the transient ring-host cast-pulse on each affected session.
+        const markCast = useSpellCastPulseStore.getState().markCast;
+        const at = activeSpell.castAt ?? Date.now();
+        for (const sid of sessionIds) markCast(sid, at);
         break;
       }
       case 'spell:deactivated': {
