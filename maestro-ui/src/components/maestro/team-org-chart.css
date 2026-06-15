@@ -1,0 +1,356 @@
+/* ============================================================================
+   TeamOrgChart — blueprint-mode interactive org chart
+   Uses the app's pn-* / atelier design tokens. Class prefix: toc-*
+   ============================================================================ */
+
+.toc {
+    --toc-gap: 28px;
+    --toc-card-w: 248px;
+    --toc-line: var(--pn-line-2);
+    --toc-line-active: var(--pn-brand);
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 24px 28px 40px;
+    box-sizing: border-box;
+    background:
+        radial-gradient(circle at 1px 1px, var(--pn-line) 1px, transparent 0) 0 0 / 22px 22px,
+        var(--pn-paper);
+    color: var(--pn-ink);
+    font-family: var(--pn-ui);
+}
+
+/* ---- chart-level states ---------------------------------------------------- */
+.toc__state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 220px;
+    text-align: center;
+    color: var(--pn-ink-3);
+}
+.toc__state-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--pn-ink-2);
+    letter-spacing: 0.01em;
+}
+.toc__state-msg {
+    font-size: 12.5px;
+    color: var(--pn-ink-4);
+    max-width: 360px;
+    line-height: 1.5;
+}
+.toc__state--error .toc__state-title { color: var(--pn-block); }
+.toc__retry {
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid var(--pn-line-2);
+    border-radius: var(--pn-r-sm);
+    background: var(--pn-card);
+    color: var(--pn-ink-2);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+}
+.toc__retry:hover { background: var(--pn-hover); border-color: var(--pn-brand); }
+
+.toc__spinner {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--pn-line-2);
+    border-top-color: var(--pn-brand);
+    animation: toc-spin 0.7s linear infinite;
+}
+@keyframes toc-spin { to { transform: rotate(360deg); } }
+
+/* ---- root layout: each root tree side by side ------------------------------ */
+.toc__roots {
+    display: flex;
+    gap: 56px;
+    align-items: flex-start;
+    min-width: min-content;
+}
+
+/* ---- the recursive node + its descendants --------------------------------- */
+.toc-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: min-content;
+}
+
+/* The card itself */
+.toc-card {
+    position: relative;
+    width: var(--toc-card-w);
+    background: var(--pn-card);
+    border: 1px solid var(--pn-line-2);
+    border-radius: var(--pn-r-md);
+    box-shadow: var(--pn-sh-sm);
+    transition: border-color 130ms ease, box-shadow 130ms ease, transform 130ms ease;
+    overflow: hidden;
+}
+.toc-card:hover {
+    border-color: var(--pn-brand);
+    box-shadow: var(--pn-sh-md);
+}
+.toc-card--root {
+    border-color: var(--pn-brand);
+    box-shadow: 0 0 0 1px var(--pn-brand-soft), var(--pn-sh-sm);
+}
+.toc-card--archived { opacity: 0.6; }
+
+/* Card header */
+.toc-card__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--pn-line);
+    background: linear-gradient(180deg, var(--pn-surface), var(--pn-card));
+}
+.toc-card__av {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    border-radius: var(--pn-r-sm);
+    background: var(--pn-brand-soft);
+    border: 1px solid var(--pn-line-2);
+}
+.toc-card__titles { flex: 1 1 auto; min-width: 0; }
+.toc-card__name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--pn-ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.toc-card__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+    font-family: var(--pn-mono);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--pn-ink-4);
+    text-transform: uppercase;
+}
+.toc-card__meta-dot { opacity: 0.5; }
+
+.toc-card__chev {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--pn-line-2);
+    border-radius: var(--pn-r-xs);
+    background: transparent;
+    color: var(--pn-ink-3);
+    cursor: pointer;
+    transition: transform 150ms ease, background 120ms ease, color 120ms ease;
+}
+.toc-card__chev:hover { background: var(--pn-hover); color: var(--pn-ink); }
+.toc-card__chev--open { transform: rotate(0deg); }
+.toc-card__chev svg { transition: transform 150ms ease; }
+
+/* Members list */
+.toc-card__members {
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    gap: 3px;
+}
+.toc-card__empty {
+    padding: 12px 8px;
+    font-size: 11.5px;
+    color: var(--pn-ink-4);
+    text-align: center;
+    font-style: italic;
+}
+
+.toc-member {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 8px;
+    border-radius: var(--pn-r-sm);
+    border: 1px solid transparent;
+    background: transparent;
+    text-align: left;
+    width: 100%;
+    cursor: default;
+    transition: background 110ms ease, border-color 110ms ease;
+}
+.toc-member--clickable { cursor: pointer; }
+.toc-member--clickable:hover {
+    background: var(--pn-hover);
+    border-color: var(--pn-line-2);
+}
+.toc-member--clickable:focus-visible {
+    outline: none;
+    border-color: var(--pn-brand);
+    box-shadow: 0 0 0 2px var(--pn-brand-soft);
+}
+.toc-member--leader {
+    background: var(--pn-brand-soft);
+    border-color: var(--pn-brand);
+}
+.toc-member--leader.toc-member--clickable:hover {
+    background: var(--pn-brand-soft);
+    border-color: var(--pn-brand-2, var(--pn-brand));
+}
+
+.toc-member__av {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+.toc-member__body { flex: 1 1 auto; min-width: 0; }
+.toc-member__name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--pn-ink-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.toc-member--leader .toc-member__name {
+    font-weight: 700;
+    color: var(--pn-ink);
+}
+.toc-member__role {
+    font-size: 10px;
+    color: var(--pn-ink-4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.toc-member__leader-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 17px;
+    padding: 0 6px;
+    border-radius: var(--pn-r-pill);
+    background: var(--pn-brand);
+    color: var(--pn-paper);
+    font-family: var(--pn-mono);
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+.toc-member__mode {
+    flex: 0 0 auto;
+    height: 16px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--pn-r-xs);
+    border: 1px solid var(--pn-line-2);
+    color: var(--pn-ink-3);
+    font-family: var(--pn-mono);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+/* ---- connectors between a node and its sub-teams -------------------------- */
+.toc-node__connector {
+    width: 2px;
+    height: 22px;
+    background: var(--toc-line);
+}
+
+.toc-node__children {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--toc-gap);
+    position: relative;
+    padding-top: 22px;
+}
+/* horizontal bus connecting siblings */
+.toc-node__children::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: var(--toc-half-first, 50%);
+    right: var(--toc-half-last, 50%);
+    height: 2px;
+    background: var(--toc-line);
+}
+/* single child: no horizontal bus needed */
+.toc-node__children--single::before { display: none; }
+
+.toc-node__child {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+}
+/* vertical drop from the bus into each child */
+.toc-node__child::before {
+    content: "";
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    width: 2px;
+    height: 22px;
+    background: var(--toc-line);
+    transform: translateX(-50%);
+}
+.toc-node__children--single .toc-node__child::before { display: none; }
+
+/* collapsed-children affordance pill */
+.toc-node__collapsed {
+    margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    padding: 0 9px;
+    border: 1px dashed var(--pn-line-2);
+    border-radius: var(--pn-r-pill);
+    background: var(--pn-surface);
+    color: var(--pn-ink-3);
+    font-family: var(--pn-mono);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 120ms ease, color 120ms ease;
+}
+.toc-node__collapsed:hover { border-color: var(--pn-brand); color: var(--pn-ink); }
+
+/* status dot */
+.toc-status {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--pn-run, #36b37e);
+}
+.toc-status--archived { background: var(--pn-ink-4); }

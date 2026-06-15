@@ -4,6 +4,8 @@
 // Runtime env values are normalized here because malformed values can surface as
 // opaque browser errors such as "The string did not match the expected pattern."
 
+import { IS_TAURI } from '../platform/detect';
+
 const DEFAULT_SERVER_URL = "http://localhost:4567";
 const DEFAULT_API_BASE_URL = `${DEFAULT_SERVER_URL}/api`;
 const DEFAULT_WS_URL = "ws://localhost:4567";
@@ -116,13 +118,33 @@ export function normalizeWsUrl(
 
 const rawApiBaseUrl = normalizeCandidate(import.meta.env.VITE_API_URL);
 const rawWsUrl = normalizeCandidate(import.meta.env.VITE_WS_URL);
+const rawPtyWsUrl = normalizeCandidate(import.meta.env.VITE_PTY_WS_URL);
 
-const API_BASE_URL = normalizeApiBaseUrl(rawApiBaseUrl);
-const WS_URL = normalizeWsUrl(rawWsUrl, API_BASE_URL);
+// In web (non-Tauri) mode, default to same-origin so a statically-served bundle
+// talks to the origin that served it rather than hardcoded localhost:4567.
+const isWebMode = !IS_TAURI && typeof window !== 'undefined';
+
+const API_BASE_URL = rawApiBaseUrl
+  ? normalizeApiBaseUrl(rawApiBaseUrl)
+  : isWebMode
+    ? `${window.location.origin}/api`
+    : DEFAULT_API_BASE_URL;
+
+const WS_URL = rawWsUrl
+  ? normalizeWsUrl(rawWsUrl, API_BASE_URL)
+  : isWebMode
+    ? `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`
+    : deriveWsUrl(API_BASE_URL);
 
 // Base server URL without /api path (e.g. "http://localhost:2357")
 // Used for MAESTRO_API_URL env var passed to CLI workers
 const SERVER_URL = deriveServerUrl(API_BASE_URL);
+
+// PTY WebSocket endpoint — ws://host/pty — sessionId is appended as ?id=<id> by the transport.
+// Overridable via VITE_PTY_WS_URL; otherwise derived from WS_URL with /pty suffix.
+const PTY_WS_URL = rawPtyWsUrl
+  ? normalizeWsUrl(rawPtyWsUrl, API_BASE_URL)
+  : `${WS_URL}/pty`;
 
 if (rawApiBaseUrl && API_BASE_URL !== rawApiBaseUrl) {
   console.warn(`[serverConfig] Invalid VITE_API_URL "${rawApiBaseUrl}", falling back to ${API_BASE_URL}`);
@@ -132,4 +154,4 @@ if (rawWsUrl && WS_URL !== rawWsUrl) {
   console.warn(`[serverConfig] Invalid VITE_WS_URL "${rawWsUrl}", falling back to ${WS_URL}`);
 }
 
-export { API_BASE_URL, WS_URL, SERVER_URL, DEFAULT_API_BASE_URL, DEFAULT_WS_URL, DEFAULT_SERVER_URL };
+export { API_BASE_URL, WS_URL, SERVER_URL, DEFAULT_API_BASE_URL, DEFAULT_WS_URL, DEFAULT_SERVER_URL, PTY_WS_URL };

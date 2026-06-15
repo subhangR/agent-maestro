@@ -1,9 +1,10 @@
 /**
  * Shared clipboard/drag-and-drop image extraction.
  *
- * Used by the task create/edit modal to pull image Files out of paste or
- * drop events. Screenshot pastes, copied images, and dragged image files all
- * become normal task attachments.
+ * Used by the task create/edit modal (and any future surface that accepts
+ * pasted images) to pull image Files out of a paste or drop event,
+ * Claude/ChatGPT-style: paste a screenshot, a copied image, or image files
+ * copied from Finder, and they become attachments.
  */
 
 type ImageLikeName = {
@@ -56,6 +57,7 @@ function fileKey(f: File): string {
     return `${f.name}:${f.size}:${f.type}`;
 }
 
+/** Map a mime type to a sensible file extension. */
 function extForMime(mimeType: string): string {
     const sub = mimeType.split("/")[1] || "png";
     if (sub === "jpeg") return "jpg";
@@ -86,6 +88,13 @@ function applyImageSequenceNames(files: File[], options: ImageRenameOptions = {}
     });
 }
 
+/**
+ * Extract image Files from a paste or drop DataTransfer.
+ *
+ * Reads both `items` (screenshots, "Copy Image") and `files` (OS file
+ * copies - WebKit sometimes only populates one of the two), deduping
+ * entries that appear in both.
+ */
 export function extractImageFiles(data: DataTransfer | null, options: ImageRenameOptions = {}): File[] {
     if (!data) return [];
 
@@ -151,6 +160,7 @@ export async function extractDroppedImagePathFiles(paths: string[], options: Ima
     return applyImageSequenceNames(files, { ...options, renameAll: true });
 }
 
+/** True if the DataTransfer carries files at all (used to accept drag-over). */
 export function dataTransferHasFiles(data: DataTransfer | null): boolean {
     if (!data) return false;
     return Array.from(data.types || []).includes("Files");

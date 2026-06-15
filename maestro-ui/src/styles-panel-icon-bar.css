@@ -158,3 +158,26 @@
     display: none;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  Mobile overrides (≤768px)                                          */
+/* ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  /* Team card header — 44px minimum tap target */
+  .terminalTeamMain {
+    min-height: 44px;
+    padding: 10px 8px;
+  }
+
+  /* Team member rows — 44px minimum tap target */
+  .terminalTeamMemberRow {
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+
+  /* Sub-tab icon buttons — 44px minimum tap target */
+  .maestroPanelSubTab--icon {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+}

@@ -46,3 +46,6 @@ maestro-design-system/
 
 # API scratch / test dir
 .apitest/
+
+# Graphify knowledge-graph artifacts (generated, not source)
+graphify-out/

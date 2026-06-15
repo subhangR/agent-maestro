@@ -759,3 +759,59 @@
   gap: 6px 14px;
   align-items: center;
 }
+
+/* ── Mobile: full-screen, vertical sidebar → horizontal tab row ───── */
+@media (max-width: 768px) {
+  .appSettingsDialog {
+    min-width: unset;
+    max-width: 100vw;
+    width: 100%;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-radius: 0;
+  }
+
+  .appSettingsBody {
+    flex-direction: column;
+    min-height: unset;
+  }
+
+  .appSettingsSidebar {
+    width: 100%;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid var(--theme-border);
+    padding: 4px 8px;
+    overflow-x: auto;
+    flex-shrink: 0;
+    gap: 2px;
+  }
+
+  .appSettingsTabBtn {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    padding: 8px 12px;
+    min-height: 44px;
+  }
+
+  .appSettingsTabBtnActive {
+    border-left-color: transparent;
+    border-bottom-color: var(--theme-primary);
+  }
+
+  .appSettingsTabContent {
+    max-height: calc(100vh - 100px);
+  }
+
+  .displaySettingsOptions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .appShortcutsRow {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    font-size: 10px;
+  }
+}

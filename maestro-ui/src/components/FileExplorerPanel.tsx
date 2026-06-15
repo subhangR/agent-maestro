@@ -1,8 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { startDrag } from "@crabnebula/tauri-plugin-drag";
+import { IS_TAURI } from "../platform";
 import React from "react";
 import { shortenPathSmart } from "../pathDisplay";
 import { Icon } from "./Icon";
@@ -273,6 +270,13 @@ export function FileExplorerPanel({
           error: null,
         },
       }));
+      if (!IS_TAURI) {
+        setDirStateByPath((prev) => ({
+          ...prev,
+          [dirPath]: { entries: [], loading: false, error: null },
+        }));
+        return;
+      }
       try {
         if (provider === "ssh" && !sshTargetValue) {
           throw new Error("Missing SSH target.");
@@ -542,6 +546,10 @@ export function FileExplorerPanel({
         return;
       }
 
+      if (!IS_TAURI) {
+        setRenameError("Rename is not available in browser mode.");
+        return;
+      }
       setRenameBusy(true);
       setRenameError(null);
       try {
@@ -570,6 +578,10 @@ export function FileExplorerPanel({
   const confirmDelete = React.useCallback(async () => {
     const target = deleteTarget;
     if (!target) return;
+    if (!IS_TAURI) {
+      setDeleteError("Delete is not available in browser mode.");
+      return;
+    }
     setDeleteBusy(true);
     setDeleteError(null);
     try {
@@ -593,11 +605,12 @@ export function FileExplorerPanel({
 
   const handleDownload = React.useCallback(async (entry: FsEntry) => {
     setContextMenu(null);
-    if (!sshTargetValue) return;
+    if (!IS_TAURI || !sshTargetValue) return;
 
     try {
       setDownloadBusy(true);
       setDownloadError(null);
+      const { save } = await import("@tauri-apps/plugin-dialog");
       const savePath = await save({
         defaultPath: entry.name,
         title: entry.isDir ? "Download folder" : "Download file",
@@ -701,6 +714,7 @@ export function FileExplorerPanel({
 
   const transferDroppedPaths = React.useCallback(
     async (paths: string[], destinationDir: string) => {
+      if (!IS_TAURI) return;
       const destDir = normalizePath(destinationDir);
       if (!destDir) return;
 
@@ -752,6 +766,7 @@ export function FileExplorerPanel({
 
   // Initiate native drag to Finder/Desktop
   const initiateNativeDrag = React.useCallback(async (entry: FsEntry, attemptId: number) => {
+    if (!IS_TAURI) return;
     try {
       if (mouseDownRef.current?.attemptId !== attemptId) return;
       let localPath: string;
@@ -784,6 +799,7 @@ export function FileExplorerPanel({
       if (mouseDownRef.current?.attemptId !== attemptId) return;
       // Clear drag tracking before handing off to OS drag.
       mouseDownRef.current = null;
+      const { startDrag } = await import("@crabnebula/tauri-plugin-drag");
       await startDrag({
         item: [localPath],
         icon: getDragIcon(entry.isDir ? "folder" : "file"),
@@ -864,6 +880,8 @@ export function FileExplorerPanel({
       });
     };
 
+    if (!IS_TAURI) return;
+
     const setup = async () => {
       const handleEvent = (event: { payload: any }) => {
         if (cancelled) return;
@@ -906,12 +924,14 @@ export function FileExplorerPanel({
       };
 
       try {
+        const { getCurrentWebview } = await import("@tauri-apps/api/webview");
         unlistenWebview = await getCurrentWebview().onDragDropEvent(handleEvent);
       } catch {
         // Webview drag-drop listener not available in this context
       }
 
       try {
+        const { getCurrentWindow } = await import("@tauri-apps/api/window");
         unlistenWindow = await getCurrentWindow().onDragDropEvent(handleEvent);
       } catch {
         // Window drag-drop listener not available in this context
@@ -931,6 +951,26 @@ export function FileExplorerPanel({
   }, [isOpen, resolveDropDestination, transferDroppedPaths]);
 
   if (!isOpen) return null;
+
+  if (!IS_TAURI) {
+    return (
+      <aside className="fileExplorerPanel" aria-label="Files">
+        <div className="pn-vhd">
+          <PnIcon name="folder" size={16} style={{ color: "var(--pn-ink-3)", flex: "0 0 auto" }} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="pn-vhd__title">Files</div>
+          </div>
+          <span className="pn-head-spacer" />
+          <button type="button" className="pn-ib" onClick={onClose} title="Close">
+            <PnIcon name="x" />
+          </button>
+        </div>
+        <div className="empty" style={{ padding: 16, opacity: 0.6 }}>
+          File explorer is not available in browser mode.
+        </div>
+      </aside>
+    );
+  }
 
   const menuX = contextMenu
     ? Math.min(contextMenu.x, Math.max(8, window.innerWidth - 268))

@@ -166,3 +166,26 @@ html[data-redesign] .projectAddMenuItem:hover {
   background: var(--pn-hover);
   color: var(--pn-ink);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Mobile overrides (≤768px)                                          */
+/* ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  /* Project tabs — 44px minimum tap target height */
+  html[data-redesign] .projectTab {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  html[data-redesign] .projectTabMain {
+    min-height: 44px;
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  /* Drop-down menu items — touch-friendly */
+  html[data-redesign] .projectAddMenuItem {
+    min-height: 44px;
+  }
+}

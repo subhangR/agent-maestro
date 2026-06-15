@@ -12,11 +12,17 @@ function readWidthVar(name: string, fallback: number): number {
     return Number.isFinite(n) ? n : fallback;
 }
 
-/** Run a callback when the main thread is idle (or next tick as a fallback). */
-function whenIdle(cb: () => void) {
-    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void })
-        .requestIdleCallback;
-    if (typeof ric === "function") ric(cb);
+/**
+ * Run a callback on the next animation frame (next tick as a fallback). Used to
+ * commit the resting width to the React store right after a drag ends. We
+ * deliberately avoid requestIdleCallback: under terminal-streaming load the main
+ * thread rarely goes idle, so an idle-scheduled commit could be delayed hundreds
+ * of ms to seconds — that was the visible "settle lag" after releasing a handle.
+ * A single rAF lands the commit (and the terminal reflow that follows) on the
+ * very next frame (~16ms) instead.
+ */
+function nextFrame(cb: () => void) {
+    if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(() => cb());
     else window.setTimeout(cb, 0);
 }
 
@@ -27,8 +33,9 @@ function whenIdle(cb: () => void) {
  * --right-panel-width) on :root, NOT by React state. Both the live drag and the
  * resting width read from these vars, so releasing the handle is just a CSS-var
  * write + localStorage persist — it never triggers a React re-render of the
- * (heavy) sidebar panels. The Zustand store is updated lazily on idle purely so
- * other readers stay coherent; it is no longer on the resize critical path.
+ * (heavy) sidebar panels. The Zustand store is committed on the next frame after
+ * release purely so other readers stay coherent; it is no longer on the resize
+ * critical path.
  */
 export function useAppLayoutResizing() {
 
@@ -106,10 +113,10 @@ export function useAppLayoutResizing() {
                 }
 
                 // Persist immediately (cheap), but commit to the React store on
-                // idle so releasing the handle never blocks on a re-render. The
-                // width itself is already applied via the CSS var.
+                // the next frame so releasing the handle never blocks on a
+                // re-render. The width itself is already applied via the CSS var.
                 useUIStore.getState().persistMaestroSidebarWidth(current);
-                whenIdle(() => useUIStore.getState().setMaestroSidebarWidth(current));
+                nextFrame(() => useUIStore.getState().setMaestroSidebarWidth(current));
 
                 // Terminals skip fit() during the drag; tell them to reflow once now.
                 window.dispatchEvent(new Event("maestro:panel-resize-end"));
@@ -174,7 +181,7 @@ export function useAppLayoutResizing() {
                 }
 
                 useUIStore.getState().persistRightPanelWidth(current);
-                whenIdle(() => useUIStore.getState().setRightPanelWidth(current));
+                nextFrame(() => useUIStore.getState().setRightPanelWidth(current));
 
                 // Terminals skip fit() during the drag; tell them to reflow once now.
                 window.dispatchEvent(new Event("maestro:panel-resize-end"));

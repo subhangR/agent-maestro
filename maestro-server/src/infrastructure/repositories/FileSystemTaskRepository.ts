@@ -263,6 +263,7 @@ export class FileSystemTaskRepository implements ITaskRepository {
       referenceTaskIds: input.referenceTaskIds || [],
       teamMemberId: input.teamMemberId,
       teamMemberIds: input.teamMemberIds,
+      teamId: input.teamId ?? null,
       dueDate: input.dueDate || null,
       memberOverrides: input.memberOverrides,
       dangerousMode: input.dangerousMode,
@@ -432,6 +433,7 @@ export class FileSystemTaskRepository implements ITaskRepository {
     if (updates.pinned !== undefined) task.pinned = updates.pinned;
     if (updates.teamMemberId !== undefined) task.teamMemberId = updates.teamMemberId;
     if (updates.teamMemberIds !== undefined) task.teamMemberIds = updates.teamMemberIds;
+    if (updates.teamId !== undefined) task.teamId = updates.teamId;
     if (updates.images !== undefined) task.images = updates.images;
     if (updates.dueDate !== undefined) task.dueDate = updates.dueDate;
     if (updates.memberOverrides !== undefined) task.memberOverrides = updates.memberOverrides;

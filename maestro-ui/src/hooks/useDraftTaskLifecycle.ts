@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MaestroTask, CreateTaskPayload } from "../app/types/maestro";
+import { MaestroTask, CreateTaskPayload, TaskImage } from "../app/types/maestro";
 import { useMaestroStore } from "../stores/useMaestroStore";
 import { maestroClient } from "../utils/MaestroClient";
 import { makeId } from "../app/utils/id";
@@ -178,13 +178,15 @@ export function useDraftTaskLifecycle({
         discardedRef.current = false;
     }, []);
 
-    // Upload staged images after draft creation
-    const uploadStagedImages = useCallback(async (taskId: string, files: File[]) => {
+    // Upload staged images after draft creation; returns successfully uploaded entries
+    const uploadStagedImages = useCallback(async (taskId: string, files: File[]): Promise<TaskImage[]> => {
+        const uploaded: TaskImage[] = [];
         for (const file of files) {
             try {
-                await maestroClient.uploadTaskImage(taskId, file);
+                uploaded.push(await maestroClient.uploadTaskImage(taskId, file));
             } catch { /* silent */ }
         }
+        return uploaded;
     }, []);
 
     return {
@@ -198,6 +200,6 @@ export function useDraftTaskLifecycle({
         _uploadStagedImages: uploadStagedImages,
     } as UseDraftTaskLifecycleResult & {
         _triggerAutoCreate: () => void;
-        _uploadStagedImages: (taskId: string, files: File[]) => Promise<void>;
+        _uploadStagedImages: (taskId: string, files: File[]) => Promise<TaskImage[]>;
     };
 }

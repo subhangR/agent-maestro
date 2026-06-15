@@ -7,15 +7,17 @@ interface ClaudeCodeSkillsSelectorProps {
     selectedSkills: string[];
     onSelectionChange: (skillIds: string[]) => void;
     projectPath?: string;
+    alwaysExpanded?: boolean;
 }
 
-export function ClaudeCodeSkillsSelector({ selectedSkills, onSelectionChange, projectPath }: ClaudeCodeSkillsSelectorProps) {
+export function ClaudeCodeSkillsSelector({ selectedSkills, onSelectionChange, projectPath, alwaysExpanded = false }: ClaudeCodeSkillsSelectorProps) {
     const [skills, setSkills] = useState<ClaudeCodeSkill[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [expanded, setExpanded] = useState(false);
     const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
+    const skillsExpanded = alwaysExpanded || expanded;
 
     useEffect(() => {
         loadSkills();
@@ -168,17 +170,22 @@ export function ClaudeCodeSkillsSelector({ selectedSkills, onSelectionChange, pr
     return (
         <div className="claudeCodeSkillsSelector">
             {/* Header line */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }} onClick={() => setExpanded(!expanded)}>
-                <span style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)', fontSize: '10px' }}>
-                    {expanded ? "\u25BC" : "\u25B6"}
-                </span>
+            <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: alwaysExpanded ? 'default' : 'pointer' }}
+                onClick={alwaysExpanded ? undefined : () => setExpanded(!expanded)}
+            >
+                {!alwaysExpanded && (
+                    <span style={{ color: 'rgba(var(--theme-primary-rgb), 0.5)', fontSize: '10px' }}>
+                        {expanded ? "\u25BC" : "\u25B6"}
+                    </span>
+                )}
                 <span className="themedFormLabel" style={{ marginBottom: 0 }}>Skills</span>
                 <span className="claudeCodeSkillsCount" style={{ flex: 1 }}>
                     ({selectedSkills.length > 0 ? `${selectedSkills.length} selected / ` : ""}{skills.length} available)
                 </span>
             </div>
 
-            {expanded && (
+            {skillsExpanded && (
                 <>
                     {/* Search */}
                     <div className="claudeCodeSkillsToolbar">

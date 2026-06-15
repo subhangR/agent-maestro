@@ -415,4 +415,29 @@
   border-top: 1px solid var(--border);
 }
 
+/* ── Mobile: compact layout ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .teamMemberList {
+    padding: 12px;
+  }
+
+  .teamMemberList__header {
+    margin-bottom: 16px;
+  }
+
+  .teamMemberList__cards {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .teamMemberCard {
+    padding: 12px;
+  }
+
+  .teamMemberCard__btn {
+    padding: 8px 10px;
+    min-height: 44px;
+  }
+}
+
 /* ================================================================== */

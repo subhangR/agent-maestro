@@ -3,6 +3,7 @@ import { useMaestroStore } from "../../stores/useMaestroStore";
 import { MaestroSessionStatus } from "../../app/types/maestro";
 import { SessionTimeline } from "./SessionTimeline";
 import { DocsList } from "./DocsList";
+import { useSessionDocs } from "../../hooks/useSessionDocs";
 import { StrategyBadge } from "./StrategyBadge";
 import { GitPanel } from "./GitPanel";
 import { WorktreeBadge, getWorktreeInfo } from "./WorktreeBadge";
@@ -80,6 +81,8 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
   const session = useMaestroStore((s) => s.sessions[sessionId]);
   const tasks = useMaestroStore((s) => s.tasks);
   const fetchSession = useMaestroStore((s) => s.fetchSession);
+  // session.docs carries metadata only; hydrate content so docs open properly.
+  const hydratedDocs = useSessionDocs(session, isOpen);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const isUserScrolledToBottomRef = useRef(true);
@@ -250,9 +253,9 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
               )}
 
               {/* Docs */}
-              {session.docs && session.docs.length > 0 && (
+              {hydratedDocs.length > 0 && (
                 <div className="pn-fld">
-                  <DocsList docs={session.docs} />
+                  <DocsList docs={hydratedDocs} />
                 </div>
               )}
 

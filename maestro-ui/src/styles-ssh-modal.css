@@ -266,3 +266,52 @@
   background: linear-gradient(180deg, rgba(107, 138, 253, 0.22), rgba(34, 211, 238, 0.12));
 }
 
+/* ── Mobile: full-screen sheet, stacked forward rows ─────────────── */
+@media (max-width: 768px) {
+  /* Override base .modal width/border-radius for full-screen sheet */
+  .modal.sshModal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Leave room for the fixed bottom MobilePanelNav */
+    padding-bottom: calc(12px + var(--mobile-nav-height, 56px));
+  }
+
+  .sshForwardRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sshForwardType,
+  .sshForwardBind,
+  .sshForwardPort,
+  .sshForwardDestHost,
+  .sshForwardSpacer {
+    width: 100%;
+    flex: unset;
+    min-width: unset;
+  }
+
+  .sshCommandPreview {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sshCommandPreviewActions {
+    align-self: flex-end;
+  }
+
+  /* Inputs use 16px font to suppress iOS auto-zoom on focus */
+  .sshModal .input,
+  .sshModal input[type="text"],
+  .sshModal input[type="number"],
+  .sshModal textarea {
+    font-size: 16px;
+  }
+}
+

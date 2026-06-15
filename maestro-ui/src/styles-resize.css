@@ -73,3 +73,19 @@
   user-select: none;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Mobile — disable all drag resize handles                           */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .sidebarRightResizeHandle,
+  .sidebarLeftResizeHandle,
+  .sidebarResizeHandle,
+  .workspaceResize,
+  .slidePanelResize,
+  .pn-tv__resize {
+    pointer-events: none;
+    display: none;
+  }
+}
+

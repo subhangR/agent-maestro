@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { IS_TAURI } from '../platform/detect';
 import { MaestroProject } from '../app/types/maestro';
 import { EnvironmentConfig } from '../app/types/app';
 import { defaultProjectState, envVarsForProjectId } from '../app/utils/env';
@@ -152,12 +153,21 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       const { ensureAutoAssets } = useAssetStore.getState();
 
       const desiredBasePath = projectBasePath.trim() || homeDir || '';
-      const validatedBasePath = await invoke<string | null>('validate_directory', {
-        path: desiredBasePath,
-      }).catch(() => null);
-      if (!validatedBasePath) {
-        setError('Project base path must be an existing directory.');
-        return;
+      let validatedBasePath: string | null;
+      if (IS_TAURI) {
+        validatedBasePath = await invoke<string | null>('validate_directory', {
+          path: desiredBasePath,
+        }).catch(() => null);
+        if (!validatedBasePath) {
+          setError('Project base path must be an existing directory.');
+          return;
+        }
+      } else {
+        if (!desiredBasePath || !desiredBasePath.startsWith('/')) {
+          setError('Project base path must be an absolute server path (starting with /).');
+          return;
+        }
+        validatedBasePath = desiredBasePath;
       }
 
       const environmentId =

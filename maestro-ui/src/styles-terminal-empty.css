@@ -68,3 +68,34 @@
   /* match panel bg */
 }
 
+/* ------------------------------------------------------------------ */
+/*  Mobile — terminal empty state                                      */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  .terminalEmptyState {
+    gap: 12px;
+    /* Leave headroom for the absolute-positioned termStrip (~34px) at the
+       foot so the hint isn't tucked behind it. */
+    padding: 0 16px 48px;
+  }
+
+  /* Hide ASCII art on very small screens — it overflows */
+  .terminalEmptyAscii {
+    display: none;
+  }
+
+  .terminalEmptyPrompt {
+    font-size: 12px;
+    text-align: center;
+    max-width: 100%;
+    word-break: break-word;
+  }
+
+  .terminalEmptyHint {
+    font-size: 10px;
+    text-align: center;
+    max-width: 100%;
+  }
+}
+

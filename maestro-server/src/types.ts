@@ -131,6 +131,56 @@ export interface UpdateModelProfilePayload {
   launchConfig?: LaunchConfig;
 }
 
+/**
+ * A durable, cross-project record of one session prompting another via
+ * POST /api/sessions/:id/prompt. Stored flat at <dataDir>/session-prompts/<id>.json.
+ * `content` is the FULL, clean message WITHOUT the [From: name (id)] terminal prefix.
+ */
+export interface SessionPrompt {
+  id: string;                                   // sp_<ts>_<rand>
+  fromSessionId: string;
+  toSessionId: string;
+  fromProjectId: string | null;
+  toProjectId: string | null;
+  content: string;                              // full, clean (no [From: ...] prefix)
+  mode: 'send' | 'paste';
+  fromTeamMember: TeamMemberSnapshot | null;
+  toTeamMember: TeamMemberSnapshot | null;
+  fromSessionName: string | null;
+  toSessionName: string | null;
+  timestamp: number;
+}
+
+/** Input for SessionPromptService.record — snapshots/names are resolved by the service. */
+export interface RecordSessionPromptInput {
+  fromSessionId: string;
+  toSessionId: string;
+  content: string;
+  mode: 'send' | 'paste';
+}
+
+/** A session participating in a Huddle, with resolved (best-effort) metadata. */
+export interface HuddleSessionRef {
+  sessionId: string;
+  sessionName: string | null;
+  projectId: string | null;
+  teamMember: TeamMemberSnapshot | null;
+}
+
+/**
+ * A Huddle is a connected component over the graph where each SessionPrompt is
+ * an undirected edge fromSessionId<->toSessionId. All-time and cross-project.
+ * Every huddle has >=2 sessions (built from edges, so singletons never appear).
+ */
+export interface Huddle {
+  id: string;                    // huddle_<short hash of sorted sessionIds> — stable
+  sessionIds: string[];          // sorted ascending
+  sessions: HuddleSessionRef[];
+  prompts: SessionPrompt[];      // sorted by timestamp ascending
+  promptCount: number;
+  lastActivity: number;          // max prompt timestamp in the component
+}
+
 // Four-mode model types
 export type AgentMode = 'worker' | 'coordinator' | 'coordinated-worker' | 'coordinated-coordinator';
 /** Legacy mode aliases for backward compatibility */
@@ -146,10 +196,18 @@ export function isWorkerMode(mode: string): boolean {
 export function isCoordinatorMode(mode: string): boolean {
   return mode === 'coordinator' || mode === 'coordinated-coordinator' || mode === 'coordinate';
 }
-/** Normalize legacy mode values to the four-mode model */
+/**
+ * Normalize a mode value to the four-mode model. The "coordinated-" prefix is
+ * derived from `hasCoordinator` (i.e. whether a parent coordinator session
+ * exists), not from the input itself — so an already-coordinated input is
+ * downgraded to its base mode when spawned without a coordinator. This keeps
+ * the resolved mode coherent with `coordinatorSessionId`.
+ */
 export function normalizeMode(mode: string, hasCoordinator?: boolean): AgentMode {
-  if (mode === 'execute' || mode === 'worker') return hasCoordinator ? 'coordinated-worker' : 'worker';
-  if (mode === 'coordinate' || mode === 'coordinator') return hasCoordinator ? 'coordinated-coordinator' : 'coordinator';
+  if (mode === 'execute' || mode === 'worker' || mode === 'coordinated-worker')
+    return hasCoordinator ? 'coordinated-worker' : 'worker';
+  if (mode === 'coordinate' || mode === 'coordinator' || mode === 'coordinated-coordinator')
+    return hasCoordinator ? 'coordinated-coordinator' : 'coordinator';
   return mode as AgentMode;
 }
 
@@ -310,6 +368,29 @@ export interface TeamSnapshot {
   memberCount: number;
 }
 
+// Hydrated member shape used inside a resolved team tree.
+export interface TeamTreeMember {
+  id: string;
+  name: string;
+  role: string;
+  identity?: string;
+  avatar?: string;
+  mode?: AgentMode;
+  isLeader: boolean;
+}
+
+// Recursive, fully-resolved team tree used by the org chart, manifest, and CLI.
+export interface TeamTreeNode {
+  id: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  leaderId: string;
+  status: TeamStatus;
+  members: TeamTreeMember[];
+  subTeams: TeamTreeNode[];
+}
+
 export interface CreateTeamPayload {
   projectId: string;
   name: string;
@@ -367,6 +448,10 @@ export interface Task {
 
   // Multiple team member identities for this task (takes precedence over teamMemberId)
   teamMemberIds?: string[];
+
+  // Assigned team for this task. When set, spawning launches the team's leader as
+  // a coordinator that recursively delegates to members/sub-teams.
+  teamId?: string | null;
 
   // Per-member launch overrides saved on the task
   memberOverrides?: Record<string, MemberLaunchOverride>;
@@ -572,6 +657,7 @@ export interface CreateTaskPayload {
   referenceTaskIds?: string[];
   teamMemberId?: string;
   teamMemberIds?: string[];
+  teamId?: string | null;
   memberOverrides?: Record<string, MemberLaunchOverride>;
   dangerousMode?: boolean;
   useWorktree?: boolean;
@@ -595,6 +681,7 @@ export interface UpdateTaskPayload {
   pinned?: boolean;
   teamMemberId?: string;
   teamMemberIds?: string[];
+  teamId?: string | null;
   dueDate?: string | null;
   memberOverrides?: Record<string, MemberLaunchOverride>;  // Per-member launch overrides
   dangerousMode?: boolean;

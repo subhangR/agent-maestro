@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { DirectoryListing } from "../app/types/app-state";
 import { formatError } from "../utils/formatters";
 
@@ -12,6 +13,10 @@ export function usePathPicker() {
     const [pathPickerError, setPathPickerError] = useState<string | null>(null);
 
     async function loadPathPicker(path: string | null) {
+        if (!IS_TAURI) {
+            setPathPickerError("Path picker is not available in browser mode.");
+            return;
+        }
         setPathPickerLoading(true);
         setPathPickerError(null);
         try {

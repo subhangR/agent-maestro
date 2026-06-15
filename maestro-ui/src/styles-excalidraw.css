@@ -143,4 +143,83 @@
   flex-direction: column;
 }
 
+/* ── Mobile responsive (≤768px) ── */
+
+@media (max-width: 768px) {
+  .excalidrawOverlay {
+    /* Already full-screen; ensure no padding clips the canvas */
+    padding: 0;
+  }
+
+  .excalidrawHeader {
+    padding: 8px 10px;
+    gap: 8px;
+    /* Let the action row drop below the title on narrow screens */
+    flex-wrap: wrap;
+  }
+
+  .excalidrawHeaderLeft {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .excalidrawHeaderLeft .taskBoardTitle {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Hide keyboard shortcut hint — no keyboard on mobile */
+  .excalidrawShortcutHint {
+    display: none;
+  }
+
+  /* Scroll button row horizontally instead of wrapping or clipping */
+  .excalidrawHeaderActions {
+    flex: 1 1 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Prevent the row from shrinking and clipping the close button */
+    flex-shrink: 0;
+    max-width: 100%;
+    gap: 6px !important;
+    padding-bottom: 2px;
+  }
+
+  /* Touch-friendly action buttons (override inline style padding) */
+  .excalidrawHeaderActions .themedBtn {
+    min-height: 36px;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .excalidrawHeaderActions .taskBoardCloseBtn {
+    min-width: 40px;
+    min-height: 40px;
+    flex-shrink: 0;
+  }
+
+  /* Prevent the canvas from intercepting page-level scroll gestures
+     while the user's finger is on the drawing area */
+  .excalidrawCanvas {
+    touch-action: none;
+  }
+
+  /* Remove any residual min-width that causes horizontal overflow */
+  .excalidrawContainer {
+    min-width: 0;
+  }
+
+  /* Inline (DocumentSpace / inline DocViewer) — fit within main panel and
+     leave room for the bottom MobilePanelNav so the canvas isn't clipped */
+  .excalidrawInline {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 /* ============================================================ */

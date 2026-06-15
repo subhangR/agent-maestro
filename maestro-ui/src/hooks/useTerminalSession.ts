@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { platform } from "../platform";
 import { TerminalSession, TerminalSessionInfo } from "../app/types/session";
 
 export function useTerminalSession(
@@ -32,14 +32,13 @@ export function useTerminalSession(
     spawningSessionsRef.current.add(dedupKey);
 
     try {
-      const info = await invoke<TerminalSessionInfo>("create_session", {
+      const info = await platform.terminal.createSession({
         name: sessionInfo.name,
         command: sessionInfo.command,
         cwd: sessionInfo.cwd,
-        cols: 200,
-        rows: 50,
-        env_vars: sessionInfo.envVars,
+        envVars: sessionInfo.envVars,
         persistent: false,
+        persistId: `${sessionInfo.projectId}:${sessionInfo.name}`,
       });
 
       const newSession: TerminalSession = {

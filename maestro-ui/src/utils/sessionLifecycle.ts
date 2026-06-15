@@ -1,15 +1,23 @@
 import type { MaestroSession } from '../app/types/maestro';
 
-export type SessionSubTab = 'open' | 'done' | 'archived';
+// The sub-tabs shown in the Spaces panel Agents view.
+// 'open' | 'done' | 'archived' are project-scoped and resolved by
+// resolveSessionTab() from persisted server fields. 'huddles' is a
+// cross-project virtual tab — no session resolves to it; the view fetches
+// huddles from GET /api/huddles instead.
+export type SessionSubTab = 'open' | 'done' | 'archived' | 'huddles';
 
 // The tab a session (tree root) belongs to.
 // Driven purely by two persisted server fields — no local terminal state needed.
 // Archived (archivedAt) always wins. Done (humanCompletedAt) is next.
 // Everything else is Open (default for new sessions).
 // Liveness (live dot) is decoration within tabs, not a routing criterion.
+// 'huddles' is excluded — it's a virtual tab that no session resolves to.
+export type SessionLifecycleTab = Exclude<SessionSubTab, 'huddles'>;
+
 export function resolveSessionTab(
   session: Pick<MaestroSession, 'archivedAt' | 'humanCompletedAt'>,
-): SessionSubTab {
+): SessionLifecycleTab {
   if (session.archivedAt) return 'archived';
   if (session.humanCompletedAt) return 'done';
   return 'open';

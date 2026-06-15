@@ -13,7 +13,9 @@
     "lint": "eslint src/ --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:web": "VITE_APP_MODE=browser VITE_API_URL=http://localhost:4569/api vite --port 4570 --strictPort",
+    "build:web": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser vite build"
   },
   "dependencies": {
     "@crabnebula/tauri-plugin-drag": "~2.1.0",

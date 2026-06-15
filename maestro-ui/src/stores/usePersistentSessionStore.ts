@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { formatError } from '../utils/formatters';
+import { IS_TAURI } from '../platform';
 import { closeSession } from '../services/sessionService';
 import type { PersistentSessionInfo } from '../app/types/app-state';
 import { useSessionStore } from './useSessionStore';
@@ -37,6 +38,10 @@ export const usePersistentSessionStore = create<PersistentSessionState>((set, ge
   setConfirmKillPersistentId: (id) => set({ confirmKillPersistentId: id }),
 
   refreshPersistentSessions: async () => {
+    if (!IS_TAURI) {
+      set({ persistentSessions: [], persistentSessionsLoading: false, persistentSessionsError: null });
+      return;
+    }
     set({ persistentSessionsLoading: true, persistentSessionsError: null });
     try {
       const list = await invoke<PersistentSessionInfo[]>('list_persistent_sessions');
@@ -61,7 +66,7 @@ export const usePersistentSessionStore = create<PersistentSessionState>((set, ge
     try {
       const toClose = sessions.filter((s: any) => s.persistId === persistId).map((s: any) => s.id);
       await Promise.all(toClose.map((id: string) => closeSession(id).catch(() => {})));
-      await invoke('kill_persistent_session', { persistId });
+      if (IS_TAURI) await invoke('kill_persistent_session', { persistId });
       setSessions((prev: any) => prev.filter((s: any) => s.persistId !== persistId));
       setActiveId((prevActive: string | null) => {
         if (!prevActive) return prevActive;

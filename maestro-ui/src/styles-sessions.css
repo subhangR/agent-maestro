@@ -1764,3 +1764,32 @@ html[data-redesign] .pn-tv__term--host > .terminalInTeamView {
     opacity: 0.4;
     cursor: not-allowed;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Mobile: touch-friendly session items                               */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  /* Minimum 44px tap target for all session list items */
+  .sessionItem {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  /* Make bottom action buttons taller for touch */
+  .sessionItemBottomBtn {
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+
+  /* Larger session name text for readability */
+  .sessionName {
+    font-size: 14px;
+  }
+
+  /* Suppress drag handles on touch — they don't work well on mobile */
+  .sessionDragHandle {
+    display: none;
+  }
+}

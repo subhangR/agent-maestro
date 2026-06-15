@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { IS_TAURI } from '../platform';
 import { LoadedRecording, RecordingIndexEntry } from '../app/types/recording';
 import { makeId } from '../app/utils/id';
 import { getProcessEffectById } from '../processEffects';
@@ -205,6 +206,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   /* ---------------------------------------------------------------- */
 
   refreshRecordings: async () => {
+    if (!IS_TAURI) { set({ recordingsLoading: false, recordings: [] }); return; }
     set({ recordingsLoading: true, recordingsError: null });
     try {
       const list = await invoke<RecordingIndexEntry[]>('list_recordings');
@@ -240,6 +242,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   },
 
   startRecording: async (sessionId, name) => {
+    if (!IS_TAURI) return;
     const { sessions, setSessions } = useSessionStore.getState();
     const { reportError } = useUIStore.getState();
     const s = sessions.find((s2) => s2.id === sessionId);
@@ -283,6 +286,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   },
 
   stopRecording: async (sessionId) => {
+    if (!IS_TAURI) return;
     const { sessions, setSessions } = useSessionStore.getState();
     const { reportError } = useUIStore.getState();
     const s = sessions.find((s2) => s2.id === sessionId);
@@ -328,6 +332,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
       replayShowAll: mode === 'all',
       replayFlowExpanded: {},
     });
+    if (!IS_TAURI) { set({ replayLoading: false, replayError: 'Replay is not available in the browser.' }); return; }
 
     // Cross-store: get secureStorageMode
     const secureStorageMode = useSecureStorageStore.getState().secureStorageMode;
@@ -360,6 +365,7 @@ export const useRecordingStore = create<RecordingState>((set, get) => ({
   },
 
   deleteRecording: async (recordingId) => {
+    if (!IS_TAURI) return;
     const { setSessions } = useSessionStore.getState();
     const { showNotice, reportError } = useUIStore.getState();
 

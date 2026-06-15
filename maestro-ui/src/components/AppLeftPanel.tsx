@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { IconRail } from "./IconRail";
 import { MaestroPanel } from "./maestro/MaestroPanel";
 import { FileExplorerPanel } from "./FileExplorerPanel";
@@ -14,6 +14,8 @@ import { createMaestroSession } from "../services/maestroService";
 import { useTasks } from "../hooks/useTasks";
 import { ErrorBoundary } from "./ErrorBoundary";
 import * as DEFAULTS from "../app/constants/defaults";
+import { useBreakpoint } from "../hooks/useBreakpoint";
+import { useMobilePanelStore } from "../stores/useMobilePanelStore";
 
 function sectionToPrimaryTab(section: IconRailSection): PrimaryTab | null {
     switch (section) {
@@ -36,6 +38,9 @@ function sectionToTeamSubTab(section: IconRailSection): TeamSubTab | undefined {
 }
 
 export const AppLeftPanel: React.FC = () => {
+    const breakpoint = useBreakpoint();
+    const isMobile = breakpoint === "mobile";
+
     const iconRailActiveSection = useUIStore((s) => s.iconRailActiveSection);
     const toggleIconRailSection = useUIStore((s) => s.toggleIconRailSection);
     const homeDir = useUIStore((s) => s.homeDir);
@@ -53,6 +58,13 @@ export const AppLeftPanel: React.FC = () => {
     const handleJumpToSessionFromTask = useSessionStore((s) => s.handleJumpToSessionFromTask);
     const handleAddTaskToSessionRequest = useSessionStore((s) => s.handleAddTaskToSessionRequest);
     const active = sessions.find((s) => s.id === activeId) ?? null;
+
+    // On mobile, auto-switch to the main (terminal) panel when a session is activated
+    useEffect(() => {
+        if (isMobile && activeId) {
+            useMobilePanelStore.getState().setActivePanel("main");
+        }
+    }, [isMobile, activeId]);
 
     // SSH state
     const activeIsSsh = active
@@ -142,9 +154,12 @@ export const AppLeftPanel: React.FC = () => {
             style={{
                 // Width is driven by the CSS var so a resize commit never
                 // re-renders this (heavy) panel — see useAppLayoutResizing.
-                width: isExpanded
-                    ? `calc(${DEFAULTS.ICON_RAIL_WIDTH}px + var(--maestro-sidebar-width))`
-                    : `${DEFAULTS.ICON_RAIL_WIDTH}px`,
+                // On mobile the panel fills its container (100%) via CSS.
+                width: isMobile
+                    ? "100%"
+                    : isExpanded
+                        ? `calc(${DEFAULTS.ICON_RAIL_WIDTH}px + var(--maestro-sidebar-width))`
+                        : `${DEFAULTS.ICON_RAIL_WIDTH}px`,
             }}
         >
             <IconRail
@@ -159,7 +174,7 @@ export const AppLeftPanel: React.FC = () => {
             <div
                 className="appLeftPanelContent"
                 style={{
-                    width: 'var(--maestro-sidebar-width)',
+                    width: isMobile ? undefined : 'var(--maestro-sidebar-width)',
                     display: isExpanded ? undefined : 'none',
                 }}
             >

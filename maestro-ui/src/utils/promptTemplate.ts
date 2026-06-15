@@ -1,5 +1,3 @@
-import { invoke } from '@tauri-apps/api/core';
-
 interface TemplateContext {
   MAESTRO_TASK_DATA?: any;
   MAESTRO_TASK_IDS?: string;

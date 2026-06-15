@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { platform } from '../platform';
 import { maestroClient } from '../utils/MaestroClient';
 import type {
   MaestroTask,
@@ -498,13 +499,13 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         (async () => {
           try {
             if (promptMode === 'paste') {
-              await invoke('write_to_session', { id: ptyId, data: text, source: 'system' });
+              await platform.terminal.write(ptyId, text, 'system');
             } else {
               if (text) {
-                await invoke('write_to_session', { id: ptyId, data: text, source: 'system' });
+                await platform.terminal.write(ptyId, text, 'system');
                 await new Promise(r => setTimeout(r, 200));
               }
-              await invoke('write_to_session', { id: ptyId, data: '\r', source: 'system' });
+              await platform.terminal.write(ptyId, '\r', 'system');
             }
           } catch {
             // best-effort write to session – ignore failures
@@ -528,10 +529,10 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         (async () => {
           try {
             if (spellText) {
-              await invoke('write_to_session', { id: spellPtyId, data: spellText, source: 'system' });
+              await platform.terminal.write(spellPtyId, spellText, 'system');
               await new Promise(r => setTimeout(r, 200));
             }
-            await invoke('write_to_session', { id: spellPtyId, data: '\r', source: 'system' });
+            await platform.terminal.write(spellPtyId, '\r', 'system');
           } catch {
             // best-effort
           }

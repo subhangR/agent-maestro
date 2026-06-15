@@ -3,10 +3,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { DocEntry } from "../../app/types/maestro";
 import { maestroClient } from "../../utils/MaestroClient";
-const LazyMermaidDiagram = React.lazy(() =>
+import { isDiagramDoc } from "../../utils/docHelpers";
+import { lazyWithReload } from "../../utils/lazyWithReload";
+import { ErrorBoundary } from "../ErrorBoundary";
+const LazyMermaidDiagram = lazyWithReload(() =>
   import("./MermaidDiagram").then(m => ({ default: m.MermaidDiagram }))
 );
-const LazyExcalidrawBoard = React.lazy(() =>
+const LazyExcalidrawBoard = lazyWithReload(() =>
   import("../ExcalidrawBoard").then(m => ({ default: m.ExcalidrawBoard }))
 );
 
@@ -145,7 +148,7 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
   const [diagramEditMode, setDiagramEditMode] = useState(false);
   const fileExt = useMemo(() => getFileExtension(doc.filePath), [doc.filePath]);
   const shouldRenderMarkdown = useMemo(() => isMarkdown(doc.filePath), [doc.filePath]);
-  const isDiagramDoc = doc.kind === 'diagram';
+  const isDiagram = isDiagramDoc(doc);
   const fileName = useMemo(() => {
     const parts = doc.filePath.split("/");
     return parts[parts.length - 1];
@@ -174,7 +177,7 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
       <div className="docViewerHeader">
         <div className="docViewerHeaderLeft">
           <span className="docViewerIcon">
-            {isDiagramDoc ? "⬡" : shouldRenderMarkdown ? "M↓" : "{ }"}
+            {isDiagram ? "⬡" : shouldRenderMarkdown ? "M↓" : "{ }"}
           </span>
           <div className="docViewerHeaderInfo">
             <h3 className="docViewerTitle">{doc.title}</h3>
@@ -187,7 +190,7 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
           </div>
         </div>
         <div className="docViewerHeaderActions">
-          {isDiagramDoc && (
+          {isDiagram && (
             <button
               type="button"
               className="themedBtn"
@@ -248,20 +251,22 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
       </div>
 
       {/* Content body */}
-      <div className={`docViewerBody ${isDiagramDoc ? 'docViewerBody--diagram' : ''}`}>
-        {isDiagramDoc ? (
-          <React.Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading diagram...</div>}>
-            <LazyExcalidrawBoard
-              key={`${doc.id}-${diagramEditMode ? 'edit' : 'view'}`}
-              inline
-              mode={diagramEditMode ? 'edit' : 'view'}
-              docId={doc.id}
-              docSessionId={doc.sessionId ?? doc.addedBy}
-              initialSceneJson={doc.content}
-              name={doc.title}
-              onClose={() => {}}
-            />
-          </React.Suspense>
+      <div className={`docViewerBody ${isDiagram ? 'docViewerBody--diagram' : ''}`}>
+        {isDiagram ? (
+          <ErrorBoundary name="Diagram">
+            <React.Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading diagram...</div>}>
+              <LazyExcalidrawBoard
+                key={`${doc.id}-${diagramEditMode ? 'edit' : 'view'}`}
+                inline
+                mode={diagramEditMode ? 'edit' : 'view'}
+                docId={doc.id}
+                docSessionId={doc.sessionId ?? doc.addedBy}
+                initialSceneJson={doc.content}
+                name={doc.title}
+                onClose={() => {}}
+              />
+            </React.Suspense>
+          </ErrorBoundary>
         ) : doc.content ? (
           shouldRenderMarkdown ? (
             <div className="docViewerMarkdown">

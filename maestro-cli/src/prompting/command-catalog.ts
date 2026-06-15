@@ -133,6 +133,11 @@ const COMMAND_DEFINITIONS: Array<Omit<CommandCatalogEntry, 'syntax'>> = [
   { id: 'spell:create', description: 'Create a custom prompt spell', group: 'spell', allowedModes: ALL_MODES },
   { id: 'spell:delete', description: 'Delete a custom prompt spell', group: 'spell', allowedModes: ALL_MODES },
 
+  // Command-log (CLI command-usage audit trail)
+  { id: 'command-log:list', description: 'List tracked CLI commands for a session', group: 'command-log', allowedModes: ALL_MODES, hiddenFromPrompt: true },
+  { id: 'command-log:stats', description: 'Show CLI command usage stats for a session', group: 'command-log', allowedModes: ALL_MODES, hiddenFromPrompt: true },
+  { id: 'command-log:sessions', description: 'List sessions with a tracked command log', group: 'command-log', allowedModes: ALL_MODES, hiddenFromPrompt: true },
+
   // Internal commands
   { id: 'track-file', description: 'Track file modification', group: 'root', allowedModes: ALL_MODES, isCore: true, hiddenFromPrompt: true },
   { id: 'debug-prompt', description: 'Show system and task prompts sent to agent', group: 'root', allowedModes: ALL_MODES, isCore: true, hiddenFromPrompt: true },
@@ -144,6 +149,9 @@ const COMMAND_SYNTAX_MAP: Record<string, string> = {
   'status': 'maestro status',
   'commands': 'maestro commands',
   'track-file': 'maestro track-file <filePath>',
+  'command-log:list': 'maestro command-log list [--session <id>] [--failed] [--command <prefix>] [--limit <n>]',
+  'command-log:stats': 'maestro command-log stats [--session <id>]',
+  'command-log:sessions': 'maestro command-log sessions',
   'debug-prompt': 'maestro debug-prompt [--manifest <path>] [--session <id>] [--system-only] [--task-only|--initial-only] [--raw]',
 
   // Legacy report aliases
@@ -281,6 +289,7 @@ export const COMMAND_GROUP_META: Record<string, { prefix: string; description: s
   show: { prefix: 'maestro show', description: 'UI display' },
   modal: { prefix: 'maestro modal', description: 'Modal interaction' },
   spell: { prefix: 'maestro spell', description: 'Spell management and invocation' },
+  'command-log': { prefix: 'maestro command-log', description: 'CLI command-usage audit trail' },
 };
 
 export function getCommandCatalog(): CommandCatalogEntry[] {

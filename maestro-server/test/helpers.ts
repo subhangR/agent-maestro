@@ -8,10 +8,18 @@ import { FileSystemTaskRepository } from '../src/infrastructure/repositories/Fil
 import { FileSystemSessionRepository } from '../src/infrastructure/repositories/FileSystemSessionRepository';
 import { FileSystemTaskListRepository } from '../src/infrastructure/repositories/FileSystemTaskListRepository';
 import { FileSystemTeamMemberRepository } from '../src/infrastructure/repositories/FileSystemTeamMemberRepository';
+import { FileSystemTeamRepository } from '../src/infrastructure/repositories/FileSystemTeamRepository';
 import { FileSystemModelProfileRepository } from '../src/infrastructure/repositories/FileSystemModelProfileRepository';
+import { FileSystemSessionPromptRepository } from '../src/infrastructure/repositories/FileSystemSessionPromptRepository';
+import { FileSystemSessionCommandUsageRepository } from '../src/infrastructure/repositories/FileSystemSessionCommandUsageRepository';
 import { ProjectService } from '../src/application/services/ProjectService';
 import { TaskService } from '../src/application/services/TaskService';
 import { SessionService } from '../src/application/services/SessionService';
+import { SessionPromptService } from '../src/application/services/SessionPromptService';
+import { HuddleService } from '../src/application/services/HuddleService';
+import { CommandUsageService } from '../src/application/services/CommandUsageService';
+import { TeamMemberService } from '../src/application/services/TeamMemberService';
+import { TeamService } from '../src/application/services/TeamService';
 import { ILogger } from '../src/domain/common/ILogger';
 
 /**
@@ -59,7 +67,9 @@ export async function createTestContainer(dataDir: string) {
   const sessionRepo = new FileSystemSessionRepository(dataDir, idGenerator, silentLogger);
   const taskListRepo = new FileSystemTaskListRepository(dataDir, idGenerator, silentLogger);
   const teamMemberRepo = new FileSystemTeamMemberRepository(dataDir, idGenerator, silentLogger);
+  const teamRepo = new FileSystemTeamRepository(dataDir, idGenerator, silentLogger);
   const modelProfileRepo = new FileSystemModelProfileRepository(dataDir, idGenerator, silentLogger);
+  const sessionPromptRepo = new FileSystemSessionPromptRepository(dataDir, silentLogger);
   const projectRepo = new FileSystemProjectRepository(
     dataDir,
     idGenerator,
@@ -73,21 +83,37 @@ export async function createTestContainer(dataDir: string) {
   await sessionRepo.initialize();
   await taskListRepo.initialize();
   await teamMemberRepo.initialize();
+  await teamRepo.initialize();
   await modelProfileRepo.initialize();
+  await sessionPromptRepo.initialize();
 
   const projectService = new ProjectService(projectRepo, eventBus);
   const taskService = new TaskService(taskRepo, projectRepo, eventBus, idGenerator, taskListRepo);
   const sessionService = new SessionService(sessionRepo, taskRepo, projectRepo, eventBus, idGenerator);
+  const sessionPromptService = new SessionPromptService(sessionPromptRepo, sessionRepo, eventBus, idGenerator);
+  const huddleService = new HuddleService(sessionPromptService, sessionService);
+  const commandUsageService = new CommandUsageService(
+    new FileSystemSessionCommandUsageRepository(dataDir, silentLogger)
+  );
+  const teamMemberService = new TeamMemberService(teamMemberRepo, eventBus, idGenerator);
+  const teamService = new TeamService(teamRepo, teamMemberRepo, eventBus, idGenerator);
 
   return {
     projectService,
     taskService,
     sessionService,
+    sessionPromptService,
+    huddleService,
+    commandUsageService,
+    teamMemberService,
+    teamService,
     projectRepo,
     taskRepo,
     sessionRepo,
     teamMemberRepo,
+    teamRepo,
     modelProfileRepo,
+    sessionPromptRepo,
     eventBus,
     idGenerator,
   };

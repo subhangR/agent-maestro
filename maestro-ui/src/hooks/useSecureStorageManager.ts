@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import {
     SecureStorageMode,
     PersistedStateV1,
@@ -79,6 +80,14 @@ export function useSecureStorageManager({
         const nextMode = secureStorageSettingsMode;
         if (nextMode === secureStorageMode) {
             setSecureStorageSettingsOpen(false);
+            return;
+        }
+
+        if (!IS_TAURI) {
+            setSecureStorageMode("plaintext");
+            setPersistenceDisabledReason(null);
+            setSecureStorageSettingsOpen(false);
+            showNotice("Running in browser — secure storage is not available; state stored in memory only.", 8000);
             return;
         }
 
@@ -162,6 +171,7 @@ export function useSecureStorageManager({
     }
 
     async function retrySecureStorage() {
+        if (!IS_TAURI) return;
         if (secureStorageRetrying) return;
         setSecureStorageRetrying(true);
         showNotice(
@@ -189,6 +199,11 @@ export function useSecureStorageManager({
 
     // Initial prompt effect
     useEffect(() => {
+        if (!IS_TAURI) {
+            setSecureStorageMode("plaintext");
+            setPersistenceDisabledReason(null);
+            return;
+        }
         if (!hydrated) return;
         if (secureStoragePromptedRef.current) return;
         if (secureStorageMode !== null) return;

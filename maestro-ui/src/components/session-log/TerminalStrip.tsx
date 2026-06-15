@@ -1,24 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
+import { platform } from '../../platform';
+import type { AgentLogFile } from '../../platform';
 import { parseJsonlText, groupMessages, checkMessagesOngoing } from '../../utils/claude-log';
 import type { ParsedMessage, ConversationGroup } from '../../utils/claude-log';
 import { LogMessageGroup } from './LogMessageGroup';
 import { useSpellStore } from '../../stores/useSpellStore';
 import { Icon } from '../Icon';
-
-interface ClaudeLogFile {
-  filename: string;
-  relativePath?: string;
-  modifiedAt: number;
-  size: number;
-  maestroSessionId?: string | null;
-}
-
-interface LogTailResult {
-  content: string;
-  newOffset: number;
-  fileSize: number;
-}
+import { SessionDocsMenu } from '../maestro/SessionDocsMenu';
 
 interface TerminalStripProps {
   cwd: string;
@@ -31,10 +19,39 @@ interface TerminalStripProps {
 const POLL_INTERVAL = 2000;
 /** Default model context window used to fill the circular gauge. */
 const CONTEXT_WINDOW_MAX = 200_000;
+/** How many ancestor directories to probe when resolving the log dir. */
+const MAX_CWD_ANCESTORS = 12;
 type LogProvider = 'claude' | 'codex';
 
 function resolveLogProvider(agentTool?: string | null): LogProvider {
   return agentTool === 'codex' ? 'codex' : 'claude';
+}
+
+/**
+ * Build the list of cwd candidates to probe for this session's log, starting
+ * with `cwd` itself and walking up its ancestors.
+ *
+ * Why: the agent's live working directory (reported via the terminal's OSC
+ * sequences) drifts whenever a command `cd`s into a subdirectory. But Claude /
+ * Codex keep a session's log under the directory the agent was *launched* from
+ * — an ancestor of any later cwd — and never move it. Probing ancestors lets us
+ * still find the log after the cwd has drifted into a subtree. Matching is by
+ * unique maestro session id, so scanning an extra ancestor can't mis-match.
+ */
+function cwdCandidates(cwd: string): string[] {
+  const normalized = cwd.trim().replace(/\/+$/, '');
+  if (!normalized) return [cwd];
+  const candidates: string[] = [normalized];
+  let current = normalized;
+  for (let i = 0; i < MAX_CWD_ANCESTORS; i++) {
+    const slash = current.lastIndexOf('/');
+    // Stop once we reach a filesystem root ("/foo" -> "" / "/") — going higher
+    // (e.g. into "/Users/<user>") would scan huge, unrelated project dirs.
+    if (slash <= 0) break;
+    current = current.slice(0, slash);
+    candidates.push(current);
+  }
+  return candidates;
 }
 
 function formatTokens(n: number): string {
@@ -153,6 +170,9 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   const provider = resolveLogProvider(agentTool);
   const openPicker = useSpellStore((s) => s.openPicker);
   const [resolvedProvider, setResolvedProvider] = useState<LogProvider>(provider);
+  // The cwd whose project dir actually held the log. May be an ancestor of the
+  // live `cwd` prop once the agent has cd'd into a subdirectory.
+  const [resolvedCwd, setResolvedCwd] = useState<string>(cwd);
   const [allMessages, setAllMessages] = useState<ParsedMessage[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -160,7 +180,12 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   const offsetRef = useRef(0);
   const bodyRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
-  const getLogFilePath = useCallback((f: ClaudeLogFile) => f.relativePath ?? f.filename, []);
+  // Latest live cwd, read inside discovery without re-triggering it. The cwd
+  // drifts constantly as the agent cd's; we resolve the (stable) log dir once
+  // per session rather than tearing the strip down on every drift.
+  const cwdRef = useRef(cwd);
+  cwdRef.current = cwd;
+  const getLogFilePath = useCallback((f: AgentLogFile) => f.relativePath ?? f.filename, []);
 
   const autoScroll = useCallback(() => {
     const el = bodyRef.current;
@@ -183,26 +208,34 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
     setReady(false);
     setSelectedFile(null);
     setResolvedProvider(provider);
+    setResolvedCwd(cwdRef.current);
 
     const providerOrder: LogProvider[] = provider === 'codex'
       ? ['codex', 'claude']
       : ['claude', 'codex'];
 
     const search = async () => {
+      // Re-read the live cwd each attempt: the log lives under the launch
+      // directory (an ancestor of any later cwd), so probe cwd and its
+      // ancestors. Matching is by unique session id, so an extra ancestor
+      // can't mis-match.
+      const candidateCwds = cwdCandidates(cwdRef.current);
       for (const candidate of providerOrder) {
-        try {
-          const listCommand = candidate === 'codex' ? 'list_codex_session_logs' : 'list_claude_session_logs';
-          const files = await invoke<ClaudeLogFile[]>(listCommand, { cwd });
-          if (cancelled) return;
-          const match = files.find((f) => f.maestroSessionId === maestroSessionId);
-          if (match) {
-            setSelectedFile(getLogFilePath(match));
-            setResolvedProvider(candidate);
-            setReady(true);
-            return;
+        for (const candidateCwd of candidateCwds) {
+          try {
+            const files = await platform.logs.list(candidate, candidateCwd);
+            if (cancelled) return;
+            const match = files.find((f) => f.maestroSessionId === maestroSessionId);
+            if (match) {
+              setSelectedFile(getLogFilePath(match));
+              setResolvedProvider(candidate);
+              setResolvedCwd(candidateCwd);
+              setReady(true);
+              return;
+            }
+          } catch {
+            // Try the next candidate / provider.
           }
-        } catch {
-          // Try the next provider.
         }
       }
 
@@ -213,7 +246,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
 
     search();
     return () => { cancelled = true; };
-  }, [cwd, maestroSessionId, provider, getLogFilePath]);
+  }, [maestroSessionId, provider, getLogFilePath]);
 
   // Initial full load
   useEffect(() => {
@@ -221,8 +254,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
     setAllMessages([]);
     offsetRef.current = 0;
 
-    const readCommand = resolvedProvider === 'codex' ? 'read_codex_session_log' : 'read_claude_session_log';
-    invoke<string>(readCommand, { cwd, filename: selectedFile })
+    platform.logs.read(resolvedProvider, resolvedCwd, selectedFile)
       .then((content) => {
         const messages = parseJsonlText(content);
         setAllMessages(messages);
@@ -230,7 +262,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
         setTimeout(autoScroll, 50);
       })
       .catch(() => {});
-  }, [cwd, selectedFile, autoScroll, resolvedProvider]);
+  }, [resolvedCwd, selectedFile, autoScroll, resolvedProvider]);
 
   // Live polling
   useEffect(() => {
@@ -238,12 +270,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
 
     const poll = async () => {
       try {
-        const tailCommand = resolvedProvider === 'codex' ? 'tail_codex_session_log' : 'tail_claude_session_log';
-        const result = await invoke<LogTailResult>(tailCommand, {
-          cwd,
-          filename: selectedFile,
-          offset: offsetRef.current,
-        });
+        const result = await platform.logs.tail(resolvedProvider, resolvedCwd, selectedFile, offsetRef.current);
         if (result.content.length > 0) {
           const newMessages = parseJsonlText(result.content);
           if (newMessages.length > 0) {
@@ -259,7 +286,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
 
     const interval = setInterval(poll, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedFile, cwd, autoScroll, resolvedProvider]);
+  }, [selectedFile, resolvedCwd, autoScroll, resolvedProvider]);
 
   const { groups, isOngoing, stats } = useMemo(() => {
     if (allMessages.length === 0) {
@@ -353,6 +380,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
 
         {/* 4. Actions */}
         <div className="termStripActions">
+          <SessionDocsMenu maestroSessionId={maestroSessionId} />
           <button
             type="button"
             className="termStripActionBtn"

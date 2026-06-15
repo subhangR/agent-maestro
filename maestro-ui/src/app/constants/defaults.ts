@@ -14,6 +14,7 @@ export const STORAGE_THEME_KEY = "agents-ui-theme-v2";
 export const STORAGE_STYLE_KEY = "agents-ui-style-v1";
 export const STORAGE_ZOOM_KEY = "agents-ui-zoom-v1";
 export const STORAGE_SETUP_COMPLETE_KEY = "agents-ui-setup-complete-v1";
+export const STORAGE_PERSISTED_STATE_KEY = "maestro-persisted-state-v1";
 
 
 export const DEFAULT_SOUND_INSTRUMENT = 'piano';

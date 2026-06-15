@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { IS_TAURI } from '../../platform';
 import { parseJsonlText, calculateMetrics, groupMessages, checkMessagesOngoing, trackContext } from '../../utils/claude-log';
 import type { ParsedMessage } from '../../utils/claude-log';
 import { SessionLogViewer } from './SessionLogViewer';
@@ -108,6 +109,7 @@ export function SessionLogModal({ sessionName, cwd, onClose, maestroSessionId, a
 
   // Load log file list
   useEffect(() => {
+    if (!IS_TAURI) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     const listCommand = provider === 'codex' ? 'list_codex_session_logs' : 'list_claude_session_logs';

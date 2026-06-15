@@ -1,0 +1,116 @@
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary, #0d0d0d);
+  z-index: 9999;
+}
+
+.login-card {
+  width: 320px;
+  background: var(--bg-secondary, #1a1a1a);
+  border: 1px solid var(--border-primary, #2a2a2a);
+  border-radius: 12px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.login-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-primary, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.login-logo-icon {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--pn-ui, sans-serif);
+  line-height: 1;
+}
+
+.login-title {
+  font-family: var(--pn-ui, sans-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #e8e8e8);
+  margin: 0;
+  text-align: center;
+}
+
+.login-subtitle {
+  font-family: var(--pn-ui, sans-serif);
+  font-size: 13px;
+  color: var(--text-secondary, #888);
+  margin: 0;
+  text-align: center;
+}
+
+.login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  background: var(--bg-input, #111);
+  border: 1px solid var(--border-primary, #2a2a2a);
+  border-radius: 8px;
+  color: var(--text-primary, #e8e8e8);
+  font-family: var(--pn-ui, sans-serif);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.login-input:focus {
+  border-color: var(--accent-primary, #6366f1);
+}
+
+.login-input::placeholder {
+  color: var(--text-tertiary, #555);
+}
+
+.login-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-error, #ef4444);
+  font-family: var(--pn-ui, sans-serif);
+}
+
+.login-button {
+  padding: 10px 16px;
+  background: var(--accent-primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--pn-ui, sans-serif);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.login-button:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.login-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

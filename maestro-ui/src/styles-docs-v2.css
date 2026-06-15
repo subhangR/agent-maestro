@@ -1264,3 +1264,393 @@ html[data-redesign] .mermaidDiagramFallback {
   font-family: var(--pn-mono);
 }
 
+/* ================================================================== */
+/*  RESPONSIVE — Mobile (max-width: 768px)                             */
+/*  Desktop layout is UNCHANGED above this breakpoint.                 */
+/* ================================================================== */
+
+@media (max-width: 768px) {
+
+  /* ---- DocViewer Overlay: full-screen cover on mobile ---- */
+  .docViewerOverlay {
+    --doc-viewer-top: 0px;
+    top: 0;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.92);
+  }
+
+  .docViewerOverlay--fullscreen {
+    padding: 0;
+    background: rgba(0, 0, 0, 0.92);
+  }
+
+  /* Panel fills the full screen on mobile */
+  .docViewerPanel {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    height: 100% !important;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    animation: none;
+  }
+
+  .docViewerPanel--fullscreen {
+    border-radius: 0;
+    border: none;
+  }
+
+  /* ---- Header: readable and accessible on mobile ---- */
+  .docViewerHeader {
+    padding: 10px 12px;
+  }
+
+  .docViewerTitle {
+    font-size: 13px;
+  }
+
+  /* ---- Close / Fullscreen buttons: touch-friendly (44px tap target) ---- */
+  .docViewerCloseBtn,
+  .docViewerFullscreenBtn {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+    border-radius: 8px;
+  }
+
+  /* ---- Header actions: tighter gap on mobile ---- */
+  .docViewerHeaderActions {
+    gap: 4px;
+  }
+
+  /* ---- Meta bar: horizontal scroll, no overflow ---- */
+  .docViewerMeta {
+    gap: 10px;
+    padding: 6px 12px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .docViewerMetaValue {
+    max-width: 140px;
+  }
+
+  /* ---- Body: touch scroll ---- */
+  .docViewerBody {
+    padding: 14px 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ---- Markdown: readable font sizes ---- */
+  .docViewerMarkdown {
+    font-size: 14px;
+  }
+
+  .docViewerMarkdown pre {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ---- DocViewer header left: allow title to shrink, tighter gap ---- */
+  .docViewerHeaderLeft {
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .docViewerHeaderInfo {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* ---- DocViewer diagram Edit/View button: touch-friendly (overrides inline style) ---- */
+  .docViewerHeaderActions .themedBtn {
+    min-height: 36px;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* ---- DocViewer inline (DocumentSpace) — ensure it fits inside the main panel ---- */
+  .docViewerInline {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .docViewerPanel--inline {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* ---- Diagram body inside DocViewer: take full remaining height ---- */
+  .docViewerBody--diagram {
+    padding: 0;
+    min-height: 0;
+  }
+
+  /* ---- Mermaid diagram: tighter padding, allow pinch-zoom on container ---- */
+  .mermaidDiagram {
+    padding: 12px;
+    margin: 0.8em 0;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  /* ---- Mermaid overlay: clear the mobile bottom nav (zoom controls live above it) ---- */
+  .mermaidDiagramOverlayContent {
+    padding: 16px 12px;
+    width: 100vw;
+    max-width: 100vw;
+    max-height: calc(100vh - var(--mobile-nav-height, 56px));
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  .mermaidZoomControls {
+    bottom: calc(var(--mobile-nav-height, 56px) + 16px);
+  }
+
+  .mermaidZoomBtn {
+    width: 40px;
+    height: 40px;
+  }
+
+  .mermaidZoomLevel {
+    min-width: 56px;
+    height: 40px;
+    font-size: 12px;
+  }
+
+  .mermaidDiagramOverlayClose {
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+  }
+
+  /* ---- DocsListCard: touch-friendly rows (≥44px) ---- */
+  .docsListCard {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .docsListCardTitle {
+    font-size: 13px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .docsListCardFile {
+    font-size: 11px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  /* ---- ProjectDocsList items: touch-friendly ---- */
+  .projectDocsListItem {
+    min-height: 44px;
+    padding: 10px 12px;
+    width: 100%;
+  }
+
+  .projectDocsListItem__title {
+    font-size: 13px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .projectDocsListItem__meta {
+    font-size: 11px;
+  }
+
+  /* ---- pn-subtab / pn-subbar (Open/Done/All tabs): touch-friendly ---- */
+  .pn-subbar {
+    gap: 4px;
+    padding: 4px 8px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+
+  .pn-subtab {
+    min-height: 36px;
+    padding: 6px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  /* ---- pn-filter bar (Terminals/Agents/Docs/Drawings): readable on mobile ---- */
+  .pn-filters {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+  }
+
+  .pn-filter {
+    min-height: 36px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* ─── Session docs menu — drop-UP control in the bottom terminal strip ─── */
+
+.termStripDocs {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Docs button — wider than the icon-only action buttons (holds a count). */
+.termStripDocsBtn {
+  width: auto;
+  gap: 5px;
+  padding: 0 7px;
+}
+
+.termStripDocsCount {
+  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.termStripDocsBtn--open {
+  color: var(--pn-term-acc, #d99a4e);
+  background: rgba(217, 154, 78, 0.12);
+  border-color: rgba(217, 154, 78, 0.34);
+}
+
+/* The menu opens upward, anchored to the button's right edge. */
+.termStripDocsMenu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  min-width: 220px;
+  max-width: 320px;
+  max-height: min(50vh, 380px);
+  overflow-y: auto;
+  padding: 5px;
+  background: var(--pn-term-bg, #1B1812);
+  border: 1px solid var(--term-strip-line, #2c2922);
+  border-radius: 8px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  scrollbar-width: thin;
+  animation: docViewerFadeIn 0.12s ease;
+}
+
+.termStripDocsMenuTitle {
+  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--pn-term-dim, #8a8474);
+  padding: 4px 8px 6px;
+}
+
+.termStripDocsItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pn-term-ink, #cfc9bb);
+  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.termStripDocsItem:hover {
+  background: rgba(217, 154, 78, 0.1);
+  border-color: rgba(217, 154, 78, 0.28);
+  color: var(--pn-term-acc, #d99a4e);
+}
+
+.termStripDocsItemIcon {
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--pn-term-dim, #8a8474);
+}
+
+.termStripDocsItemIcon--diagram {
+  color: var(--pn-term-acc, #d99a4e);
+}
+
+.termStripDocsItemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Overlay — the opened doc, covering the terminal pane (terminal stays mounted).
+   position:fixed is contained to .terminalPane (contain: strict establishes it
+   as the containing block), so this fills the terminal area even though the menu
+   that triggers it lives in the bottom strip. */
+.sessionDocsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  background: rgba(0, 0, 0, 0.82);
+  animation: docViewerFadeIn 0.15s ease;
+}
+
+.sessionDocsOverlay .docViewerInline,
+.sessionDocsOverlay > .docViewerInline {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
+}
+
+.sessionDocsOverlay .docViewerPanel {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+}
+
+.sessionDocsOverlayClose {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 41;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted, rgba(255, 255, 255, 0.6));
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.sessionDocsOverlayClose:hover {
+  color: var(--terminal-green, #4ec9b0);
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
+}

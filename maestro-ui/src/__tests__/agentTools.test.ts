@@ -8,6 +8,7 @@ import {
   formatProviderModelLabel,
   getModelDisplayLabel,
   getReasoningOptionsForProvider,
+  MODEL_POWER,
   MODELS_BY_AGENT_TOOL,
   sanitizeLaunchConfig,
   supportsLaunchSpeed,
@@ -70,8 +71,8 @@ describe('agent tool UI constants', () => {
   it('matches Claude CLI effort support and excludes speed', () => {
     expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
     expect(MODELS_BY_AGENT_TOOL['claude-code'][0]).toEqual({
-      value: 'claude-opus-4-8',
-      label: 'Opus 4.8',
+      value: 'claude-fable-5',
+      label: 'Fable 5',
     });
     expect(getReasoningOptionsForProvider('claude').map((item) => item.value)).toEqual(claudeReasoningEfforts);
 
@@ -212,5 +213,16 @@ describe('agent tool UI constants', () => {
     expect(getModelDisplayLabel('sonnet')).toBe('Sonnet');
     expect(getModelDisplayLabel('opus[1m]')).toBe('Opus 1M');
     expect(getModelDisplayLabel('gpt-5.2-codex')).toBe('Codex 5.2');
+  });
+
+  it('offers Claude Fable 5 as the top Claude model while keeping Opus 4.8 the default', () => {
+    const claudeValues = MODELS_BY_AGENT_TOOL['claude-code'].map((model) => model.value);
+    expect(claudeValues).toEqual(expect.arrayContaining(['claude-fable-5', 'claude-fable-5[1m]']));
+    expect(claudeValues[0]).toBe('claude-fable-5');
+    expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
+    expect(getModelDisplayLabel('claude-fable-5')).toBe('Fable 5');
+    expect(getModelDisplayLabel('claude-fable-5[1m]')).toBe('Fable 5 1M');
+    expect(MODEL_POWER['claude-fable-5']).toBeGreaterThan(MODEL_POWER['claude-opus-4-8']);
+    expect(MODEL_POWER['claude-fable-5[1m]']).toBeGreaterThan(MODEL_POWER['claude-fable-5']);
   });
 });

@@ -4,6 +4,7 @@ import {
   SecureStorageMode,
   PersistedStateV1,
 } from '../app/types/app-state';
+import { IS_TAURI } from '../platform';
 import { PersistedTerminalSession } from '../app/types/session';
 import { formatError } from '../utils/formatters';
 import { useProjectStore } from './useProjectStore';
@@ -120,6 +121,12 @@ export const useSecureStorageStore = create<SecureStorageState>((set, get) => ({
 
     const { showNotice, reportError } = useUIStore.getState();
 
+    if (!IS_TAURI) {
+      set({ secureStorageMode: 'plaintext', persistenceDisabledReason: null, secureStorageSettingsOpen: false });
+      showNotice('Running in browser \u2014 secure storage is not available; state stored in memory only.', 8000);
+      return;
+    }
+
     const state = buildPersistedState();
     state.secureStorageMode = nextMode;
 
@@ -156,6 +163,7 @@ export const useSecureStorageStore = create<SecureStorageState>((set, get) => ({
   },
 
   retrySecureStorage: async () => {
+    if (!IS_TAURI) return;
     if (get().secureStorageRetrying) return;
     set({ secureStorageRetrying: true });
 
@@ -182,6 +190,10 @@ export const useSecureStorageStore = create<SecureStorageState>((set, get) => ({
   },
 
   checkInitialPrompt: () => {
+    if (!IS_TAURI) {
+      set({ secureStorageMode: 'plaintext', persistenceDisabledReason: null });
+      return;
+    }
     const { secureStorageMode } = get();
     const { hydrated } = useSessionStore.getState();
     if (!hydrated) return;

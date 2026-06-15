@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { SshHostEntry, SshForward, buildSshCommand } from "../app/utils/ssh";
 import { formatError } from "../utils/formatters";
 import { copyToClipboard } from "../utils/domUtils";
@@ -23,6 +24,12 @@ export function useSshManager({ showNotice }: UseSshManagerProps) {
   const [sshError, setSshError] = useState<string | null>(null);
 
   const refreshSshHosts = useCallback(async () => {
+    if (!IS_TAURI) {
+      setSshHosts([]);
+      setSshHostsLoading(false);
+      setSshHostsError(null);
+      return;
+    }
     setSshHostsLoading(true);
     setSshHostsError(null);
     try {

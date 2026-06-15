@@ -586,6 +586,127 @@
 }
 
 /* ------------------------------------------------------------------ */
+/*  Mobile: right/sessions panel — full-width, touch-friendly          */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  /* Full-width: override inline pixel/var widths from JS */
+  .pn-sp,
+  .pn-sp--mobile {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-left: none;
+    flex-shrink: 1;
+    flex-grow: 1;
+  }
+
+  .spacesPanelContent {
+    width: 100% !important;
+  }
+
+  /* Touch-friendly session list items (44px minimum tap target) */
+  .sessionItem {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .spacesPanelContent .sessionItem {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .spacesPanelContent .sessionItem.sessionItemCompact {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  /* Larger touch targets for rail icon buttons */
+  html[data-redesign] .pn-srail-s {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Hide horizontal overflow scrollbar in the rail sessions list */
+  .spacesRailSessions {
+    overflow-x: hidden;
+  }
+
+  /* Resource list items also need touch targets */
+  .resourcesViewItem {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  /* Spaces panel: fill the available appContent height (which already
+     excludes the 56px mobile nav) and clip horizontal overflow so cramped
+     content (chips, long titles) never blows out the 375px viewport. */
+  .pn-sp--mobile {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .pn-sp--mobile .spacesPanelContent {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Tabs strip: keep it from horizontal scroll, give the trigger buttons a
+     proper 44px tap height. The inline paddingTop:13 from JSX still applies
+     but min-height wins. */
+  .pn-sp--mobile .pn-tabs {
+    padding: 0 10px;
+    overflow-x: hidden;
+    flex-wrap: nowrap;
+  }
+
+  .pn-sp--mobile .pn-tab {
+    min-height: 44px;
+    padding-top: 10px;
+    padding-bottom: 12px;
+    padding-left: 10px;
+    padding-right: 10px;
+    font-size: 13px;
+  }
+
+  /* NewSpaceDropdown trigger in the toolbar (variant="toolbar" => pn-ib).
+     Scope tightly to .pn-tabs so we don't enlarge other pn-ib usages. */
+  .pn-sp--mobile .pn-tabs .pn-ib {
+    width: 44px;
+    height: 44px;
+    align-self: center;
+  }
+
+  .pn-sp--mobile .pn-tabs .pn-ib svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Session list: give the last row breathing room above the safe-area /
+     bottom nav so it isn't visually flush against the divider. */
+  .pn-sp--mobile .spacesPanelContent .sessionList {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .pn-sp--mobile .resourcesViewList {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Chips/task pills inside the session item can overflow horizontally at
+     375px — let them wrap rather than push width past 100%. */
+  .pn-sp--mobile .sessionItemTaskChips,
+  .pn-sp--mobile .sessionItemBottomActions {
+    flex-wrap: wrap;
+  }
+
+  /* Quick-launch chip row scrolls horizontally on desktop; on mobile let it
+     wrap so users can see all chips without a hidden scrollbar. */
+  .pn-sp--mobile .spacesPanelContent .agentShortcutRow {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /*  Spaces Panel Content — scoped overrides for right panel context    */
 /* ------------------------------------------------------------------ */
 

@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "./platform";
+import { useAuthStore } from "./stores/useAuthStore";
+import { LoginOverlay } from "./components/LoginOverlay";
 import { TerminalRegistry } from "./SessionTerminal";
 import { PendingDataBuffer } from "./app/types/app-state";
 import * as DEFAULTS from "./app/constants/defaults";
@@ -23,6 +26,9 @@ import { initRedesignTheme } from "./components/maestro/redesign/useRedesignThem
 import { initZoom } from "./stores/useZoomStore";
 
 // Hooks
+import { useBreakpoint } from "./hooks/useBreakpoint";
+import { useMobilePanelStore } from "./stores/useMobilePanelStore";
+import { MobilePanelNav } from "./components/app/MobilePanelNav";
 import { useQuickLaunch } from "./hooks/useQuickLaunch";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useAppLayoutResizing } from "./hooks/useAppLayoutResizing";
@@ -155,6 +161,14 @@ export default function App() {
       document.removeEventListener("drop", onDrop);
     };
   }, []);
+
+  // ---------- auth status check (web mode only) ----------
+  const checkAuthStatus = useAuthStore(s => s.checkStatus);
+  const showLogin = useAuthStore(s => s.showLogin);
+  const authChecking = useAuthStore(s => s.checking);
+  useEffect(() => {
+    if (!IS_TAURI) void checkAuthStatus();
+  }, [checkAuthStatus]);
 
   // ---------- bootstrap stores & persistence ----------
   useEffect(() => {
@@ -417,6 +431,7 @@ export default function App() {
     };
 
     const registerCloseHandler = async () => {
+      if (!IS_TAURI) return;
       try {
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
         if (cancelled) return;
@@ -493,8 +508,18 @@ export default function App() {
     handleRightPanelResizePointerDown,
   } = useAppLayoutResizing();
 
+  // ---------- responsive breakpoint ----------
+  const breakpoint = useBreakpoint();
+  const isMobile = breakpoint === "mobile";
+  const activePanel = useMobilePanelStore((s) => s.activePanel);
+
   // ---------- render ----------
   const isEmpty = projects.length === 0;
+
+  // Show login overlay in web mode when auth is enabled and user is not authenticated
+  if (!IS_TAURI && (authChecking ? false : showLogin)) {
+    return <LoginOverlay />;
+  }
 
   return (
     <div className="app">
@@ -541,12 +566,12 @@ export default function App() {
       ) : (
         <>
           {/* -------- App Content -------- */}
-          <div className="appContent">
+          <div className={`appContent${isMobile ? ` appContent--${activePanel}` : ""}`}>
                 {/* -------- Left Panel (Icon Rail + Maestro Sidebar) -------- */}
                 <AppLeftPanel />
 
                 {/* -------- Left panel resize handle -------- */}
-                {iconRailActiveSection !== null && (
+                {!isMobile && iconRailActiveSection !== null && (
                   <div
                     className="sidebarRightResizeHandle"
                     role="separator"
@@ -575,7 +600,7 @@ export default function App() {
                 </main>
 
                 {/* -------- Right panel resize handle -------- */}
-                {spacesRailActiveSection !== null && (
+                {!isMobile && spacesRailActiveSection !== null && (
                   <div
                     className="sidebarLeftResizeHandle"
                     role="separator"
@@ -610,6 +635,9 @@ export default function App() {
                   onToggle={toggleSpacesPanel}
                 />
           </div>
+
+          {/* -------- Mobile bottom tab bar -------- */}
+          {isMobile && <MobilePanelNav />}
         </>
       )}
 

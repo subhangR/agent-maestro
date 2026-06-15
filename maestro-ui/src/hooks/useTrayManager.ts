@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useRef, useState, MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { TerminalSession } from "../app/types/session";
 import { MaestroProject } from "../app/types/maestro";
 import { RecentSessionKey, TrayRecentSession, TrayMenuEventPayload } from "../app/types/app-state";
@@ -70,6 +71,7 @@ export function useTrayManager({
 
   const lastTrayStatusRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!IS_TAURI) return;
     if (!hydrated) return;
     const key = JSON.stringify(trayStatus);
     if (lastTrayStatusRef.current === key) return;
@@ -118,6 +120,7 @@ export function useTrayManager({
 
   const lastTrayRecentsRef = useRef<string | null>(null);
   useEffect(() => {
+    if (!IS_TAURI) return;
     if (!hydrated) return;
     const key = JSON.stringify(trayRecentSessions);
     if (lastTrayRecentsRef.current === key) return;

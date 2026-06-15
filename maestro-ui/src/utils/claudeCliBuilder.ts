@@ -1,6 +1,6 @@
 export interface ClaudeCliConfig {
   mode: 'interactive' | 'non-interactive';
-  model?: 'sonnet' | 'sonnet[1m]' | 'opus' | 'opus[1m]' | 'haiku' | 'claude-opus-4-8' | 'claude-opus-4-8[1m]' | 'claude-opus-4-7' | 'claude-opus-4-7[1m]';
+  model?: 'sonnet' | 'sonnet[1m]' | 'opus' | 'opus[1m]' | 'haiku' | 'claude-fable-5' | 'claude-fable-5[1m]' | 'claude-opus-4-8' | 'claude-opus-4-8[1m]' | 'claude-opus-4-7' | 'claude-opus-4-7[1m]';
   systemPrompt?: string;
   appendSystemPrompt?: string;
   permissionMode?: 'default' | 'plan' | 'acceptEdits' | 'bypassPermissions' | 'dontAsk';

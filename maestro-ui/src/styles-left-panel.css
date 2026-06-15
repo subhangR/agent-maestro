@@ -28,3 +28,23 @@
   contain: strict;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Mobile overrides (≤768px) — desktop layout above breakpoint is    */
+/*  UNCHANGED — all rules here are strictly additive.                  */
+/* ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  .appLeftPanel {
+    /* Relax strict containment so the full-width inline style can fill
+       the mobile container without being clipped by contain:strict. */
+    contain: content;
+    height: 100%;
+  }
+
+  .appLeftPanelContent {
+    /* Fill remaining horizontal space beside the icon rail */
+    flex: 1;
+    /* content containment is sufficient on mobile */
+    contain: content;
+  }
+}
+

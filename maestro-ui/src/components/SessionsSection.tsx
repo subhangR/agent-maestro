@@ -35,7 +35,11 @@ import { useProjectDocsPaginated } from "../hooks/useProjectDocsPaginated";
 import { useSessionTree } from "../hooks/useSessionTree";
 import { SessionListItem, type SessionTileLinkInfo } from "./maestro/SessionListItem";
 import type { SessionTreeNode } from "../app/types/maestro";
-import { resolveSessionTab, buildChildrenByParent, collectSubtreeIds as collectSubtreeIdsUtil, type SessionSubTab } from "../utils/sessionLifecycle";
+import { resolveSessionTab, buildChildrenByParent, collectSubtreeIds as collectSubtreeIdsUtil, type SessionSubTab, type SessionLifecycleTab } from "../utils/sessionLifecycle";
+import { HuddlesList } from "./maestro/HuddlesList";
+import { ListEndFooter } from "./maestro/ListEndFooter";
+import type { Huddle } from "../app/types/maestro";
+import { maestroClient } from "../utils/MaestroClient";
 import { willOpenStatsOnClick } from "../utils/sessionClickRouting";
 
 // Quick-launch shortcut id → brand logo + display name.
@@ -553,7 +557,7 @@ const SessionItem = React.memo(function SessionItem({
 interface SessionNodeRendererProps {
   node: SessionTreeNode;
   depth: number;
-  tab: SessionSubTab;
+  tab: SessionLifecycleTab;
   collapsedSessions: Set<string>;
   maestroColorMap: Map<string, TeamColor>;
   linkMap: Map<string, SessionTileLinkInfo>;
@@ -929,6 +933,10 @@ export const SessionsSection = React.memo(function SessionsSection({
   // ==================== MAESTRO SESSION TREE ====================
   const [collapsedSessions, setCollapsedSessions] = React.useState<Set<string>>(new Set());
   const [sessionSubTab, setSessionSubTab] = React.useState<SessionSubTab>('open');
+  // When on, the tree shows only spawn-trees with a running terminal somewhere in
+  // their subtree — a transient overlay on top of the Open/Done/Archived tabs,
+  // toggled by the "N live" chip. Picking a tab clears it (see the subtab onClick).
+  const [liveOnly, setLiveOnly] = React.useState(false);
   // The maestro session the user has clicked as "current". Drives the tile
   // highlight even for non-live sessions (which have no active terminal).
 
@@ -977,10 +985,20 @@ export const SessionsSection = React.memo(function SessionsSection({
   // Tab resolution: archivedAt wins → Archived; humanCompletedAt → Done; else Open.
   // No local terminal state needed — tabs survive app restarts.
   const visibleRoots = useMemo(() => {
+    // Live overlay wins: show every spawn-tree (any tab) with a running terminal
+    // somewhere in its subtree — matches the "N live" chip's all-tabs count.
+    if (liveOnly) {
+      return sessionRoots.filter((root) =>
+        collectSubtreeIds(root.id).some((id) => {
+          const link = linkMap.get(id);
+          return link && !link.exited;
+        }),
+      );
+    }
     return sessionRoots.filter(
       (root) => resolveSessionTab(root) === sessionSubTab,
     );
-  }, [sessionRoots, sessionSubTab]);
+  }, [sessionRoots, sessionSubTab, liveOnly, collectSubtreeIds, linkMap]);
 
   // Counts for the Open / Done / Archived sub-tabs (by root).
   const sessionTabCounts = useMemo(() => {
@@ -1000,6 +1018,66 @@ export const SessionsSection = React.memo(function SessionsSection({
     }
     return n;
   }, [projectMaestroSessions, linkMap]);
+
+  // The "N live" chip is hidden when nothing is live; clear the overlay too so the
+  // filter can't get stranded on with no way to toggle it back off.
+  React.useEffect(() => {
+    if (liveCount === 0 && liveOnly) setLiveOnly(false);
+  }, [liveCount, liveOnly]);
+
+  // ==================== HUDDLES (CROSS-PROJECT) ====================
+  // Huddles are connected components of cross-session prompting. They span
+  // projects, so the count is global — independent of sessionTabCounts.
+  // Fetched on mount and whenever the Huddles sub-tab is (re)opened; refreshed
+  // lightly on focus while it's open.
+  const [huddles, setHuddles] = React.useState<Huddle[]>([]);
+  const [huddlesLoading, setHuddlesLoading] = React.useState(false);
+  const [huddlesError, setHuddlesError] = React.useState<string | null>(null);
+
+  const refreshHuddles = useCallback(async (): Promise<void> => {
+    setHuddlesLoading(true);
+    try {
+      const data = await maestroClient.getHuddles();
+      setHuddles(data);
+      setHuddlesError(null);
+    } catch (err) {
+      setHuddlesError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setHuddlesLoading(false);
+    }
+  }, []);
+
+  // Initial fetch + refetch when the Huddles sub-tab is opened.
+  React.useEffect(() => {
+    if (sessionSubTab !== 'huddles') return;
+    let cancelled = false;
+    setHuddlesLoading(true);
+    maestroClient.getHuddles()
+      .then((data) => { if (!cancelled) { setHuddles(data); setHuddlesError(null); } })
+      .catch((err) => { if (!cancelled) setHuddlesError(err instanceof Error ? err.message : String(err)); })
+      .finally(() => { if (!cancelled) setHuddlesLoading(false); });
+    return () => { cancelled = true; };
+  }, [sessionSubTab]);
+
+  // Initial fetch so the badge count is populated even before the user opens the tab.
+  React.useEffect(() => {
+    let cancelled = false;
+    maestroClient.getHuddles()
+      .then((data) => { if (!cancelled) setHuddles(data); })
+      .catch(() => { /* fail quiet — server may not have endpoint on older builds */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // While the Huddles tab is open, refresh when the window regains focus so
+  // newly recorded inter-session prompts surface without a manual reload.
+  React.useEffect(() => {
+    if (sessionSubTab !== 'huddles') return;
+    const onFocus = () => { void refreshHuddles(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [sessionSubTab, refreshHuddles]);
+
+  const huddlesCount = huddles.length;
 
   // Filter-tab counts: active terminals, active (open) sessions, total docs, total diagrams.
   const { total: docsTotal } = useProjectDocsPaginated(activeProjectId, 'markdown');
@@ -1344,9 +1422,15 @@ export const SessionsSection = React.memo(function SessionsSection({
       {/* Sub-tabs for the maestro session tree */}
       {showAgents && (
         <div className="pn-subbar" role="tablist" aria-label="Session filter">
-          {(['open', 'done', 'archived'] as SessionSubTab[]).map((tab) => {
-            const count = sessionTabCounts[tab];
-            const label = tab === 'open' ? 'Open' : tab === 'done' ? 'Done' : 'Archived';
+          {(['open', 'done', 'archived', 'huddles'] as SessionSubTab[]).map((tab) => {
+            const count = tab === 'huddles' ? huddlesCount : sessionTabCounts[tab];
+            const label = tab === 'open'
+              ? 'Open'
+              : tab === 'done'
+                ? 'Done'
+                : tab === 'archived'
+                  ? 'Archived'
+                  : 'Huddles';
             return (
               <button
                 key={tab}
@@ -1354,7 +1438,7 @@ export const SessionsSection = React.memo(function SessionsSection({
                 role="tab"
                 aria-selected={sessionSubTab === tab}
                 className={`pn-subtab ${sessionSubTab === tab ? 'pn-subtab--active' : ''}`}
-                onClick={() => setSessionSubTab(tab)}
+                onClick={() => { setSessionSubTab(tab); setLiveOnly(false); }}
               >
                 <span>{label}</span>
                 {count > 0 && <span className="pn-tab-n">{count}</span>}
@@ -1362,14 +1446,17 @@ export const SessionsSection = React.memo(function SessionsSection({
             );
           })}
           {liveCount > 0 && (
-            <span
-              className="pn-chip"
-              title={`${liveCount} running live`}
+            <button
+              type="button"
+              className={`pn-chip pn-chip--btn ${liveOnly ? 'pn-chip--active' : ''}`}
+              onClick={() => setLiveOnly((v) => !v)}
+              aria-pressed={liveOnly}
+              title={liveOnly ? 'Show all sessions' : `Show only the ${liveCount} live session${liveCount === 1 ? '' : 's'}`}
               style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <span className="pn-dot-wrap"><span className="pn-dot pn-dot--run pn-dot--live" /></span>
               {liveCount} live
-            </span>
+            </button>
           )}
           <button
             type="button"
@@ -1392,12 +1479,22 @@ export const SessionsSection = React.memo(function SessionsSection({
       {showDrawings && <ProjectDocsList projectId={activeProjectId} kind="diagram" />}
 
       <div className="pn-scroll" style={showDocs || showDrawings ? { display: 'none' } : undefined}>
-        {sessions.length === 0 && projectMaestroSessions.length === 0 ? (
+        {sessionSubTab !== 'huddles' && sessions.length === 0 && projectMaestroSessions.length === 0 ? (
           <div className="empty">No sessions in this project.</div>
         ) : (
           <>
+            {/* Huddles sub-tab — cross-project list of inter-session prompt clusters. */}
+            {showAgents && sessionSubTab === 'huddles' && (
+              <HuddlesList
+                huddles={huddles}
+                loading={huddlesLoading}
+                error={huddlesError}
+                onSessionClick={handleOpenSessionDetail}
+              />
+            )}
+
             {/* Maestro session tree (spawn-chain hierarchy) */}
-            {showAgents && (
+            {showAgents && sessionSubTab !== 'huddles' && (
               visibleRoots.length === 0 ? (
                 <div className="sessionEmptyState">
                   <span className="sessionEmptyState__icon" aria-hidden="true" style={{ color: 'var(--pn-ink-4)' }}>
@@ -1426,7 +1523,7 @@ export const SessionsSection = React.memo(function SessionsSection({
                         key={root.id}
                         node={root}
                         depth={0}
-                        tab={sessionSubTab}
+                        tab={sessionSubTab as SessionLifecycleTab}
                         collapsedSessions={collapsedSessions}
                         maestroColorMap={maestroColorMap}
                         linkMap={linkMap}
@@ -1481,6 +1578,9 @@ export const SessionsSection = React.memo(function SessionsSection({
                 </SortableContext>
               </DndContext>
             )}
+
+            {((showAgents && sessionSubTab !== 'huddles' && visibleRoots.length > 0) ||
+              (showTerminals && filteredTerminalSessions.length > 0)) && <ListEndFooter />}
           </>
         )}
       </div>

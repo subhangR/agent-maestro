@@ -25,6 +25,8 @@ import { registerTeamCommands } from './commands/team.js';
 import { registerSpellCommands } from './commands/spell.js';
 import { registerAnnounceCommands } from './commands/announce.js';
 import { registerGitCommands } from './commands/git.js';
+import { registerCommandLogCommands } from './commands/command-log.js';
+import { installCommandTracker, setTrackedCommand } from './services/command-tracker.js';
 import {
   loadCommandPermissions,
   printAvailableCommands,
@@ -152,7 +154,22 @@ if (process.env.MAESTRO_CLI_VERSION) {
   cliVersion = pkg.version;
 }
 
+// Install command tracker before parsing so every invocation (including
+// failures and unknown commands) is logged with its real exit code.
+installCommandTracker(cliVersion);
+
 const program = new Command();
+
+function resolveCommandPath(actionCommand: Command): string {
+  const names: string[] = [];
+  let current: Command | null = actionCommand;
+  // Walk up to (but not including) the root program, which has no parent.
+  while (current && current.parent) {
+    names.unshift(current.name());
+    current = current.parent;
+  }
+  return names.join(' ');
+}
 
 program
   .name('maestro')
@@ -161,11 +178,12 @@ program
   .option('--json', 'Output results as JSON')
   .option('--server <url>', 'Override Maestro Server URL')
   .option('--project <id>', 'Override Project ID')
-  .hook('preAction', (thisCommand) => {
+  .hook('preAction', (thisCommand, actionCommand) => {
     const opts = thisCommand.opts();
     if (opts.server) {
       api.setBaseUrl(opts.server);
     }
+    setTrackedCommand(resolveCommandPath(actionCommand));
   });
 
 program.command('whoami')
@@ -357,6 +375,7 @@ registerTeamCommands(program);
 registerSpellCommands(program);
 registerAnnounceCommands(program);
 registerGitCommands(program);
+registerCommandLogCommands(program);
 program.command('status')
   .description('Show summary of current project state')
   .action(async () => {

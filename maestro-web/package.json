@@ -1,0 +1,20 @@
+{
+  "name": "maestro-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal browser view for Maestro server-hosted PTY streaming (POC)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4571 --strictPort"
+  },
+  "dependencies": {
+    "xterm": "^5.0.0",
+    "xterm-addon-fit": "^0.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8"
+  }
+}

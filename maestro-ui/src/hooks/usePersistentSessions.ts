@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { formatError } from "../utils/formatters";
 import { closeSession } from "../services/sessionService";
 import type { PersistentSessionsModalItem } from "../components/modals/PersistentSessionsModal";
@@ -65,6 +66,12 @@ export function usePersistentSessions({
 
     // Fetch persistent sessions from backend
     const refreshPersistentSessions = useCallback(async () => {
+        if (!IS_TAURI) {
+            setPersistentSessions([]);
+            setPersistentSessionsLoading(false);
+            setPersistentSessionsError(null);
+            return;
+        }
         setPersistentSessionsLoading(true);
         setPersistentSessionsError(null);
         try {
@@ -91,8 +98,8 @@ export function usePersistentSessions({
             const toClose = sessions.filter((s) => s.persistId === persistId).map((s) => s.id);
             await Promise.all(toClose.map((id) => closeSession(id).catch(() => { })));
 
-            // Kill backend session
-            await invoke("kill_persistent_session", { persistId });
+            // Kill backend session (Tauri only)
+            if (IS_TAURI) await invoke("kill_persistent_session", { persistId });
 
             // Update local state
             setSessions((prev) => prev.filter((s) => s.persistId !== persistId));

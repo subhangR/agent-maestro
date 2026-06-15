@@ -137,6 +137,8 @@ describe('ClaudeSpawner', () => {
 
   describe('buildClaudeArgs', () => {
     const officialClaudeModels = [
+      'claude-fable-5',
+      'claude-fable-5[1m]',
       'claude-opus-4-8',
       'claude-opus-4-7',
       'claude-opus-4-7[1m]',

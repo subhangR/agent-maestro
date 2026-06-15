@@ -195,7 +195,7 @@ export function normalizeManifest(
   }
 
   if (isCoordinatedMode(normalized.mode) && !normalized.coordinatorSessionId) {
-    errors.push(`Coordinated mode "${normalized.mode}" requires coordinatorSessionId.`);
+    warnings.push(`Coordinated mode "${normalized.mode}" has no coordinatorSessionId; proceeding without it.`);
   }
 
   const deprecatedWorkflowFieldsPresent = hasDeprecatedWorkflowFields(normalized);

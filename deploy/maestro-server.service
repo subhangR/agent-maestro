@@ -1,0 +1,53 @@
+# deploy/maestro-server.service — systemd unit template for Maestro Server
+#
+# Placeholders (filled in by deploy.sh):
+#   %%USER%%         — OS user to run the service as (e.g. ubuntu)
+#   %%REPO_DIR%%     — Absolute path to the cloned/synced repo (e.g. /home/ubuntu/maestro)
+#   %%NODE_BIN%%     — Absolute path to the node binary (e.g. /usr/bin/node)
+#   %%ENV_FILE%%     — Absolute path to the env file (e.g. /etc/maestro/maestro.env)
+#
+# To install manually (after filling in placeholders):
+#   cp maestro-server.service /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable maestro-server
+#   systemctl start maestro-server
+#
+# To view logs:
+#   journalctl -u maestro-server -f
+
+[Unit]
+Description=Maestro Server — Multi-agent orchestration backend
+Documentation=https://github.com/subhangR/maestro
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%%USER%%
+Group=%%USER%%
+WorkingDirectory=%%REPO_DIR%%
+
+# Load runtime environment from a 600-permission file (no secrets in unit)
+EnvironmentFile=%%ENV_FILE%%
+
+# RUNTIME must be node — not bun.
+# node-pty onData does not fire under bun; bun also strips the spawn-helper exec bit.
+ExecStart=%%NODE_BIN%% %%REPO_DIR%%/maestro-server/dist/server.js
+
+# Restart policy
+Restart=always
+RestartSec=3
+StartLimitBurst=5
+StartLimitIntervalSec=30
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=maestro-server
+
+# Security hardening (optional but recommended)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

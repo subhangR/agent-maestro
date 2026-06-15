@@ -4,11 +4,16 @@ import { spawn as spawnProcess } from 'child_process';
 import { existsSync, readdirSync } from 'fs';
 import { readFile, mkdir, writeFile } from 'fs/promises';
 import { join, resolve as resolvePath, delimiter as pathDelimiter } from 'path';
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 import { randomUUID } from 'crypto';
 import { SessionService } from '../application/services/SessionService';
+import { PtyHostService } from '../application/services/PtyHostService';
+import { SessionPromptService } from '../application/services/SessionPromptService';
+import { HuddleService } from '../application/services/HuddleService';
+import { CommandUsageService } from '../application/services/CommandUsageService';
 import { GitService } from '../application/services/GitService';
 import { LogDigestService } from '../application/services/LogDigestService';
+import { TeamService } from '../application/services/TeamService';
 import { IProjectRepository } from '../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../domain/repositories/ITaskRepository';
 import { IEventBus } from '../domain/events/IEventBus';
@@ -37,6 +42,7 @@ import {
   extractPagination,
   paginate,
   updateDocContentSchema,
+  sendSessionPromptSchema,
 } from './validation';
 
 function resolveMaestroCliRuntime(cliPathOverride?: string): { maestroBin: string; monorepoRoot: string | null } {
@@ -46,10 +52,12 @@ function resolveMaestroCliRuntime(cliPathOverride?: string): { maestroBin: strin
   }
   if (!isPkg) {
     const monorepoRoot = resolvePath(__dirname, '..', '..', '..');
-    return {
-      maestroBin: join(monorepoRoot, 'node_modules', '.bin', 'maestro'),
-      monorepoRoot,
-    };
+    // On Windows, node_modules/.bin contains .exe/.cmd shims, not bare names.
+    // Use the CLI entry point directly via node to avoid extension issues.
+    const maestroBin = platform() === 'win32'
+      ? join(monorepoRoot, 'maestro-cli', 'bin', 'maestro.js')
+      : join(monorepoRoot, 'node_modules', '.bin', 'maestro');
+    return { maestroBin, monorepoRoot };
   }
   return { maestroBin: 'maestro', monorepoRoot: null };
 }
@@ -108,6 +116,7 @@ async function generateManifestViaCLI(options: {
   referenceTaskIds?: string[];
   teamMemberIds?: string[];
   teamMemberId?: string;
+  teamId?: string;
   serverUrl?: string;
   initialDirective?: { subject: string; message: string; fromSessionId?: string };
   coordinatorSessionId?: string;
@@ -118,7 +127,7 @@ async function generateManifestViaCLI(options: {
   sessionDir?: string;
   cliPathOverride?: string;
 }): Promise<{ manifestPath: string; manifest: any }> {
-  const { mode, projectId, taskIds, skills, sessionId, launchConfig, agentTool, referenceTaskIds, teamMemberIds, teamMemberId, serverUrl, initialDirective, memberOverrides, cliPathOverride } = options;
+  const { mode, projectId, taskIds, skills, sessionId, launchConfig, agentTool, referenceTaskIds, teamMemberIds, teamMemberId, teamId, serverUrl, initialDirective, memberOverrides, cliPathOverride } = options;
 
   const resolvedSessionDir = options.sessionDir ?? join(homedir(), '.maestro', 'sessions');
   const maestroDir = join(resolvedSessionDir, sessionId);
@@ -138,6 +147,7 @@ async function generateManifestViaCLI(options: {
     ...(referenceTaskIds && referenceTaskIds.length > 0 ? ['--reference-task-ids', referenceTaskIds.join(',')] : []),
     ...(teamMemberIds && teamMemberIds.length > 0 ? ['--team-member-ids', teamMemberIds.join(',')] : []),
     ...(teamMemberId ? ['--team-member-id', teamMemberId] : []),
+    ...(teamId ? ['--team-id', teamId] : []),
   ];
 
   const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(cliPathOverride);
@@ -180,20 +190,25 @@ async function generateManifestViaCLI(options: {
   const MAX_OUTPUT_BYTES = 10 * 1024;
 
   return new Promise((resolve, reject) => {
-    // Raise file descriptor limit before spawning to prevent "low max file
-    // descriptors" errors from Claude Code (macOS default of 2560 is too low).
-    // Explicitly set cwd to $HOME so the shell can getcwd() during init —
-    // when launched from Finder the process cwd may be "/" which is
-    // inaccessible due to macOS SIP/TCC restrictions.
-    const child = spawnProcess(
-      '/bin/sh',
-      ['-c', 'ulimit -n 2147483646 2>/dev/null; exec "$@"', 'sh', maestroBin, ...args],
-      {
-        cwd: homedir(),
-        stdio: ['ignore', 'pipe', 'pipe'],
-        env: spawnEnv as NodeJS.ProcessEnv,
-      },
-    );
+    // On Unix: raise file descriptor limit before spawning to prevent "low max
+    // file descriptors" errors from Claude Code (macOS default of 2560 is too
+    // low). On Windows: spawn the binary directly (ulimit doesn't exist).
+    const isWindows = platform() === 'win32';
+    const child = isWindows
+      ? spawnProcess(process.execPath, [maestroBin, ...args], {
+          cwd: homedir(),
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: spawnEnv as NodeJS.ProcessEnv,
+        })
+      : spawnProcess(
+          '/bin/sh',
+          ['-c', 'ulimit -n 2147483646 2>/dev/null; exec "$@"', 'sh', maestroBin, ...args],
+          {
+            cwd: homedir(),
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: spawnEnv as NodeJS.ProcessEnv,
+          },
+        );
 
     let stdout = '';
     let stderr = '';
@@ -208,10 +223,15 @@ async function generateManifestViaCLI(options: {
       if (stderr.length > MAX_OUTPUT_BYTES) stderr = stderr.slice(-MAX_OUTPUT_BYTES);
     });
 
-    // Timeout: SIGTERM then SIGKILL if still alive
+    // Timeout: kill the process. On Windows child.kill() sends TerminateProcess;
+    // on Unix we try SIGTERM first, then SIGKILL as a fallback.
     const killTimer = setTimeout(() => {
-      child.kill('SIGTERM');
-      setTimeout(() => { if (!child.killed) child.kill('SIGKILL'); }, 5000);
+      if (isWindows) {
+        child.kill();
+      } else {
+        child.kill('SIGTERM');
+        setTimeout(() => { if (!child.killed) child.kill('SIGKILL'); }, 5000);
+      }
     }, MANIFEST_TIMEOUT_MS);
 
     child.on('exit', async (code) => {
@@ -448,22 +468,93 @@ function combineMode(relation: ModeRelation, role: ModeRole): AgentMode {
 
 interface SessionRouteDependencies {
   sessionService: SessionService;
+  sessionPromptService: SessionPromptService;
+  huddleService: HuddleService;
+  commandUsageService: CommandUsageService;
   logDigestService: LogDigestService;
+  teamService: TeamService;
   projectRepo: IProjectRepository;
   taskRepo: ITaskRepository;
   teamMemberRepo: ITeamMemberRepository;
   modelProfileRepo: IModelProfileRepository;
   eventBus: IEventBus;
   config: Config;
+  ptyHostService: PtyHostService;
 }
 
 /**
  * Create session routes using the SessionService.
  */
 export function createSessionRoutes(deps: SessionRouteDependencies) {
-  const { sessionService, logDigestService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config } = deps;
+  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config, ptyHostService } = deps;
   const gitService = new GitService();
   const router = express.Router();
+
+  // Clamp a browser-reported terminal dimension from an UNVALIDATED body (the
+  // resume route has no body schema). Mirrors ptyDimensionSchema; returns
+  // undefined for anything out of range so spawn falls back to its default.
+  const clampPtyDim = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 1000 ? v : undefined;
+
+  // DEV ONLY: spawn a raw interactive shell PTY for browser-streaming tests,
+  // bypassing the manifest/CLI pipeline. Gated to server-hosted PTY mode and
+  // intended for the local, trusted-network POC only (no auth).
+  router.post('/dev/pty-test', async (req: Request, res: Response) => {
+    if (config.ptyHost !== 'server') {
+      return res.status(403).json({
+        error: true,
+        code: 'pty_host_not_server',
+        message: 'Server-hosted PTY is disabled. Start with MAESTRO_PTY_HOST=server.',
+      });
+    }
+    const shell = process.env.SHELL || '/bin/bash';
+    const sessionId = 'devpty-' + randomUUID().slice(0, 8);
+    const cwd = typeof req.body?.cwd === 'string' ? req.body.cwd : homedir();
+    try {
+      ptyHostService.spawn({
+        sessionId,
+        command: `${shell} -i`,
+        cwd,
+        env: { ...process.env } as Record<string, string>,
+        cols: 80,
+        rows: 24,
+      });
+      return res.status(201).json({ sessionId });
+    } catch (err) {
+      return res.status(500).json({
+        error: true,
+        code: 'pty_spawn_failed',
+        message: err instanceof Error ? err.message : 'Failed to spawn dev PTY',
+      });
+    }
+  });
+
+  // Explicitly terminate a server-hosted PTY for a session. This is the ONLY
+  // user-initiated path that kills a server PTY (besides spawn-replace and
+  // server shutdown). Closing a /pty WebSocket — tab close, reload, device
+  // switch — only detaches a subscriber and leaves the process running, so the
+  // UI must call this when the user explicitly stops/closes a session.
+  router.post('/sessions/:id/pty/stop', validateParams(idParamSchema), async (req: Request, res: Response) => {
+    if (config.ptyHost !== 'server') {
+      return res.status(403).json({
+        error: true,
+        code: 'pty_host_not_server',
+        message: 'Server-hosted PTY is disabled. Start with MAESTRO_PTY_HOST=server.',
+      });
+    }
+    const id = req.params.id as string;
+    try {
+      ptyHostService.kill(id);
+      await sessionService.updateSession(id, { status: 'stopped' });
+      return res.json({ success: true });
+    } catch (err) {
+      return res.status(500).json({
+        error: true,
+        code: 'pty_stop_failed',
+        message: err instanceof Error ? err.message : 'Failed to stop server PTY',
+      });
+    }
+  });
 
   // Summary DTO for list views — strips env, events, timeline, metadata
   function toSessionSummary(session: any): Record<string, any> {
@@ -722,6 +813,62 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
     }
   });
 
+  // Regenerate the on-disk manifest.json for an existing session under a new mode.
+  // `coordinator enable`/`disable` flips server-side metadata.mode, but the CLI's
+  // capability layer (guardCommand, `maestro commands`, capability flags) reads the
+  // frozen spawn-time manifest — so without this the agent keeps seeing the old
+  // role's permissions and never gains coordinator commands like `session spawn`.
+  // Coordinated modes require coordinatorSessionId or the CLI normalizer rejects
+  // the manifest, so it's threaded through from the session's parent linkage.
+  async function regenerateManifestForMode(session: any, mode: AgentMode): Promise<string> {
+    const project = await projectRepo.findById(session.projectId);
+    const storedLaunchConfig = session.metadata?.launchConfig
+      ? sanitizeLaunchConfig(session.metadata.launchConfig as LaunchConfig)
+      : undefined;
+    const resolvedModel: string | undefined = storedLaunchConfig?.model || session.metadata?.model || undefined;
+    const agentTool: AgentTool = session.metadata?.agentTool || 'claude-code';
+    const coordinatorSessionId: string | undefined =
+      session.parentSessionId || session.env?.MAESTRO_COORDINATOR_SESSION_ID || undefined;
+
+    const tasks = await Promise.all(session.taskIds.map((taskId: string) => taskRepo.findById(taskId)));
+    const referenceTaskIds: string[] = [];
+    for (const task of tasks) {
+      if (task?.referenceTaskIds) {
+        for (const refId of task.referenceTaskIds) {
+          if (!referenceTaskIds.includes(refId)) referenceTaskIds.push(refId);
+        }
+      }
+    }
+    await taskRepo.flush();
+
+    const result = await generateManifestViaCLI({
+      mode,
+      projectId: session.projectId,
+      taskIds: session.taskIds,
+      skills: session.metadata?.skills || [],
+      sessionId: session.id,
+      launchConfig: storedLaunchConfig
+        ?? (resolvedModel
+          ? sanitizeLaunchConfig({
+              provider: providerForModel(resolvedModel) || providerForAgentTool(agentTool),
+              model: resolvedModel,
+            })
+          : undefined),
+      agentTool,
+      referenceTaskIds: referenceTaskIds.length > 0 ? referenceTaskIds : undefined,
+      teamMemberIds: session.metadata?.teamMemberIds || undefined,
+      teamMemberId: session.metadata?.teamMemberId || undefined,
+      teamId: session.teamId || undefined,
+      permissionMode: (session.metadata?.permissionMode as string | undefined) || undefined,
+      coordinatorSessionId,
+      serverUrl: config.serverUrl,
+      isMaster: project?.isMaster === true,
+      sessionDir: config.sessionDir,
+      cliPathOverride: config.manifestGenerator.cliPath,
+    });
+    return result.manifestPath;
+  }
+
   // Change session mode (role only — relation is immutable)
   router.post('/sessions/:id/mode', validateParams(idParamSchema), validateBody(modeBodySchema), async (req: Request, res: Response) => {
     try {
@@ -746,6 +893,23 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       }
 
       const { previousMode } = await sessionService.changeMode(id, newMode);
+
+      // Refresh the on-disk manifest so the CLI's capability layer reflects the
+      // new role immediately. Non-fatal: a stale manifest still leaves the
+      // server-side spawn gate (which reads live metadata.mode) working.
+      let manifestRegenerated = false;
+      try {
+        const manifestPath = await regenerateManifestForMode(session, newMode);
+        if (session.env?.MAESTRO_MANIFEST_PATH && session.env.MAESTRO_MANIFEST_PATH !== manifestPath) {
+          await sessionService.updateSession(id, {
+            env: { ...session.env, MAESTRO_MANIFEST_PATH: manifestPath },
+          });
+        }
+        manifestRegenerated = true;
+      } catch (regenErr) {
+        console.warn('[mode] Failed to regenerate manifest after mode change:', regenErr instanceof Error ? regenErr.message : regenErr);
+      }
+
       await eventBus.emit('session:mode_changed', {
         sessionId: id,
         mode: newMode,
@@ -754,7 +918,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         timestamp: Date.now(),
       });
 
-      res.json({ id, mode: newMode, previousMode, changed: true });
+      res.json({ id, mode: newMode, previousMode, changed: true, manifestRegenerated });
     } catch (err: unknown) {
       handleRouteError(err, res);
     }
@@ -1029,19 +1193,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
   });
 
   // Send a prompt to a session's terminal
-  router.post('/sessions/:id/prompt', validateParams(idParamSchema), async (req: Request, res: Response) => {
+  router.post('/sessions/:id/prompt', validateParams(idParamSchema), validateBody(sendSessionPromptSchema), async (req: Request, res: Response) => {
     try {
-      const { content, mode = 'send', senderSessionId } = req.body;
-
-      if (!content || typeof content !== 'string') {
-        return res.status(400).json({ error: 'content is required and must be a string' });
-      }
-      if (!['send', 'paste'].includes(mode)) {
-        return res.status(400).json({ error: 'mode must be "send" or "paste"' });
-      }
-      if (!senderSessionId || typeof senderSessionId !== 'string') {
-        return res.status(400).json({ error: 'senderSessionId is required and must be a string' });
-      }
+      const { content, mode, senderSessionId } = req.body as { content: string; mode: 'send' | 'paste'; senderSessionId: string };
 
       const sessionId = req.params.id as string;
       const [session, senderSession] = await Promise.all([
@@ -1092,7 +1246,64 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         { senderSessionId, mode }
       );
 
+      // Persist a durable, cross-project record with CLEAN content (no [From:] prefix).
+      // This is one edge in the Huddle graph. Best-effort: a failure here must not
+      // break terminal injection, which already succeeded above.
+      try {
+        await sessionPromptService.record({
+          fromSessionId: senderSessionId,
+          toSessionId: sessionId,
+          content,
+          mode,
+        });
+      } catch (recordErr) {
+        console.warn('Failed to record session prompt:', (recordErr as Error).message);
+      }
+
       res.json({ success: true });
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  // Get all session prompts where this session is sender or receiver
+  router.get('/sessions/:id/prompts', validateParams(idParamSchema), async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.params.id as string;
+      const prompts = await sessionPromptService.getForSession(sessionId);
+      res.json(prompts);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  // Get tracked maestro CLI command usage (commands, exit codes, failures) for this session
+  router.get('/sessions/:id/command-usage', validateParams(idParamSchema), async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.params.id as string;
+      const usage = await commandUsageService.getForSession(sessionId);
+      res.json(usage);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  // Get every session prompt across all projects (the full Huddle edge set)
+  router.get('/session-prompts', async (_req: Request, res: Response) => {
+    try {
+      const prompts = await sessionPromptService.getAll();
+      res.json(prompts);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  // Get all Huddles: connected components over the session-prompt graph
+  // (cross-project, all-time). Sorted by lastActivity desc.
+  router.get('/huddles', async (_req: Request, res: Response) => {
+    try {
+      const huddles = await huddleService.computeHuddles();
+      res.json(huddles);
     } catch (err: unknown) {
       handleRouteError(err, res);
     }
@@ -1222,6 +1433,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         teamMemberIds,          // Multiple team member identities for this session
         delegateTeamMemberIds,  // Team member IDs for coordination delegation pool
         teamMemberId,           // Single team member assigned to this task (backward compat)
+        teamId: requestedTeamId, // Saved team this session belongs to (recursive team launch)
         launchConfig: rawRequestedLaunchConfig, // Canonical launch override for this run
         agentTool: legacyRequestedAgentTool,
         model: legacyRequestedModel,
@@ -1461,6 +1673,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       // Fetch team member defaults from the effective members (after task-level fallback)
       const MODEL_POWER: Record<string, number> = {
+        'claude-fable-5[1m]': 6.1,
+        'claude-fable-5': 6.0,
         'claude-opus-4-8[1m]': 5.9,
         'claude-opus-4-8': 5.8,
         'gpt-5.5': 5.5,
@@ -1618,6 +1832,35 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Pre-generate Claude session ID for resume support
       const claudeSessionId = randomUUID();
 
+      // Resolve the saved team this session belongs to so the whole spawn tree stays
+      // team-bound. An explicit request always wins (passing teamId: null clears it);
+      // only when the request omits teamId do we inherit from the parent (recursive
+      // spawn) and then fall back to the task's team.
+      let effectiveTeamId: string | null =
+        requestedTeamId !== undefined
+          ? (requestedTeamId || null)
+          : (parentSession?.teamId || verifiedTasks.find(t => t?.teamId)?.teamId || null);
+
+      // Scope recursion: when a coordinator spawns a member who leads a sub-team within
+      // the bound team, re-root the child to that sub-team so each level only sees and
+      // delegates within its own branch (instead of re-rendering the whole org tree).
+      // Gated to coordinator spawns — only there does a single team member reliably mean
+      // "self" (a worker spawn could carry one member who merely happens to lead a sub-team).
+      if (effectiveTeamId && requestedCoordinatorMode && effectiveTeamMemberIds.length === 1) {
+        try {
+          const subTeamId = await teamService.findSubTeamLedBy(
+            projectId,
+            effectiveTeamId,
+            effectiveTeamMemberIds[0]
+          );
+          if (subTeamId) {
+            effectiveTeamId = subTeamId;
+          }
+        } catch {
+          // Non-fatal: keep the inherited team binding if sub-team lookup fails.
+        }
+      }
+
       const session = await sessionService.createSession({
         projectId,
         taskIds,
@@ -1625,6 +1868,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         claudeSessionId,
         status: 'spawning',
         env: {},
+        teamId: effectiveTeamId,
         metadata: {
           skills: skillsToUse,
           spawnedBy: resolvedParentSessionId,
@@ -1736,6 +1980,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             : (effectiveDelegateTeamMemberIds.length > 0 ? effectiveDelegateTeamMemberIds : undefined),
           // Single identity: backward compat
           teamMemberId: effectiveTeamMemberIds.length === 1 ? effectiveTeamMemberIds[0] : undefined,
+          // Saved team this session belongs to (drives recursive team structure in manifest)
+          teamId: effectiveTeamId || undefined,
           // Pass server URL so CLI subprocess can reach the API
           serverUrl: config.serverUrl,
           // Pass initial directive for guaranteed delivery in manifest
@@ -1767,9 +2013,13 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Prepare spawn data
       const resolvedAgentTool = resolvedAgentToolFromMember || 'claude-code';
       const initCommand = isCoordinatorMode(resolvedMode) ? 'orchestrator' : 'worker';
-      const command = `maestro ${initCommand} init`;
       const cwd = worktreeResult?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
+      // On Windows, cmd.exe may not find bare `maestro` even with PATH set,
+      // so use `node <path>` to invoke the CLI entry point directly.
+      const command = platform() === 'win32'
+        ? `node ${maestroBin} ${initCommand} init`
+        : `maestro ${initCommand} init`;
 
       // Pass through auth-related API keys from server environment
       const authEnvKeys = [
@@ -1844,6 +2094,30 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       };
 
       await eventBus.emit('session:spawn', spawnEvent);
+
+      // When the server hosts PTYs (headless/web), spawn the agent process here.
+      // The Tauri desktop path (ptyHost === 'tauri') relies on the event above instead.
+      if (config.ptyHost === 'server') {
+        try {
+          ptyHostService.spawn({
+            sessionId: session.id,
+            command,
+            cwd,
+            env: finalEnvVars,
+            // Boot the PTY at the browser's measured size (validated by
+            // spawnSessionSchema) so the agent never renders at the 80x24
+            // default and then desyncs against the wider xterm grid.
+            cols: req.body.cols,
+            rows: req.body.rows,
+          });
+        } catch (ptyErr) {
+          return res.status(500).json({
+            error: true,
+            code: 'pty_spawn_failed',
+            message: ptyErr instanceof Error ? ptyErr.message : 'Failed to spawn server PTY',
+          });
+        }
+      }
 
       // Emit task:session_added events (parallelized)
       await Promise.all(
@@ -1966,6 +2240,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           referenceTaskIds: allReferenceTaskIds.length > 0 ? allReferenceTaskIds : undefined,
           teamMemberIds: session.metadata?.teamMemberIds || undefined,
           teamMemberId: session.metadata?.teamMemberId || undefined,
+          teamId: session.teamId || undefined,
           permissionMode: resumePermissionMode,
           serverUrl: config.serverUrl,
           isMaster: project.isMaster === true,
@@ -1999,9 +2274,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       // Determine command: resume if session had a Claude session ID, fresh spawn otherwise
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
-      const command = hadClaudeSessionId
-        ? `maestro ${initCommand} resume`
-        : `maestro ${initCommand} init`;
+      const subcommand = hadClaudeSessionId ? 'resume' : 'init';
+      const command = platform() === 'win32'
+        ? `node ${maestroBin} ${initCommand} ${subcommand}`
+        : `maestro ${initCommand} ${subcommand}`;
 
       // Reconstruct env vars — reuse stored env, refresh dynamic values
       const finalEnvVars: Record<string, string> = {
@@ -2069,6 +2345,31 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       };
 
       await eventBus.emit('session:resume', resumeEvent);
+
+      // When the server hosts PTYs (headless/web), spawn the agent process here.
+      // The Tauri desktop path (ptyHost === 'tauri') relies on the event above instead.
+      // Without this, the browser's PTY WebSocket attaches to a non-existent session
+      // and is immediately closed (1011 "no live PTY"), so resume hangs on web-ui.
+      if (config.ptyHost === 'server') {
+        try {
+          ptyHostService.spawn({
+            sessionId: session.id,
+            command,
+            cwd,
+            env: finalEnvVars,
+            // Resume body is unvalidated — clamp the browser's measured size so
+            // the resumed PTY boots at the real pane width, not the 80x24 default.
+            cols: clampPtyDim(req.body?.cols),
+            rows: clampPtyDim(req.body?.rows),
+          });
+        } catch (ptyErr) {
+          return res.status(500).json({
+            error: true,
+            code: 'pty_spawn_failed',
+            message: ptyErr instanceof Error ? ptyErr.message : 'Failed to spawn server PTY',
+          });
+        }
+      }
 
       res.json({
         success: true,

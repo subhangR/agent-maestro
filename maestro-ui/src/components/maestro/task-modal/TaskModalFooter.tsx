@@ -1,7 +1,8 @@
-import React from "react";
-import { TeamMember } from "../../../app/types/maestro";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { TeamMember, Team } from "../../../app/types/maestro";
 import { AutoSaveStatus } from "../../../hooks/useAutoSave";
-import { TeamMemberSelector } from "./TeamMemberSelector";
+import { TeamTaskPicker } from "./TeamTaskPicker";
 import { Icon, AgentTile } from "../redesign/kit";
 
 type TaskModalFooterProps = {
@@ -9,7 +10,14 @@ type TaskModalFooterProps = {
     isValid: boolean;
     selectedTeamMemberIds: string[];
     onTeamMemberSelectionChange: (ids: string[]) => void;
+    teams: Team[];
+    selectedTeamId: string | null;
+    onTeamChange: (teamId: string | null) => void;
     teamMembers: TeamMember[];
+    dangerousMode: boolean;
+    onDangerousModeChange: (value: boolean) => void;
+    useWorktree: boolean;
+    onUseWorktreeChange: (value: boolean) => void;
     onClose: () => void;
     onSave: () => void;
     onSubmit: (startImmediately: boolean) => void;
@@ -36,7 +44,14 @@ export function TaskModalFooter({
     isValid,
     selectedTeamMemberIds,
     onTeamMemberSelectionChange,
+    teams,
+    selectedTeamId,
+    onTeamChange,
     teamMembers,
+    dangerousMode,
+    onDangerousModeChange,
+    useWorktree,
+    onUseWorktreeChange,
     onClose,
     onSave,
     onSubmit,
@@ -51,6 +66,77 @@ export function TaskModalFooter({
     const soleMember = selectedTeamMemberIds.length === 1
         ? teamMembers.find(m => m.id === selectedTeamMemberIds[0])
         : undefined;
+
+    const selectedTeam = selectedTeamId ? teams.find(t => t.id === selectedTeamId) : undefined;
+
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const pickerWrapRef = useRef<HTMLDivElement>(null);
+    const pickerBtnRef = useRef<HTMLButtonElement>(null);
+    const pickerPanelRef = useRef<HTMLDivElement>(null);
+    // The picker panel is portaled to document.body — the modal sets
+    // overflow:hidden, which would otherwise clip a panel positioned inside it.
+    const [pickerPos, setPickerPos] = useState<{ left: number; bottom: number } | null>(null);
+
+    useLayoutEffect(() => {
+        if (!pickerOpen) return;
+        const recalcPos = () => {
+            const btn = pickerBtnRef.current;
+            if (!btn) return;
+            const rect = btn.getBoundingClientRect();
+            const width = 340;
+            const PANEL_MAX_HEIGHT = 400;
+
+            // Horizontal: center on button, then clamp to viewport (guard
+            // against inverted range on very narrow viewports).
+            const buttonCenter = rect.left + rect.width / 2;
+            const maxLeft = Math.max(8, window.innerWidth - width - 8);
+            const left = Math.min(Math.max(8, buttonCenter - width / 2), maxLeft);
+
+            // Vertical: prefer anchoring above the button; fall back to below,
+            // then to the largest available slot if neither fits.
+            const spaceAbove = rect.top;
+            const spaceBelow = window.innerHeight - rect.bottom;
+            let bottom: number;
+            if (spaceAbove >= PANEL_MAX_HEIGHT + 6) {
+                bottom = window.innerHeight - rect.top + 6;
+            } else if (spaceBelow >= PANEL_MAX_HEIGHT + 6) {
+                bottom = window.innerHeight - (rect.bottom + 6 + PANEL_MAX_HEIGHT);
+            } else {
+                bottom = Math.max(8, Math.min(window.innerHeight - rect.top + 6,
+                    window.innerHeight - PANEL_MAX_HEIGHT - 8));
+            }
+
+            setPickerPos({ left, bottom });
+        };
+        recalcPos();
+        // The button moves when the modal body scrolls or the window resizes;
+        // re-run so the portaled panel stays anchored (capture catches scroll
+        // on the inner .pn-mdl__body, which doesn't bubble).
+        window.addEventListener("resize", recalcPos);
+        window.addEventListener("scroll", recalcPos, true);
+        return () => {
+            window.removeEventListener("resize", recalcPos);
+            window.removeEventListener("scroll", recalcPos, true);
+        };
+    }, [pickerOpen]);
+
+    useEffect(() => {
+        if (!pickerOpen) return;
+        const onDocClick = (e: MouseEvent) => {
+            const target = e.target as Node;
+            if (pickerBtnRef.current?.contains(target)) return;
+            if (pickerPanelRef.current?.contains(target)) return;
+            setPickerOpen(false);
+        };
+        document.addEventListener("mousedown", onDocClick);
+        return () => document.removeEventListener("mousedown", onDocClick);
+    }, [pickerOpen]);
+
+    const assigneeLabel = selectedTeam
+        ? `${selectedTeam.avatar || "👥"} ${selectedTeam.name}`
+        : hasMembers
+            ? (soleMember ? `${soleMember.avatar} ${soleMember.name}` : `${selectedTeamMemberIds.length} members`)
+            : "Assign…";
 
     const gearBtn = hasMembers ? (
         <button
@@ -72,11 +158,67 @@ export function TaskModalFooter({
     return (
         <div className="pn-mdl__foot">
             <div className="pn-mdl__footL">
-                <TeamMemberSelector
-                    selectedTeamMemberIds={selectedTeamMemberIds}
-                    onSelectionChange={onTeamMemberSelectionChange}
-                    teamMembers={teamMembers}
-                />
+                <div className="ttp-pop" ref={pickerWrapRef} style={{ position: "relative" }}>
+                    <button
+                        ref={pickerBtnRef}
+                        type="button"
+                        className={`pn-mchip ${(selectedTeam || hasMembers) ? 'pn-mchip--ref' : ''}`}
+                        onClick={() => setPickerOpen(o => !o)}
+                        title="Assign a team or team members"
+                    >
+                        {selectedTeam ? <Icon name="team" size={13} /> : <Icon name="users" size={13} />}
+                        <span style={{ marginLeft: 4 }}>{assigneeLabel}</span>
+                    </button>
+                    {pickerOpen && pickerPos && createPortal(
+                        <div
+                            ref={pickerPanelRef}
+                            className="ttp-pop__panel"
+                            style={{
+                                position: "fixed",
+                                left: pickerPos.left,
+                                bottom: pickerPos.bottom,
+                                width: 340,
+                                maxWidth: "calc(100vw - 16px)",
+                                maxHeight: 400,
+                                overflowY: "auto",
+                                // Above the .themedModalBackdrop (z-index:1000) so the
+                                // portaled panel isn't hidden behind the modal.
+                                zIndex: 1001,
+                                background: "var(--pn-card)",
+                                border: "1px solid var(--pn-line-2)",
+                                borderRadius: "var(--pn-r-md)",
+                                boxShadow: "var(--pn-sh-pop)",
+                                padding: 12,
+                            }}
+                        >
+                            <TeamTaskPicker
+                                teams={teams}
+                                teamMembers={teamMembers}
+                                selectedTeamId={selectedTeamId}
+                                selectedTeamMemberIds={selectedTeamMemberIds}
+                                onTeamChange={onTeamChange}
+                                onMembersChange={onTeamMemberSelectionChange}
+                            />
+                        </div>,
+                        document.body
+                    )}
+                </div>
+                <button
+                    type="button"
+                    className={`pn-toggle ${dangerousMode ? 'pn-toggle--on-danger' : ''}`}
+                    onClick={() => onDangerousModeChange(!dangerousMode)}
+                    title={dangerousMode ? 'Dangerous mode ON (bypass permissions) — click to disable' : 'Enable dangerous mode (bypass permissions)'}
+                >
+                    <Icon name="shield" size={13} /> {dangerousMode ? 'YOLO' : 'Safe'}
+                </button>
+                <button
+                    type="button"
+                    className={`pn-toggle ${useWorktree ? 'pn-toggle--on-wt' : ''}`}
+                    onClick={() => onUseWorktreeChange(!useWorktree)}
+                    title={useWorktree ? 'Git worktree isolation ON — click to disable' : 'Enable git worktree isolation'}
+                >
+                    <Icon name="gitBranch" size={13} /> {useWorktree ? 'worktree' : 'in-place'}
+                </button>
                 {gearBtn}
                 {modelBadge}
                 {((isEditMode && autoSaveStatus) || (!isEditMode && isDraft && autoSaveStatus)) && (

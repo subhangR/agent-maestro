@@ -674,4 +674,175 @@
   margin-bottom: 0;
 }
 
+/* ── Mobile: full-screen sheets at 768px ─────────────────────────── */
+@media (max-width: 768px) {
+  .themedModal--wide {
+    max-width: 100vw;
+    min-width: unset;
+    min-height: unset;
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  .launchConfigModal {
+    max-width: 100vw;
+    min-height: unset;
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+
+  .tmModal__row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tmModal__fieldSmall {
+    width: 100%;
+  }
+
+  .tmModal__footer {
+    flex-direction: column;
+  }
+
+  .tmModal__footerLeft {
+    width: 100%;
+  }
+
+  .tmModal__launchButton {
+    width: 100%;
+    max-width: none;
+  }
+
+  .tmModal__footerRight {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .launchConfigCardHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .launchConfigCardControls {
+    width: 100%;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────── */
+/*  Mobile: generic modal full-screen sheet (≤768px)                    */
+/*                                                                      */
+/*  Covers modals that use the base .modal class (ApplyAsset,           */
+/*  PersistentSessions, ManageTerminals, StartRecording, Update,        */
+/*  Recordings/Replay, SecureStorage, ConfirmDeleteRecording),          */
+/*  the .themedModal class (NewSession, ConfirmDeleteProject), and      */
+/*  the .pn-dlg dialog (ConfirmAction).                                 */
+/*                                                                      */
+/*  All rules are scoped inside the breakpoint — desktop is untouched.  */
+/* ──────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Generic .modal (base class in styles-file-explorer.css) */
+  .modal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    padding: 14px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    /* Leave room for the fixed bottom MobilePanelNav */
+    padding-bottom: calc(14px + var(--mobile-nav-height, 56px));
+  }
+
+  /* Backdrops should fill the viewport (override absolute positioning
+     so iOS soft-keyboards and dynamic viewport heights don't clip). */
+  .modalBackdrop,
+  .themedModalBackdrop {
+    position: fixed;
+    inset: 0;
+  }
+
+  /* Themed modal (non-wide variant — NewSession, ConfirmDeleteProject) */
+  .themedModal {
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 0;
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .themedModal .themedModalContent {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--mobile-nav-height, 56px);
+  }
+
+  .themedModalHeader {
+    flex: 0 0 auto;
+  }
+
+  .themedModalClose {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    font-size: 20px;
+  }
+
+  /* Confirm-action dialog (.pn-dlg) — full-screen sheet on mobile */
+  .pn-dlg {
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 0;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .pn-dlg__body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pn-dlg__foot {
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: calc(12px + var(--mobile-nav-height, 56px));
+  }
+
+  /* Prevent iOS auto-zoom on focus for any input/textarea inside modals */
+  .modal input,
+  .modal textarea,
+  .modal select,
+  .themedModal input,
+  .themedModal textarea,
+  .themedModal select,
+  .pn-dlg input,
+  .pn-dlg textarea,
+  .pn-dlg select {
+    font-size: 16px;
+  }
+
+  /* Ensure tap targets meet 44×44px WCAG 2.5.8 minimum */
+  .modal button,
+  .themedModal button,
+  .pn-dlg button {
+    min-height: 36px;
+  }
+}
+
 /* ================================================================== */

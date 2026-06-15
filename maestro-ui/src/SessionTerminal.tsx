@@ -1,9 +1,11 @@
-import { invoke } from "@tauri-apps/api/core";
 import React, { useEffect, useRef } from "react";
+import { platform } from "./platform";
 import { Terminal } from "xterm";
 import { FitAddon } from "xterm-addon-fit";
 import type { PendingDataBuffer } from "./app/types/app-state";
 import { useTerminalSettingsStore, buildITheme } from "./stores/useTerminalSettingsStore";
+import { serverPtySizes, clientFittedSessions, setLastFittedSize } from "./stores/useSessionStore";
+import { measureSpawnTerminalSize } from "./utils/terminalSize";
 
 export type TerminalRegistry = Map<string, { term: Terminal; fit: FitAddon }>;
 
@@ -71,7 +73,12 @@ function isXtermRendererReady(term: Terminal): boolean {
   const renderService = core?._renderService;
   const rendererRef = renderService?._renderer;
   const renderer = rendererRef?.value ?? rendererRef?._value ?? null;
-  return Boolean(renderer && renderer.dimensions);
+  // The DomRenderer publishes a zero-filled `dimensions` object in its ctor,
+  // before the first glyph measurement runs — so an existence check alone leaks
+  // past pre-measure dims and lets fit() ship a column count computed from a
+  // zero/fallback cell. Require a real, non-zero cell width.
+  const cellWidth = renderer?.dimensions?.css?.cell?.width ?? 0;
+  return Boolean(renderer && cellWidth > 0);
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -109,6 +116,14 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
   const lastSizeRef = useRef<{ cols: number; rows: number } | null>(null);
   const wheelRemainderRef = useRef<number>(0);
   const commandBufferRef = useRef<string>("");
+  // Becomes true once the terminal webfont has actually loaded. Until then we
+  // refuse to ship a fit()-derived size to the server PTY: in the browser the
+  // first synchronous measure in Terminal.open() runs against the fallback font
+  // (JetBrains Mono is woff2 + font-display:swap), so a pre-font fit() computes
+  // the wrong column count and the 80-col scrollback ring replays into a grid
+  // whose width is still flipping. WKWebView (Tauri) resolves the bundled font
+  // before that measure, so this gate is effectively always-true there.
+  const fontsReadyRef = useRef(false);
 
   const onCwdChangeRef = useRef(props.onCwdChange);
   onCwdChangeRef.current = props.onCwdChange;
@@ -210,6 +225,12 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         void el.offsetHeight; // force synchronous reflow
         el.style.display = prevDisplay;
       }
+      // The font is now resolved and the grid re-measured: unblock the resize
+      // gate and ship a single authoritative size to the server PTY. Resetting
+      // the retry counter makes the next sendResize take the fast rAF path.
+      fontsReadyRef.current = true;
+      resizeRetryCountRef.current = 0;
+      scheduleResize();
     };
     if (typeof document !== "undefined" && document.fonts) {
       // Trigger the actual font fetch, then reflow on ready regardless of
@@ -318,7 +339,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         const isEnter = event.key === "Enter";
         if (event.shiftKey && isEnter && !event.metaKey && !event.ctrlKey && !event.altKey) {
           if (event.type === "keydown") {
-            void invoke("write_to_session", { id: props.id, data: "\x1b[13;2u", source: "user" }).catch(() => {});
+            void platform.terminal.write(props.id, "\x1b[13;2u", "user").catch(() => {});
           }
           return false;
         }
@@ -337,7 +358,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         return true;
       });
       term.onData((data) => {
-        void invoke("write_to_session", { id: props.id, data, source: "user" }).catch(() => {});
+        void platform.terminal.write(props.id, data, "user").catch(() => {});
         if (data.includes("\r") || data.includes("\n")) {
           onUserEnterRef.current?.(props.id);
         }
@@ -350,7 +371,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         const isEnter = event.key === "Enter";
         if (event.shiftKey && isEnter && !event.metaKey && !event.ctrlKey && !event.altKey) {
           if (event.type === "keydown") {
-            void invoke("write_to_session", { id: props.id, data: "\x1b[13;2u", source: "user" }).catch(() => {});
+            void platform.terminal.write(props.id, "\x1b[13;2u", "user").catch(() => {});
           }
           return false;
         }
@@ -369,7 +390,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         return true;
       });
       term.onData((data) => {
-        void invoke("write_to_session", { id: props.id, data, source: "user" }).catch(() => {});
+        void platform.terminal.write(props.id, data, "user").catch(() => {});
         if (data.includes("\r") || data.includes("\n")) {
           onUserEnterRef.current?.(props.id);
         }
@@ -461,10 +482,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
           const currentFlags = kittyModeStack.length > 0
             ? kittyModeStack[kittyModeStack.length - 1]
             : 0;
-          void invoke("write_to_session", {
-            id: props.id,
-            data: `\x1b[?${currentFlags}u`,
-          }).catch(() => {});
+          void platform.terminal.write(props.id, `\x1b[?${currentFlags}u`).catch(() => {});
           return true;
         }),
       );
@@ -509,6 +527,17 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      const rect = container.getBoundingClientRect();
 	      if (rect.width === 0 || rect.height === 0) return;
 
+	      // Defer the first fit until the webfont has loaded. Fitting against
+	      // fallback-font metrics ships the wrong column count to the server PTY
+	      // and makes the 80-col scrollback ring replay at the wrong width.
+	      // forceFontReflow() flips fontsReadyRef and re-triggers this once the
+	      // font resolves (≤900ms via the belt-and-suspenders timers worst case).
+	      if (!fontsReadyRef.current) {
+	        resizeRetryCountRef.current += 1;
+	        scheduleResize();
+	        return;
+	      }
+
 	      if (!isXtermRendererReady(term)) {
 	        resizeRetryCountRef.current += 1;
 	        scheduleResize();
@@ -525,11 +554,17 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 
 	      resizeRetryCountRef.current = 0;
 	      const { cols, rows } = term;
+	      // The client now owns the size: ignore any late server `size` snapshot
+	      // (see clientFittedSessions) and keep serverPtySizes coherent so a
+	      // remount adopts the fitted width, not the stale 80x24 spawn snapshot.
+	      clientFittedSessions.add(props.id);
+	      serverPtySizes.set(props.id, { cols, rows });
+	      setLastFittedSize({ cols, rows });
 	      const last = lastSizeRef.current;
 	      if (last && last.cols === cols && last.rows === rows) return;
 	      lastSizeRef.current = { cols, rows };
 	      onResizeRef.current?.(props.id, { cols, rows });
-	      void invoke("resize_session", { id: props.id, cols, rows }).catch(() => {});
+	      void platform.terminal.resize(props.id, cols, rows).catch(() => {});
 	    }
 
 		    // Register BEFORE flushing to avoid race with incoming events
@@ -566,7 +601,31 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	        }
 	      }
 	    };
-	    flushPending(20);
+	    // Web mode: size the grid to the PTY width BEFORE replaying/flushing output,
+    // so the agent's first paint renders at the column it was authored at instead
+    // of xterm's 80x24 default. Two sources, in order:
+    //   1. serverPtySizes — the authoritative size the server reported on attach.
+    //   2. measureSpawnTerminalSize() — the same estimate sent in the spawn request
+    //      (so the PTY booted at it). On a fresh spawn the server `size` frame
+    //      hasn't arrived yet, so without this the grid sits at 80 cols; the agent
+    //      draws its TUI wide, it crams into 80 cols (overlapping glyphs), and the
+    //      later fit() can land on a no-op PTY resize (no SIGWINCH → no repaint),
+    //      leaving the garble frozen until a manual resize. Seeding the width here
+    //      keeps xterm and the PTY in agreement from the first byte.
+    const serverSize = serverPtySizes.get(props.id);
+    const initialSize =
+      serverSize && serverSize.cols > 0 && serverSize.rows > 0
+        ? serverSize
+        : measureSpawnTerminalSize();
+    if (initialSize.cols && initialSize.rows && initialSize.cols > 0 && initialSize.rows > 0) {
+      try {
+        term.resize(initialSize.cols, initialSize.rows);
+      } catch {
+        // ignore
+      }
+    }
+    serverPtySizes.delete(props.id);
+    flushPending(20);
 
 		    // Create ResizeObserver inside useEffect for proper cleanup
 		    const resizeObserver = new ResizeObserver(() => scheduleResize());
@@ -592,6 +651,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	        window.clearTimeout(resizeTimeoutRef.current);
 	      }
 	      for (const d of oscDisposables) d.dispose();
+	      clientFittedSessions.delete(props.id);
 	      props.registry.current.delete(props.id);
 	      props.pendingData.current.delete(props.id);
 	      term.dispose();
@@ -635,6 +695,15 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	        }
 	        return;
 	      }
+	      // Don't fit/ship a size before the webfont has loaded (see fontsReadyRef
+	      // and sendResize). The mount-effect resize path drives the first
+	      // authoritative size once forceFontReflow flips the gate.
+	      if (!fontsReadyRef.current) {
+	        if (attemptsLeft > 0) {
+	          window.requestAnimationFrame(() => attemptFit(attemptsLeft - 1));
+	        }
+	        return;
+	      }
 	      try {
 	        fit.fit();
 	      } catch {
@@ -644,10 +713,13 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	        return;
 	      }
 	      const { cols, rows } = term;
+	      clientFittedSessions.add(props.id);
+	      serverPtySizes.set(props.id, { cols, rows });
+	      setLastFittedSize({ cols, rows });
 	      const last = lastSizeRef.current;
 	      if (!last || last.cols !== cols || last.rows !== rows) {
 	        lastSizeRef.current = { cols, rows };
-	        void invoke("resize_session", { id: props.id, cols, rows }).catch(() => {});
+	        void platform.terminal.resize(props.id, cols, rows).catch(() => {});
       }
     };
 
@@ -727,6 +799,21 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
         el.style.display = "none";
         void el.offsetHeight;
         el.style.display = prevDisplay;
+      }
+      // A font/spacing change resizes the cell, so fit() may have changed the
+      // grid's cols/rows. The ResizeObserver does NOT fire (the container box is
+      // unchanged), so the PTY would never learn the new size and the grid would
+      // desync from it (overlapping glyphs) until the next manual resize. Ship
+      // the new size to the PTY now and keep the size caches coherent.
+      const { cols, rows } = term;
+      if (cols > 0 && rows > 0) {
+        const last = lastSizeRef.current;
+        if (!last || last.cols !== cols || last.rows !== rows) {
+          lastSizeRef.current = { cols, rows };
+          serverPtySizes.set(props.id, { cols, rows });
+          setLastFittedSize({ cols, rows });
+          void platform.terminal.resize(props.id, cols, rows).catch(() => {});
+        }
       }
     }
   }, [

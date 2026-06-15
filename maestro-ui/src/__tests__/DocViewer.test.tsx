@@ -67,6 +67,15 @@ describe("DocViewer – diagram doc", () => {
     expect(screen.getByText("⬡")).toBeTruthy();
   });
 
+  it("renders the board for a .excalidraw doc even when kind is missing", async () => {
+    // Regression: docs from session/task timelines often arrive without `kind`.
+    // They must still open on the board, not render their JSON as raw code.
+    const doc = makeDoc({ kind: undefined, filePath: "diagram.excalidraw", content: '{"elements":[]}' });
+    render(<DocViewer doc={doc} onClose={() => {}} inline />);
+    expect(await screen.findByTestId("excalidraw-board")).toBeTruthy();
+    expect(screen.queryByText('{"elements":[]}')).toBeNull();
+  });
+
   it("shows an Edit button for diagram docs", async () => {
     const doc = makeDoc({ kind: "diagram", filePath: "diagram.excalidraw", content: "{}" });
     render(<DocViewer doc={doc} onClose={() => {}} inline />);

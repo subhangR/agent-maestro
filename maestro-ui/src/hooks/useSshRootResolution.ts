@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { TerminalSession } from "../app/types/session";
 import { WorkspaceView } from "../app/types/workspace";
 
@@ -33,6 +34,7 @@ export function useSshRootResolution({
   const sshRootResolveInFlightRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    if (!IS_TAURI) return;
     if (!activeIsSsh || !active) return;
     if (active.exited || active.closing) return;
     if (!activeWorkspaceView.fileExplorerOpen && !activeWorkspaceView.codeEditorOpen) return;

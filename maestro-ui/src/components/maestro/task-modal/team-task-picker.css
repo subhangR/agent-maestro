@@ -1,0 +1,190 @@
+/* TeamTaskPicker — two-pane Team | Member assignee picker for the task modal.
+   Styling mirrors the redesign (pn-*) token system used across maestro-ui. */
+
+.ttp {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.ttp__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ttp__label {
+  font-family: var(--pn-mono, monospace);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pn-ink-3, #8e897b);
+  flex: 0 0 auto;
+}
+
+/* segmented Team | Member toggle */
+.ttp__seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--pn-active, #ece8df);
+  border-radius: var(--pn-r-sm, 7px);
+}
+.ttp__seg button {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  font-family: var(--pn-ui, system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pn-ink-3, #8e897b);
+  border-radius: 5px;
+  cursor: pointer;
+}
+.ttp__seg button.on {
+  background: var(--pn-card, #fff);
+  color: var(--pn-ink, #28221a);
+  box-shadow: var(--pn-sh-sm, 0 1px 2px rgba(40, 34, 24, 0.05));
+}
+
+/* two-pane master/detail */
+.ttp__panes {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  min-height: 0;
+}
+.ttp__pane {
+  flex: 1 1 50%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--pn-line, #e7e3d9);
+  border-radius: var(--pn-r-sm, 7px);
+  background: var(--pn-card, #fff);
+  overflow: hidden;
+}
+.ttp__panehead {
+  padding: 6px 10px;
+  font-family: var(--pn-mono, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--pn-ink-4, #b3ad9d);
+  border-bottom: 1px solid var(--pn-line, #e7e3d9);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ttp__list {
+  overflow-y: auto;
+  max-height: 240px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* a team row in the left pane */
+.ttp__team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--pn-r-xs, 5px);
+  background: transparent;
+  color: var(--pn-ink, #28221a);
+  cursor: pointer;
+  font-family: var(--pn-ui, system-ui, sans-serif);
+}
+.ttp__team:hover {
+  background: var(--pn-surface, #f4f1ea);
+}
+.ttp__team.on {
+  background: var(--pn-active, #ece8df);
+  border-color: var(--pn-line-2, #d8d3c6);
+}
+.ttp__team-av {
+  font-size: 15px;
+  flex: 0 0 auto;
+}
+.ttp__team-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ttp__team-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ttp__team-meta {
+  font-family: var(--pn-mono, monospace);
+  font-size: 9.5px;
+  color: var(--pn-ink-3, #8e897b);
+}
+.ttp__team-check {
+  flex: 0 0 auto;
+  color: var(--theme-primary, var(--pn-ink, #28221a));
+  font-size: 12px;
+}
+
+/* preview pane member rows */
+.ttp__member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--pn-r-xs, 5px);
+}
+.ttp__member-av {
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+.ttp__member-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ttp__member-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pn-ink-2, #4a443a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ttp__member-role {
+  font-family: var(--pn-mono, monospace);
+  font-size: 9px;
+  color: var(--pn-ink-3, #8e897b);
+}
+.ttp__leader-badge {
+  flex: 0 0 auto;
+  font-family: var(--pn-mono, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: var(--pn-r-xs, 5px);
+  border: 1px solid var(--pn-line-2, #d8d3c6);
+  color: var(--pn-ink-3, #8e897b);
+}
+
+.ttp__empty {
+  padding: 16px 12px;
+  font-size: 11px;
+  color: var(--pn-ink-4, #b3ad9d);
+  text-align: center;
+}
+
+.ttp__member-mode {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}

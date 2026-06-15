@@ -121,6 +121,14 @@ export const updateModelProfileSchema = z.object({
   launchConfig: launchConfigSchema.optional(),
 }).strict();
 
+// --- Session prompt schemas ---
+
+export const sendSessionPromptSchema = z.object({
+  content: z.string().min(1, 'content is required'),
+  mode: z.enum(['send', 'paste']).optional().default('send'),
+  senderSessionId: safeId,
+}).strict();
+
 // --- Task schemas ---
 
 export const createTaskSchema = z.object({
@@ -135,6 +143,7 @@ export const createTaskSchema = z.object({
   model: modelSchema.optional(),
   teamMemberId: safeId.optional(),
   teamMemberIds: z.array(safeId).optional(),
+  teamId: safeId.nullable().optional(),
   memberOverrides: z.record(safeId, memberLaunchOverrideSchema).optional(),
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
@@ -157,6 +166,7 @@ export const updateTaskSchema = z.object({
   sessionId: safeId.optional(),
   teamMemberId: safeId.optional(),
   teamMemberIds: z.array(safeId).optional(),
+  teamId: safeId.nullable().optional(),
   memberOverrides: z.record(safeId, memberLaunchOverrideSchema).optional(),
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
@@ -396,6 +406,10 @@ export const modeBodySchema = z.object({
 
 const allStrategySchema = z.enum(['simple', 'tree', 'default', 'intelligent-batching', 'dag']);
 
+// Terminal dimension reported by the browser; clamped so a malformed/hostile
+// client can't drive the PTY winsize to an absurd value.
+export const ptyDimensionSchema = z.number().int().min(1).max(1000);
+
 export const spawnSessionSchema = z.object({
   projectId: safeId.optional(),
   taskIds: z.array(safeId).min(1),
@@ -415,6 +429,7 @@ export const spawnSessionSchema = z.object({
   teamMemberId: safeId.optional(),
   teamMemberIds: z.array(safeId).optional(),
   delegateTeamMemberIds: z.array(safeId).optional(),
+  teamId: safeId.nullable().optional(),
   initialDirective: z.object({
     subject: shortString,
     message: longString,
@@ -424,6 +439,13 @@ export const spawnSessionSchema = z.object({
   permissionMode: permissionModeSchema.optional(),
   delegatePermissionMode: permissionModeSchema.optional(),
   useWorktree: z.boolean().optional(),
+  // Web mode: the browser's measured terminal size, so the server-hosted PTY
+  // boots at the real pane width instead of the 80x24 default. Spawning at the
+  // wrong width makes the agent (Ink TUI) author its first frames at 80 cols,
+  // which then desync against the wider xterm grid (overlapping glyphs) until a
+  // manual resize. Optional: legacy/desktop callers omit it and fall back to 80x24.
+  cols: ptyDimensionSchema.optional(),
+  rows: ptyDimensionSchema.optional(),
 }).strict();
 
 // --- Template schemas ---

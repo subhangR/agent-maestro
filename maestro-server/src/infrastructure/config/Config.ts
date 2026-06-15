@@ -53,6 +53,13 @@ export interface ConfigOptions {
   host: string;
   serverUrl: string;
 
+  /**
+   * Where agent PTYs are hosted:
+   * - 'tauri' (default): the Tauri desktop app spawns/owns PTYs (legacy/desktop)
+   * - 'server': maestro-server spawns/owns PTYs via node-pty (headless/web)
+   */
+  ptyHost: 'tauri' | 'server';
+
   // Storage paths
   dataDir: string;
   sessionDir: string;
@@ -116,6 +123,7 @@ export class Config implements Readonly<ConfigOptions> {
       port,
       host,
       serverUrl: process.env.SERVER_URL || `http://localhost:${port}`,
+      ptyHost: (process.env.MAESTRO_PTY_HOST as 'tauri' | 'server') || 'tauri',
 
       // Storage paths
       dataDir: expandPath(process.env.DATA_DIR || '~/.maestro/data'),
@@ -203,6 +211,11 @@ export class Config implements Readonly<ConfigOptions> {
       throw new ConfigError('MANIFEST_GENERATOR must be "cli" or "server"');
     }
 
+    // PTY host validation
+    if (!['tauri', 'server'].includes(this.config.ptyHost)) {
+      throw new ConfigError('MAESTRO_PTY_HOST must be "tauri" or "server"');
+    }
+
     // Log level validation
     if (!['error', 'warn', 'info', 'debug'].includes(this.config.log.level)) {
       throw new ConfigError('LOG_LEVEL must be "error", "warn", "info", or "debug"');
@@ -217,6 +230,7 @@ export class Config implements Readonly<ConfigOptions> {
   // Readonly accessors
   get port(): number { return this.config.port; }
   get host(): string { return this.config.host; }
+  get ptyHost(): 'tauri' | 'server' { return this.config.ptyHost; }
   get serverUrl(): string { return this.config.serverUrl; }
   get dataDir(): string { return this.config.dataDir; }
   get sessionDir(): string { return this.config.sessionDir; }

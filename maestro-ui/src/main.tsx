@@ -3,8 +3,10 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles.css";
+import "./styles-responsive.css";
 import "./task-lists.css";
 import "./styles-startup.css";
+import "./styles-login.css";
 import "xterm/css/xterm.css";
 // Self-hosted redesign fonts (Google Fonts @import is blocked by the Tauri CSP
 // font-src 'self'; these are bundled by Vite and served locally). --pn-mono

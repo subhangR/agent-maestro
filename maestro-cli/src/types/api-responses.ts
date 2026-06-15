@@ -13,6 +13,7 @@ export interface TaskResponse {
   projectId?: string;
   teamMemberId?: string;
   teamMemberIds?: string[];
+  teamId?: string | null;
   taskSessionStatuses?: Record<string, string>;
   dependencies?: string[];
   acceptanceCriteria?: string[];

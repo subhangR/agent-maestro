@@ -128,6 +128,93 @@ Builds and globally installs the `maestro` CLI, configured to connect to the pro
 
 ---
 
+## Web / Browser Mode
+
+The same full Maestro UI runs in a plain browser — no Tauri, no Electron. `maestro-server` hosts the PTYs and streams terminals to the browser over a dedicated `/pty` WebSocket. The Tauri desktop build is unchanged.
+
+### Prerequisites
+
+- **[Bun](https://bun.sh/)** — for installing packages and building
+- **[Node.js](https://nodejs.org/) v18 or newer** — **required** for the runtime server. `node-pty`'s `onData` does not fire under bun, and bun strips the spawn-helper exec bit. Use `node` to start the server; use `bun` for install and build steps.
+
+### Quick start (single-origin, recommended)
+
+```bash
+bun install
+bun run build:web   # builds browser UI + server + CLI
+
+PORT=4570 DATA_DIR=~/.maestro/data SESSION_DIR=~/.maestro/sessions \
+  MAESTRO_PTY_HOST=server NODE_ENV=production \
+  node maestro-server/dist/server.js
+```
+
+Open `http://localhost:4570`.
+
+The server serves the built browser UI as static files and routes all REST (`/api`), WebSocket (`/ws`), and PTY streaming (`/pty`) from the same origin. The browser bundle auto-targets the origin that served it — no hardcoded URLs needed.
+
+Or use the one-command convenience script, which builds the browser UI + server and launches the single-origin server on port 4570:
+
+```bash
+bun run web            # build + run
+bun run web:nobuild    # run without rebuilding
+```
+
+### Dev (split-origin, hot reload)
+
+```bash
+# Terminal 1 — server (port 4569)
+PORT=4569 MAESTRO_PTY_HOST=server DATA_DIR=~/.maestro-staging/data \
+  SESSION_DIR=~/.maestro-staging/sessions \
+  node maestro-server/dist/server.js
+
+# Terminal 2 — Vite dev server (port 4570, auto-proxies to 4569)
+cd maestro-ui && bun run dev:web
+```
+
+Open `http://localhost:4570`. UI changes hot-reload instantly.
+
+### Auth (for exposing Maestro to a network)
+
+Auth is **off by default**. To enable it, set these env vars when starting the server:
+
+| Variable | Purpose |
+|---|---|
+| `MAESTRO_AUTH_ENABLED` | Set to `true` to enable password protection |
+| `MAESTRO_AUTH_PASSWORD` | The password users enter in the browser login screen |
+| `MAESTRO_AUTH_SECRET` | HMAC signing key for session tokens. Auto-generated and persisted to `$DATA_DIR/.auth-secret` if unset. |
+
+When enabled, all API, WebSocket, and PTY endpoints are gated behind a cookie-based session. The browser UI shows a login screen automatically.
+
+> Never expose Maestro over plain HTTP. Enable TLS before opening it to the internet.
+
+### VPS deploy
+
+For a full VPS deployment (nginx + systemd + TLS), see [`deploy/README.md`](./deploy/README.md):
+
+```bash
+# Deploy everything: provision + build + service + nginx
+./deploy/deploy.sh ubuntu@your-server -i ~/.ssh/my_key \
+  --password 'YourPassword' --domain maestro.example.com
+
+# Copy all local maestro data to the VPS
+./deploy/migrate-data.sh ubuntu@your-server -i ~/.ssh/my_key
+```
+
+After deployment, SSH into the VPS and run `claude login` — the CLI is installed but not pre-authenticated.
+
+#### EC2 + Tailscale (no public nginx)
+
+To deploy onto an EC2 (or any Ubuntu) box reached over [Tailscale](https://tailscale.com/) — server bound to `127.0.0.1`, no public nginx, with HTTPS + WebSocket terminated by `tailscale serve` on the tailnet — use [`deploy/deploy-ec2-tailscale.sh`](./deploy/deploy-ec2-tailscale.sh):
+
+```bash
+./deploy/deploy-ec2-tailscale.sh ubuntu@your-ec2-host -i ~/.ssh/my_key \
+  --password 'YourPassword' [--port 4570]
+```
+
+The script runs the privileged provision/build/env/systemd steps via `sudo`. Tailscale install, `tailscale up` (one-time interactive login), and `tailscale serve` are run by the operator on the box afterwards, then `claude login`.
+
+---
+
 ## How it works
 
 Maestro has three parts that talk to each other:

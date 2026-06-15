@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { IS_TAURI } from '../platform';
 import { SshHostEntry, SshForward, buildSshCommand } from '../app/utils/ssh';
 import { formatError } from '../utils/formatters';
 import { copyToClipboard } from '../utils/domUtils';
@@ -82,6 +83,10 @@ export const useSshStore = create<SshState>((set, get) => ({
       sshForwards: state.sshForwards.map((f) => (f.id === id ? { ...f, ...patch } : f)),
     })),
   refreshSshHosts: async () => {
+    if (!IS_TAURI) {
+      set({ sshHosts: [], sshHostsLoading: false, sshHostsError: null });
+      return;
+    }
     set({ sshHostsLoading: true, sshHostsError: null });
     try {
       const list = await invoke<SshHostEntry[]>('list_ssh_hosts');

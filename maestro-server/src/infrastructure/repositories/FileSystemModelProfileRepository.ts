@@ -9,7 +9,7 @@ import { atomicWriteFile } from './utils/atomicWrite';
 
 /**
  * Workspace-global model profiles, stored flat at <dataDir>/model-profiles/<id>.json
- * (not scoped to a project). On first run, three default tiers are seeded.
+ * (not scoped to a project). On first run, four default tiers are seeded.
  */
 export class FileSystemModelProfileRepository implements IModelProfileRepository {
   private profilesDir: string;
@@ -42,7 +42,7 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
     if (!this.initialized) await this.initialize();
   }
 
-  /** Seed the 3 default tiers only when no profiles exist yet (respects user deletions). */
+  /** Seed the 4 default tiers only when no profiles exist yet (respects user deletions). */
   private async seedDefaultsIfEmpty(): Promise<void> {
     let existing: string[] = [];
     try {
@@ -55,9 +55,18 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
     const now = new Date().toISOString();
     const defaults: ModelProfile[] = [
       {
+        id: 'mp_ultra',
+        name: 'Ultra',
+        description: 'Most capable tier — Fable 5.',
+        launchConfig: { provider: 'claude', model: 'claude-fable-5' },
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
         id: 'mp_heavy',
         name: 'Heavy',
-        description: 'Most capable tier — Opus 4.8.',
+        description: 'High-capability tier — Opus 4.8.',
         launchConfig: { provider: 'claude', model: 'claude-opus-4-8' },
         isDefault: true,
         createdAt: now,

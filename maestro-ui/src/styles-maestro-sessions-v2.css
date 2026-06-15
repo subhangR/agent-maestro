@@ -415,7 +415,7 @@
 .timelineEventTime {
   flex-shrink: 0;
   width: 50px;
-  color: var(--muted);
+  color: var(--pn-ink-3, var(--muted));
   font-size: 10px;
 }
 
@@ -428,22 +428,22 @@
 }
 
 .timelineEventType {
-  color: var(--text);
+  color: var(--pn-ink, var(--text));
   font-weight: 500;
   text-transform: capitalize;
 }
 
 .timelineEventMessage {
-  color: var(--muted);
+  color: var(--pn-ink-2, var(--muted));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .timelineEventTaskId {
-  color: var(--accent);
+  color: var(--pn-brand, var(--accent));
   font-size: 9px;
-  background: rgba(var(--theme-primary-rgb), 0.1);
+  background: var(--pn-brand-soft, rgba(var(--theme-primary-rgb), 0.1));
   padding: 1px 4px;
   border-radius: 2px;
 }
@@ -469,7 +469,7 @@
   padding: 6px 0;
   background: none;
   border: none;
-  color: var(--text);
+  color: var(--pn-ink, var(--text));
   font-family: var(--style-font-ui);
   font-size: 11px;
   cursor: pointer;
@@ -478,11 +478,11 @@
 }
 
 .sessionTimelineHeader:hover {
-  color: var(--theme-primary);
+  color: var(--pn-brand, var(--theme-primary));
 }
 
 .sessionTimelineToggle {
-  color: var(--muted);
+  color: var(--pn-ink-3, var(--muted));
 }
 
 .sessionTimelineTitle {
@@ -490,7 +490,7 @@
 }
 
 .sessionTimelineCount {
-  color: var(--muted);
+  color: var(--pn-ink-3, var(--muted));
   font-size: 10px;
 }
 
@@ -509,23 +509,23 @@
   padding: 2px 8px;
   font-family: var(--style-font-ui);
   font-size: 9px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--pn-surface, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--pn-line-2, rgba(255, 255, 255, 0.1));
   border-radius: 2px;
-  color: var(--muted);
+  color: var(--pn-ink-3, var(--muted));
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .sessionTimelineFilterBtn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text);
+  background: var(--pn-hover, rgba(255, 255, 255, 0.08));
+  color: var(--pn-ink, var(--text));
 }
 
 .sessionTimelineFilterBtn.active {
-  background: rgba(var(--theme-primary-rgb), 0.15);
-  border-color: var(--theme-primary);
-  color: var(--theme-primary);
+  background: var(--pn-brand-soft, rgba(var(--theme-primary-rgb), 0.15));
+  border-color: var(--pn-brand, var(--theme-primary));
+  color: var(--pn-brand, var(--theme-primary));
 }
 
 .sessionTimelineEvents {
@@ -535,7 +535,7 @@
 }
 
 .sessionTimelineEmpty {
-  color: var(--muted);
+  color: var(--pn-ink-3, var(--muted));
   font-size: 11px;
   font-style: italic;
   padding: 8px 0;
@@ -3133,12 +3133,20 @@
 /*  Project Docs / Drawings paginated list                             */
 /* ================================================================== */
 
+.projectDocsListWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 .projectDocsList {
   display: flex;
   flex-direction: column;
   padding: 6px 0;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .projectDocsListEmpty,
@@ -3165,12 +3173,7 @@
 .projectDocsListItem {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 7px 14px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  text-align: left;
+  gap: 0;
   width: 100%;
   transition: background 0.12s ease;
   border-bottom: 1px solid rgba(var(--theme-primary-rgb), 0.05);
@@ -3182,6 +3185,49 @@
 
 .projectDocsListItem:last-child {
   border-bottom: none;
+}
+
+.projectDocsListItem .pn-st__radio {
+  flex: 0 0 auto;
+  margin-left: 12px;
+}
+
+.projectDocsListItem__main {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
+  padding: 7px 6px 7px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.projectDocsListItem__close {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(var(--theme-primary-rgb), 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.projectDocsListItem:hover .projectDocsListItem__close {
+  opacity: 1;
+}
+
+.projectDocsListItem__close:hover {
+  background: rgba(var(--theme-primary-rgb), 0.1);
+  color: var(--theme-primary);
 }
 
 .projectDocsListItem__icon {
@@ -3389,3 +3435,5 @@ html[data-redesign] .projectDocsListItem__time {
   color: var(--pn-ink-3);
   font-family: var(--pn-mono);
 }
+html[data-redesign] .projectDocsListItem__close { color: var(--pn-ink-4); }
+html[data-redesign] .projectDocsListItem__close:hover { background: var(--pn-active); color: var(--pn-ink-2); }

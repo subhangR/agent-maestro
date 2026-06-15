@@ -15,6 +15,8 @@ const withIds = (models: { value: ModelType; label: string }[]) =>
 
 export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: string }[]> = {
   "claude-code": [
+    { value: "claude-fable-5", label: "Fable 5" },
+    { value: "claude-fable-5[1m]", label: "Fable 5 1M" },
     { value: "claude-opus-4-8", label: "Opus 4.8" },
     { value: "claude-opus-4-8[1m]", label: "Opus 4.8 1M" },
     { value: "claude-opus-4-7", label: "Opus 4.7" },
@@ -33,6 +35,7 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
   ],
   hermes: [
     { value: "hermes-default", label: "Hermes default" },
+    { value: "anthropic:claude-fable-5", label: "Anthropic Claude Fable 5" },
     { value: "anthropic:claude-opus-4-8", label: "Anthropic Claude Opus 4.8" },
     { value: "nous:anthropic/claude-opus-4.8", label: "Nous Claude Opus 4.8" },
     { value: "openrouter:anthropic/claude-opus-4.8", label: "OpenRouter Claude Opus 4.8" },
@@ -61,6 +64,8 @@ export const DEFAULT_MODEL_BY_AGENT_TOOL: Record<AgentTool, ModelType> = {
 // has several assigned. Must stay in sync with MODEL_POWER in
 // maestro-server/src/api/sessionRoutes.ts so the badge mirrors what launches.
 export const MODEL_POWER: Record<string, number> = {
+  "claude-fable-5[1m]": 6.1,
+  "claude-fable-5": 6.0,
   "claude-opus-4-8[1m]": 5.9,
   "claude-opus-4-8": 5.8,
   "gpt-5.5": 5.5,
@@ -228,6 +233,8 @@ export function sanitizeLaunchConfig(config?: Partial<LaunchConfig> | null): Lau
 }
 
 const MODEL_LABEL_OVERRIDES: Record<string, string> = {
+  "claude-fable-5": "Fable 5",
+  "claude-fable-5[1m]": "Fable 5 1M",
   "claude-opus-4-8": "Opus 4.8",
   "claude-opus-4-8[1m]": "Opus 4.8 1M",
   "claude-opus-4-7": "Opus 4.7",
@@ -247,6 +254,8 @@ const MODEL_LABEL_OVERRIDES: Record<string, string> = {
   "gpt-5.3-codex-spark": "Codex 5.3 Spark",
   "gpt-5.2": "Codex 5.2",
   "gpt-5.2-codex": "Codex 5.2",
+  "anthropic:claude-fable-5": "Claude Fable 5",
+  "anthropic/claude-fable-5": "Claude Fable 5",
   "anthropic:claude-opus-4-8": "Claude Opus 4.8",
   "nous:anthropic/claude-opus-4.8": "Claude Opus 4.8",
   "openrouter:anthropic/claude-opus-4.8": "Claude Opus 4.8",

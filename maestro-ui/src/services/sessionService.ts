@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { platform } from "../platform";
 import { TerminalSession, TerminalSessionInfo } from "../app/types/session";
 import { makeId } from "../app/utils/id";
 import {
@@ -39,7 +40,7 @@ export async function createSession(input: {
     command: launchCommand,
     name: input.name ?? null,
   });
-  const info = await invoke<TerminalSessionInfo>("create_session", {
+  const info = await platform.terminal.createSession({
     name: input.name ?? null,
     command: launchCommand,
     cwd: input.cwd ?? null,
@@ -66,7 +67,7 @@ export async function createSession(input: {
 }
 
 export async function closeSession(id: string): Promise<void> {
-  await invoke("close_session", { id });
+  await platform.terminal.closeSession(id);
 }
 
 export async function detachSession(id: string): Promise<void> {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { platform, IS_TAURI } from '../platform';
 import { TerminalSession, TerminalSessionInfo } from '../app/types/session';
 import { PendingDataBuffer, RecentSessionKey, Prompt } from '../app/types/app-state';
 import { TerminalRegistry } from '../SessionTerminal';
@@ -39,6 +40,40 @@ export const lastResizeAtRef = new Map<string, number>();
 export const commandLifecycleSessionsRef = new Set<string>();
 export const spawningSessionsRef = new Set<string>();
 
+/**
+ * Web mode only: the authoritative PTY dimensions the server reports on attach,
+ * before it replays scrollback. A terminal that mounts after this arrives reads
+ * it to size its xterm to the width the buffered output was authored at, so the
+ * replay doesn't wrap at the wrong column. Cleared when the terminal adopts it.
+ */
+export const serverPtySizes = new Map<string, { cols: number; rows: number }>();
+
+/**
+ * Web mode only: sessions whose terminal has already fit to its pane and shipped
+ * that size to the PTY. From that point the client's size is authoritative and
+ * the server's one-shot `size` snapshot (sent at attach, e.g. 80x24) must NOT
+ * resize the xterm grid: over a high-latency link that stale frame can land
+ * AFTER the client fit, snapping the grid back to the snapshot while the PTY
+ * stays at the fitted width — Claude then addresses the cursor at one width and
+ * xterm renders at another, producing overlapping/garbled glyphs until the next
+ * manual resize. Set when a terminal ships its first authoritative fit, cleared
+ * on dispose/exit so a fresh mount re-adopts the server size before replay.
+ */
+export const clientFittedSessions = new Set<string>();
+
+/**
+ * Web mode only: the most recent cols/rows any terminal fit to. All session
+ * terminals share one pane geometry, so this is the exact size the next spawned
+ * terminal will fit to. We send it in the spawn/resume request so the server
+ * boots the PTY at the real width — the agent then never renders at the 80x24
+ * default and the startup glyph-overlap desync disappears. null until the first
+ * terminal fits (the very first spawn falls back to a pane-pixel estimate).
+ */
+export let lastFittedSize: { cols: number; rows: number } | null = null;
+export function setLastFittedSize(size: { cols: number; rows: number }): void {
+  lastFittedSize = size;
+}
+
 /* ------------------------------------------------------------------ */
 /*  DOM-bound refs initialized by App.tsx                               */
 /* ------------------------------------------------------------------ */
@@ -46,6 +81,18 @@ export const spawningSessionsRef = new Set<string>();
 let registryRef: MutableRefObject<TerminalRegistry> | null = null;
 let pendingDataRef: MutableRefObject<PendingDataBuffer> | null = null;
 let homeDirRef: MutableRefObject<string | null> | null = null;
+
+function _isRendererReady(term: unknown): boolean {
+  try {
+    const anyTerm = term as any;
+    const rs = anyTerm?._core?._renderService;
+    const ref = rs?._renderer;
+    const r = ref?.value ?? ref?._value ?? null;
+    return Boolean(r?.dimensions);
+  } catch {
+    return false;
+  }
+}
 
 export function initSessionStoreRefs(
   registry: MutableRefObject<TerminalRegistry>,
@@ -55,6 +102,89 @@ export function initSessionStoreRefs(
   registryRef = registry;
   pendingDataRef = pendingData;
   homeDirRef = homeDir;
+
+  if (!IS_TAURI) {
+    void platform.terminal.onOutput((id, data) => {
+      if (closingSessions.has(id)) return;
+      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
+
+      const entry = registryRef?.current.get(id);
+      if (entry && _isRendererReady(entry.term)) {
+        entry.term.write(data);
+        return;
+      }
+
+      if (!pendingDataRef?.current) return;
+      if (
+        !pendingDataRef.current.has(id) &&
+        pendingDataRef.current.size >= DEFAULTS.MAX_PENDING_SESSIONS
+      ) {
+        const oldest = pendingDataRef.current.keys().next().value as string | undefined;
+        if (oldest) pendingDataRef.current.delete(oldest);
+      }
+      const buffer = pendingDataRef.current.get(id) ?? [];
+      buffer.push(data);
+      if (buffer.length > DEFAULTS.MAX_PENDING_CHUNKS_PER_SESSION) {
+        buffer.splice(0, buffer.length - DEFAULTS.MAX_PENDING_CHUNKS_PER_SESSION);
+      }
+      pendingDataRef.current.delete(id);
+      pendingDataRef.current.set(id, buffer);
+    });
+
+    void platform.terminal.onSize?.((id, size) => {
+      if (!size.cols || !size.rows) return;
+      // Once the client owns the size (has fit + shipped), the server's stale
+      // attach snapshot must not touch the grid — see clientFittedSessions.
+      if (clientFittedSessions.has(id)) return;
+      // Remember it for terminals that haven't mounted yet (applied on mount).
+      serverPtySizes.set(id, size);
+      // If the terminal already exists, match the PTY width now so the scrollback
+      // the server is about to replay renders at the column it was authored at.
+      const entry = registryRef?.current.get(id);
+      if (entry) {
+        try {
+          entry.term.resize(size.cols, size.rows);
+        } catch {
+          // ignore — a stale/closing term
+        }
+      }
+    });
+
+    void platform.terminal.onExit((id, exitCode) => {
+      useSessionStore.getState().clearAgentIdleTimer(id);
+      lastResizeAtRef.delete(id);
+      serverPtySizes.delete(id);
+      clientFittedSessions.delete(id);
+
+      if (closingSessions.has(id)) {
+        const timeout = closingSessions.get(id);
+        if (timeout != null) window.clearTimeout(timeout);
+        closingSessions.delete(id);
+        return;
+      }
+
+      const { sessions } = useSessionStore.getState();
+      const exitingSession = sessions.find((s) => s.id === id);
+
+      useSessionStore.getState().setSessions((prev: TerminalSession[]) => {
+        let found = false;
+        const next = prev.map((s) => {
+          if (s.id !== id) return s;
+          found = true;
+          return { ...s, exited: true, exitCode: exitCode ?? null, agentWorking: false, recordingActive: false };
+        });
+        if (!found) pendingExitCodes.set(id, exitCode ?? null);
+        return next;
+      });
+
+      if (exitingSession?.maestroSessionId) {
+        void maestroClient.updateSession(exitingSession.maestroSessionId, {
+          status: 'stopped',
+          completedAt: Date.now(),
+        }).catch(() => {});
+      }
+    });
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -579,10 +709,24 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const wasPersistent = Boolean(session?.persistent && !session?.exited);
 
     if (session?.maestroSessionId) {
-      void maestroClient.updateSession(session.maestroSessionId, {
-        status: 'stopped',
-        completedAt: Date.now(),
-      }).catch(() => { /* best-effort server status update */ });
+      const maestroId = session.maestroSessionId;
+      if (!IS_TAURI) {
+        // Browser/server-PTY mode: an explicit close must actually terminate the
+        // server-hosted PTY. Merely flipping status would leave a zombie process
+        // running headless. This is the only user path that kills a server PTY;
+        // tab close / reload only detaches (see platform/terminal.ts).
+        void maestroClient.stopSessionPty(maestroId).catch(() => {
+          void maestroClient.updateSession(maestroId, {
+            status: 'stopped',
+            completedAt: Date.now(),
+          }).catch(() => {});
+        });
+      } else {
+        void maestroClient.updateSession(maestroId, {
+          status: 'stopped',
+          completedAt: Date.now(),
+        }).catch(() => { /* best-effort server status update */ });
+      }
     }
     if (session?.recordingActive) {
       try {
@@ -1189,20 +1333,39 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       // Build export prefix to inline env vars into the command string.
       // portable-pty's CommandBuilder::env() does not reliably pass env vars
       // to the child process on macOS, so we export them in the shell command.
-      const envExports = Object.entries(sessionInfo.envVars || {})
-        .filter(([k]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k))
-        .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
-        .join('; ');
-      const envPrefix = envExports ? `${envExports}; ` : '';
+      // On Windows, use `set` syntax instead of `export`, and use `&` instead of `;`.
+      const isWindows = /Win/.test(navigator.platform);
+      let command: string | undefined;
+      if (sessionInfo.command) {
+        if (isWindows) {
+          // portable-pty's CommandBuilder::env() is unreliable, so inline env
+          // vars using `set K=V&&` syntax for cmd.exe (analogous to `export` on Unix).
+          // Use `&&` (not `&`) so cmd.exe chains them sequentially, and avoid
+          // quoting around the set assignment to prevent quote-nesting issues.
+          const envSets = Object.entries(sessionInfo.envVars || {})
+            .filter(([k]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k))
+            .map(([k, v]) => `set ${k}=${v}`)
+            .join('&& ');
+          const envPrefix = envSets ? `${envSets}&& ` : '';
+          command = `${envPrefix}${sessionInfo.command}`;
+        } else {
+          const envExports = Object.entries(sessionInfo.envVars || {})
+            .filter(([k]) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(k))
+            .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
+            .join('; ');
+          const envPrefix = envExports ? `${envExports}; ` : '';
+          command = `${envPrefix}${sessionInfo.command}; exec $SHELL`;
+        }
+      }
 
-      const info = await invoke<TerminalSessionInfo>('create_session', {
+      const info = await platform.terminal.createSession({
         name: sessionInfo.name,
-        command: sessionInfo.command ? `${envPrefix}${sessionInfo.command}; exec $SHELL` : sessionInfo.command,
+        command: command ?? null,
         cwd: sessionInfo.cwd,
-        cols: 200,
-        rows: 50,
-        env_vars: sessionInfo.envVars,
+        envVars: sessionInfo.envVars,
         persistent: false,
+        persistId: sessionInfo.maestroSessionId ?? '',
+        maestroSessionId: sessionInfo.maestroSessionId,
       });
 
       const rawSession: TerminalSession = {

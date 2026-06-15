@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import {
     AssetTemplate,
     AssetSettings,
@@ -124,6 +125,7 @@ export function useAssetManager({
             }))
             .filter((t) => t.relativePath.trim());
         if (payload.length === 0) return [];
+        if (!IS_TAURI) return [];
         return invoke<string[]>("apply_text_assets", { baseDir: dir, assets: payload, overwrite });
     }
 

@@ -107,6 +107,11 @@ export function CreateTaskModal({
         Object.values(teamMembersMap).filter((m: TeamMember) => m.status === 'active' && m.projectId === project?.id),
         [teamMembersMap, project?.id]
     );
+    const teamsMap = useMaestroStore(s => s.teams);
+    const teams = useMemo(() =>
+        Object.values(teamsMap).filter((t) => t.status === 'active' && t.projectId === project?.id),
+        [teamsMap, project?.id]
+    );
 
     // ==================== DRAFT LIFECYCLE ====================
 
@@ -126,6 +131,10 @@ export function CreateTaskModal({
         title: "", prompt: "", priority: "medium" as string,
         selectedTeamMemberIds: [] as string[], selectedSkills: [] as string[],
         selectedReferenceTasks: [] as MaestroTask[],
+        selectedTeamId: null as string | null,
+        dueDate: "" as string,
+        useWorktree: false,
+        dangerousMode: false,
     });
 
     const draft = useDraftTaskLifecycle({
@@ -141,10 +150,14 @@ export function CreateTaskModal({
                 ? formStateRef.current.selectedReferenceTasks.map(t => t.id) : undefined,
             teamMemberId: formStateRef.current.selectedTeamMemberIds.length === 1 ? formStateRef.current.selectedTeamMemberIds[0] : undefined,
             teamMemberIds: formStateRef.current.selectedTeamMemberIds.length > 0 ? formStateRef.current.selectedTeamMemberIds : undefined,
+            teamId: formStateRef.current.selectedTeamId ?? null,
+            dueDate: formStateRef.current.dueDate || undefined,
+            useWorktree: formStateRef.current.useWorktree || false,
+            dangerousMode: formStateRef.current.dangerousMode || false,
         }),
-    }) as ReturnType<typeof useDraftTaskLifecycle> & { _triggerAutoCreate: () => void; _uploadStagedImages: (taskId: string, files: File[]) => Promise<void> };
+    }) as ReturnType<typeof useDraftTaskLifecycle> & { _triggerAutoCreate: () => void; _uploadStagedImages: (taskId: string, files: File[]) => Promise<TaskImage[]> };
 
-    const form = useTaskForm(mode, isOpen, task, draft.draftTask);
+    const form = useTaskForm(mode, isOpen, task, draft.draftTask, refPicker.selectedReferenceTasks);
 
     // Keep formStateRef in sync (read at create time, not in a stale closure)
     formStateRef.current = {
@@ -154,6 +167,10 @@ export function CreateTaskModal({
         selectedTeamMemberIds: form.selectedTeamMemberIds,
         selectedSkills: form.selectedSkills,
         selectedReferenceTasks: refPicker.selectedReferenceTasks,
+        selectedTeamId: form.selectedTeamId,
+        dueDate: form.dueDate,
+        useWorktree: form.useWorktree,
+        dangerousMode: form.dangerousMode,
     };
 
     const effectiveEditMode = isEditMode || draft.phase === "created";
@@ -174,21 +191,27 @@ export function CreateTaskModal({
         return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     };
 
-    // Trigger auto-create when user starts typing in create mode
+    // Trigger auto-create when user starts typing (or attaches/pastes an image) in create mode
     useEffect(() => {
         if (mode !== "create" || draft.phase !== "idle") return;
-        const hasContent = form.title.trim() !== "" || form.prompt.trim() !== "";
+        const hasContent = form.title.trim() !== "" || form.prompt.trim() !== "" || form.stagedImageFiles.length > 0;
         if (hasContent) {
             draft._triggerAutoCreate();
         }
-    }, [mode, draft.phase, form.title, form.prompt]);
+    }, [mode, draft.phase, form.title, form.prompt, form.stagedImageFiles.length]);
 
-    // Upload staged images after draft creation
+    // Upload staged images after draft creation, then surface them as task images
     useEffect(() => {
         if (draft.phase === "created" && draft.draftTaskId && form.stagedImageFiles.length > 0) {
-            draft._uploadStagedImages(draft.draftTaskId, form.stagedImageFiles);
+            const files = form.stagedImageFiles;
+            form.clearStagedFiles();
+            draft._uploadStagedImages(draft.draftTaskId, files).then(uploaded => {
+                if (uploaded.length > 0) {
+                    form.setTaskImages(prev => [...prev, ...uploaded]);
+                }
+            });
         }
-    }, [draft.phase, draft.draftTaskId]);
+    }, [draft.phase, draft.draftTaskId, form.stagedImageFiles.length]);
 
     // ==================== AUTO-SAVE ====================
 
@@ -338,56 +361,67 @@ export function CreateTaskModal({
         }
     };
 
+    // ==================== IMAGE PASTE / DROP ====================
+
+    const [imageUploading, setImageUploading] = useState(false);
+
+    // Route incoming images: upload directly when the task exists on the
+    // server (edit mode or created draft), otherwise stage them locally —
+    // staging triggers draft auto-create, which uploads them on creation.
     const acceptImageFiles = useCallback(async (files: File[]) => {
         const imageFiles = files.filter(file => file.type.startsWith("image/"));
         if (imageFiles.length === 0) return;
 
         if (effectiveEditMode && effectiveTask) {
-            const uploaded: TaskImage[] = [];
-            for (const file of imageFiles) {
-                try {
-                    uploaded.push(await maestroClient.uploadTaskImage(effectiveTask.id, file));
-                } catch {
-                    // Keep any successfully uploaded images and skip failed files.
+            setImageUploading(true);
+            try {
+                for (const file of imageFiles) {
+                    try {
+                        const img = await maestroClient.uploadTaskImage(effectiveTask.id, file);
+                        form.setTaskImages(prev => [...prev, img]);
+                    } catch { /* skip failed upload, keep the rest */ }
                 }
+            } finally {
+                setImageUploading(false);
             }
-            if (uploaded.length > 0) {
-                form.setTaskImages([...form.taskImages, ...uploaded]);
-            }
-            return;
+        } else {
+            form.addStagedFiles(imageFiles);
         }
+    }, [effectiveEditMode, effectiveTask?.id, form.setTaskImages, form.addStagedFiles]);
 
-        form.addStagedFiles(imageFiles);
-    }, [effectiveEditMode, effectiveTask, form]);
-
+    // Ref so the document-level listener never sees a stale closure
     const acceptImageFilesRef = useRef(acceptImageFiles);
     acceptImageFilesRef.current = acceptImageFiles;
     const getNextImageIndexRef = useRef(getNextImageIndex);
     getNextImageIndexRef.current = getNextImageIndex;
 
+    // Paste anywhere inside the modal (title, description, any focused element)
     const handlePaste = (e: React.ClipboardEvent) => {
         const images = extractImageFiles(e.clipboardData, {
             startIndex: getNextImageIndex(),
             renameAll: true,
         });
         if (images.length === 0) return;
+        // Claim the paste: screenshots / copied images / copied files should
+        // attach, not leak file paths into the focused text field.
         e.preventDefault();
         acceptImageFiles(images);
     };
 
+    // Fallback: paste while no element inside the modal has focus
     useEffect(() => {
         if (!isOpen) return;
-
-        const onDocumentPaste = (e: ClipboardEvent) => {
-            if (!modalRef.current) return;
+        const onDocPaste = (e: ClipboardEvent) => {
+            const root = modalRef.current;
             const target = e.target as HTMLElement | null;
+            // Inside the modal → the React onPaste handler covers it
+            if (root && target instanceof Node && root.contains(target)) return;
+            // Another editor (input, textarea, terminal) owns this paste
             if (target) {
-                if (!modalRef.current.contains(target)) return;
-                const tag = target.tagName?.toLowerCase();
+                const tag = (target.tagName || '').toLowerCase();
                 if (tag === 'input' || tag === 'textarea' || target.isContentEditable) return;
                 if (typeof target.closest === 'function' && target.closest('.xterm')) return;
             }
-
             const images = extractImageFiles(e.clipboardData, {
                 startIndex: getNextImageIndexRef.current(),
                 renameAll: true,
@@ -396,15 +430,14 @@ export function CreateTaskModal({
             e.preventDefault();
             acceptImageFilesRef.current(images);
         };
-
-        document.addEventListener("paste", onDocumentPaste);
-        return () => document.removeEventListener("paste", onDocumentPaste);
+        document.addEventListener('paste', onDocPaste);
+        return () => document.removeEventListener('paste', onDocPaste);
     }, [isOpen]);
 
+    // Drag & drop images onto the modal
     const handleDragOver = (e: React.DragEvent) => {
         if (dataTransferHasFiles(e.dataTransfer)) e.preventDefault();
     };
-
     const handleDrop = (e: React.DragEvent) => {
         const images = extractImageFiles(e.dataTransfer, {
             startIndex: getNextImageIndex(),
@@ -600,6 +633,11 @@ export function CreateTaskModal({
                                             />
                                         </>
                                     )}
+                                    {imageUploading && (
+                                        <span className="pn-mchip" style={{ opacity: 0.7 }}>
+                                            <Icon name="paperclip" size={12} /> Uploading…
+                                        </span>
+                                    )}
                                     <ReferenceTaskPicker
                                         selectedReferenceTasks={refPicker.selectedReferenceTasks}
                                         showPicker={refPicker.showPicker}
@@ -638,6 +676,7 @@ export function CreateTaskModal({
                                         selectedSkills={form.selectedSkills}
                                         onSelectionChange={form.setSelectedSkills}
                                         projectPath={project?.basePath || project?.workingDir || undefined}
+                                        alwaysExpanded
                                     />
                                 )}
                                 {form.activeTab === 'sessions' && effectiveEditMode && effectiveTask && (
@@ -667,6 +706,8 @@ export function CreateTaskModal({
                                         onDueDateChange={form.setDueDate}
                                         useWorktree={form.useWorktree}
                                         onUseWorktreeChange={form.setUseWorktree}
+                                        dangerousMode={form.dangerousMode}
+                                        onDangerousModeChange={form.setDangerousMode}
                                         isEditMode={effectiveEditMode}
                                         task={effectiveTask || undefined}
                                     />
@@ -692,8 +733,21 @@ export function CreateTaskModal({
                     isEditMode={isEditMode}
                     isValid={form.isValid}
                     selectedTeamMemberIds={form.selectedTeamMemberIds}
-                    onTeamMemberSelectionChange={form.setSelectedTeamMemberIds}
+                    onTeamMemberSelectionChange={(ids) => {
+                        if (ids.length > 0 && form.selectedTeamId) form.setSelectedTeamId(null);
+                        form.setSelectedTeamMemberIds(ids);
+                    }}
+                    teams={teams}
+                    selectedTeamId={form.selectedTeamId}
+                    onTeamChange={(teamId) => {
+                        if (teamId && form.selectedTeamMemberIds.length > 0) form.setSelectedTeamMemberIds([]);
+                        form.setSelectedTeamId(teamId);
+                    }}
                     teamMembers={teamMembers}
+                    dangerousMode={form.dangerousMode}
+                    onDangerousModeChange={form.setDangerousMode}
+                    useWorktree={form.useWorktree}
+                    onUseWorktreeChange={form.setUseWorktree}
                     onClose={handleClose}
                     onSave={handleSave}
                     onSubmit={handleSubmit}

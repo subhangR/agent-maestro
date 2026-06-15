@@ -1071,6 +1071,128 @@
   color: var(--ssv-accent);
 }
 
+/* ============================================ SESSION PROMPTS */
+.ssv-prompt-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ssv-prompt-row {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  font-family: var(--ssv-font-ui);
+  text-align: left;
+  background: none;
+  border: none;
+  width: 100%;
+}
+.ssv-prompt-row + .ssv-prompt-row {
+  border-top: 1px solid var(--ssv-border-1);
+}
+.ssv-prompt-row[role="button"] {
+  cursor: pointer;
+}
+.ssv-prompt-row[role="button"]:hover {
+  background: var(--ssv-bg-hover);
+}
+.ssv-prompt-av {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ssv-font-mono);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--ssv-on-accent);
+}
+.ssv-prompt-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ssv-prompt-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.ssv-prompt-dir {
+  font-family: var(--ssv-font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ssv-fg-4);
+}
+.ssv-prompt-row-sent .ssv-prompt-dir {
+  color: var(--ssv-accent, var(--ssv-fg-3));
+}
+.ssv-prompt-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ssv-fg-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ssv-prompt-role {
+  font-family: var(--ssv-font-mono);
+  font-size: 10.5px;
+  color: var(--ssv-fg-4);
+}
+.ssv-prompt-when {
+  font-family: var(--ssv-font-mono);
+  font-size: 10.5px;
+  color: var(--ssv-fg-4);
+  margin-left: auto;
+}
+.ssv-prompt-text {
+  font-size: 12.5px;
+  color: var(--ssv-fg-2);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ssv-prompt-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--ssv-font-mono);
+  font-size: 10.5px;
+  color: var(--ssv-fg-4);
+  margin-top: 2px;
+}
+.ssv-prompt-row-explicit .ssv-prompt-av {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.ssv-prompt-endpoint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.ssv-prompt-row-explicit .ssv-prompt-endpoint {
+  cursor: pointer;
+}
+.ssv-prompt-row-explicit .ssv-prompt-dir {
+  color: var(--ssv-accent, var(--ssv-fg-3));
+  font-size: 13px;
+}
+.ssv-prompt-empty {
+  font-family: var(--ssv-font-mono);
+  font-size: 11px;
+  color: var(--ssv-fg-4);
+  padding: 8px 0;
+}
+
 /* ============================================ COLLAPSIBLE KV FOOTERS */
 .ssv-fold {
   display: block;
@@ -1166,6 +1288,152 @@
   margin-top: 2px;
 }
 
+/* =========================================================== HUDDLES */
+/* Cross-project clusters of sessions that have exchanged prompts. Rendered in
+   the Spaces panel under the Huddles sub-tab. Reuses .ssv-prompt-* tokens via
+   the embedded PromptList. */
+.ssv-huddle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px 16px;
+}
+
+.ssv-huddle-card {
+  border: 1px solid var(--pn-line, #2C2719);
+  border-radius: var(--pn-r-md, 8px);
+  background: var(--pn-card, var(--pn-surface, #1B1810));
+  overflow: hidden;
+  transition: border-color 140ms ease;
+}
+.ssv-huddle-card--open {
+  border-color: var(--pn-line-2, #3B3524);
+}
+
+.ssv-huddle-head {
+  display: grid;
+  grid-template-columns: 14px auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--pn-ink, #EFE9DB);
+  font: inherit;
+}
+.ssv-huddle-head:hover {
+  background: var(--pn-hover, #262117);
+}
+
+.ssv-huddle-avs {
+  display: inline-flex;
+  align-items: center;
+}
+.ssv-huddle-av {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: #1B1810;
+  font-family: var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  border: 1.5px solid var(--pn-card, #221E15);
+  margin-left: -6px;
+}
+.ssv-huddle-av:first-child { margin-left: 0; }
+.ssv-huddle-av--more {
+  background: var(--pn-active, #302A1D);
+  color: var(--pn-ink-2, #BDB5A2);
+}
+
+.ssv-huddle-head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pn-ink-3, #8C8470);
+  font-family: var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+}
+.ssv-huddle-head-count {
+  white-space: nowrap;
+}
+.ssv-huddle-head-sep {
+  color: var(--pn-ink-4, #665E4C);
+}
+.ssv-huddle-head-when {
+  color: var(--pn-ink-3, #8C8470);
+  font-family: var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.ssv-huddle-body {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--pn-line, #2C2719);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ssv-huddle-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ssv-huddle-member {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 999px;
+  background: var(--pn-active, #302A1D);
+  border: 1px solid var(--pn-line, #2C2719);
+  color: var(--pn-ink-2, #BDB5A2);
+  cursor: pointer;
+  font: inherit;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.ssv-huddle-member:disabled {
+  cursor: default;
+}
+.ssv-huddle-member:not(:disabled):hover {
+  background: var(--pn-hover, #262117);
+  border-color: var(--pn-line-2, #3B3524);
+}
+.ssv-huddle-member-av {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #1B1810;
+  font-family: var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  font-weight: 700;
+}
+.ssv-huddle-member-text {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+.ssv-huddle-member-name {
+  font-family: var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  color: var(--pn-ink, #EFE9DB);
+}
+.ssv-huddle-member-proj {
+  font-family: var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  color: var(--pn-ink-3, #8C8470);
+}
+
 /* =========================================================== RESPONSIVE */
 @media (max-width: 880px) {
   .ssv-hero {
@@ -1185,6 +1453,236 @@
   }
   .ssv-msg-counts {
     flex-direction: column;
+  }
+}
+
+/* =========================================================== MOBILE (<=768px)
+   Single-panel mobile shell. Additive only; desktop rules above are untouched.
+   Reserve --mobile-nav-height (56px) of bottom padding so content never hides
+   behind the fixed MobilePanelNav. */
+@media (max-width: 768px) {
+  .ssv-wrap {
+    padding: 18px 14px calc(60px + var(--mobile-nav-height, 0px));
+    gap: 16px;
+  }
+
+  /* Section header: keep tight when count chip + eyebrow are present */
+  .ssv-sec-head {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .ssv-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+  }
+
+  /* Buttons sized for thumbs */
+  .ssv-btn {
+    padding: 10px 14px;
+    min-height: 40px;
+  }
+  .ssv-back {
+    padding: 8px 12px;
+    min-height: 36px;
+  }
+
+  /* ----- Hero / Identity / Outcome ----- */
+  .ssv-hero {
+    gap: 12px;
+  }
+  .ssv-hero-card {
+    padding: 16px 16px;
+  }
+  .ssv-av-lg {
+    width: 48px;
+    height: 48px;
+    font-size: 17px;
+    border-radius: 12px;
+  }
+  .ssv-id-name {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+  .ssv-id-role {
+    font-size: 12.5px;
+  }
+  .ssv-final {
+    padding: 12px 13px 11px;
+    margin-top: 14px;
+  }
+  .ssv-final-body {
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .ssv-outcome-card {
+    padding: 16px 16px;
+    gap: 12px;
+  }
+  .ssv-outcome-big {
+    font-size: 20px;
+  }
+  .ssv-outcome-ring {
+    width: 42px;
+    height: 42px;
+  }
+
+  /* Stat lines stay row layout but reduce padding */
+  .ssv-stat-line {
+    padding: 8px 11px;
+    gap: 10px;
+  }
+  .ssv-stat-v {
+    font-size: 12.5px;
+  }
+  .ssv-stat-v.mono {
+    font-size: 11.5px;
+  }
+
+  /* Member chips: tighter */
+  .ssv-mchip {
+    padding: 3px 9px 3px 4px;
+  }
+  .ssv-mchip-nm {
+    font-size: 11px;
+  }
+
+  /* Meta chip row wraps; keep chip readable */
+  .ssv-meta-chip {
+    padding: 4px 8px;
+    font-size: 10.5px;
+  }
+
+  /* ----- Tokens / Tools / Msgs ----- */
+  .ssv-metrics-grid {
+    gap: 12px;
+  }
+  .ssv-token-card,
+  .ssv-tools-card {
+    padding: 14px 16px;
+  }
+  .ssv-token-total {
+    font-size: 28px;
+  }
+  .ssv-token-bar {
+    margin: 14px 0 12px;
+  }
+  .ssv-token-legend {
+    /* Stack to single column at the smallest widths for readability */
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .ssv-models-row {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+  .ssv-tool-name {
+    width: 64px;
+    font-size: 11px;
+  }
+  .ssv-tool-count {
+    font-size: 11px;
+  }
+  .ssv-tool-row {
+    gap: 9px;
+  }
+
+  /* Counts cards: at 768 keep row; at 560 they go column (existing rule) */
+  .ssv-mcount {
+    padding: 11px 13px;
+  }
+  .ssv-mcount-n {
+    font-size: 19px;
+  }
+  .ssv-mcount-l {
+    font-size: 9.5px;
+  }
+
+  /* Message bubbles take more width on phones */
+  .ssv-msg {
+    max-width: 94%;
+  }
+  .ssv-msg-bubble {
+    padding: 8px 11px;
+  }
+  .ssv-msg-text {
+    font-size: 12.5px;
+  }
+
+  /* ----- Task cards ----- */
+  .ssv-task-head {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .ssv-task-title {
+    font-size: 13.5px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+  }
+  .ssv-task-body {
+    padding: 0 14px 14px;
+  }
+  .ssv-task-meta-strip {
+    padding: 11px 0;
+    gap: 6px;
+  }
+  .ssv-task-desc {
+    font-size: 12.5px;
+  }
+  .ssv-prompt-block {
+    padding: 10px 12px;
+  }
+  .ssv-prompt-text {
+    font-size: 11.5px;
+  }
+
+  /* ----- Docs grid ----- */
+  .ssv-docs-grid {
+    /* Narrower min so we still get usable cards on 375px */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  /* ----- Sub-sessions ----- */
+  .ssv-sub-row {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .ssv-sub-av {
+    width: 32px;
+    height: 32px;
+  }
+  .ssv-sub-name {
+    font-size: 12.5px;
+  }
+  .ssv-sub-line {
+    font-size: 11px;
+  }
+
+  /* ----- KV table ----- */
+  .ssv-kv-table {
+    /* Stack key/value into a single column at phone widths */
+    grid-template-columns: 1fr;
+  }
+  .ssv-kv-k {
+    padding-bottom: 2px;
+  }
+  .ssv-kv-v {
+    padding-top: 2px;
+  }
+  .ssv-kv-table > div:nth-last-child(-n + 2) {
+    /* desktop rule removed last divider for the trailing key/value pair;
+       in the stacked layout the trailing item is just one cell, so the
+       baseline rule still no-ops correctly. */
+  }
+
+  /* Thread breakdown chips */
+  .ssv-tl-bchip {
+    padding: 4px 8px;
+  }
+  .ssv-tl-toggle {
+    min-height: 36px;
   }
 }
 

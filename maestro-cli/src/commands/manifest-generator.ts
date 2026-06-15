@@ -452,6 +452,7 @@ export class ManifestGeneratorCLICommand {
     referenceTaskIds?: string[];
     teamMemberIds?: string[];
     teamMemberId?: string;
+    teamId?: string;
   }): Promise<void> {
     try {
       // 1. Fetch ALL tasks
@@ -597,6 +598,8 @@ export class ManifestGeneratorCLICommand {
         // Multi-identity: fetch all and build profiles array
         const profiles: TeamMemberProfile[] = [];
         const MODEL_POWER: Record<string, number> = {
+          'claude-fable-5[1m]': 6.1,
+          'claude-fable-5': 6.0,
           'claude-opus-4-8[1m]': 5.9,
           'claude-opus-4-8': 5.8,
           'gpt-5.5': 5.5,
@@ -750,6 +753,48 @@ export class ManifestGeneratorCLICommand {
         }
         if (teamMembers.length > 0) {
           manifest.availableTeamMembers = teamMembers;
+        }
+      }
+
+      // Recursive team structure: when this coordinator session is bound to a saved
+      // team, fetch the resolved tree so the leader can route work by expertise and
+      // spawn sub-team leaders as sub-coordinators.
+      if (options.teamId && isCoordinatorMode(manifest.mode)) {
+        try {
+          const tree: any = await api.get(
+            `/api/teams/${options.teamId}/tree?projectId=${options.projectId}`
+          );
+          if (tree && tree.id) {
+            manifest.teamStructure = tree;
+
+            // If no explicit delegation roster was provided, derive a flat discovery
+            // roster from every member in the tree so prompt rendering still works.
+            if (!manifest.availableTeamMembers || manifest.availableTeamMembers.length === 0) {
+              const flat: TeamMemberData[] = [];
+              const seen = new Set<string>();
+              const walk = (node: any) => {
+                for (const m of node.members || []) {
+                  if (seen.has(m.id)) continue;
+                  seen.add(m.id);
+                  flat.push({
+                    id: m.id,
+                    name: m.name,
+                    role: m.role || 'worker',
+                    identity: m.identity || `You are ${m.name}. ${m.role || 'A team member.'}`,
+                    avatar: m.avatar || '🤖',
+                    mode: m.mode,
+                  });
+                }
+                for (const sub of node.subTeams || []) walk(sub);
+              };
+              walk(tree);
+              if (flat.length > 0) {
+                manifest.availableTeamMembers = flat;
+              }
+            }
+          }
+        } catch {
+          // Non-fatal: coordinator proceeds with flat roster if the tree can't be fetched.
         }
       }
 
@@ -931,6 +976,7 @@ export function registerManifestCommands(program: any): void {
     .option('--reference-task-ids <ids>', 'Comma-separated reference task IDs for context')
     .option('--team-member-id <id>', 'Team member ID for this session')
     .option('--team-member-ids <ids>', 'Comma-separated team member IDs (for coordinate mode)')
+    .option('--team-id <id>', 'Saved team ID for recursive team structure (coordinator mode)')
     .requiredOption('--output <path>', 'Output file path')
     .action(async (options: any) => {
       // Parse comma-separated values
@@ -983,6 +1029,7 @@ export function registerManifestCommands(program: any): void {
         referenceTaskIds,
         teamMemberId: options.teamMemberId,
         teamMemberIds,
+        teamId: options.teamId,
       });
     });
 }

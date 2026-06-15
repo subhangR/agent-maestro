@@ -104,6 +104,25 @@ html[data-redesign] .pn-fade {
 }
 html[data-redesign] .pn-fade--card { background: linear-gradient(180deg, transparent, var(--pn-surface) 86%); }
 
+/* end-of-list footer — gives the list breathing room past the bottom fade and
+   marks where the content stops so the last item never reads as clipped */
+html[data-redesign] .pn-list-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 80px;
+  user-select: none;
+}
+html[data-redesign] .pn-list-end__line { flex: 1; height: 1px; background: var(--pn-line); }
+html[data-redesign] .pn-list-end__label {
+  font-family: var(--pn-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pn-ink-4);
+  white-space: nowrap;
+}
+
 /* scroll region */
 html[data-redesign] .pn-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: var(--pn-line-2) transparent; }
 html[data-redesign] .pn-scroll::-webkit-scrollbar { width: 9px; }
@@ -168,6 +187,13 @@ html[data-redesign] .pn-chip {
   border-radius: var(--pn-r-pill);
   padding: 1px 7px; line-height: 1.6; white-space: nowrap; flex: 0 0 auto;
 }
+/* interactive chip (e.g. the "N live" filter toggle) */
+html[data-redesign] .pn-chip--btn {
+  border: none; cursor: pointer; font-family: var(--pn-mono);
+  transition: background 140ms, color 140ms;
+}
+html[data-redesign] .pn-chip--btn:hover { color: var(--pn-ink); background: var(--pn-hover); }
+html[data-redesign] .pn-chip--active { color: var(--pn-run); background: var(--pn-run-soft); }
 
 /* agent logo tile (NO left-border accent — a calm rounded tile) */
 html[data-redesign] .pn-agent {

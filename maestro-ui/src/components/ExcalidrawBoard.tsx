@@ -384,7 +384,7 @@ export function ExcalidrawBoard({ onClose, inline, storageKey, name, originSessi
               <span className="excalidrawShortcutHint">Cmd/Ctrl+Shift+X to toggle</span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="excalidrawHeaderActions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {canSendToSession && (
               <button
                 type="button"

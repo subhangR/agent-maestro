@@ -3,6 +3,7 @@ import { DirectoryListing } from "../../app/types/app-state";
 import { InlineFolderBrowser } from "../InlineFolderBrowser";
 import { ProjectSoundSettings } from "./ProjectSoundSettings";
 import type { ProjectSoundConfig } from "../../app/types/maestro";
+import { IS_TAURI } from "../../platform/detect";
 
 type EnvironmentConfig = {
   id: string;
@@ -104,39 +105,47 @@ export function ProjectModal({
                 onChange={(e) => onChangeBasePath(e.target.value)}
                 placeholder={basePathPlaceholder}
               />
-              <div className="themedPathActions">
-                <button
-                  type="button"
-                  className="themedBtn"
-                  onClick={onUseCurrentTab}
-                  disabled={!canUseCurrentTab}
-                >
-                  Use current tab
-                </button>
-                <button type="button" className="themedBtn" onClick={onUseHome} disabled={!canUseHome}>
-                  Home
-                </button>
-              </div>
-              <button
-                type="button"
-                className="themedBrowseToggle"
-                onClick={() => setBrowserExpanded((v) => !v)}
-              >
-                <span className={`themedBrowseToggleArrow${browserExpanded ? " themedBrowseToggleArrow--open" : ""}`}>
-                  &#9654;
-                </span>
-                Browse
-              </button>
-              {browserExpanded && (
-                <InlineFolderBrowser
-                  listing={browserListing}
-                  loading={browserLoading}
-                  error={browserError}
-                  onNavigate={onBrowserNavigate}
-                  onSelect={onBrowserSelect}
-                />
+              {IS_TAURI && (
+                <>
+                  <div className="themedPathActions">
+                    <button
+                      type="button"
+                      className="themedBtn"
+                      onClick={onUseCurrentTab}
+                      disabled={!canUseCurrentTab}
+                    >
+                      Use current tab
+                    </button>
+                    <button type="button" className="themedBtn" onClick={onUseHome} disabled={!canUseHome}>
+                      Home
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    className="themedBrowseToggle"
+                    onClick={() => setBrowserExpanded((v) => !v)}
+                  >
+                    <span className={`themedBrowseToggleArrow${browserExpanded ? " themedBrowseToggleArrow--open" : ""}`}>
+                      &#9654;
+                    </span>
+                    Browse
+                  </button>
+                  {browserExpanded && (
+                    <InlineFolderBrowser
+                      listing={browserListing}
+                      loading={browserLoading}
+                      error={browserError}
+                      onNavigate={onBrowserNavigate}
+                      onSelect={onBrowserSelect}
+                    />
+                  )}
+                </>
               )}
-              <div className="themedFormHint">New sessions in this project start here.</div>
+              <div className="themedFormHint">
+                {IS_TAURI
+                  ? "New sessions in this project start here."
+                  : "Absolute path on the server (e.g. /home/ubuntu/agent-maestro). New sessions in this project start here."}
+              </div>
             </div>
             <div className="themedFormRow">
               <div className="themedFormLabel">Environment (.env)</div>

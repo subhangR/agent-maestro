@@ -74,6 +74,30 @@ export function createTeamRoutes(teamService: TeamService) {
   });
 
   /**
+   * GET /teams/:id/tree?projectId=X
+   * Get the fully-resolved recursive team tree (hydrated members + nested sub-teams)
+   */
+  router.get('/teams/:id/tree', validateParams(idParamSchema), async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const projectId = req.query.projectId as string;
+
+      if (!projectId) {
+        return res.status(400).json({
+          error: true,
+          message: 'projectId query parameter is required',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+
+      const tree = await teamService.getTeamTree(projectId, id);
+      res.json(tree);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  /**
    * PATCH /teams/:id
    * Update a team
    */

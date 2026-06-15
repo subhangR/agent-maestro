@@ -7,6 +7,11 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    watch: {
+      // Don't watch the Rust build output — cargo locks files there during
+      // compilation, which crashes Vite's FSWatcher with EBUSY on Windows.
+      ignored: ["**/src-tauri/**"],
+    },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { TeamListItem } from "../TeamListItem";
 import { TeamModal } from "../TeamModal";
+import { TeamOrgChart } from "../TeamOrgChart";
 import { Icon } from "../redesign/kit";
 
 type TeamsPanelProps = {
@@ -20,6 +21,7 @@ export function TeamsPanel({
 }: TeamsPanelProps) {
     const [showModal, setShowModal] = useState(false);
     const [editingTeam, setEditingTeam] = useState<any | null>(null);
+    const [view, setView] = useState<'list' | 'chart'>('list');
 
     const handleEdit = (team: any) => {
         setEditingTeam(team);
@@ -49,7 +51,23 @@ export function TeamsPanel({
                     </div>
                 ) : (
                     <>
-                        <div style={{ padding: '11px 12px 4px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{ padding: '11px 12px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                            <div className="pn-seg" role="tablist" aria-label="Teams view">
+                                <button type="button"
+                                    className={`pn-seg__btn ${view === 'list' ? 'pn-seg__btn--on' : ''}`}
+                                    onClick={() => setView('list')}
+                                    title="List view"
+                                >
+                                    <Icon name="layers" size={12} /> List
+                                </button>
+                                <button type="button"
+                                    className={`pn-seg__btn ${view === 'chart' ? 'pn-seg__btn--on' : ''}`}
+                                    onClick={() => setView('chart')}
+                                    title="Org chart"
+                                >
+                                    <Icon name="gitBranch" size={12} /> Org chart
+                                </button>
+                            </div>
                             <button type="button"
                                 className="pn-btn pn-btn--primary"
                                 style={{ height: 28 }}
@@ -58,18 +76,22 @@ export function TeamsPanel({
                                 <Icon name="plus" size={12} /> Create Team
                             </button>
                         </div>
-                        <div>
-                            {topLevelTeams.map(team => (
-                                <TeamListItem
-                                    key={team.id}
-                                    team={team}
-                                    depth={0}
-                                    onEdit={handleEdit}
-                                    onRun={onRun}
-                                    allTeams={teams}
-                                />
-                            ))}
-                        </div>
+                        {view === 'list' ? (
+                            <div>
+                                {topLevelTeams.map(team => (
+                                    <TeamListItem
+                                        key={team.id}
+                                        team={team}
+                                        depth={0}
+                                        onEdit={handleEdit}
+                                        onRun={onRun}
+                                        allTeams={teams}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <TeamOrgChart projectId={projectId} teams={teams} />
+                        )}
                     </>
                 )}
             </div>

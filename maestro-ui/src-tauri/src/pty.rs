@@ -121,29 +121,37 @@ fn shell_from_passwd() -> Option<String> {
 }
 
 fn default_user_shell() -> String {
-    if let Ok(shell) = std::env::var("SHELL") {
-        let trimmed = shell.trim();
-        if !trimmed.is_empty() {
-            return trimmed.to_string();
-        }
+    // On Windows, use COMSPEC (typically cmd.exe)
+    #[cfg(target_family = "windows")]
+    {
+        return std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
     }
 
     #[cfg(target_family = "unix")]
-    if let Some(shell) = shell_from_passwd() {
-        return shell;
-    }
-
-    #[cfg(target_os = "macos")]
     {
-        return "/bin/zsh".to_string();
-    }
-
-    #[cfg(not(target_os = "macos"))]
-    {
-        if Path::new("/bin/bash").is_file() {
-            return "/bin/bash".to_string();
+        if let Ok(shell) = std::env::var("SHELL") {
+            let trimmed = shell.trim();
+            if !trimmed.is_empty() {
+                return trimmed.to_string();
+            }
         }
-        return "/bin/sh".to_string();
+
+        if let Some(shell) = shell_from_passwd() {
+            return shell;
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            return "/bin/zsh".to_string();
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            if Path::new("/bin/bash").is_file() {
+                return "/bin/bash".to_string();
+            }
+            return "/bin/sh".to_string();
+        }
     }
 }
 

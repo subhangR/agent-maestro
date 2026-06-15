@@ -16,11 +16,14 @@ import {
 } from "../../stores/useWorkspaceStore";
 import { isSshCommandLine, sshTargetFromCommandLine } from "../../app/utils/ssh";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../../platform";
 import { TerminalStrip } from "../session-log/TerminalStrip";
 import { ModeChip } from "../maestro/ModeChip";
 import { isCoordinatorRole } from "../../utils/coordinatorRole";
 import { isWhiteboardId, isFileId } from "../../app/types/space";
 import type { WhiteboardSpace, FileSpace } from "../../app/types/space";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { useMobilePanelStore } from "../../stores/useMobilePanelStore";
 const LazyExcalidrawBoard = React.lazy(() => import("../ExcalidrawBoard").then(m => ({ default: m.ExcalidrawBoard })));
 
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
@@ -138,6 +141,11 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const handleSelectWorkspaceFile = useWorkspaceStore((s) => s.handleSelectWorkspaceFile);
   const beginWorkspaceResize = useWorkspaceStore((s) => s.beginWorkspaceResize);
 
+  // --- Mobile single-view switcher (≤768px) ---
+  const isMobile = useBreakpoint() === "mobile";
+  const mainView = useMobilePanelStore((s) => s.mainView);
+  const setMainView = useMobilePanelStore((s) => s.setMainView);
+
   // --- Drag-and-drop task to terminal ---
   const [terminalDragOver, setTerminalDragOver] = useState(false);
   const dragCounterRef = useRef(0);
@@ -188,7 +196,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
 
   // --- Session action bar: attachment ---
   const handleAttach = useCallback(async () => {
-    if (!activeId) return;
+    if (!activeId || !IS_TAURI) return;
     try {
       const { open } = await import('@tauri-apps/plugin-dialog');
       const selected = await open({ multiple: true, title: 'Attach files to session' });
@@ -214,6 +222,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
 
   const handleSendDrawingToSession = useCallback(
     async (originSessionId: string, png: Blob, sceneJson: string) => {
+      if (!IS_TAURI) return;
       try {
         const ts = Date.now();
         const pngBase64 = await blobToBase64(png);
@@ -238,10 +247,45 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
     [setActiveId, sendPromptToSession, reportError],
   );
 
+  // --- Mobile sub-view availability (matches the same rootDir guards used to
+  //     render the editor / files panes below). ---
+  const editorRootDirTrimmed = (
+    activeWorkspaceView.codeEditorRootDir ??
+    activeWorkspaceView.fileExplorerRootDir ??
+    (!activeIsSsh ? activeProject?.basePath ?? active?.cwd ?? "" : "")
+  ).trim();
+  const filesRootDirTrimmed = (
+    activeWorkspaceView.fileExplorerRootDir ??
+    activeWorkspaceView.codeEditorRootDir ??
+    (!activeIsSsh ? activeProject?.basePath ?? active?.cwd ?? "" : "")
+  ).trim();
+  const editorAvailable =
+    isMobile && activeWorkspaceView.codeEditorOpen && editorRootDirTrimmed.length > 0;
+  const filesAvailable =
+    isMobile &&
+    activeWorkspaceView.fileExplorerOpen &&
+    (filesRootDirTrimmed.length > 0 || activeIsSsh);
+  let effectiveMainView = mainView;
+  if (mainView === "editor" && !editorAvailable) effectiveMainView = "primary";
+  if (mainView === "files" && !filesAvailable) effectiveMainView = "primary";
+
+  // Keep store in sync when the selected sub-view becomes unavailable. The
+  // effective fallback above already prevents a blank screen — this just keeps
+  // the bottom nav highlight from being stuck on an absent tab.
+  React.useEffect(() => {
+    if (!isMobile) return;
+    if (mainView === "editor" && !editorAvailable) setMainView("primary");
+    else if (mainView === "files" && !filesAvailable) setMainView("primary");
+  }, [isMobile, mainView, editorAvailable, filesAvailable, setMainView]);
+
+  const mobileClass = isMobile
+    ? ` workspaceRow--mobile workspaceRow--mv-${effectiveMainView}`
+    : "";
+
   return (
     <div
       ref={workspaceRowRef}
-      className={`workspaceRow ${workspaceResizeMode ? "workspaceResizing" : ""}`}
+      className={`workspaceRow ${workspaceResizeMode ? "workspaceResizing" : ""}${mobileClass}`}
       style={
         {
           "--workspaceEditorWidthPx": `${activeWorkspaceView.editorWidth}px`,

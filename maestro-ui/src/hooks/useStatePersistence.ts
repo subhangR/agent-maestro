@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { TerminalSession, PersistedTerminalSession } from "../app/types/session";
 import { MaestroProject } from "../app/types/maestro";
 import { EnvironmentConfig } from "../app/types/app";
@@ -165,6 +166,14 @@ export function useStatePersistence({
       saveTimerRef.current = null;
       const state = pendingSaveRef.current;
       if (!state) return;
+      if (!IS_TAURI) {
+        try {
+          localStorage.setItem('maestro-persisted-state-v1', JSON.stringify(state));
+        } catch {
+          // best-effort
+        }
+        return;
+      }
       void invoke("save_persisted_state", { state }).catch((err) => {
         const msg = formatError(err);
         const lower = msg.toLowerCase();

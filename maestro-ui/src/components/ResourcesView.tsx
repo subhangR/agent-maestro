@@ -5,6 +5,7 @@ import { useSpacesStore } from "../stores/useSpacesStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useUIStore } from "../stores/useUIStore";
 import type { DocEntry, TaskImage, MaestroTask } from "../app/types/maestro";
+import { isDiagramDoc } from "../utils/docHelpers";
 
 type ResourceType = "all" | "docs" | "diagrams" | "images";
 
@@ -85,7 +86,7 @@ export const ResourcesView: React.FC<{
 
   const allResources = useMemo<Resource[]>(() => {
     const docs: DocResource[] = projectDocs.map((doc) => ({
-      kind: doc.kind === "diagram" ? "diagram" : "doc",
+      kind: isDiagramDoc(doc) ? "diagram" : "doc",
       doc,
     }));
 

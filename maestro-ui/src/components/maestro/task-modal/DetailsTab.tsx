@@ -30,11 +30,13 @@ type DetailsTabProps = {
     onDueDateChange: (date: string) => void;
     useWorktree: boolean;
     onUseWorktreeChange: (value: boolean) => void;
+    dangerousMode: boolean;
+    onDangerousModeChange: (value: boolean) => void;
     isEditMode: boolean;
     task?: MaestroTask;
 };
 
-export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChange, useWorktree, onUseWorktreeChange, isEditMode, task }: DetailsTabProps) {
+export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChange, useWorktree, onUseWorktreeChange, dangerousMode, onDangerousModeChange, isEditMode, task }: DetailsTabProps) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="pn-fld">
@@ -87,6 +89,19 @@ export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChang
                         title={useWorktree ? 'Session runs in an isolated git branch' : 'Session runs in-place'}
                     >
                         <Icon name="gitBranch" size={14} /> {useWorktree ? 'Git worktree' : 'In-place'}
+                    </button>
+                </div>
+
+                <div className="pn-fld">
+                    <span className="pn-flabel">Permissions</span>
+                    <button
+                        type="button"
+                        className={`pn-toggle ${dangerousMode ? 'pn-toggle--on-danger' : ''}`}
+                        onClick={() => onDangerousModeChange(!dangerousMode)}
+                        style={{ height: 38 }}
+                        title={dangerousMode ? 'Dangerous mode ON (bypass permissions)' : 'Enable dangerous mode (bypass permissions)'}
+                    >
+                        <Icon name="shield" size={14} /> {dangerousMode ? 'YOLO' : 'Safe'}
                     </button>
                 </div>
             </div>

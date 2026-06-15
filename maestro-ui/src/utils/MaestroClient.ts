@@ -30,6 +30,7 @@ import type {
     CreateModelProfilePayload,
     UpdateModelProfilePayload,
     Team,
+    TeamTreeNode,
     CreateTeamPayload,
     UpdateTeamPayload,
     WorkflowTemplate,
@@ -41,13 +42,24 @@ import type {
     GitDiffSummary,
     GitPrInfo,
     SessionStatsResponse,
+    SessionPrompt,
+    SessionCommandUsage,
+    Huddle,
 } from '../app/types/maestro';
 
 import { API_BASE_URL } from './serverConfig';
+import { IS_TAURI } from '../platform/detect';
+import { measureSpawnTerminalSize } from './terminalSize';
+
+// Sentinel error type so callers can detect 401 without string-matching
+export class UnauthenticatedError extends Error {
+    readonly status = 401;
+    constructor() { super('Unauthenticated'); }
+}
 
 /**
  * Maestro API Client
- * 
+ *
  * Provides methods to interact with the Maestro server REST API.
  */
 class MaestroClient {
@@ -65,12 +77,22 @@ class MaestroClient {
 
         try {
             const response = await fetch(url, {
+                credentials: 'include',
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
                     ...options?.headers,
                 },
             });
+
+            if (response.status === 401 && !IS_TAURI) {
+                // Trigger login overlay via auth store (lazy import to avoid circular deps)
+                import('../stores/useAuthStore').then(({ useAuthStore }) => {
+                    const { authEnabled, setShowLogin } = useAuthStore.getState();
+                    if (authEnabled) setShowLogin(true);
+                });
+                throw new UnauthenticatedError();
+            }
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => 'Unknown error');
@@ -356,6 +378,17 @@ class MaestroClient {
         });
     }
 
+    /**
+     * Explicitly terminate a session's server-hosted PTY (MAESTRO_PTY_HOST=server).
+     * Unlike closing the /pty WebSocket — which only detaches and leaves the PTY
+     * running — this actually kills the process and marks the session stopped.
+     */
+    async stopSessionPty(id: string): Promise<{ success: boolean }> {
+        return this.fetch<{ success: boolean }>(`/sessions/${id}/pty/stop`, {
+            method: 'POST',
+        });
+    }
+
     // PHASE IV-A: New bidirectional relationship methods
 
     /**
@@ -380,16 +413,19 @@ class MaestroClient {
      * Spawn a session (triggers server to generate manifest and emit spawn request)
      */
     async spawnSession(data: SpawnSessionPayload): Promise<SpawnSessionResponse> {
+        // Attach the browser's measured terminal size (caller-provided wins) so
+        // the server-hosted PTY boots at the real pane width — see measureSpawnTerminalSize.
+        const size = measureSpawnTerminalSize();
         return this.fetch<SpawnSessionResponse>('/sessions/spawn', {
             method: 'POST',
-            body: JSON.stringify(data),
+            body: JSON.stringify({ ...size, ...data }),
         });
     }
 
     async resumeSession(sessionId: string): Promise<{ success: boolean; sessionId: string; claudeSessionId: string }> {
         return this.fetch(`/sessions/${sessionId}/resume`, {
             method: 'POST',
-            body: JSON.stringify({}),
+            body: JSON.stringify(measureSpawnTerminalSize()),
         });
     }
 
@@ -416,6 +452,22 @@ class MaestroClient {
     async getSessionStats(sessionId: string, opts: { lastMessages?: number } = {}): Promise<SessionStatsResponse> {
         const qs = opts.lastMessages !== undefined ? `?lastMessages=${opts.lastMessages}` : '';
         return this.fetch<SessionStatsResponse>(`/sessions/${sessionId}/stats${qs}`);
+    }
+
+    async getSessionPrompts(sessionId: string): Promise<SessionPrompt[]> {
+        return this.fetch<SessionPrompt[]>(`/sessions/${encodeURIComponent(sessionId)}/prompts`);
+    }
+
+    async getSessionCommandUsage(sessionId: string): Promise<SessionCommandUsage> {
+        return this.fetch<SessionCommandUsage>(`/sessions/${encodeURIComponent(sessionId)}/command-usage`);
+    }
+
+    /**
+     * Fetch cross-project huddles — disjoint sets of sessions that have
+     * exchanged prompts with each other. Sorted by lastActivity descending.
+     */
+    async getHuddles(): Promise<Huddle[]> {
+        return this.fetch<Huddle[]>(`/huddles`);
     }
 
     // ==================== DOCS ====================
@@ -649,6 +701,10 @@ class MaestroClient {
 
     async getTeams(projectId: string): Promise<Team[]> {
         return this.fetch<Team[]>(`/teams?projectId=${encodeURIComponent(projectId)}`);
+    }
+
+    async getTeamTree(projectId: string, id: string): Promise<TeamTreeNode> {
+        return this.fetch<TeamTreeNode>(`/teams/${id}/tree?projectId=${encodeURIComponent(projectId)}`);
     }
 
     async createTeam(data: CreateTeamPayload): Promise<Team> {

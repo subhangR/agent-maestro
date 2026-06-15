@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../../platform";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useProjectStore } from "../../stores/useProjectStore";
 import type {
@@ -9,6 +10,8 @@ import type {
   MaestroTask,
   DocEntry,
   SessionTimelineEventType,
+  SessionPrompt,
+  SessionCommandUsage,
   TaskSessionStatus,
 } from "../../app/types/maestro";
 import { SessionDetailsSection } from "./SessionDetailsSection";
@@ -16,6 +19,8 @@ import { DocViewer } from "./DocViewer";
 import { SessionTimeline } from "./SessionTimeline";
 import { StrategyBadge } from "./StrategyBadge";
 import { StatIcon, type StatIconName } from "./SessionStatsIcons";
+import { PromptList } from "./PromptList";
+import { maestroClient } from "../../utils/MaestroClient";
 import { buildChildrenByParent, collectSubtreeIds } from "../../utils/sessionLifecycle";
 import { isCoordinatorRole } from "../../utils/coordinatorRole";
 import {
@@ -140,6 +145,7 @@ async function loadTranscriptStats(
   preferred: LogProvider,
   lastN: number,
 ): Promise<TranscriptStats | null> {
+  if (!IS_TAURI) return null;
   const order: LogProvider[] = preferred === "codex" ? ["codex", "claude"] : ["claude", "codex"];
   for (const candidate of order) {
     try {
@@ -467,6 +473,8 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
   const [finalExpanded, setFinalExpanded] = useState(false);
+  const [prompts, setPrompts] = useState<SessionPrompt[]>([]);
+  const [commandUsage, setCommandUsage] = useState<SessionCommandUsage | null>(null);
   const [lastMsgsOpen, setLastMsgsOpen] = useState(true);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [runConfigOpen, setRunConfigOpen] = useState(false);
@@ -530,6 +538,40 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
       cancelled = true;
     };
   }, [session.id, session.metadata, sessionCwd]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPrompts([]);
+    maestroClient
+      .getSessionPrompts(session.id)
+      .then((res) => {
+        if (!cancelled) setPrompts(res);
+      })
+      .catch(() => {
+        // Endpoint may not be available yet (Phase 1A); fail quiet.
+        if (!cancelled) setPrompts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCommandUsage(null);
+    maestroClient
+      .getSessionCommandUsage(session.id)
+      .then((res) => {
+        if (!cancelled) setCommandUsage(res);
+      })
+      .catch(() => {
+        // Older servers won't have this endpoint; fail quiet.
+        if (!cancelled) setCommandUsage(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session.id]);
 
   const outcome = getSessionOutcome(session);
   const outcomeVisual = OUTCOME_VISUAL[outcome.variant];
@@ -994,6 +1036,106 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
           )
         )}
 
+        {/* ==================== COMMAND USAGE ==================== */}
+        {commandUsage && commandUsage.summary.total > 0 && (() => {
+          const { summary, records } = commandUsage;
+          const maxCmd = summary.byCommand[0]?.total ?? 1;
+          const failures = records.filter((r) => !r.success).slice(-8).reverse();
+          return (
+            <Section label="Command usage" count={`${summary.total} CLI commands`}>
+              <div className="ssv-metrics-grid">
+                <div className="ssv-card ssv-tools-card">
+                  {summary.byCommand.map((c) => (
+                    <div
+                      className="ssv-tool-row"
+                      key={c.command}
+                      title={`${c.command} · ${c.total} run${c.total === 1 ? "" : "s"}${c.failed ? `, ${c.failed} failed` : ""}`}
+                    >
+                      <span className="ssv-tool-name">{c.command}</span>
+                      <span className="ssv-tool-track">
+                        <span
+                          className="ssv-tool-fill"
+                          style={{
+                            width: `${Math.max(4, (c.total / maxCmd) * 100)}%`,
+                            ...(c.failed > 0 ? { background: "var(--ssv-block)" } : {}),
+                          }}
+                        />
+                      </span>
+                      <span className="ssv-tool-count">
+                        {c.total}
+                        {c.failed > 0 ? ` · ${c.failed}✗` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="ssv-msg-counts">
+                <div className="ssv-mcount">
+                  <div className="ssv-mcount-n">{summary.total}</div>
+                  <div className="ssv-mcount-l">total runs</div>
+                </div>
+                <div className="ssv-mcount">
+                  <div className="ssv-mcount-n">{summary.succeeded}</div>
+                  <div className="ssv-mcount-l">succeeded</div>
+                </div>
+                <div className="ssv-mcount">
+                  <div
+                    className="ssv-mcount-n"
+                    style={summary.failed > 0 ? { color: "var(--ssv-block)" } : undefined}
+                  >
+                    {summary.failed}
+                  </div>
+                  <div className="ssv-mcount-l">failed</div>
+                </div>
+              </div>
+
+              {failures.length > 0 && (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 10 }}
+                >
+                  {failures.map((f, i) => (
+                    <div
+                      key={`${f.ts}-${i}`}
+                      title={f.ts}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontFamily: "var(--font-mono, monospace)",
+                        fontSize: 12,
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          color: "var(--ssv-block)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <StatIcon name="x-circle" size={12} color="var(--ssv-block)" />
+                        exit {f.exitCode}
+                      </span>
+                      <span
+                        style={{
+                          color: "var(--ssv-fg-3)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        maestro {f.argv.join(" ")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+          );
+        })()}
+
         {/* ============================ TIMELINE ============================ */}
         {timeline.length > 0 && (
           <Section label="Timeline" count={`${timeline.length} events`}>
@@ -1115,6 +1257,19 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
                 );
               })}
             </div>
+          </Section>
+        )}
+
+        {/* ==================== SESSION PROMPTS ==================== */}
+        {prompts.length > 0 && (
+          <Section label="Session prompts" count={prompts.length}>
+            <PromptList
+              prompts={prompts}
+              perspectiveSessionId={session.id}
+              onCounterpartClick={(sid) => {
+                if (allSessions[sid]) setViewId(sid);
+              }}
+            />
           </Section>
         )}
 

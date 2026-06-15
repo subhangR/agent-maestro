@@ -239,3 +239,34 @@ html[data-redesign] .agentShortcutBtn:hover {
   color: var(--pn-ink);
   box-shadow: none;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Mobile overrides (≤768px)                                          */
+/* ------------------------------------------------------------------ */
+@media (max-width: 768px) {
+  /* Touch-friendly list items — min 44px tap target */
+  .sessionItem {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+
+  .projectItem {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+  }
+
+  /* Hide the drag-to-resize handle cursor on mobile */
+  .sidebarResizeHandle {
+    display: none;
+  }
+
+  /* Ensure sidebar sections use full width without fixed constraints */
+  .projectList,
+  .sessionList {
+    width: 100%;
+  }
+}

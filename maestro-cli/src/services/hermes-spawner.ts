@@ -36,6 +36,9 @@ export class HermesSpawner {
 
   static readonly MODELS = [
     HERMES_DEFAULT_MODEL,
+    'anthropic:claude-fable-5',
+    'anthropic/claude-fable-5',
+    'claude-fable-5',
     'anthropic:claude-opus-4-8',
     'nous:anthropic/claude-opus-4.8',
     'openrouter:anthropic/claude-opus-4.8',

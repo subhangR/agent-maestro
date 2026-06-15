@@ -26,13 +26,14 @@ export async function createMaestroSession(input: {
     teamMemberIds?: string[];        // Team member task IDs for coordinate mode
     teamMemberId?: string;           // Single team member assigned to this task
     delegateTeamMemberIds?: string[]; // Team member roster for coordinator delegation
+    teamId?: string | null;          // Saved team this session belongs to (recursive team launch)
     launchConfig?: LaunchConfig;     // Canonical launch override for this run
     memberOverrides?: Record<string, MemberLaunchOverride>;  // Per-member launch overrides
     permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
     delegatePermissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
     useWorktree?: boolean;
   }): Promise<TerminalSession> {
-    const { task, tasks, skillIds, project, mode, strategy, teamMemberIds, teamMemberId, delegateTeamMemberIds, launchConfig, memberOverrides, permissionMode, delegatePermissionMode, useWorktree } = input;
+    const { task, tasks, skillIds, project, mode, strategy, teamMemberIds, teamMemberId, delegateTeamMemberIds, teamId, launchConfig, memberOverrides, permissionMode, delegatePermissionMode, useWorktree } = input;
 
     // Normalize to array (support both single and multi-task)
     const taskList = tasks || (task ? [task] : []);
@@ -65,6 +66,8 @@ export async function createMaestroSession(input: {
           ? delegateTeamMemberIds
           : (teamMemberIds && teamMemberIds.length > 0 ? teamMemberIds : undefined))
       : undefined;
+    // Saved team binding: explicit input wins, else inherit from the task.
+    const resolvedTeamId = teamId ?? taskList[0].teamId ?? undefined;
 
     try {
       const response = await maestroClient.spawnSession({
@@ -79,6 +82,7 @@ export async function createMaestroSession(input: {
         ...(resolvedTeamMemberIds && resolvedTeamMemberIds.length > 0 ? { teamMemberIds: resolvedTeamMemberIds } : {}),
         ...(resolvedTeamMemberId ? { teamMemberId: resolvedTeamMemberId } : {}),
         ...(resolvedDelegateTeamMemberIds && resolvedDelegateTeamMemberIds.length > 0 ? { delegateTeamMemberIds: resolvedDelegateTeamMemberIds } : {}),
+        ...(resolvedTeamId ? { teamId: resolvedTeamId } : {}),
         ...(launchConfig ? { launchConfig } : {}),
         ...(memberOverrides && Object.keys(memberOverrides).length > 0 ? { memberOverrides } : {}),
         ...(permissionMode ? { permissionMode } : {}),

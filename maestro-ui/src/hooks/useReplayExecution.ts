@@ -1,5 +1,6 @@
 import { MutableRefObject } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { TerminalSession } from "../app/types/session";
 import { MaestroProject } from "../app/types/maestro";
 import { TerminalRegistry } from "../SessionTerminal";
@@ -93,6 +94,7 @@ export function useReplayExecution({
   }
 
   async function sendNextReplayStep() {
+    if (!IS_TAURI) return;
     if (!replaySteps.length) return;
     if (replayIndex >= replaySteps.length) return;
 

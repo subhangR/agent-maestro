@@ -3,8 +3,8 @@ import compression from 'compression';
 import cors from 'cors';
 import helmet from 'helmet';
 import { WebSocketServer } from 'ws';
-import { writeFileSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { dirname, join } from 'path';
 import { createContainer, Container } from './container';
 import { createProjectRoutes } from './api/projectRoutes';
 import { createTaskRoutes } from './api/taskRoutes';
@@ -22,15 +22,23 @@ import { createMasterRoutes } from './api/masterRoutes';
 import { createSpellRoutes } from './api/spellRoutes';
 import { createAlexaRoutes } from './api/alexaRoutes';
 import { createGitRoutes } from './api/gitRoutes';
+import { createAgentLogRoutes } from './api/agentLogRoutes';
 import { WebSocketBridge } from './infrastructure/websocket/WebSocketBridge';
+import { PtyWebSocketServer } from './infrastructure/websocket/PtyWebSocketServer';
 import { errorHandler } from './api/middleware/errorHandler';
+import { createAuthRoutes } from './api/authRoutes';
+import { createAuthMiddleware, isTrustedLocalRequest } from './api/middleware/authMiddleware';
+import { AuthService } from './infrastructure/auth/AuthService';
 
 async function startServer() {
   // Create and initialize dependency container
   const container = await createContainer();
   await container.initialize();
 
-  const { config, logger, eventBus, projectService, taskService, taskListService, taskGraphService, sessionService, logDigestService, orderingService, teamMemberService, teamService, modelProfileService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, skillLoader } = container;
+  // Auth service — reads env vars; throws on misconfiguration before any port is bound
+  const authService = new AuthService(container.config.dataDir);
+
+  const { config, logger, eventBus, projectService, taskService, taskListService, taskGraphService, sessionService, logDigestService, orderingService, teamMemberService, teamService, modelProfileService, sessionPromptService, huddleService, commandUsageService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, skillLoader, ptyHostService } = container;
 
   // Create Express app
   const app = express();
@@ -43,8 +51,15 @@ async function startServer() {
   // requests always get proper CORS headers and are not blocked by 429.
   app.use(cors({
     origin: (origin, callback) => {
+      // Extra origins for web/VPS deployments (e.g. the Tailscale/HTTPS host the
+      // browser loads the SPA from). Comma-separated, set via env at deploy time.
+      const envOrigins = (process.env.MAESTRO_ALLOWED_ORIGINS || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
       const allowedOrigins = [
         'tauri://localhost',
+        ...envOrigins,
       ];
       // In development, allow any localhost origin
       if (!origin || allowedOrigins.includes(origin) || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || '')) {
@@ -69,6 +84,12 @@ async function startServer() {
       return compression.filter(req, res);
     },
   }));
+
+  // Auth routes (always public — mounted before the guard)
+  app.use('/api', createAuthRoutes(authService));
+
+  // Auth guard — protects all /api/* except /api/auth/* and health endpoints
+  app.use(createAuthMiddleware(authService));
 
   // Health check
   app.get('/health', (req: Request, res: Response) => {
@@ -100,13 +121,18 @@ async function startServer() {
   const taskGraphRoutes = createTaskGraphRoutes(taskGraphService);
   const sessionRoutes = createSessionRoutes({
     sessionService,
+    sessionPromptService,
+    huddleService,
+    commandUsageService,
     logDigestService,
+    teamService,
     projectRepo,
     taskRepo,
     teamMemberRepo,
     modelProfileRepo,
     eventBus,
-    config
+    config,
+    ptyHostService
   });
 
   // Ordering routes
@@ -161,6 +187,27 @@ async function startServer() {
   });
   app.use('/api', gitRoutes);
 
+  // Agent session-log routes — let the browser web-ui read claude/codex logs
+  // (the Tauri shell uses Rust invoke commands; the browser has none).
+  app.use('/api', createAgentLogRoutes());
+
+  // Browser SPA static serve — mounted AFTER all API/WS/PTY routes.
+  // Serves maestro-ui/dist so a browser can access the full app from the server origin.
+  // Skipped gracefully if the dist folder hasn't been built yet.
+  const uiDistPath = join(__dirname, '../../maestro-ui/dist');
+  if (existsSync(uiDistPath)) {
+    app.use(express.static(uiDistPath));
+    // SPA fallback: serve index.html for any route that isn't /api, /ws, or /pty
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/ws') || req.path.startsWith('/pty')) {
+        return next();
+      }
+      res.sendFile(join(uiDistPath, 'index.html'));
+    });
+  } else {
+    logger.info('maestro-ui/dist not found — browser SPA static serve skipped (run build:web to enable)');
+  }
+
   // Global error handling middleware
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     logger.error('Server error:', err);
@@ -179,24 +226,58 @@ async function startServer() {
     }
   });
 
-  // Start WebSocket server with event bus bridge
+  // Start WebSocket servers. We route HTTP upgrades by path so the high-frequency
+  // PTY stream (/pty) is isolated from the entity-sync bridge (everything else).
   const MAX_WS_CLIENTS = parseInt(process.env.MAX_WS_CLIENTS || '50', 10);
   const wss = new WebSocketServer({
-    server,
+    noServer: true,
     maxPayload: 1024 * 1024, // 1MB max inbound message
-    verifyClient: (_info: any, cb: (result: boolean, code?: number, message?: string) => void) => {
-      if (wss.clients.size >= MAX_WS_CLIENTS) {
-        logger.warn('WebSocket connection rejected: max clients reached', {
-          current: wss.clients.size,
-          max: MAX_WS_CLIENTS,
-        });
-        cb(false, 429, 'Too many WebSocket connections');
-      } else {
-        cb(true);
-      }
-    },
   });
+  // PTY channel allows larger inbound frames (e.g. pasted input) and never batches.
+  const ptyWss = new WebSocketServer({
+    noServer: true,
+    maxPayload: 10 * 1024 * 1024,
+  });
+
+  server.on('upgrade', (req, socket, head) => {
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const pathname = url.pathname;
+
+    // Auth gate for WS upgrades — same logic as the HTTP guard. Local CLI/tooling
+    // on the loopback interface (no proxy headers) is trusted and bypasses auth.
+    if (authService.enabled && !isTrustedLocalRequest(req)) {
+      const cookieToken = authService.extractTokenFromCookie(req.headers.cookie as string | undefined);
+      const queryToken = url.searchParams.get('token');
+      const token = cookieToken || queryToken;
+      if (!token || !authService.verifyToken(token)) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+    }
+
+    if (pathname === '/pty') {
+      ptyWss.handleUpgrade(req, socket, head, (ws) => {
+        ptyWss.emit('connection', ws, req);
+      });
+      return;
+    }
+    // Bridge channel: enforce the max-clients cap that verifyClient used to handle.
+    if (wss.clients.size >= MAX_WS_CLIENTS) {
+      logger.warn('WebSocket connection rejected: max clients reached', {
+        current: wss.clients.size,
+        max: MAX_WS_CLIENTS,
+      });
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
+
   wsBridge = new WebSocketBridge(wss, eventBus, logger);
+  new PtyWebSocketServer(ptyWss, ptyHostService, logger);
 
   // Graceful shutdown handler
   let isShuttingDown = false;
@@ -216,11 +297,15 @@ async function startServer() {
       wss.clients.forEach(client => {
         client.close();
       });
+      ptyWss.clients.forEach(client => {
+        client.close();
+      });
 
       // Clean up WebSocket bridge event listeners
       wsBridge.shutdown();
 
       wss.close(() => {});
+      ptyWss.close(() => {});
 
       // Shutdown container (cleans up event bus)
       await container.shutdown();

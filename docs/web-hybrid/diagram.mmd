@@ -1,0 +1,42 @@
+%% Maestro-UI: Tauri desktop vs Web (browser) data paths
+%% Highlighted nodes (T_Shell, W_SRV) are the seam — the component
+%% that owns the PTY and the agent-log files on each host.
+flowchart LR
+  subgraph T["Tauri desktop"]
+    direction TB
+    T_UI["maestro-ui<br/>(React + Zustand)"]
+    T_Shell["Rust shell<br/>(Tauri 2)"]
+    T_PTY["portable-pty<br/>(Rust)"]
+    T_FS["FS / Keychain /<br/>Tray / Dialog"]
+    T_LOGFS["~/.claude<br/>~/.codex"]
+    T_SRV["maestro-server"]
+
+    T_UI -- "invoke()" --> T_Shell
+    T_Shell -- "listen() pty-output / pty-exit" --> T_UI
+    T_Shell --> T_PTY
+    T_Shell --> T_FS
+    T_Shell -- "list/read/tail<br/>claude_logs / codex_logs" --> T_LOGFS
+
+    T_UI -- "REST /api/*  (HTTP)" --> T_SRV
+    T_UI -- "WS  /  (entity sync)" --> T_SRV
+  end
+
+  subgraph W["Web (browser)"]
+    direction TB
+    W_UI["maestro-ui dist<br/>(same React+Zustand,<br/>VITE_APP_MODE=browser)"]
+    W_SRV["maestro-server<br/>(Node, MAESTRO_PTY_HOST=server)"]
+    W_PTY["PtyHostService<br/>(node-pty)"]
+    W_LOGFS["~/.claude<br/>~/.codex"]
+
+    W_UI -- "GET / (static SPA)" --> W_SRV
+    W_UI -- "REST /api/*" --> W_SRV
+    W_UI -- "WS /  (entity sync)" --> W_SRV
+    W_UI -- "WS /pty?sessionId=<id><br/>binary PTY bytes +<br/>JSON size/resize/exit" --> W_SRV
+    W_UI -- "GET /api/agent-logs/{list,read,tail}" --> W_SRV
+
+    W_SRV --> W_PTY
+    W_SRV -- "AgentLogService" --> W_LOGFS
+  end
+
+  classDef seam fill:#fde68a,stroke:#a16207,color:#000;
+  class T_Shell,W_SRV seam;

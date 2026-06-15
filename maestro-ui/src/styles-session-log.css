@@ -1305,3 +1305,318 @@ html[data-redesign] .sessionLogModal {
 .termStripOverlay .sessionLogViewBtnActive {
   background: rgba(217, 154, 78, 0.12);
 }
+
+/* ------------------------------------------------------------------ */
+/*  Mobile responsive — terminal strip                                 */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  /* Compact the bottom bar height */
+  .termStripBar {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  /* Hide "Session Log" label text — keep toggle hitbox small */
+  .termStripLabel {
+    display: none;
+  }
+
+  /* Hide all dim stats on mobile to save horizontal space */
+  .termStripStat--dim {
+    display: none;
+  }
+
+  /* Hide the model badge on mobile */
+  .termStripModel {
+    display: none;
+  }
+
+  /* Keep action buttons but tighten the gap */
+  .termStripActions {
+    gap: 2px;
+  }
+
+  .termStripActionBtn {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Bigger action glyph so the icon stays legible at touch size */
+  .termStripActionGlyph {
+    font-size: 15px;
+  }
+
+  /* Expanded overlay: cap height so the terminal is still usable;
+     reserve space for the 56px bottom MobilePanelNav. */
+  .termStripOverlay {
+    max-height: min(45vh, 320px);
+    padding: 10px 12px;
+  }
+
+  /* Tighten the inner stat rail */
+  .termStripRailInner {
+    gap: 8px;
+    padding: 0 4px;
+  }
+
+  .termStripToggle {
+    padding: 0 6px 0 4px;
+    height: 24px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mobile responsive — Session Log Modal, viewer & strip              */
+/*  Single-panel mobile shell: <=768px. Additive only — desktop rules  */
+/*  above are untouched.                                                */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 768px) {
+  /* ----- Modal ----- */
+  .sessionLogModal {
+    width: 100%;
+    max-width: 100%;
+  }
+  .sessionLogModalBody {
+    /* Mobile header wraps to multiple rows; the parent terminalTaskModal
+       caps at 85vh, so leave more headroom for the now-taller chrome. */
+    max-height: calc(85vh - 200px);
+    padding: 10px 12px;
+  }
+
+  /* Header meta row — already wraps; tighten and let controls breathe. */
+  .sessionLogHeaderMeta {
+    gap: 6px 8px;
+    row-gap: 6px;
+  }
+  .sessionLogFileSelect {
+    max-width: 100%;
+    font-size: 12px;
+    padding: 4px 8px;
+    min-height: 30px;
+  }
+  .sessionLogFilename {
+    font-size: 11px;
+    word-break: break-all;
+  }
+  .sessionLogMetrics {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .sessionLogMetricItem {
+    font-size: 11px;
+  }
+  .sessionLogStateBadge {
+    font-size: 9px;
+  }
+
+  /* View toggle + Live button — bump to 44px hitbox per a11y guidance */
+  .sessionLogViewToggle {
+    min-height: 32px;
+  }
+  .sessionLogViewBtn {
+    font-size: 11px;
+    padding: 6px 14px;
+    min-height: 32px;
+  }
+  .sessionLogLiveBtn {
+    font-size: 11px;
+    padding: 6px 12px;
+    min-height: 32px;
+  }
+
+  /* ----- Conversation group ----- */
+  .sessionLogGroup {
+    padding-left: 8px;
+    margin-bottom: 6px;
+  }
+  .sessionLogUserMsg {
+    padding: 5px 8px;
+  }
+  .sessionLogUserText {
+    font-size: 12px;
+  }
+  .sessionLogTextBlock {
+    font-size: 12px;
+  }
+
+  /* ----- Tool / Code / Diff / Bash bodies ----- */
+  .sessionLogToolCardHeader {
+    padding: 6px 8px;
+    font-size: 11px;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .sessionLogToolCardSummary {
+    /* Mobile: allow wrap so long file paths stay readable */
+    white-space: normal;
+    word-break: break-all;
+    font-size: 10px;
+    flex-basis: 100%;
+    order: 99;
+  }
+  .sessionLogToolCardBody {
+    padding: 6px;
+    max-height: 320px;
+  }
+  .sessionLogCodeBody,
+  .sessionLogDiffBody {
+    font-size: 10.5px;
+    max-height: 320px;
+  }
+  .sessionLogLineNum {
+    width: 32px;
+    padding-right: 6px;
+    font-size: 10px;
+  }
+  .sessionLogBashCommand,
+  .sessionLogBashOutput {
+    font-size: 10.5px;
+    padding: 5px 6px;
+  }
+  .sessionLogBashOutput {
+    max-height: 240px;
+  }
+  .sessionLogJsonBlock {
+    font-size: 10px;
+    padding: 5px 6px;
+    max-height: 240px;
+  }
+  .sessionLogFileHeader {
+    padding: 4px 6px;
+    font-size: 10.5px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sessionLogFileName {
+    word-break: break-all;
+  }
+
+  /* Thinking block */
+  .sessionLogThinkingHeader {
+    padding: 5px 8px;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .sessionLogThinkingPreview {
+    flex-basis: 100%;
+    order: 99;
+    font-size: 10.5px;
+  }
+  .sessionLogThinkingBody {
+    max-height: 240px;
+    padding: 6px;
+    font-size: 10.5px;
+  }
+
+  /* ----- Subagent card ----- */
+  .sessionLogSubagentHeader {
+    padding: 6px 8px;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .sessionLogSubagentDesc {
+    white-space: normal;
+    word-break: break-word;
+    flex-basis: 100%;
+    order: 99;
+    font-size: 11px;
+  }
+  .sessionLogSubagentBody {
+    padding: 8px;
+  }
+  .sessionLogSubagentUsageRow {
+    font-size: 10.5px;
+  }
+  .sessionLogSubagentTraceContent {
+    max-height: 240px;
+  }
+
+  /* ----- Teammate card ----- */
+  .sessionLogTeammateHeader {
+    padding: 6px 8px;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .sessionLogTeammateSummary {
+    white-space: normal;
+    word-break: break-word;
+    flex-basis: 100%;
+    order: 99;
+  }
+  .sessionLogTeammateBody {
+    max-height: 320px;
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+
+  /* ----- Context panel ----- */
+  .sessionLogContextHeader {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 8px;
+  }
+  .sessionLogContextSectionHeader {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding: 6px 8px;
+  }
+  .sessionLogContextSectionLabel {
+    /* Drop the desktop 120px min so the label, bar, and tokens fit on 375px */
+    min-width: 0;
+    flex-basis: 100%;
+    font-size: 11px;
+  }
+  .sessionLogContextSectionBar {
+    flex-basis: calc(100% - 96px);
+    flex: 1 1 auto;
+  }
+  .sessionLogContextItem {
+    padding: 4px 0;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .sessionLogContextItemName {
+    flex-basis: calc(100% - 110px);
+    font-size: 11px;
+  }
+
+  /* ----- Session Log Strip (panel-bg variant; not termStrip) ----- */
+  .sessionLogStripBar {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .sessionLogStripBarLeft {
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .sessionLogStripLabel {
+    display: none;
+  }
+  .sessionLogStripBarStats {
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .sessionLogStripBarStats::-webkit-scrollbar {
+    display: none;
+  }
+  .sessionLogStripStat--dim {
+    display: none;
+  }
+  .sessionLogStripStat--model {
+    display: none;
+  }
+  .sessionLogStripOverlay {
+    /* Leave room for the 56px bottom MobilePanelNav */
+    padding: 10px 12px;
+  }
+}

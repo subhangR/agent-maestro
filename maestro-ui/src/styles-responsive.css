@@ -1,0 +1,191 @@
+/* Responsive breakpoint tokens */
+:root {
+  --breakpoint-mobile: 768px;
+  --breakpoint-tablet: 1024px;
+  --mobile-nav-height: 56px;
+}
+
+/* Base mobile layout resets */
+@media (max-width: 768px) {
+  html,
+  body {
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Prevent layout overflow on mobile */
+  .app {
+    overflow: hidden;
+  }
+
+  /* appContent fills remaining flex height; padding-bottom reserves space
+     for the fixed bottom nav so absolutely-positioned panels don't sit
+     underneath it. */
+  .appContent {
+    overflow: hidden;
+    position: relative;
+    padding-bottom: var(--mobile-nav-height);
+  }
+
+  /* Each panel is absolutely positioned and fills the content area. All
+     panels stay mounted (xterm/Monaco never unmount); only transform
+     changes between active panels for smooth slide transitions. */
+  .appContent > .appLeftPanel,
+  .appContent > .main,
+  .appContent > .pn-sp {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  /* Default: main panel visible, left off-screen left, right off-screen right */
+  .appContent > .appLeftPanel {
+    transform: translateX(-100%);
+  }
+  .appContent > .main {
+    transform: translateX(0);
+  }
+  .appContent > .pn-sp {
+    transform: translateX(100%);
+  }
+
+  /* Active left panel */
+  .appContent--left > .appLeftPanel {
+    transform: translateX(0);
+  }
+  .appContent--left > .main {
+    transform: translateX(100%);
+  }
+  .appContent--left > .pn-sp {
+    transform: translateX(200%);
+  }
+
+  /* Active main panel */
+  .appContent--main > .appLeftPanel {
+    transform: translateX(-100%);
+  }
+  .appContent--main > .main {
+    transform: translateX(0);
+  }
+  .appContent--main > .pn-sp {
+    transform: translateX(100%);
+  }
+
+  /* Active right panel */
+  .appContent--right > .appLeftPanel {
+    transform: translateX(-200%);
+  }
+  .appContent--right > .main {
+    transform: translateX(-100%);
+  }
+  .appContent--right > .pn-sp {
+    transform: translateX(0);
+  }
+
+  /* ----------------------------------------------------------------- */
+  /*  Within-main single-view switcher (Primary / Editor / Files).     */
+  /*  On mobile the workspaceRow shows ONE sub-view at a time, full    */
+  /*  width. Resize handles are hidden; non-active panes are display:  */
+  /*  none — never unmounted — so live xterm sessions don't reflow.    */
+  /* ----------------------------------------------------------------- */
+  .workspaceRow--mobile > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+  }
+  .workspaceRow--mobile .workspaceResize {
+    display: none !important;
+  }
+
+  /* mv-primary: hide the editor side-pane and the files pane. The
+     primary slot (.terminalPane OR .excalidrawInline OR
+     .codeEditorPanel--fileSpace) stays visible. */
+  .workspaceRow--mv-primary .codeEditorPanel:not(.codeEditorPanel--fileSpace),
+  .workspaceRow--mv-primary .fileExplorerPanel {
+    display: none !important;
+  }
+
+  /* mv-editor: hide everything except the editor side-pane
+     (.codeEditorPanel, NOT --fileSpace). */
+  .workspaceRow--mv-editor .terminalPane,
+  .workspaceRow--mv-editor .fileExplorerPanel,
+  .workspaceRow--mv-editor .codeEditorPanel--fileSpace,
+  .workspaceRow--mv-editor .excalidrawInline {
+    display: none !important;
+  }
+
+  /* mv-files: hide everything except the .fileExplorerPanel. */
+  .workspaceRow--mv-files .terminalPane,
+  .workspaceRow--mv-files .codeEditorPanel:not(.codeEditorPanel--fileSpace),
+  .workspaceRow--mv-files .codeEditorPanel--fileSpace,
+  .workspaceRow--mv-files .excalidrawInline {
+    display: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mobile panel navigation (bottom tab bar)                           */
+/*  Renders only on mobile (App gates it behind isMobile).             */
+/* ------------------------------------------------------------------ */
+.mobilePanelNav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 60;
+  height: var(--mobile-nav-height);
+  display: flex;
+  align-items: stretch;
+  background: var(--pn-surface, #0a0d14);
+  border-top: 1px solid var(--pn-line, var(--border-subtle, rgba(255, 255, 255, 0.08)));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+}
+
+.mobilePanelNavTab {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: var(--pn-dim, var(--text-secondary, rgba(255, 255, 255, 0.5)));
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.12s ease;
+  min-height: 44px;
+}
+
+.mobilePanelNavTab:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.mobilePanelNavTab--active {
+  color: var(--pn-accent, var(--accent, #7aa2ff));
+}
+
+.mobilePanelNavIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mobilePanelNavLabel {
+  font-size: 10px;
+  line-height: 1;
+}

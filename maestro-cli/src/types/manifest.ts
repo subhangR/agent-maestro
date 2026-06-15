@@ -104,6 +104,13 @@ export interface MaestroManifest {
   /** Team members available for coordination (only in coordinate mode) */
   availableTeamMembers?: TeamMemberData[];
 
+  /**
+   * Recursive team structure (only in coordinator mode, when the session is bound
+   * to a saved team). Drives recursive delegation: the leader routes work to members
+   * by expertise and spawns sub-team leaders as sub-coordinators.
+   */
+  teamStructure?: TeamStructureNode;
+
   /** Team member ID for this session (single team member running this session) */
   teamMemberId?: string;
 
@@ -225,6 +232,29 @@ export interface TeamMemberData {
   memory?: string[];
 }
 
+/** A member inside a recursive team structure node. */
+export interface TeamStructureMember {
+  id: string;
+  name: string;
+  role: string;
+  identity?: string;
+  avatar?: string;
+  mode?: AgentMode;
+  isLeader: boolean;
+}
+
+/** A node in the recursive team structure (mirrors the server's TeamTreeNode). */
+export interface TeamStructureNode {
+  id: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  leaderId: string;
+  status?: string;
+  members: TeamStructureMember[];
+  subTeams: TeamStructureNode[];
+}
+
 /**
  * Unified task status (single source of truth)
  */
@@ -308,7 +338,7 @@ export interface TaskData {
  * Session configuration for Claude Code
  */
 export interface SessionConfig {
-  /** Model to use (e.g. sonnet, claude-opus-4-8, claude-opus-4-7[1m], gpt-5.5, hermes-default, gemini-3-pro-preview) */
+  /** Model to use (e.g. sonnet, claude-fable-5, claude-opus-4-8, claude-opus-4-7[1m], gpt-5.5, hermes-default, gemini-3-pro-preview) */
   model: string;
 
   /** Permission mode for the session */
@@ -429,4 +459,34 @@ export function isExecuteManifest(manifest: MaestroManifest): boolean {
  */
 export function isCoordinateManifest(manifest: MaestroManifest): boolean {
   return isCoordinatorMode(manifest.mode);
+}
+
+/** Minimal team member identity captured at the time a prompt was sent. */
+export interface TeamMemberSnapshot {
+  name: string;
+  avatar: string;
+  role: string;
+  model?: string;
+  agentTool?: AgentTool;
+  permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
+}
+
+/**
+ * A durable, cross-project record of one session prompting another. `content` is
+ * the FULL, clean message WITHOUT the [From: name (id)] terminal prefix.
+ * Mirror of the server `SessionPrompt` contract.
+ */
+export interface SessionPrompt {
+  id: string;
+  fromSessionId: string;
+  toSessionId: string;
+  fromProjectId: string | null;
+  toProjectId: string | null;
+  content: string;
+  mode: 'send' | 'paste';
+  fromTeamMember: TeamMemberSnapshot | null;
+  toTeamMember: TeamMemberSnapshot | null;
+  fromSessionName: string | null;
+  toSessionName: string | null;
+  timestamp: number;
 }

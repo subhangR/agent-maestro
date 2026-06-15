@@ -254,6 +254,12 @@ const manifestSchema: JSONSchemaType<MaestroManifest> = {
       nullable: true,
       description: 'Reference task IDs for context (docs from these tasks are provided to the agent)',
     },
+    teamStructure: ({
+      type: 'object',
+      nullable: true,
+      additionalProperties: true,
+      description: 'Recursive saved-team structure for coordinator-mode delegation',
+    } as any),
     availableTeamMembers: {
       type: 'array',
       nullable: true,

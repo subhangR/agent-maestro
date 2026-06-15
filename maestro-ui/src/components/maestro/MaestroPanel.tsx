@@ -3,6 +3,7 @@ import { MaestroTask, MaestroProject, TaskTreeNode, WorkerStrategy, Orchestrator
 import { TaskListItem } from "./TaskListItem";
 import { TaskFilters, SortByOption } from "./TaskFilters";
 import { SortableTaskList } from "./SortableTaskList";
+import { ListEndFooter } from "./ListEndFooter";
 import { CreateTaskModal } from "./CreateTaskModal";
 import { ExecutionBar } from "./ExecutionBar";
 import { AddSubtaskInput } from "./AddSubtaskInput";
@@ -764,6 +765,10 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                                 {taskSubTab === "pinned" && <TaskTabContent loading={loading} emptyMessage="NO PINNED TASKS" emptySubMessage="Pin tasks you run frequently" roots={pinnedRoots} renderTaskNode={renderTaskNode} sectionLabel="Pinned" />}
                                 {taskSubTab === "completed" && <TaskTabContent loading={loading} emptyMessage="NO COMPLETED TASKS YET" emptySubMessage="Tasks will appear here when" roots={completedRoots} renderTaskNode={renderTaskNode} listClassName="terminalTaskListCompleted" sectionLabel="Completed" />}
                                 {taskSubTab === "archived" && <TaskTabContent loading={loading} emptyMessage="NO ARCHIVED TASKS" emptySubMessage="Archived tasks will appear here" roots={archivedRoots} renderTaskNode={renderTaskNode} listClassName="terminalTaskListArchived" showPermanentDelete sectionLabel="Archived" />}
+                                {((taskSubTab === "current" && activeRoots.length > 0) ||
+                                  (taskSubTab === "pinned" && pinnedRoots.length > 0) ||
+                                  (taskSubTab === "completed" && completedRoots.length > 0) ||
+                                  (taskSubTab === "archived" && archivedRoots.length > 0)) && <ListEndFooter />}
                             </div>
                             <div className="pn-fade" />
                         </>

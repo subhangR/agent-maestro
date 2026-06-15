@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { IS_TAURI } from "../platform";
 import { TerminalSession } from "../app/types/session";
 import { LoadedRecording, RecordingIndexEntry } from "../app/types/recording";
 import { SecureStorageMode } from "../app/types/app-state";
@@ -142,6 +143,7 @@ export function useRecordingManager({
   // --- Actions ---
 
   const refreshRecordings = useCallback(async () => {
+    if (!IS_TAURI) { setRecordingsLoading(false); setRecordingsError(null); return; }
     setRecordingsLoading(true);
     setRecordingsError(null);
     try {
@@ -183,6 +185,7 @@ export function useRecordingManager({
   }
 
   async function startRecording(sessionId: string, name: string) {
+    if (!IS_TAURI) return;
     const s = sessionsRef.current.find((s) => s.id === sessionId);
     if (!s) return;
     if (s.recordingActive) return;
@@ -221,6 +224,7 @@ export function useRecordingManager({
   }
 
   async function stopRecording(sessionId: string) {
+    if (!IS_TAURI) return;
     const s = sessionsRef.current.find((s) => s.id === sessionId);
     if (!s) return;
     if (!s.recordingActive) return;
@@ -258,6 +262,7 @@ export function useRecordingManager({
     setReplayTargetSessionId(null);
     setReplayShowAll(mode === "all");
     setReplayFlowExpanded({});
+    if (!IS_TAURI) { setReplayLoading(false); setReplayError("Replay is not available in the browser."); return; }
 
     try {
       const rec = await invoke<LoadedRecording>("load_recording", {
@@ -285,6 +290,7 @@ export function useRecordingManager({
   }
 
   async function deleteRecording(recordingId: string) {
+    if (!IS_TAURI) return;
     const label =
       recordings.find((r) => r.recordingId === recordingId)?.meta?.name?.trim() || recordingId;
     try {

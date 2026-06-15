@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maestro Web — PTY POC</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <div id="sidebar-header">
+          <h1>Maestro Web</h1>
+          <div class="row">
+            <button id="refresh">Refresh</button>
+            <button id="new-shell">Launch test shell</button>
+          </div>
+          <div id="conn-info"></div>
+        </div>
+        <ul id="sessions"></ul>
+      </aside>
+      <main id="main">
+        <div id="status-bar">No session selected</div>
+        <div id="terminal"></div>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

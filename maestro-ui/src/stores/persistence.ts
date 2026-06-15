@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { PersistedStateV1 } from '../app/types/app-state';
+import { IS_TAURI } from '../platform';
 import { PersistedTerminalSession } from '../app/types/session';
 import { buildWorkspaceViewStorageV1 } from '../utils/workSpaceStorage';
 import { formatError } from '../utils/formatters';
@@ -124,6 +125,14 @@ function scheduleSave() {
     dirtyStores.clear();
     const state = pendingSaveRef;
     if (!state) return;
+    if (!IS_TAURI) {
+      try {
+        localStorage.setItem(DEFAULTS.STORAGE_PERSISTED_STATE_KEY, JSON.stringify(state));
+      } catch {
+        // best-effort
+      }
+      return;
+    }
     void invoke('save_persisted_state', { state }).catch((err) => {
       const msg = formatError(err);
       const lower = msg.toLowerCase();

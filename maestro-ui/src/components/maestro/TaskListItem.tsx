@@ -9,6 +9,7 @@ import { useUIStore } from "../../stores/useUIStore";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { ConfirmActionModal } from "../modals/ConfirmActionModal";
 import { maestroClient } from "../../utils/MaestroClient";
+import { isDiagramDoc } from "../../utils/docHelpers";
 import { LaunchConfigDropdown } from "./LaunchConfigDropdown";
 import { Icon, Glyph, Avatar, Avatars } from "./redesign/kit";
 
@@ -201,8 +202,8 @@ export const TaskListItem = React.memo(function TaskListItem({
     const deleteTask = useMaestroStore(s => s.deleteTask);
     const updateTask = useMaestroStore(s => s.updateTask);
 
-    const markdownDocs = useMemo(() => taskDocs.filter(d => d.kind !== 'diagram'), [taskDocs]);
-    const diagramDocs = useMemo(() => taskDocs.filter(d => d.kind === 'diagram'), [taskDocs]);
+    const markdownDocs = useMemo(() => taskDocs.filter(d => !isDiagramDoc(d)), [taskDocs]);
+    const diagramDocs = useMemo(() => taskDocs.filter(d => isDiagramDoc(d)), [taskDocs]);
 
     const handleCreateDiagram = useCallback(async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -819,7 +820,7 @@ export const TaskListItem = React.memo(function TaskListItem({
                             {diagramDocs.map(doc => (
                                 <button type="button"
                                     key={doc.id}
-                                    className="pn-docpill"
+                                    className="pn-docpill pn-docpill--diagram"
                                     title={doc.filePath}
                                     onClick={(e) => {
                                         e.stopPropagation();

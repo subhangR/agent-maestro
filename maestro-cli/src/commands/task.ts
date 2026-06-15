@@ -84,6 +84,8 @@ export function registerTaskCommands(program: Command) {
         .option('--description <description>', 'Task description (alias for --desc)')
         .option('--priority <priority>', 'Task priority (high, medium, low)', 'medium')
         .option('--parent <parentId>', 'Parent task ID (creates child task)')
+        .option('--team-member <teamMemberId>', 'Assign a team member to this task')
+        .option('--team <teamId>', 'Assign a team to this task (spawns the team leader as coordinator)')
         .action(async (title, cmdOpts) => {
             await guardCommand('task:create');
             const globalOpts = program.opts();
@@ -114,6 +116,8 @@ export function registerTaskCommands(program: Command) {
                     description: cmdOpts.desc || cmdOpts.description || '',
                     priority: cmdOpts.priority,
                     parentId: cmdOpts.parent,
+                    ...(cmdOpts.teamMember ? { teamMemberId: cmdOpts.teamMember } : {}),
+                    ...(cmdOpts.team ? { teamId: cmdOpts.team } : {}),
                 });
 
                 spinner?.succeed('Task created');
@@ -138,18 +142,22 @@ export function registerTaskCommands(program: Command) {
         .option('--title <title>', 'New title')
         .option('-d, --desc <description>', 'New description')
         .option('--priority <priority>', 'New priority (high, medium, low)')
+        .option('--team-member <teamMemberId>', 'Assign a team member to this task')
+        .option('--team <teamId>', 'Assign a team to this task ("" to clear)')
         .action(async (id, cmdOpts) => {
             await guardCommand('task:edit');
             const globalOpts = program.opts();
             const isJson = globalOpts.json;
 
-            const updateData: Record<string, string> = {};
+            const updateData: Record<string, unknown> = {};
             if (cmdOpts.title) updateData.title = cmdOpts.title;
             if (cmdOpts.desc) updateData.description = cmdOpts.desc;
             if (cmdOpts.priority) updateData.priority = cmdOpts.priority;
+            if (cmdOpts.teamMember !== undefined) updateData.teamMemberId = cmdOpts.teamMember;
+            if (cmdOpts.team !== undefined) updateData.teamId = cmdOpts.team || null;
 
             if (Object.keys(updateData).length === 0) {
-                const err = { message: 'Nothing to edit. Use --title, --desc, or --priority.' };
+                const err = { message: 'Nothing to edit. Use --title, --desc, --priority, --team, or --team-member.' };
                 if (isJson) { outputErrorJSON(err); process.exit(1); }
                 else { console.error(err.message); process.exit(1); }
             }

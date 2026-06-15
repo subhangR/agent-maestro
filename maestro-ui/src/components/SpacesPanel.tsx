@@ -10,6 +10,8 @@ import { useSessionStore } from "../stores/useSessionStore";
 import { isWhiteboardId, isDocumentId, isFileId } from "../app/types/space";
 import { maestroClient } from "../utils/MaestroClient";
 import { Icon } from "./maestro/redesign/kit";
+import { useBreakpoint } from "../hooks/useBreakpoint";
+import { useMobilePanelStore } from "../stores/useMobilePanelStore";
 
 type SpacesPanelProps = {
     agentShortcuts: ProcessEffect[];
@@ -57,6 +59,19 @@ export const SpacesPanel: React.FC<SpacesPanelProps> = ({
     const closeDocument = useSpacesStore((s) => s.closeDocument);
     const closeFile = useSpacesStore((s) => s.closeFile);
     const setActiveId = useSessionStore((s) => s.setActiveId);
+    const breakpoint = useBreakpoint();
+    const isMobile = breakpoint === "mobile";
+    const setActivePanel = useMobilePanelStore((s) => s.setActivePanel);
+
+    const handleSelectSessionMobile = useCallback((sessionId: string) => {
+        onSelectSession(sessionId);
+        if (isMobile) {
+            setActivePanel("main");
+        }
+    }, [onSelectSession, isMobile, setActivePanel]);
+
+    // On mobile always show the sessions list, not the collapsed icon rail
+    const showExpanded = isExpanded || isMobile;
 
     const handleCreateWhiteboard = useCallback(async () => {
         const activeSess = sessions.find((s: any) => s.id === activeSessionId);
@@ -101,7 +116,7 @@ export const SpacesPanel: React.FC<SpacesPanelProps> = ({
 
     return (
         <aside
-            className="pn-sp"
+            className={`pn-sp${isMobile ? ' pn-sp--mobile' : ''}`}
             style={{
                 // Width is driven by the CSS var so a resize commit never
                 // re-renders this panel — see useAppLayoutResizing.
@@ -115,10 +130,10 @@ export const SpacesPanel: React.FC<SpacesPanelProps> = ({
                 flexGrow: 0,
             }}
         >
-            {isExpanded ? (
+            {showExpanded ? (
                 <div
                     className="spacesPanelContent"
-                    style={{ width: 'var(--right-panel-width)', position: 'relative' }}
+                    style={{ width: isMobile ? '100%' : 'var(--right-panel-width)', position: 'relative' }}
                 >
                     <div className="pn-tabs" style={{ paddingTop: 0 }}>
                         <button
@@ -148,15 +163,17 @@ export const SpacesPanel: React.FC<SpacesPanelProps> = ({
                                 onQuickStart={onQuickStart}
                             />
                         )}
-                        <button
-                            className="pn-ib"
-                            style={{ alignSelf: 'center' }}
-                            title="Collapse Panel"
-                            type="button"
-                            onClick={onToggle}
-                        >
-                            <Icon name="chevronR" />
-                        </button>
+                        {!isMobile && (
+                            <button
+                                className="pn-ib"
+                                style={{ alignSelf: 'center' }}
+                                title="Collapse Panel"
+                                type="button"
+                                onClick={onToggle}
+                            >
+                                <Icon name="chevronR" />
+                            </button>
+                        )}
                     </div>
 
                     {panelMode === 'sessions' ? (
@@ -167,7 +184,7 @@ export const SpacesPanel: React.FC<SpacesPanelProps> = ({
                             activeProjectId={activeProjectId}
                             projectName={projectName}
                             projectBasePath={projectBasePath}
-                            onSelectSession={onSelectSession}
+                            onSelectSession={handleSelectSessionMobile}
                             onCloseSession={onCloseSession}
                             onReorderSessions={onReorderSessions}
                             onQuickStart={onQuickStart}

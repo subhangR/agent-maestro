@@ -38,6 +38,7 @@ export function useTeamActions(projectId: string, project: MaestroProject, teamM
                 description: `Coordinator session for team: ${team.name}`,
                 priority: 'medium',
                 teamMemberId: leader.id,
+                teamId: team.id,
             });
 
             const delegateIds = team.memberIds.filter((id: string) => id !== team.leaderId);
@@ -47,6 +48,10 @@ export function useTeamActions(projectId: string, project: MaestroProject, teamM
                 project,
                 mode: 'coordinator',
                 teamMemberId: leader.id,
+                // Bind the saved team so the server builds the recursive team structure
+                // and the leader delegates down the tree (sub-team leaders spawn as
+                // sub-coordinators). delegateIds remains a flat fallback roster.
+                teamId: team.id,
                 delegateTeamMemberIds: delegateIds.length > 0 ? delegateIds : undefined,
             });
         } catch (err: unknown) {

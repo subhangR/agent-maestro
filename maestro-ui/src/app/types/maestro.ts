@@ -18,6 +18,8 @@ export type ClaudeModel =
   | 'sonnet[1m]'
   | 'opus'
   | 'opus[1m]'
+  | 'claude-fable-5'
+  | 'claude-fable-5[1m]'
   | 'claude-opus-4-8'
   | 'claude-opus-4-8[1m]'
   | 'claude-opus-4-7'
@@ -39,6 +41,8 @@ export type GeminiModel = 'gemini-3-pro-preview' | 'gemini-2.5-pro';
 // Hermes models
 export type HermesModel =
   | 'hermes-default'
+  | 'anthropic:claude-fable-5'
+  | 'anthropic/claude-fable-5'
   | 'anthropic:claude-opus-4-8'
   | 'nous:anthropic/claude-opus-4.8'
   | 'openrouter:anthropic/claude-opus-4.8'
@@ -95,6 +99,29 @@ export interface Team {
   status: TeamStatus;
   createdAt: string;
   updatedAt: string;
+}
+
+// Hydrated member inside a resolved team tree (mirrors server TeamTreeMember).
+export interface TeamTreeMember {
+  id: string;
+  name: string;
+  role: string;
+  identity?: string;
+  avatar?: string;
+  mode?: AgentMode;
+  isLeader: boolean;
+}
+
+// Recursive, fully-resolved team tree (mirrors server TeamTreeNode). Backs the org chart.
+export interface TeamTreeNode {
+  id: string;
+  name: string;
+  description?: string;
+  avatar?: string;
+  leaderId: string;
+  status?: TeamStatus;
+  members: TeamTreeMember[];
+  subTeams: TeamTreeNode[];
 }
 
 export interface CreateTeamPayload {
@@ -358,6 +385,88 @@ export interface MaestroSessionEvent {
   data?: any;
 }
 
+/**
+ * A prompt sent between two sessions (sender → receiver). Mirrors the
+ * server's GET /api/sessions/:id/prompts response — returned sorted by
+ * timestamp ascending, including prompts where this session is sender OR
+ * receiver. Reused by Session Stats and Huddles.
+ */
+export interface SessionPrompt {
+  id: string;
+  fromSessionId: string;
+  toSessionId: string;
+  fromProjectId: string | null;
+  toProjectId: string | null;
+  content: string;
+  mode: 'send' | 'paste';
+  fromTeamMember: TeamMemberSnapshot | null;
+  toTeamMember: TeamMemberSnapshot | null;
+  fromSessionName: string | null;
+  toSessionName: string | null;
+  timestamp: number;
+}
+
+/**
+ * One member of a Huddle — a session that exchanged prompts with the other
+ * members. Mirrors the server's Huddle.sessions[] entry (Phase 2A).
+ */
+export interface HuddleSessionMember {
+  sessionId: string;
+  sessionName: string | null;
+  projectId: string | null;
+  teamMember: TeamMemberSnapshot | null;
+}
+
+/**
+ * A connected component of cross-session prompting — a disjoint set of
+ * sessions plus the inter-session prompts they exchanged. Huddles are
+ * cross-project (a huddle can contain sessions from other projects, unlike
+ * the project-scoped open/done/archived tabs).
+ *
+ * Mirrors the server's GET /api/huddles response (Phase 2A) — sorted by
+ * lastActivity descending.
+ */
+export interface Huddle {
+  id: string;
+  sessionIds: string[];
+  sessions: HuddleSessionMember[];
+  prompts: SessionPrompt[];
+  promptCount: number;
+  lastActivity: number;
+}
+
+// One tracked maestro CLI invocation (written by the CLI command-tracker).
+export interface CommandUsageRecord {
+  ts: string;
+  sessionId: string | null;
+  projectId: string | null;
+  command: string | null;
+  argv: string[];
+  exitCode: number;
+  durationMs: number;
+  success: boolean;
+  cliVersion: string | null;
+}
+
+export interface CommandUsagePerCommand {
+  command: string;
+  total: number;
+  failed: number;
+}
+
+export interface CommandUsageSummary {
+  total: number;
+  succeeded: number;
+  failed: number;
+  byCommand: CommandUsagePerCommand[];
+}
+
+export interface SessionCommandUsage {
+  sessionId: string;
+  summary: CommandUsageSummary;
+  records: CommandUsageRecord[];
+}
+
 export interface MaestroTask {
   // Core Identity
   id: string;
@@ -398,6 +507,10 @@ export interface MaestroTask {
 
   // Multiple team member identities for this task
   teamMemberIds?: string[];
+
+  // Assigned team for this task — spawning launches the team's leader as a
+  // coordinator that recursively delegates to members/sub-teams.
+  teamId?: string | null;
 
   // Per-member launch overrides saved on the task
   memberOverrides?: Record<string, MemberLaunchOverride>;
@@ -486,9 +599,11 @@ export interface CreateTaskPayload {
   referenceTaskIds?: string[];
   teamMemberId?: string;
   teamMemberIds?: string[];
+  teamId?: string | null;
   memberOverrides?: Record<string, MemberLaunchOverride>;
   dueDate?: string;
   useWorktree?: boolean;
+  dangerousMode?: boolean;
   clientRequestId?: string;
 }
 
@@ -507,6 +622,7 @@ export interface UpdateTaskPayload {
   pinned?: boolean;
   teamMemberId?: string;
   teamMemberIds?: string[];
+  teamId?: string | null;
   dueDate?: string | null;
   dangerousMode?: boolean;
   useWorktree?: boolean;
@@ -671,6 +787,7 @@ export interface SpawnSessionPayload {
   teamMemberId?: string;              // Team member running this session (backward compat)
   teamMemberIds?: string[];           // Multiple team member identities for this session
   delegateTeamMemberIds?: string[];   // Team member IDs for coordination delegation pool
+  teamId?: string | null;             // Saved team this session belongs to (recursive team launch)
   launchConfig?: LaunchConfig;        // Canonical launch override for this run
   agentTool?: AgentTool;              // Legacy launch override; normalized by server
   model?: ModelType | string;         // Legacy launch override; normalized by server
@@ -679,6 +796,8 @@ export interface SpawnSessionPayload {
   permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
   delegatePermissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
   useWorktree?: boolean;
+  cols?: number;                       // Web: browser's measured terminal size so the
+  rows?: number;                       // server PTY boots at the real pane width, not 80x24
 }
 
 /** Input shape for the UI-level session creation callback used by hooks/components. */
@@ -691,6 +810,7 @@ export interface CreateMaestroSessionInput {
   teamMemberId?: string;
   teamMemberIds?: string[];
   delegateTeamMemberIds?: string[];
+  teamId?: string | null;
   launchConfig?: LaunchConfig;
   memberOverrides?: Record<string, MemberLaunchOverride>;
   permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';

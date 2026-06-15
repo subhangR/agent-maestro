@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { IS_TAURI } from '../platform';
 import {
   AssetTemplate,
   AssetSettings,
@@ -60,6 +61,7 @@ async function applyTextAssetsRaw(
     .map((t) => ({ relativePath: t.relativePath, content: t.content }))
     .filter((t) => t.relativePath.trim());
   if (payload.length === 0) return [];
+  if (!IS_TAURI) return [];
   return invoke<string[]>('apply_text_assets', { baseDir: dir, assets: payload, overwrite });
 }
 

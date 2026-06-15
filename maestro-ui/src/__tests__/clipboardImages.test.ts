@@ -5,6 +5,7 @@ function makeFile(name: string, type: string, content = "x"): File {
     return new File([content], name, { type });
 }
 
+/** Build a minimal DataTransfer-like object from items and/or files. */
 function makeDataTransfer(opts: { itemFiles?: (File | null)[]; files?: File[]; types?: string[] }): DataTransfer {
     const itemFiles = opts.itemFiles ?? [];
     const items = itemFiles.map(f => ({
@@ -24,7 +25,7 @@ describe("extractImageFiles", () => {
         expect(extractImageFiles(null)).toEqual([]);
     });
 
-    it("extracts image files from clipboard items", () => {
+    it("extracts image files from clipboard items (screenshot paste)", () => {
         const png = makeFile("image.png", "image/png");
         const result = extractImageFiles(makeDataTransfer({ itemFiles: [png] }));
         expect(result).toHaveLength(1);
@@ -38,7 +39,7 @@ describe("extractImageFiles", () => {
         expect(result).toEqual([]);
     });
 
-    it("extracts from the files list", () => {
+    it("extracts from the files list (OS file copy)", () => {
         const jpg = makeFile("photo.jpg", "image/jpeg");
         const result = extractImageFiles(makeDataTransfer({ files: [jpg] }));
         expect(result).toHaveLength(1);

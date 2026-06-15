@@ -2,45 +2,56 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 import DOMPurify from "dompurify";
 
-function hexFromRgb(r: number, g: number, b: number): string {
-  return (
-    "#" +
-    [r, g, b].map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, "0")).join("")
-  );
+function currentRedesignTheme(): "light" | "dark" {
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
 
-function blendOnBlack(r: number, g: number, b: number, alpha: number): string {
-  // Blend rgba color onto #0a0a0a background
-  const bg = 10; // 0x0a
-  return hexFromRgb(
-    Math.round(bg + (r - bg) * alpha),
-    Math.round(bg + (g - bg) * alpha),
-    Math.round(bg + (b - bg) * alpha)
-  );
+function cssVar(name: string, fallback: string): string {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
 }
 
 function getThemeColors() {
-  const style = getComputedStyle(document.documentElement);
-  const rgbStr = style.getPropertyValue("--theme-primary-rgb").trim() || "0, 255, 65";
-  const [r, g, b] = rgbStr.split(",").map((s) => parseInt(s.trim(), 10));
-  const primary = style.getPropertyValue("--theme-primary").trim() || "#00ff41";
-  const textColor = style.getPropertyValue("--text").trim() || "#e0e0e0";
+  const isDark = currentRedesignTheme() === "dark";
+
+  // Read the redesign "Atelier" tokens so the diagram matches the surrounding
+  // panels in both light (warm paper) and dark (warm graphite) themes. Fallbacks
+  // mirror redesign-tokens.css in case the vars aren't resolved yet.
+  const surface = cssVar("--pn-surface", isDark ? "#1B1810" : "#FBFAF6");
+  const card = cssVar("--pn-card", isDark ? "#221E15" : "#FFFFFF");
+  const hover = cssVar("--pn-hover", isDark ? "#262117" : "#F2EFE8");
+  const active = cssVar("--pn-active", isDark ? "#302A1D" : "#ECE8DF");
+  const line = cssVar("--pn-line", isDark ? "#2C2719" : "#E7E3D9");
+  const line2 = cssVar("--pn-line-2", isDark ? "#3B3524" : "#D8D3C6");
+  const ink = cssVar("--pn-ink", isDark ? "#EFE9DB" : "#23201B");
+  const ink3 = cssVar("--pn-ink-3", isDark ? "#8C8470" : "#8E897B");
+  const brand = cssVar("--pn-brand", isDark ? "#E0A45A" : "#B26A2B");
 
   return {
-    darkMode: true,
-    background: "#0a0a0a",
-    primaryColor: blendOnBlack(r, g, b, 0.2),
-    primaryBorderColor: primary,
-    primaryTextColor: textColor,
-    secondaryColor: blendOnBlack(r, g, b, 0.08),
-    tertiaryColor: "#0a0a0a",
-    lineColor: "#4d4d4d",
-    textColor: textColor,
-    mainBkg: blendOnBlack(r, g, b, 0.06),
-    nodeBorder: blendOnBlack(r, g, b, 0.4),
-    clusterBkg: blendOnBlack(r, g, b, 0.03),
-    clusterBorder: blendOnBlack(r, g, b, 0.15),
-    edgeLabelBackground: "#0a0a0a",
+    darkMode: isDark,
+    background: surface,
+    primaryColor: card,
+    primaryBorderColor: line2,
+    primaryTextColor: ink,
+    secondaryColor: active,
+    secondaryBorderColor: line2,
+    secondaryTextColor: ink,
+    tertiaryColor: hover,
+    tertiaryBorderColor: line,
+    tertiaryTextColor: ink,
+    lineColor: ink3,
+    textColor: ink,
+    mainBkg: card,
+    nodeBorder: line2,
+    nodeTextColor: ink,
+    titleColor: ink,
+    clusterBkg: hover,
+    clusterBorder: line,
+    edgeLabelBackground: surface,
+    noteBkgColor: brand,
+    noteTextColor: isDark ? "#15130E" : "#FFFFFF",
+    noteBorderColor: brand,
+    fontFamily: "'JetBrains Mono', monospace",
     fontSize: "12px",
   };
 }
@@ -50,7 +61,7 @@ let mermaidInitialized = false;
 let lastMermaidTheme: string | null = null;
 
 function ensureMermaidInit() {
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const currentTheme = currentRedesignTheme();
   if (mermaidInitialized && currentTheme === lastMermaidTheme) return;
 
   mermaid.initialize({
@@ -58,6 +69,11 @@ function ensureMermaidInit() {
     theme: "base",
     securityLevel: "strict",
     fontFamily: "'JetBrains Mono', monospace",
+    // Render labels as native SVG <text>, not HTML inside <foreignObject>.
+    // DOMPurify's svg profile strips foreignObject's inner HTML, which would
+    // erase every node/edge label and leave the diagram looking blank/broken.
+    htmlLabels: false,
+    flowchart: { htmlLabels: false },
     themeVariables: getThemeColors(),
   });
   mermaidInitialized = true;
@@ -85,6 +101,17 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
   const [error, setError] = useState<string | null>(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [themeVersion, setThemeVersion] = useState(0);
+
+  // Re-render the diagram when the light/dark theme flips so colors track the theme.
+  useEffect(() => {
+    const observer = new MutationObserver(() => setThemeVersion((v) => v + 1));
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   // Reset zoom when opening overlay
   const openZoom = useCallback(() => {
@@ -141,9 +168,11 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
   useEffect(() => {
     let cancelled = false;
     const trimmed = chart.trim();
+    // Key the cache by theme so a light/dark switch doesn't serve stale-colored SVGs.
+    const cacheKey = `${currentRedesignTheme()}::${trimmed}`;
 
     // Check SVG cache first
-    const cached = svgCache.get(trimmed);
+    const cached = svgCache.get(cacheKey);
     if (cached) {
       setSvgContent(cached);
       setError(null);
@@ -159,7 +188,7 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
         if (!cancelled) {
           const sanitized = DOMPurify.sanitize(svg, { USE_PROFILES: { svg: true, svgFilters: true } });
           // Cache the sanitized SVG
-          svgCache.set(trimmed, sanitized);
+          svgCache.set(cacheKey, sanitized);
           if (svgCache.size > MAX_SVG_CACHE) {
             const firstKey = svgCache.keys().next().value;
             if (firstKey !== undefined) svgCache.delete(firstKey);
@@ -180,7 +209,7 @@ export function MermaidDiagram({ chart }: MermaidDiagramProps) {
 
     renderDiagram();
     return () => { cancelled = true; };
-  }, [chart]);
+  }, [chart, themeVersion]);
 
   if (error) {
     return (
