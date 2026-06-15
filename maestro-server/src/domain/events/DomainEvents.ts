@@ -1,4 +1,4 @@
-import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload } from '../../types';
+import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell } from '../../types';
 
 /**
  * Type-safe domain event definitions.
@@ -254,6 +254,29 @@ export interface SpellInvokedEvent {
   data: SpellInvocationResult;
 }
 
+export interface SpellActivatedPayload {
+  spellId: string;
+  sessionIds: string[];
+  activeSpell: ActiveSpell;
+  timestamp: number;
+}
+
+export interface SpellDeactivatedPayload {
+  spellId: string;
+  sessionIds: string[];
+  timestamp: number;
+}
+
+export interface SpellActivatedEvent {
+  type: 'spell:activated';
+  data: SpellActivatedPayload;
+}
+
+export interface SpellDeactivatedEvent {
+  type: 'spell:deactivated';
+  data: SpellDeactivatedPayload;
+}
+
 export interface CustomPromptCreatedEvent {
   type: 'custom_prompt:created';
   data: CustomPrompt;
@@ -333,6 +356,8 @@ export type DomainEvent =
   | TeamDeletedEvent
   | TeamArchivedEvent
   | SpellInvokedEvent
+  | SpellActivatedEvent
+  | SpellDeactivatedEvent
   | CustomPromptCreatedEvent
   | CustomPromptUpdatedEvent
   | CustomPromptDeletedEvent
@@ -416,6 +441,8 @@ export interface TypedEventMap {
   'team:archived': Team;
   // Spell events
   'spell:invoked': SpellInvocationResult;
+  'spell:activated': SpellActivatedPayload;
+  'spell:deactivated': SpellDeactivatedPayload;
   'custom_prompt:created': CustomPrompt;
   'custom_prompt:updated': CustomPrompt;
   'custom_prompt:deleted': { id: string };

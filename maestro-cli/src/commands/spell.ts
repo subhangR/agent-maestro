@@ -138,24 +138,48 @@ export function registerSpellCommands(program: Command): void {
       }
     });
 
-  // maestro spell invoke <entityId> [spellName] --target <sessionId> [--args <json>]
+  // maestro spell invoke <entityId> [spellName] --type <entityType> --targets <ids> [--args <json>]
   spell.command('invoke <entityId> [spellName]')
-    .description('Invoke a spell on a target session')
-    .requiredOption('--target <sessionId>', 'Target session to receive the spell prompt')
+    .description('Invoke a spell on one or more target sessions')
+    .requiredOption('--type <entityType>', 'Entity type (maestro|skill|team-member|task|doc|session|custom-prompt)')
+    .option('--target <sessionId>', 'Single target session (alias for --targets with one id)')
+    .option('--targets <sessionIds>', 'Comma-separated target session ids')
+    .option('--project-id <id>', 'Project ID (overrides global --project / MAESTRO_PROJECT_ID)')
     .option('--args <json>', 'Additional arguments as JSON string')
     .action(async (entityId, spellName, cmdOpts) => {
       await guardCommand('spell:invoke');
       const globalOpts = program.opts();
       const isJson = globalOpts.json;
-      const sessionId = config.sessionId;
+      const invokerSessionId = config.sessionId;
+      const projectId = cmdOpts.projectId || globalOpts.project || config.projectId;
       const spinner = !isJson ? ora('Invoking spell...').start() : null;
 
       try {
+        if (!projectId) {
+          throw new Error('projectId is required (pass --project-id, --project, or set MAESTRO_PROJECT_ID)');
+        }
+
+        const targetSessionIds: string[] = [];
+        if (cmdOpts.targets) {
+          for (const id of String(cmdOpts.targets).split(',')) {
+            const trimmed = id.trim();
+            if (trimmed) targetSessionIds.push(trimmed);
+          }
+        }
+        if (cmdOpts.target) targetSessionIds.push(cmdOpts.target);
+        if (targetSessionIds.length === 0) {
+          throw new Error('Provide --target <sessionId> or --targets <a,b,c>');
+        }
+
+        // Server schema accepts either targetSessionId (single) or targetSessionIds[] (multi).
         const body: Record<string, unknown> = {
+          entityType: cmdOpts.type as SpellEntityType,
           entityId,
+          projectId,
           spellName: spellName || null,
-          targetSessionId: cmdOpts.target,
-          invokerSessionId: sessionId || undefined,
+          targetSessionId: targetSessionIds[0],
+          ...(targetSessionIds.length > 1 ? { targetSessionIds } : {}),
+          ...(invokerSessionId ? { invokerSessionId } : {}),
         };
 
         if (cmdOpts.args) {
@@ -174,7 +198,7 @@ export function registerSpellCommands(program: Command): void {
         } else {
           outputKeyValue('Entity', result.entityName || entityId);
           outputKeyValue('Spell', result.spellName || '(default)');
-          outputKeyValue('Target', cmdOpts.target);
+          outputKeyValue('Targets', targetSessionIds.join(', '));
           outputKeyValue('Status', result.status);
         }
       } catch (err) {
@@ -183,10 +207,11 @@ export function registerSpellCommands(program: Command): void {
       }
     });
 
-  // maestro spell create <name> --prompt <text> [--description <text>]
+  // maestro spell create <name> --content <text> [--description <text>]
+  // (Server schema field is `content`, not `prompt` — see DESIGN_BRIEF "schema canonical side".)
   spell.command('create <name>')
     .description('Create a custom prompt spell')
-    .requiredOption('--prompt <text>', 'The prompt text for this spell')
+    .requiredOption('--content <text>', 'The prompt content for this spell')
     .option('--description <text>', 'Description of what this spell does')
     .action(async (name, cmdOpts) => {
       await guardCommand('spell:create');
@@ -197,7 +222,7 @@ export function registerSpellCommands(program: Command): void {
       try {
         const result = await api.post<SpellCustomPromptResponse>('/api/spells/custom-prompts', {
           name,
-          prompt: cmdOpts.prompt,
+          content: cmdOpts.content,
           description: cmdOpts.description || '',
         });
 

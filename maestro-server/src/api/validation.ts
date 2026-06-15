@@ -148,6 +148,7 @@ export const createTaskSchema = z.object({
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
   clientRequestId: z.string().max(200).optional(),
+  spellIds: z.array(safeId).optional(),
 }).strict();
 
 export const updateTaskSchema = z.object({
@@ -170,6 +171,7 @@ export const updateTaskSchema = z.object({
   memberOverrides: z.record(safeId, memberLaunchOverrideSchema).optional(),
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
+  spellIds: z.array(safeId).optional(),
 }).strict();
 
 const docKindSchema = z.enum(['markdown', 'diagram']);
@@ -470,9 +472,15 @@ const spellEntityTypeSchema = z.enum([
 export const invokeSpellSchema = z.object({
   entityType: spellEntityTypeSchema,
   entityId: safeId,
-  spellName: z.string().min(1).max(100),
-  targetSessionId: safeId,
+  // CLI may send `null` to mean "default spell"; server treats that as 'send'.
+  spellName: z.string().min(1).max(100).nullable().optional(),
+  // Either targetSessionId (single) or targetSessionIds[] (multi, P2 forward-compat).
+  targetSessionId: safeId.optional(),
+  targetSessionIds: z.array(safeId).optional(),
+  invokerSessionId: safeId.optional(),
   projectId: safeId,
+  // Loose passthrough for future per-spell args (CLI --args JSON).
+  args: z.record(z.string(), z.any()).optional(),
 }).strict();
 
 export const listSpellEntitiesQuerySchema = z.object({
@@ -499,6 +507,58 @@ export const updateCustomPromptSchema = z.object({
   content: longString.optional(),
   tags: z.array(z.string().max(50)).max(10).optional(),
   entityType: spellEntityTypeSchema.optional(),
+}).strict();
+
+// --- Spell entity (P1 foundation) ---
+
+const spellColorSchema = z.enum([
+  'amber', 'rose', 'violet', 'sky', 'emerald', 'fuchsia', 'lime', 'cyan', 'indigo',
+]);
+const spellActionSchema = z.enum([
+  'inject-prompt', 'feed-context', 'gate', 'continue-loop', 'run-command', 'notify-channel',
+]);
+const spellLoopTypeSchema = z.enum([
+  'single-shot', 'continue-until-done', 'plan-execute', 'critic-refine',
+]);
+const spellHookEventSchema = z.enum([
+  'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'Notification', 'SessionStart',
+]);
+const spellFailModeSchema = z.enum(['open', 'closed']);
+const spellTriggerSchema = z.object({
+  hookEvent: spellHookEventSchema,
+  matcher: z.string().max(500).optional(),
+  enabled: z.boolean(),
+}).strict();
+
+export const createSpellSchema = z.object({
+  name: shortString,
+  description: z.string().max(1000),
+  icon: z.string().max(10).optional(),
+  color: spellColorSchema,
+  action: spellActionSchema,
+  loopType: spellLoopTypeSchema.optional(),
+  trigger: spellTriggerSchema.optional(),
+  failMode: spellFailModeSchema.optional(),
+  maxIterations: z.number().int().min(1).max(100).optional(),
+  skillRef: z.string().max(500).optional(),
+}).strict();
+
+export const updateSpellSchema = z.object({
+  name: shortString.optional(),
+  description: z.string().max(1000).optional(),
+  icon: z.string().max(10).optional(),
+  color: spellColorSchema.optional(),
+  action: spellActionSchema.optional(),
+  loopType: spellLoopTypeSchema.optional(),
+  trigger: spellTriggerSchema.optional(),
+  failMode: spellFailModeSchema.optional(),
+  maxIterations: z.number().int().min(1).max(100).optional(),
+  skillRef: z.string().max(500).optional(),
+}).strict();
+
+export const spellActivationSchema = z.object({
+  targetSessionIds: z.array(safeId).min(1),
+  invokerSessionId: safeId.optional(),
 }).strict();
 
 // --- Alexa / Voice schemas ---

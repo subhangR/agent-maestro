@@ -7,12 +7,17 @@ import {
   CustomPrompt,
   CreateCustomPromptPayload,
   UpdateCustomPromptPayload,
+  Spell,
+  CreateSpellPayload,
+  UpdateSpellPayload,
+  ActiveSpell,
 } from '../../types';
 import { IProjectRepository } from '../../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { ISessionRepository } from '../../domain/repositories/ISessionRepository';
 import { ITeamMemberRepository } from '../../domain/repositories/ITeamMemberRepository';
 import { ICustomPromptRepository } from '../../domain/repositories/ICustomPromptRepository';
+import { ISpellRepository } from '../../domain/repositories/ISpellRepository';
 import { ISkillLoader } from '../../domain/services/ISkillLoader';
 import { IEventBus } from '../../domain/events/IEventBus';
 import { IIdGenerator } from '../../domain/common/IIdGenerator';
@@ -421,6 +426,7 @@ export class SpellService {
     private teamMemberRepo: ITeamMemberRepository,
     private skillLoader: ISkillLoader,
     private customPromptRepo: ICustomPromptRepository,
+    private spellRepo: ISpellRepository,
     private eventBus: IEventBus,
     private idGenerator: IIdGenerator,
   ) {}
@@ -750,43 +756,169 @@ export class SpellService {
   // --- Spell Invocation ---
 
   async invoke(payload: SpellInvocationPayload): Promise<SpellInvocationResult> {
-    // 1. Validate target session exists (status check removed — prompt delivery
-    //    via WebSocket naturally succeeds/fails based on terminal liveness)
-    const session = await this.sessionRepo.findById(payload.targetSessionId);
-    if (!session) throw new NotFoundError('Session', payload.targetSessionId);
+    // 1. Resolve target session: prefer single targetSessionId; otherwise take the
+    //    first id from the multi-target list (full fan-out lands in P2).
+    const targetSessionId = payload.targetSessionId
+      ?? (payload.targetSessionIds && payload.targetSessionIds[0])
+      ?? '';
+    if (!targetSessionId) {
+      throw new ValidationError('targetSessionId or targetSessionIds is required');
+    }
+    const session = await this.sessionRepo.findById(targetSessionId);
+    if (!session) throw new NotFoundError('Session', targetSessionId);
 
     // 2. Resolve entity
     const entityData = await this.resolveEntity(payload.entityType, payload.entityId, payload.projectId);
 
-    // 3. Find spell definition
-    const spellDef = this.getSpellDefinition(payload.entityType, payload.spellName);
-    if (!spellDef) throw new NotFoundError('Spell', `${payload.entityType}:${payload.spellName}`);
+    // 3. Find spell definition — default to 'send' (the universal pass-through)
+    //    when CLI sends null or omits spellName.
+    const spellName = payload.spellName || 'send';
+    const spellDef = this.getSpellDefinition(payload.entityType, spellName);
+    if (!spellDef) throw new NotFoundError('Spell', `${payload.entityType}:${spellName}`);
 
     // 4. Interpolate template
     const prompt = this.interpolateTemplate(spellDef.promptTemplate, entityData);
 
-    // 5. Emit prompt to target session
+    // 5. Deliver the prompt via the SINGLE session:prompt_send path.
+    //    UI: spell:invoked is feedback-only — do NOT write it to the PTY.
+    //    (Frozen in DESIGN_BRIEF "invoke contract" to remove the double-inject bug.)
     await this.eventBus.emit('session:prompt_send', {
-      sessionId: payload.targetSessionId,
+      sessionId: targetSessionId,
       content: prompt,
       mode: 'send' as const,
-      senderSessionId: null,
+      senderSessionId: payload.invokerSessionId ?? null,
       timestamp: Date.now(),
     });
 
-    // 6. Emit spell:invoked for UI feedback
+    // 6. Emit spell:invoked purely for UI feedback (toast/ring pulse, not PTY).
     const result: SpellInvocationResult = {
       success: true,
       prompt,
       entityType: payload.entityType,
       entityId: payload.entityId,
-      spellName: payload.spellName,
-      targetSessionId: payload.targetSessionId,
+      spellName,
+      targetSessionId,
       timestamp: Date.now(),
     };
     await this.eventBus.emit('spell:invoked', result);
 
     return result;
+  }
+
+  // --- Spell CRUD (P1 foundation) ---
+
+  async listSpells(): Promise<Spell[]> {
+    return this.spellRepo.findAll();
+  }
+
+  async getSpell(id: string): Promise<Spell> {
+    const spell = await this.spellRepo.findById(id);
+    if (!spell) throw new NotFoundError('Spell', id);
+    return spell;
+  }
+
+  async createSpell(data: CreateSpellPayload): Promise<Spell> {
+    const now = Date.now();
+    const spell: Spell = {
+      id: this.idGenerator.generate('spell'),
+      name: data.name,
+      description: data.description,
+      icon: data.icon,
+      color: data.color,
+      action: data.action,
+      loopType: data.loopType,
+      trigger: data.trigger,
+      failMode: data.failMode,
+      maxIterations: data.maxIterations,
+      skillRef: data.skillRef,
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return this.spellRepo.create(spell);
+  }
+
+  async updateSpell(id: string, data: UpdateSpellPayload): Promise<Spell> {
+    return this.spellRepo.update(id, data);
+  }
+
+  async deleteSpell(id: string): Promise<void> {
+    // Repo enforces the isDefault / SEED_IDS guard.
+    return this.spellRepo.delete(id);
+  }
+
+  // --- Spell Activation (P1 foundation) ---
+  // Wires Session.activeSpells; the dispatcher (P2) consults this state at hook time.
+
+  async activateSpell(spellId: string, targetSessionIds: string[], castBy: string | null): Promise<{
+    spell: Spell;
+    sessions: { sessionId: string; activeSpell: ActiveSpell }[];
+  }> {
+    const spell = await this.getSpell(spellId);
+    if (targetSessionIds.length === 0) {
+      throw new ValidationError('targetSessionIds must not be empty');
+    }
+
+    const now = Date.now();
+    const sessions: { sessionId: string; activeSpell: ActiveSpell }[] = [];
+
+    for (const sessionId of targetSessionIds) {
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) throw new NotFoundError('Session', sessionId);
+
+      const existing = session.activeSpells ?? [];
+      // Idempotent: if already active, re-enable + bump castAt rather than duplicating.
+      const filtered = existing.filter(a => a.spellId !== spellId);
+      const activeSpell: ActiveSpell = {
+        spellId: spell.id,
+        color: spell.color,
+        enabled: true,
+        hookEvent: spell.trigger?.hookEvent,
+        matcher: spell.trigger?.matcher,
+        iteration: 0,
+        castAt: now,
+        castBy,
+      };
+      const nextActive = [...filtered, activeSpell];
+
+      await this.sessionRepo.update(sessionId, { activeSpells: nextActive });
+      sessions.push({ sessionId, activeSpell });
+    }
+
+    await this.eventBus.emit('spell:activated', {
+      spellId: spell.id,
+      sessionIds: targetSessionIds,
+      activeSpell: sessions[0].activeSpell,
+      timestamp: now,
+    });
+
+    return { spell, sessions };
+  }
+
+  async deactivateSpell(spellId: string, targetSessionIds: string[]): Promise<{
+    spell: Spell;
+    sessionIds: string[];
+  }> {
+    const spell = await this.getSpell(spellId);
+    if (targetSessionIds.length === 0) {
+      throw new ValidationError('targetSessionIds must not be empty');
+    }
+
+    for (const sessionId of targetSessionIds) {
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) throw new NotFoundError('Session', sessionId);
+      const nextActive = (session.activeSpells ?? []).filter(a => a.spellId !== spellId);
+      await this.sessionRepo.update(sessionId, { activeSpells: nextActive });
+    }
+
+    const now = Date.now();
+    await this.eventBus.emit('spell:deactivated', {
+      spellId: spell.id,
+      sessionIds: targetSessionIds,
+      timestamp: now,
+    });
+
+    return { spell, sessionIds: targetSessionIds };
   }
 
   // --- Custom Prompt CRUD ---

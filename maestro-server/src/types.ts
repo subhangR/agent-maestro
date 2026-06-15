@@ -470,6 +470,9 @@ export interface Task {
 
   // Client-generated idempotency key for deduplicating draft auto-creates
   clientRequestId?: string;
+
+  // P1: Spells to auto-activate when sessions are spawned on this task
+  spellIds?: string[];
 }
 
 export interface Session {
@@ -513,6 +516,9 @@ export interface Session {
   teamSessionId?: string | null;   // Shared ID linking coordinator + workers (= coordinator's session ID)
   teamId?: string | null;          // Optional saved Team reference
   isMasterSession?: boolean;       // Derived from project.isMaster at spawn time
+
+  // P1: Spells currently active on this session (foundation for trigger/loop/gate behavior)
+  activeSpells: ActiveSpell[];
 }
 
 // Supporting types
@@ -576,6 +582,127 @@ export interface SessionEvent {
 }
 
 // Spell types
+
+/**
+ * Fixed palette of spell ring colors. The hex value is the source of truth used
+ * to render concentric border rings on list tiles, the spaces rail, and terminal
+ * panels. Slugs are stable identifiers persisted on the Spell entity.
+ */
+export const SPELL_COLORS = [
+  { slug: 'amber',   hex: '#f59e0b' },
+  { slug: 'rose',    hex: '#f43f5e' },
+  { slug: 'violet',  hex: '#8b5cf6' },
+  { slug: 'sky',     hex: '#0ea5e9' },
+  { slug: 'emerald', hex: '#10b981' },
+  { slug: 'fuchsia', hex: '#d946ef' },
+  { slug: 'lime',    hex: '#84cc16' },
+  { slug: 'cyan',    hex: '#06b6d4' },
+  { slug: 'indigo',  hex: '#6366f1' },
+] as const;
+export type SpellColorSlug = typeof SPELL_COLORS[number]['slug'];
+
+/** Frozen action taxonomy — see DESIGN_BRIEF.md "action taxonomy enum (frozen)". */
+export type SpellAction =
+  | 'inject-prompt'
+  | 'feed-context'
+  | 'gate'
+  | 'continue-loop'
+  | 'run-command'
+  | 'notify-channel';
+
+export type SpellLoopType =
+  | 'single-shot'
+  | 'continue-until-done'
+  | 'plan-execute'
+  | 'critic-refine';
+
+/** Hook event the spell's trigger fires on. Bound at session start by the dispatcher. */
+export type SpellHookEvent =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'UserPromptSubmit'
+  | 'Stop'
+  | 'Notification'
+  | 'SessionStart';
+
+export interface SpellTrigger {
+  hookEvent: SpellHookEvent;
+  /** Optional matcher (e.g. tool name regex for PreToolUse, file glob, etc.). */
+  matcher?: string;
+  enabled: boolean;
+}
+
+export type SpellFailMode = 'open' | 'closed';
+
+/**
+ * First-class Spell entity. Persisted as data/spells/<id>.json and merged with
+ * the curated SPELL_LIBRARY seeds at read time. `isDefault: true` spells are
+ * non-deletable (see FileSystemSpellRepository).
+ */
+export interface Spell {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  action: SpellAction;
+  loopType?: SpellLoopType;
+  trigger?: SpellTrigger;
+  /** Behavior when the action's underlying step fails (gate honors this; others may too). */
+  failMode?: SpellFailMode;
+  /** For loops/gates that can iterate. */
+  maxIterations?: number;
+  /** Optional pointer to a skill markdown file the spell's prompt sources from. */
+  skillRef?: string;
+  /** True for curated library entries; false (or omitted) for user-created. */
+  isDefault?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Per-session activation state for a Spell. Lives on Session.activeSpells.
+ * `color` is denormalized so UI rings can render without a second lookup.
+ */
+export interface ActiveSpell {
+  spellId: string;
+  color: SpellColorSlug;
+  enabled: boolean;
+  hookEvent?: SpellHookEvent;
+  matcher?: string;
+  iteration: number;
+  ensembleId?: string;
+  castAt: number;
+  /** Session ID that cast it, or `null` for UI-cast. */
+  castBy: string | null;
+}
+
+export interface CreateSpellPayload {
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  action: SpellAction;
+  loopType?: SpellLoopType;
+  trigger?: SpellTrigger;
+  failMode?: SpellFailMode;
+  maxIterations?: number;
+  skillRef?: string;
+}
+
+export interface UpdateSpellPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  color?: SpellColorSlug;
+  action?: SpellAction;
+  loopType?: SpellLoopType;
+  trigger?: SpellTrigger;
+  failMode?: SpellFailMode;
+  maxIterations?: number;
+  skillRef?: string;
+}
+
 export type SpellEntityType = 'maestro' | 'skill' | 'team-member' | 'task' | 'doc' | 'session' | 'custom-prompt';
 
 export interface SpellDefinition {
@@ -600,9 +727,17 @@ export interface SpellEntity {
 export interface SpellInvocationPayload {
   entityType: SpellEntityType;
   entityId: string;
-  spellName: string;
-  targetSessionId: string;
+  /** Defaults to 'send' when omitted or null. */
+  spellName?: string | null;
+  /** Single target. Either this or `targetSessionIds[0]` must resolve to a session. */
+  targetSessionId?: string;
+  /** Forward-compat multi-target list (Phase 2 fan-out). */
+  targetSessionIds?: string[];
+  /** Session that initiated the invoke (null = UI). */
+  invokerSessionId?: string;
   projectId: string;
+  /** Forward-compat per-spell args from CLI --args. */
+  args?: Record<string, any>;
 }
 
 export interface SpellInvocationResult {
@@ -663,6 +798,7 @@ export interface CreateTaskPayload {
   useWorktree?: boolean;
   dueDate?: string;
   clientRequestId?: string;
+  spellIds?: string[];
 }
 
 export type UpdateSource = 'user' | 'session';
@@ -687,6 +823,7 @@ export interface UpdateTaskPayload {
   dangerousMode?: boolean;
   useWorktree?: boolean;
   images?: TaskImage[];
+  spellIds?: string[];
   // NOTE: timeline removed - use session timeline via /sessions/:id/timeline
   // Update source tracking
   updateSource?: UpdateSource;  // Who is making the update
@@ -731,6 +868,7 @@ export interface UpdateSessionPayload {
   metadata?: Record<string, any>;  // Merged into session.metadata (shallow merge)
   humanCompletedAt?: number | null;  // Human-driven completion timestamp (null to reopen)
   archivedAt?: number | null;  // Archive timestamp (null to unarchive)
+  activeSpells?: ActiveSpell[]; // P1: replace the session's active spell list
 }
 
 /** Payload emitted on session:mode_changed event */

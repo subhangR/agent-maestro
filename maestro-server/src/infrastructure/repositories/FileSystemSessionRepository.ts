@@ -170,6 +170,7 @@ export class FileSystemSessionRepository implements ISessionRepository {
     if (!session.events) { session.events = []; needsSave = true; }
     if (!session.timeline) { session.timeline = []; needsSave = true; }
     if (!session.docs) { session.docs = []; needsSave = true; }
+    if (!session.activeSpells) { session.activeSpells = []; needsSave = true; }
     if (!session.rootSessionId) { session.rootSessionId = session.id; needsSave = true; }
     // Remove deprecated strategy field if present
     if (session.strategy) { delete session.strategy; needsSave = true; }
@@ -419,6 +420,7 @@ export class FileSystemSessionRepository implements ISessionRepository {
       teamSessionId: input.teamSessionId || null,
       teamId: input.teamId || null,
       isMasterSession: input.isMasterSession || false,
+      activeSpells: [],
     };
 
     await this.saveAndCache(session);

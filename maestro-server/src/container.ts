@@ -14,6 +14,7 @@ import { FileSystemOrderingRepository } from './infrastructure/repositories/File
 import { FileSystemTeamMemberRepository } from './infrastructure/repositories/FileSystemTeamMemberRepository';
 import { FileSystemTeamRepository } from './infrastructure/repositories/FileSystemTeamRepository';
 import { FileSystemCustomPromptRepository } from './infrastructure/repositories/FileSystemCustomPromptRepository';
+import { FileSystemSpellRepository } from './infrastructure/repositories/FileSystemSpellRepository';
 import { FileSystemModelProfileRepository } from './infrastructure/repositories/FileSystemModelProfileRepository';
 import { FileSystemSessionPromptRepository } from './infrastructure/repositories/FileSystemSessionPromptRepository';
 import { MultiScopeSkillLoader } from './infrastructure/skills/MultiScopeSkillLoader';
@@ -51,6 +52,7 @@ import { IOrderingRepository } from './domain/repositories/IOrderingRepository';
 import { ITeamMemberRepository } from './domain/repositories/ITeamMemberRepository';
 import { ITeamRepository } from './domain/repositories/ITeamRepository';
 import { ICustomPromptRepository } from './domain/repositories/ICustomPromptRepository';
+import { ISpellRepository } from './domain/repositories/ISpellRepository';
 import { IModelProfileRepository } from './domain/repositories/IModelProfileRepository';
 import { ISessionPromptRepository } from './domain/repositories/ISessionPromptRepository';
 import { ISkillLoader } from './domain/services/ISkillLoader';
@@ -121,6 +123,7 @@ export interface Container {
   teamMemberRepo: ITeamMemberRepository;
   teamRepo: ITeamRepository;
   customPromptRepo: ICustomPromptRepository;
+  spellRepo: ISpellRepository;
   modelProfileRepo: IModelProfileRepository;
   sessionPromptRepo: ISessionPromptRepository;
 
@@ -180,6 +183,7 @@ export async function createContainer(): Promise<Container> {
   const teamMemberRepo = new FileSystemTeamMemberRepository(config.dataDir, idGenerator, logger);
   const teamRepo = new FileSystemTeamRepository(config.dataDir, idGenerator, logger);
   const customPromptRepo = new FileSystemCustomPromptRepository(config.dataDir, idGenerator, logger);
+  const spellRepo = new FileSystemSpellRepository(config.dataDir, idGenerator, logger);
   const modelProfileRepo = new FileSystemModelProfileRepository(config.dataDir, idGenerator, logger);
   const sessionPromptRepo = new FileSystemSessionPromptRepository(config.dataDir, logger);
 
@@ -208,6 +212,7 @@ export async function createContainer(): Promise<Container> {
     teamMemberRepo,
     skillLoader,
     customPromptRepo,
+    spellRepo,
     eventBus,
     idGenerator,
   );
@@ -258,6 +263,7 @@ export async function createContainer(): Promise<Container> {
     teamMemberRepo,
     teamRepo,
     customPromptRepo,
+    spellRepo,
     modelProfileRepo,
     sessionPromptRepo,
     skillLoader,
@@ -293,6 +299,7 @@ export async function createContainer(): Promise<Container> {
         teamMemberRepo.initialize(),
         teamRepo.initialize(),
         customPromptRepo.initialize(),
+        spellRepo.initialize(),
         modelProfileRepo.initialize(),
         sessionPromptRepo.initialize(),
       ]);

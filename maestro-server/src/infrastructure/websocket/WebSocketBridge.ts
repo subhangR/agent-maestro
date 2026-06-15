@@ -21,6 +21,8 @@ const IMMEDIATE_EVENTS = new Set<string>([
   'session:modal_action',
   'session:modal_closed',
   'spell:invoked',
+  'spell:activated',
+  'spell:deactivated',
 ]);
 
 /** Subscription filter for per-client event filtering. */
@@ -184,6 +186,8 @@ export class WebSocketBridge {
       'team_member:archived',
       // Spell events
       'spell:invoked',
+      'spell:activated',
+      'spell:deactivated',
       'custom_prompt:created',
       'custom_prompt:updated',
       'custom_prompt:deleted',
@@ -366,11 +370,16 @@ export class WebSocketBridge {
       return false;
     }
 
-    // Spell events — filter by target sessionId
+    // Spell events — filter by target sessionId (invoked) or sessionIds[] (activated/deactivated)
     if (event.startsWith('spell:')) {
-      const sessionId = data?.targetSessionId;
-      if (sub.sessionIds && sessionId && !sub.sessionIds.has(sessionId)) return true;
-      return false;
+      if (!sub.sessionIds) return false;
+      const targetIds: string[] = Array.isArray(data?.sessionIds)
+        ? data.sessionIds
+        : data?.targetSessionId
+          ? [data.targetSessionId]
+          : [];
+      if (targetIds.length === 0) return false;
+      return !targetIds.some((id) => sub.sessionIds!.has(id));
     }
 
     // Custom prompt events — pass through to all clients (global)
