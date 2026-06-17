@@ -6,7 +6,8 @@
 // embedded per-weight families are ready before any Text renders.
 //
 // Routes: `index` (boot gate) · `connect` (host entry) · `(tabs)` (the shell) ·
-// `terminal/[sessionId]` (full-screen modal frame for Relay's terminal body).
+// `terminal/[sessionId]` (full-screen modal frame for Relay's terminal body) ·
+// `whiteboard/[sessionId]` (full-screen modal frame for Relay's whiteboard).
 // The connect gate lives in app/index.tsx — it auto-reconnects to the stored
 // host or redirects to /connect.
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -39,6 +40,10 @@ export default function RootLayout(): React.JSX.Element | null {
               <Stack.Screen name="(tabs)" />
               <Stack.Screen
                 name="terminal/[sessionId]"
+                options={{ presentation: 'fullScreenModal' }}
+              />
+              <Stack.Screen
+                name="whiteboard/[sessionId]"
                 options={{ presentation: 'fullScreenModal' }}
               />
             </Stack>

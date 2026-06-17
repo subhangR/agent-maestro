@@ -10,6 +10,7 @@
 //     (members)/index             · (members)/member/[id] · (members)/team/[id]
 //     (more)/index
 //   terminal/[sessionId]          (fullScreenModal)
+//   whiteboard/[sessionId]        (fullScreenModal · ?docId=)
 //   (connect)/index               (NO-AUTH host-entry gate)
 import type { Href } from 'expo-router';
 
@@ -25,6 +26,7 @@ export const ROUTE = {
   more: '(more)',
   connect: 'connect',
   terminal: 'terminal',
+  whiteboard: 'whiteboard',
 } as const;
 
 /** Typed href builders. Use with `router.push(routes.session(id))`. */
@@ -43,6 +45,10 @@ export const routes = {
 
   // Full-screen modal route (Relay's terminal body)
   terminal: (sessionId: string): Href => `/terminal/${sessionId}` as Href,
+
+  // Full-screen modal route (Relay's editable whiteboard); optional doc target.
+  whiteboard: (sessionId: string, docId?: string): Href =>
+    (docId ? `/whiteboard/${sessionId}?docId=${docId}` : `/whiteboard/${sessionId}`) as Href,
 
   // Connect gate + project deep-link (intercepted → set active project → Sessions)
   connect: (): Href => '/connect' as Href,

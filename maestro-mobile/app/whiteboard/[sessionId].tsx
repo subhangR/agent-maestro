@@ -1,24 +1,24 @@
-// app/terminal/[sessionId].tsx — full-screen terminal modal FRAME (Compass).
+// app/whiteboard/[sessionId].tsx — full-screen editable whiteboard modal FRAME (Compass).
 //
 // Presented as `fullScreenModal` (registered in app/_layout). Compass owns the
-// frame: the header, the close/back affordance, the modal presentation, and the
-// NowPlaying→terminal + deep-link handoff. RELAY owns the body — the WebView
-// xterm host, the /pty stream, the keyboard-control row, and the input field.
+// frame: the header, the close/back affordance, the modal presentation. RELAY
+// owns the body — the Excalidraw editor WebView and its scene↔doc round-trip.
 //
-// SEAM (D-Relay-1): Relay's <TerminalView/> (xterm WebView + /pty stream) mounts
-// as the body below. Compass owns only the surrounding modal frame.
+// Session-scoped: the server's doc-write routes are all /sessions/:id/docs/...,
+// so a whiteboard is opened against an owning session. An optional `docId` query
+// param targets a specific scene doc; otherwise WhiteboardView picks the first.
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Text, Icon } from '@/components';
-import { TerminalView } from '@/terminal';
+import { WhiteboardView } from '@/whiteboard';
 import { useTheme } from '@/theme';
 
-export default function TerminalModal(): React.JSX.Element {
+export default function WhiteboardModal(): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const { sessionId, docId } = useLocalSearchParams<{ sessionId: string; docId?: string }>();
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.ink }}>
@@ -38,14 +38,14 @@ export default function TerminalModal(): React.JSX.Element {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Close terminal"
+          accessibilityLabel="Close whiteboard"
           hitSlop={10}
         >
           <Icon name="chevronD" size={22} color={theme.colors.paper} />
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text variant="label" color="paper" numberOfLines={1}>
-            Terminal
+            Whiteboard
           </Text>
           <Text variant="eyebrow" color="ink4" numberOfLines={1}>
             session {sessionId ?? '—'}
@@ -54,7 +54,7 @@ export default function TerminalModal(): React.JSX.Element {
       </View>
 
       {/* Body — RELAY owns this. */}
-      <TerminalView sessionId={sessionId} />
+      <WhiteboardView sessionId={sessionId} docId={docId} />
     </View>
   );
 }
