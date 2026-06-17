@@ -30,6 +30,16 @@ export {
   type GetSessionsOptions,
 } from './client';
 
+// ---- PTY transport seam (app boot wires Pulse's realtime.pty) ----
+export {
+  setPtyTransport,
+  getPtyTransport,
+  hasPtyTransport,
+  type PtyClientApi,
+  type PtyUnsubscribe,
+  type PtySize,
+} from './client';
+
 // ---- Fetch actions (Forge / app boot) ----
 export {
   fetchProjects,
