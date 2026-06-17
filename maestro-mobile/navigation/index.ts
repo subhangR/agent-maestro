@@ -8,7 +8,6 @@
 export { routes, ROUTE, type Routes } from './routes';
 export {
   sheets,
-  SheetHost,
   useSheetStore,
   type SheetIntent,
   type SheetType,

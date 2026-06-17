@@ -26,8 +26,14 @@ export const sheets = {
   },
 };
 
-export { SheetHost } from './SheetHost';
-export { SHEET_REGISTRY } from './registry';
+// NOTE: SheetHost and SHEET_REGISTRY are deliberately NOT re-exported here.
+// They transitively import the feature sheet bodies (registry.tsx → @/features/*),
+// and feature screens import this barrel — re-exporting them would create a
+// navigation⇄features import cycle. This barrel is a pure LEAF (only
+// ./useSheetStore + ./types). The sole SheetHost consumer (app/_layout) imports
+// it from the direct module './SheetHost'; SheetHost reads SHEET_REGISTRY from
+// its sibling './registry'. app/ is never imported by features, so the
+// SheetHost→registry→features edge stays strictly one-way.
 export { useSheetStore } from './useSheetStore';
 export type {
   SheetIntent,

@@ -16,7 +16,11 @@ import { Stack } from 'expo-router';
 
 import { ThemeBoot, useAppFonts } from '@/theme';
 
-import { SheetHost } from '../navigation/sheets';
+// Direct module import (NOT the '../navigation/sheets' barrel): SheetHost pulls
+// in SHEET_REGISTRY → @/features/* bodies. The barrel is a leaf consumed by
+// features, so routing SheetHost through it would create a navigation⇄features
+// cycle. app/ is never imported by features, so this stays one-way.
+import { SheetHost } from '../navigation/sheets/SheetHost';
 
 export default function RootLayout(): React.JSX.Element | null {
   const { loaded, error } = useAppFonts();
