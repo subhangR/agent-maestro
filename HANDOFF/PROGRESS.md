@@ -1,10 +1,18 @@
 # maestro-mobile — Progress & remaining work
 
-Branch `feat/mobile-app` (pushed to `origin`). App at `maestro-mobile/`. As of Phase 1 build complete.
+Branch `feat/mobile-app` (pushed to `origin`). App at `maestro-mobile/`. As of Phase 3 complete (gated PASS) on the cloud host.
 
 ## Commits (this effort)
 
 ```
+73d634f test(mobile): Phase 3 re-gate PASS — W3 cycle cleared, W4 env waiver
+c0cd41c fix(mobile): Phase 3 W3 — break navigation↔features import cycle
+484ef79 feat(mobile): Phase 3 Wave 2b — register sheet bodies, wire pty, spell-read seam
+22db5ed feat(mobile): Phase 3 Wave 2a — Forge mutations, spawn, reply-to-agent
+90ef3da feat(mobile): Phase 3 Wave 1 — client write/spawn seam + measureTerminalSize
+786a801 fix(mobile): Phase 2 — Metro entities resolution for DocsViewer markdown
+1dd5c6f feat(mobile): Phase 2 Wave 2 — Forge read surfaces (Stream A ∥ B) + docs viewer
+1ea1fe0 feat(mobile): Phase 2 Wave 1 — shell + bootstrapper (Compass) + composite tiles (Palette)
 bb13c60 feat(mobile): Phase 1 — connection core (api + realtime + state + components)
 0d171ed feat(mobile): Phase 0 theme follow-up — AA status-text tokens, deps, test wiring
 1d01b18 feat(mobile): Phase 0 domain/ + QA harness (Lexicon + Sentinel)
@@ -22,19 +30,18 @@ bb13c60 feat(mobile): Phase 1 — connection core (api + realtime + state + comp
 | Planning | ✅ DONE | 5 ratified docs (`ARCHITECTURE`/`PROJECT_STRUCTURE`/`DEPENDENCIES`/`CONVENTIONS`/`BUILD_PLAN`) + 10 plans in `planning/`. 10/10 team sign-off. |
 | 0 Foundation | ✅ DONE (gate PASS) | Expo SDK54 scaffold, `theme/`, `domain/` + drift-guard, `__qa__/` Maelstrom. app tsc + drift tsc green; Maelstrom smoke 9/9; `expo prebuild` clean. |
 | 1 Connection core | ✅ DONE (gate PASS, on-device validated) | `services/api` (Conduit), `services/realtime` (Pulse), `state` (Ledger), `components` primitives+controls (Palette). Sentinel PASS across 3 layers: offline 76/76 jest, host-side live smoke, AND **on real hardware** (Android CPH2573): boot ✓ (**Phase-0 Waiver 1 CLEARED**), /health 200, REST live data, NO-AUTH (auth bytes none), entity-sync WS connect + live server→phone push (task create→WS event→batchSet). Verdict: `__qa__/gates/PHASE1_VERDICT.md`. |
-| 2 Shell + read surfaces | ⏳ NEXT | Compass (expo-router shell/tab bar/SheetHost/connect screen) → Forge Stream A (tasks/members/teams/skills/lists/graphs/profiles) ∥ Stream B (sessions/detail/stats/timeline) + Palette composite tiles + `features/docs/` viewer. Wire to live stores; remove all mock constants. |
-| 3 Actions & spawn | ⬜ | Mutations (optimistic), spell cast, spawn (`spawnSource:'ui'` + `cols/rows`, consume `session:spawn`), reply-to-agent via `/pty` sendKeys. |
-| 4 Terminal | ⬜ | Relay WebView xterm + `/pty`. **HARD PREREQ: full Android dev-client device boot must pass first (Phase-0 Waiver 1).** Server must run `MAESTRO_PTY_HOST=server` under node. |
-| 5 Whiteboard + polish | ⬜ | Relay `whiteboard/` (WebView Excalidraw, scene↔doc via `POST/GET .../docs`); reconnect hardening; a11y; (no push notifications in v1). |
+| 2 Shell + read surfaces | ✅ DONE (gate PASS) | Compass shell/tab bar/SheetHost/connect + bootstrapper; Forge Stream A (tasks/members/teams/skills/lists/graphs/profiles) ∥ Stream B (sessions/detail/docs viewer); Palette composite tiles. All live store data, no mocks, boundary-clean, useShallow 0 violations. Metro markdown-it→entities bundle fix (`786a801`). Sentinel re-gate PASS: Android export exit 0 (bundle-level proof), isolation held. Verdict `__qa__/gates/PHASE2_VERDICT.md`. |
+| 3 Actions & spawn | ✅ DONE (gate PASS) | Optimistic mutations (apply→commit→clear/rollback; creates wait for `*:created`), spawn (`spawnSource:'ui'` client-forced + measured `cols/rows` via `measureTerminalSize`, idempotent `session:spawn` reconcile), spell cast (`invokeSpell`), reply-to-agent via `/pty` `pty.write(encodeUtf8(text+CR))`. Ledger write+pty seams, Compass registry wiring. W3 navigation↔features cycle found + fixed (`c0cd41c`). W4: live PTY-server round-trip waived (env). Verdict `__qa__/gates/PHASE3_VERDICT.md`. |
+| 4 Terminal | ⛔ BLOCKED on this host | Relay WebView xterm + `/pty`. **HARD PREREQ: full Android dev-client device boot (Phase-0 Waiver 1) — only ever cleared on the user's physical phone (Mac host), NOT on this headless cloud VPS.** Also needs a live `MAESTRO_PTY_HOST=server` node server, but **`node-pty` native won't build on this headless VPS** (Sentinel confirmed during the Phase-3 gate; server hard-imports it at boot). Phase 4's value is on-device PTY rendering with no host-side proxy → cannot be meaningfully built+gated here. **Resume on a device-capable host (the Mac/phone, as Phase 1 was).** |
+| 5 Whiteboard + polish | ⬜ | Relay `whiteboard/` (WebView Excalidraw, scene↔doc via `POST/GET .../docs`); reconnect hardening; a11y; (no push notifications in v1). Same device-capable-host need as Phase 4 for final validation. |
 
 ## IMMEDIATE next step on resume
 
-**Phase 1 is DONE and gated (PASS, on-device validated).** Open **Phase 2 — Shell + read surfaces**:
-- Compass: expo-router shell (5-slot tab bar + Conduct FAB + NowPlaying, SheetHost, connect/host-entry screen — NO login).
-- Build the **bootstrapper** wiring Conduit `buildServerConfig` → `createRealtime({getWsUrl,getPtyWsUrl,ledger})` + `setMaestroClient` (the connect screen writes host → triggers realtime `start()`). The DevHarness at `__qa__/devharness/DevHarness.tsx` shows the exact wiring.
-- Then Forge Stream A ∥ Stream B + Palette composite tiles + `features/docs/` viewer; replace all `m-data` mock constants with live store data.
-- **Phase-2 lesson (from Sentinel):** every object/array-returning Zustand v5 selector MUST use `useShallow` (an object selector without it infinite-loops — it's what caused the on-device "reloading").
-- Gate (Sentinel), commit, then Phase 3.
+**Phases 0–3 are DONE and gated (PASS).** Phase 4 (Terminal) is **blocked on this cloud host** by two hard environment prerequisites that only a device-capable host satisfies:
+1. **Android dev-client device boot** (Phase-0 Waiver 1) — needs a real device/emulator. Cleared in Phase 1 on the user's phone (CPH2573) on the Mac; never on this VPS.
+2. **Live `MAESTRO_PTY_HOST=server` server** — `node-pty`'s native binary is unbuildable on this headless linux-x64 VPS (no prebuild; `npm rebuild` is a no-op), and the server hard-imports it at boot.
+
+**Recommended:** resume Phases 4–5 on the Mac/phone host (where Phase 1 was device-validated). The Phase-3 seams are ready: `PtyTransport` (Pulse) is built + Maelstrom-proven; `getPtyTransport()`/`measureTerminalSize()` are wired; reply-to-agent already uses `pty.write`. Relay's job in Phase 4 is the WebView xterm renderer in `src/terminal/` consuming `PtyTransport.onOutput`/`attach`/`resize`, validated on a booted dev client against a node PTY server.
 
 ## Phase-1 module seams (for Phase 2 wiring)
 
