@@ -41,6 +41,7 @@ export function Screen({
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: theme.colors.paper }}
+      keyboardShouldPersistTaps="handled"
       contentContainerStyle={{
         paddingTop: insets.top + theme.space[4],
         paddingBottom: insets.bottom + theme.space[12],
