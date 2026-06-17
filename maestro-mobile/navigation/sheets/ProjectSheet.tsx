@@ -5,7 +5,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { Text } from '@/components';
 import { asProjectId } from '@/domain';
-import { useProjects, useUiStore, resyncProject } from '@/state';
+import { useProjects, useUiStore, resyncProject, usePrefsStore } from '@/state';
 import { useTheme } from '@/theme';
 
 import type { SheetBodyProps } from './types';
@@ -19,6 +19,7 @@ export function ProjectSheet({ sheet }: SheetBodyProps<{ type: 'project' }>): Re
   const select = (id: string) => {
     const pid = asProjectId(id);
     setActiveProject(pid);
+    usePrefsStore.getState().setLastProjectId(id); // remember across cold restart
     void resyncProject(id); // hydrate the new project's tasks/sessions/members/teams
     sheet.dismiss();
   };

@@ -68,7 +68,12 @@ export async function bootstrap(host: string): Promise<BootstrapResult> {
   // 4. REST fetch → populates the entity store. Projects first so we can scope
   // the project-scoped fetches to the first project.
   await fetchProjects();
-  const firstProject = Object.keys(useEntityStore.getState().projects)[0] ?? null;
+  // Prefer the last active project (restored from prefs on cold boot); fall back
+  // to the first project when there's no stored choice or it's gone on this host.
+  const projectIds = Object.keys(useEntityStore.getState().projects);
+  const storedProject = usePrefsStore.getState().lastProjectId;
+  const firstProject =
+    (storedProject && projectIds.includes(storedProject) ? storedProject : projectIds[0]) ?? null;
   if (firstProject) {
     await Promise.all([
       fetchTasks(firstProject),
@@ -102,6 +107,7 @@ export async function bootstrap(host: string): Promise<BootstrapResult> {
   // Scope entity-sync (and the active project for resync) to the first project.
   const projectId = firstProject ? asProjectId(firstProject) : null;
   useUiStore.getState().setActiveProject(projectId);
+  usePrefsStore.getState().setLastProjectId(firstProject);
   rt.entitySync.setActiveProject(projectId);
   rt.start();
 

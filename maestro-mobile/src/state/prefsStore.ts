@@ -15,6 +15,7 @@ import { resolveDefaultStorage, type StateStorage } from './storage';
 const STORAGE_ID = 'maestro-prefs';
 const KEY_THEME = 'theme';
 const KEY_LAST_HOST = 'lastHost';
+const KEY_LAST_PROJECT = 'lastProjectId';
 
 const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
 const isThemeMode = (v: string | null): v is ThemeMode =>
@@ -27,15 +28,19 @@ export interface PrefsState {
   theme: ThemeMode;
   /** Raw host:port string the user last connected to (non-secret). */
   lastHost: string | null;
+  /** Last active project id — restored on cold boot so the switcher persists. */
+  lastProjectId: string | null;
   setTheme: (mode: ThemeMode) => void;
   setLastHost: (host: string | null) => void;
+  setLastProjectId: (id: string | null) => void;
 }
 
-function readInitial(): { theme: ThemeMode; lastHost: string | null } {
+function readInitial(): { theme: ThemeMode; lastHost: string | null; lastProjectId: string | null } {
   const storedTheme = storage.getString(KEY_THEME);
   return {
     theme: isThemeMode(storedTheme) ? storedTheme : 'system',
     lastHost: storage.getString(KEY_LAST_HOST),
+    lastProjectId: storage.getString(KEY_LAST_PROJECT),
   };
 }
 
@@ -49,6 +54,11 @@ export const usePrefsStore = create<PrefsState>((set) => ({
     if (host == null) storage.delete(KEY_LAST_HOST);
     else storage.set(KEY_LAST_HOST, host);
     set({ lastHost: host });
+  },
+  setLastProjectId: (id) => {
+    if (id == null) storage.delete(KEY_LAST_PROJECT);
+    else storage.set(KEY_LAST_PROJECT, id);
+    set({ lastProjectId: id });
   },
 }));
 
