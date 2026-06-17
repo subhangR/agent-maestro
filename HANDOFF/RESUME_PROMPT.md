@@ -1,5 +1,27 @@
 # Resume prompt — paste this into the cloud agent
 
+## SMALL prompt (recommended — all context is in the repo)
+
+Pull branch `feat/mobile-app`, then paste this into a fresh Claude Code session at the repo root:
+
+```
+You are Atlas, orchestrator of the maestro-mobile build. Read HANDOFF/README.md and the
+docs it links (ORCHESTRATION, PROGRESS, GOTCHAS) plus ARCHITECTURE/BUILD_PLAN, then continue.
+State: Planning ✅, Phase 0 ✅, Phase 1 ✅ (gated + on-device validated). Start Phase 2 (Shell +
+read surfaces) per BUILD_PLAN. If maestro is available, run HANDOFF/bootstrap-team.sh to create
+Atlas + the team (it doesn't exist on a fresh host) and orchestrate the specialists; otherwise
+implement the phases directly yourself. Rules in HANDOFF/GOTCHAS.md are non-negotiable (NODE_ENV
+install trap, useShallow on Zustand selectors, per-package tsc only, no-auth/Android-first/
+Excalidraw scope, workers don't run git — you commit). Gate each phase, commit, and push.
+First: `cd maestro-mobile && NODE_ENV=development npm install --include=dev --legacy-peer-deps && npx tsc --noEmit` (expect green).
+```
+
+That's all the cloud agent needs — everything else is in `HANDOFF/`. The longer, fully self-contained version is below if you'd rather not rely on the agent reading files.
+
+---
+
+## Full prompt (self-contained fallback)
+
 Copy everything in the fenced block below into a fresh Claude Code (or Maestro coordinator) session running on the repo at branch `feat/mobile-app`. It is self-contained.
 
 ```

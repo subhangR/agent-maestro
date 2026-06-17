@@ -21,7 +21,7 @@ bb13c60 feat(mobile): Phase 1 — connection core (api + realtime + state + comp
 |---|---|---|
 | Planning | ✅ DONE | 5 ratified docs (`ARCHITECTURE`/`PROJECT_STRUCTURE`/`DEPENDENCIES`/`CONVENTIONS`/`BUILD_PLAN`) + 10 plans in `planning/`. 10/10 team sign-off. |
 | 0 Foundation | ✅ DONE (gate PASS) | Expo SDK54 scaffold, `theme/`, `domain/` + drift-guard, `__qa__/` Maelstrom. app tsc + drift tsc green; Maelstrom smoke 9/9; `expo prebuild` clean. |
-| 1 Connection core | ✅ BUILT + committed | `services/api` (Conduit), `services/realtime` (Pulse), `state` (Ledger), `components` primitives+controls (Palette). Combined tsc green; jest passing (state 28, realtime 23, api 18). **Sentinel gate NOT yet run.** |
+| 1 Connection core | ✅ DONE (gate PASS, on-device validated) | `services/api` (Conduit), `services/realtime` (Pulse), `state` (Ledger), `components` primitives+controls (Palette). Sentinel PASS across 3 layers: offline 76/76 jest, host-side live smoke, AND **on real hardware** (Android CPH2573): boot ✓ (**Phase-0 Waiver 1 CLEARED**), /health 200, REST live data, NO-AUTH (auth bytes none), entity-sync WS connect + live server→phone push (task create→WS event→batchSet). Verdict: `__qa__/gates/PHASE1_VERDICT.md`. |
 | 2 Shell + read surfaces | ⏳ NEXT | Compass (expo-router shell/tab bar/SheetHost/connect screen) → Forge Stream A (tasks/members/teams/skills/lists/graphs/profiles) ∥ Stream B (sessions/detail/stats/timeline) + Palette composite tiles + `features/docs/` viewer. Wire to live stores; remove all mock constants. |
 | 3 Actions & spawn | ⬜ | Mutations (optimistic), spell cast, spawn (`spawnSource:'ui'` + `cols/rows`, consume `session:spawn`), reply-to-agent via `/pty` sendKeys. |
 | 4 Terminal | ⬜ | Relay WebView xterm + `/pty`. **HARD PREREQ: full Android dev-client device boot must pass first (Phase-0 Waiver 1).** Server must run `MAESTRO_PTY_HOST=server` under node. |
@@ -29,8 +29,12 @@ bb13c60 feat(mobile): Phase 1 — connection core (api + realtime + state + comp
 
 ## IMMEDIATE next step on resume
 
-1. **Run the Phase-1 Sentinel gate** (it was committed but not gated). Spawn Sentinel (`tm_1781678532887_5wxcsev4x`) to adversarially verify against Maelstrom (and a live server if available): URL derivation (http→ws/https→wss, bare origin, +`/pty`), NO-AUTH (zero auth bytes), `Array.isArray` demux drain of a mixed `[array, single, array]` sequence, reconnect backoff+jitter + resync-on-open, ~20s app-ping survival, `batchSet` N-events→one-commit coalescing, teams=REST-poll. One contract-fidelity FAIL vetoes; only Atlas accepts waivers.
-2. On PASS → open **Phase 2**.
+**Phase 1 is DONE and gated (PASS, on-device validated).** Open **Phase 2 — Shell + read surfaces**:
+- Compass: expo-router shell (5-slot tab bar + Conduct FAB + NowPlaying, SheetHost, connect/host-entry screen — NO login).
+- Build the **bootstrapper** wiring Conduit `buildServerConfig` → `createRealtime({getWsUrl,getPtyWsUrl,ledger})` + `setMaestroClient` (the connect screen writes host → triggers realtime `start()`). The DevHarness at `__qa__/devharness/DevHarness.tsx` shows the exact wiring.
+- Then Forge Stream A ∥ Stream B + Palette composite tiles + `features/docs/` viewer; replace all `m-data` mock constants with live store data.
+- **Phase-2 lesson (from Sentinel):** every object/array-returning Zustand v5 selector MUST use `useShallow` (an object selector without it infinite-loops — it's what caused the on-device "reloading").
+- Gate (Sentinel), commit, then Phase 3.
 
 ## Phase-1 module seams (for Phase 2 wiring)
 

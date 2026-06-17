@@ -31,9 +31,13 @@ Leader = Atlas. All members: model `claude-opus-4-8[1m]`, agent `claude-code`, `
 | ⌨️ Relay | `tm_1781678532631_0227i1fzn` | `src/terminal/` + `src/whiteboard/` (WebView xterm + Excalidraw) |
 | ✅ Sentinel | `tm_1781678532887_5wxcsev4x` | `__qa__/` — adversarial verify + phase gates |
 
-> If the Maestro stack/data is NOT present on the resume host, recreate the team with
-> `maestro team create "Maestro Mobile" --leader <Atlas> --members <Atlas,…all 10…> --avatar "📱"`
-> (or proceed as a direct implementer — see RESUME_PROMPT.md).
+## Creating Atlas + the team on a FRESH host (no Atlas exists there)
+
+A fresh maestro host has **no Atlas and no team** — create them first. The exact identity JSONs (Atlas coordinator + all 10 specialists), the team, and the project are bundled at `HANDOFF/maestro-entities/`. Run **`HANDOFF/bootstrap-team.sh`** (maestro server stopped) to install them into the data dir **preserving these IDs** (CLI `team-member create` would mint new IDs and break every reference above), then fix the project `workingDir` to this host's checkout and restart the server. Verify with `maestro team-member list` / `maestro team get team_1781679176046_08uixxexz`.
+
+Then create a continuation task and spawn **Atlas** (`tm_1781678505518_doggxb1sq`, coordinator) against it, handing that session `HANDOFF/RESUME_PROMPT.md` as its directive. (Do NOT `coordinator enable` an identity-less worker — it bricks the CLI; Atlas here is identity-bearing, so spawn it as the coordinator.)
+
+If the maestro stack isn't available at all, proceed as a single **direct implementer** following `BUILD_PLAN.md` (same file scopes, you commit) — see `RESUME_PROMPT.md`.
 
 ## Tasks (Maestro)
 
