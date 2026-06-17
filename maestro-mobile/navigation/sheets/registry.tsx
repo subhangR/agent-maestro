@@ -23,6 +23,8 @@ import { TeamMemberSheet } from '@/features/members';
 import { RunConfigSheet } from '@/features/sessions';
 
 import type { SheetBodyProps, SheetType } from './types';
+import { PickerSheet } from './PickerSheet';
+import { ProjectSheet } from './ProjectSheet';
 
 /** Temporary body shown until the real sheet component is registered. */
 function PlaceholderBody({ intent, sheet }: SheetBodyProps) {
@@ -75,9 +77,9 @@ export const SHEET_REGISTRY: Record<SheetType, ComponentType<SheetBodyProps>> = 
   createTask: CreateTaskSheet as ComponentType<SheetBodyProps>,
   editMember: TeamMemberSheet as ComponentType<SheetBodyProps>,
   runConfig: RunConfigSheet as ComponentType<SheetBodyProps>,
-  // No Phase-3 body yet — kept on the placeholder / Phase-2 viewers.
-  project: PlaceholderBody,
-  picker: PlaceholderBody,
+  project: ProjectSheet as ComponentType<SheetBodyProps>,
+  picker: PickerSheet as ComponentType<SheetBodyProps>,
+  // No body yet — kept on the placeholder / Phase-2 viewers.
   doc: PlaceholderBody,
   diagram: PlaceholderBody,
   docs: PlaceholderBody,

@@ -51,7 +51,7 @@ export function TasksScreen(): React.JSX.Element {
         />
       }
     >
-      {status ?? (
+      {sections.length > 0 ? (
         <View style={{ gap: theme.space[4] }}>
           {sections.map((section) => (
             <View key={section.key} style={{ gap: theme.space[2] }}>
@@ -68,6 +68,8 @@ export function TasksScreen(): React.JSX.Element {
             </View>
           ))}
         </View>
+      ) : (
+        status
       )}
     </Screen>
   );

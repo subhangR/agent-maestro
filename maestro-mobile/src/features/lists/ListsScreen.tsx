@@ -140,7 +140,7 @@ export function ListsScreen({ onBack }: { onBack?: () => void }): React.JSX.Elem
         </Text>
       )}
 
-      {status ?? (
+      {status}{(
         <View style={{ gap: theme.space[2] }}>
           {lists.map((list) => {
             const open = expandedId === list.id;

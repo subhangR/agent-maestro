@@ -33,7 +33,7 @@ export function ProfilesScreen({ onBack }: { onBack?: () => void }): React.JSX.E
 
   return (
     <Screen title="Profiles" eyebrow="Model profiles" onBack={onBack} refreshing={loading} onRefresh={reload}>
-      {status ?? (
+      {status}{(
         <View style={{ gap: theme.space[2] }}>
           {profiles.map((p) => (
             <Card key={p.id} padding={3}>

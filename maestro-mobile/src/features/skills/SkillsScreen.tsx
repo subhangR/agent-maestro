@@ -33,7 +33,7 @@ export function SkillsScreen({ onBack }: { onBack?: () => void }): React.JSX.Ele
 
   return (
     <Screen title="Skills" eyebrow="Referenced" onBack={onBack}>
-      {status ?? (
+      {status}{(
         <View style={{ gap: theme.space[2] }}>
           {skills.map(([id, count]) => (
             <Card key={id} padding={3}>

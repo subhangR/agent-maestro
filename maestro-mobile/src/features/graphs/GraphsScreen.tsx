@@ -111,7 +111,7 @@ export function GraphsScreen({ onBack }: { onBack?: () => void }): React.JSX.Ele
         </Text>
       )}
 
-      {status ?? (
+      {status}{(
         <View style={{ gap: theme.space[2] }}>
           {graphs.map((g) => {
             const v = validations[g.id];

@@ -47,7 +47,7 @@ export function TeamsScreen({ onBack }: TeamsScreenProps): React.JSX.Element {
       refreshing={loading}
       onRefresh={() => projectId && void fetchTeams(projectId)}
     >
-      {status ?? (
+      {status}{(
         <View style={{ gap: theme.space[2] }}>
           {teams.map((team) => (
             <TeamRow key={team.id} team={team} onPress={() => router.push(routes.team(team.id))} />

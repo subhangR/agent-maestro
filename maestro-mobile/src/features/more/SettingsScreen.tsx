@@ -5,9 +5,11 @@
 import { View } from 'react-native';
 
 import { Card, FieldRow, PickerRow, StatusDot, Text } from '@/components';
-import { usePrefsStore, useUiStore } from '@/state';
+import { usePrefsStore, useUiStore, useProject } from '@/state';
+import { asProjectId } from '@/domain';
 import { setThemeMode as applyThemeMode, type ThemeMode, useTheme } from '@/theme';
 
+import { sheets } from '../../../navigation';
 import { Screen, SectionLabel } from './kit';
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string; detail: string }[] = [
@@ -25,6 +27,8 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }): React.JSX.E
   const themeMode = useUiStore((s) => s.themeMode);
   const setUiThemeMode = useUiStore((s) => s.setThemeMode);
   const realtimeStatus = useUiStore((s) => s.realtimeStatus);
+  const activeProjectId = useUiStore((s) => s.activeProjectId);
+  const activeProject = useProject(activeProjectId ?? asProjectId(''));
 
   const pickTheme = (mode: ThemeMode) => {
     setUiThemeMode(mode);
@@ -45,6 +49,17 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }): React.JSX.E
               </Text>
             </View>
           </FieldRow>
+        </Card>
+      </View>
+
+      <View style={{ gap: theme.space[2] }}>
+        <SectionLabel label="Workspace" />
+        <Card padding={2}>
+          <PickerRow
+            label="Active project"
+            detail={activeProject?.name ?? 'None selected — tap to choose'}
+            onPress={() => sheets.open({ type: 'project' })}
+          />
         </Card>
       </View>
 

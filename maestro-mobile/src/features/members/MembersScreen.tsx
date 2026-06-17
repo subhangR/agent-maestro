@@ -36,7 +36,7 @@ export function MembersScreen(): React.JSX.Element {
         />
       }
     >
-      {status ?? (
+      {rows.length > 0 ? (
         <View style={{ gap: theme.space[2] }}>
           {rows.map(({ member, liveCount }) => (
             <MemberRow
@@ -47,6 +47,8 @@ export function MembersScreen(): React.JSX.Element {
             />
           ))}
         </View>
+      ) : (
+        status
       )}
     </Screen>
   );

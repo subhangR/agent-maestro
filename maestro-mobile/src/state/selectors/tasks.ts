@@ -34,9 +34,21 @@ export interface TaskTreeNode {
  * Hierarchical task tree rooted at `rootId` (parentId links). Cycle-safe via a
  * visited set. Returns null if the root isn't in the store.
  */
+// MEMOIZED on (tasks map, rootId): selectTaskTree builds NEW TaskTreeNode objects,
+// so useShallow can't stabilise it → without this `useTaskTree` re-snapshots every
+// render → "Maximum update depth exceeded". Store mutates immutably, so tasks-ref
+// equality is a correct change signal.
+let taskTreeMemo: { tasks: EntityState['tasks']; rootId: TaskId; result: TaskTreeNode | null } | null = null;
+
 export function selectTaskTree(state: EntityState, rootId: TaskId): TaskTreeNode | null {
+  if (taskTreeMemo && taskTreeMemo.tasks === state.tasks && taskTreeMemo.rootId === rootId) {
+    return taskTreeMemo.result;
+  }
   const root = state.tasks[rootId];
-  if (!root) return null;
+  if (!root) {
+    taskTreeMemo = { tasks: state.tasks, rootId, result: null };
+    return null;
+  }
 
   // Index children by parentId once for O(n) tree build.
   const childrenByParent = new Map<string, Task[]>();
@@ -53,5 +65,7 @@ export function selectTaskTree(state: EntityState, rootId: TaskId): TaskTreeNode
     const kids = (childrenByParent.get(task.id) ?? []).filter((c) => !visited.has(c.id));
     return { task, children: kids.map(build) };
   };
-  return build(root);
+  const result = build(root);
+  taskTreeMemo = { tasks: state.tasks, rootId, result };
+  return result;
 }
