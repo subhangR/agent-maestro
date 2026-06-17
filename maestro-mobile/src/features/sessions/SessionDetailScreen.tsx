@@ -92,7 +92,24 @@ export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
       </View>
 
       <View style={styles.ctaRow}>
-        <Button label="Open terminal" icon="terminal" variant="primary" onPress={() => router.push(routes.terminal(id))} />
+        <View style={styles.ctaItem}>
+          <Button
+            label="Open terminal"
+            icon="terminal"
+            variant="primary"
+            fullWidth
+            onPress={() => router.push(routes.terminal(id))}
+          />
+        </View>
+        <View style={styles.ctaItem}>
+          <Button
+            label="Whiteboard"
+            icon="pen"
+            variant="secondary"
+            fullWidth
+            onPress={() => router.push(routes.whiteboard(id))}
+          />
+        </View>
       </View>
 
       {canReply && (
@@ -298,8 +315,13 @@ const styles = StyleSheet.create((theme) => ({
     gap: theme.space[2],
   },
   ctaRow: {
+    flexDirection: 'row',
+    gap: theme.space[2],
     paddingHorizontal: theme.space[4],
     paddingBottom: theme.space[3],
+  },
+  ctaItem: {
+    flex: 1,
   },
   replyRow: {
     flexDirection: 'row',
