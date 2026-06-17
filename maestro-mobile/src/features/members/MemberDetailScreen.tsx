@@ -1,10 +1,10 @@
-// MemberDetailScreen (Forge, Stream A · read-only). The member's persona + launch
-// config, their remembered notes, and the sessions they currently own (filtered
-// live from the project sessions). Navigation only.
+// MemberDetailScreen (Forge, Stream A). The member's persona + launch config,
+// their remembered notes, and the sessions they currently own (filtered live from
+// the project sessions). The header edit affordance opens the editMember sheet.
 import { View } from 'react-native';
 import { router } from 'expo-router';
 
-import { Badge, Card, FieldRow, MSessionTile, Text } from '@/components';
+import { Badge, Card, FieldRow, IconButton, MSessionTile, Text } from '@/components';
 import {
   asProjectId,
   asTeamMemberId,
@@ -16,7 +16,7 @@ import {
 import { useProjectSessions, useTeamMember, useUiStore } from '@/state';
 import { useTheme } from '@/theme';
 
-import { routes } from '../../../navigation';
+import { routes, sheets } from '../../../navigation';
 import { Screen, SectionLabel, StatusBlock } from '../more/kit';
 
 const ownsSession = (memberId: string, s: Session): boolean =>
@@ -43,7 +43,18 @@ export function MemberDetailScreen({ id }: { id: string }): React.JSX.Element {
   }
 
   return (
-    <Screen title={`${member.avatar || '🎯'}  ${member.name}`} eyebrow={member.role || 'Member'} onBack={() => router.back()}>
+    <Screen
+      title={`${member.avatar || '🎯'}  ${member.name}`}
+      eyebrow={member.role || 'Member'}
+      onBack={() => router.back()}
+      trailing={
+        <IconButton
+          icon="pen"
+          onPress={() => sheets.open({ type: 'editMember', memberId: member.id })}
+          accessibilityLabel="Edit member"
+        />
+      }
+    >
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
         {member.mode && <Badge variant="plain" label={modeDisplayLabel(member.mode)} caret={false} />}
         <Badge variant="model" label={displayToolLabel(member.agentTool)} caret={false} />

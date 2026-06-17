@@ -1,24 +1,28 @@
-// TaskDetailScreen (Forge, Stream A · read-only). Header + status/priority badges,
+// TaskDetailScreen (Forge, Stream A). Header + status/priority badges,
 // description & initial prompt, the live subtask tree (collapsible MTaskTiles),
-// and the sessions linked to this task. Navigation only — no mutations (Phase 3).
+// and the sessions linked to this task. Inline mutations (Phase 3): complete,
+// pin/unpin, assign, edit, delete — inline edits go through optimisticEdit; the
+// delete calls the client then navigates back.
 import { Fragment, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
   Badge,
   Card,
   FieldRow,
+  MetaButton,
   MSessionTile,
   MTaskTile,
   Tag,
   Text,
 } from '@/components';
-import { toUiSessionStatus, type Session } from '@/domain';
-import type { TaskTreeNode } from '@/state';
+import { asProjectId, toUiSessionStatus, type Session, type Task } from '@/domain';
+import { getMaestroClient, useProjectMembers, type TaskTreeNode } from '@/state';
 import { useTheme } from '@/theme';
 
-import { routes } from '../../../navigation';
+import { optimisticEdit } from '../_shared';
+import { routes, sheets, type PickerOption } from '../../../navigation';
 import { Screen, SectionLabel, StatusBlock } from '../more/kit';
 import { TASK_STATUS_LABEL } from './useTasksScreen';
 import { useTaskDetail } from './useTaskDetail';
@@ -36,13 +40,70 @@ function dueLabel(due: string | null): string {
 export function TaskDetailScreen({ id }: { id: string }): React.JSX.Element {
   const theme = useTheme();
   const { task, tree, sessions, loading } = useTaskDetail(id);
+  const members = useProjectMembers(asProjectId(task?.projectId ?? ''));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [actionError, setActionError] = useState<string | null>(null);
   const toggle = (tid: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
       next.has(tid) ? next.delete(tid) : next.add(tid);
       return next;
     });
+
+  // ── Inline mutations ──────────────────────────────────────────────────────
+  const flag = (res: { ok: boolean; error?: unknown }, fallback: string) => {
+    if (!res.ok) setActionError(res.error instanceof Error ? res.error.message : fallback);
+    else setActionError(null);
+  };
+
+  const onComplete = (t: Task) =>
+    void optimisticEdit('tasks', t.id, { status: 'completed' }, () =>
+      getMaestroClient().updateTask(t.id, { status: 'completed' }),
+    ).then((r) => flag(r, 'Could not complete the task.'));
+
+  const onTogglePin = (t: Task) =>
+    void optimisticEdit('tasks', t.id, { pinned: !t.pinned }, () =>
+      getMaestroClient().updateTask(t.id, { pinned: !t.pinned }),
+    ).then((r) => flag(r, 'Could not update the task.'));
+
+  const onAssign = (t: Task) => {
+    const options: PickerOption[] = [
+      { id: '', label: 'Unassigned' },
+      ...members.map((m) => ({ id: m.id, label: m.name, sublabel: m.role || undefined })),
+    ];
+    sheets.open({
+      type: 'picker',
+      config: {
+        title: 'Assign task',
+        options,
+        selectedIds: t.teamMemberId ? [t.teamMemberId] : [''],
+        onSubmit: (ids) => {
+          const next = ids[0] ?? '';
+          if (next === (t.teamMemberId ?? '')) return;
+          void optimisticEdit('tasks', t.id, { teamMemberId: next || undefined }, () =>
+            getMaestroClient().updateTask(t.id, { teamMemberId: next || undefined }),
+          ).then((r) => flag(r, 'Could not assign the task.'));
+        },
+      },
+    });
+  };
+
+  const onDelete = (t: Task) =>
+    Alert.alert('Delete task', `Delete “${t.title}”? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          getMaestroClient()
+            .deleteTask(t.id)
+            .then(() => router.back())
+            .catch((e: unknown) =>
+              setActionError(e instanceof Error ? e.message : 'Could not delete the task.'),
+            );
+        },
+      },
+    ]);
 
   if (!task) {
     return (
@@ -82,6 +143,31 @@ export function TaskDetailScreen({ id }: { id: string }): React.JSX.Element {
         <Tag label={task.priority} tone={PRIO_TONE[task.priority]} />
         {task.pinned && <Tag label="pinned" tone="neutral" />}
       </View>
+
+      {/* Actions */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+        {task.status !== 'completed' && (
+          <MetaButton label="Complete" icon="check" variant="run" onPress={() => onComplete(task)} />
+        )}
+        <MetaButton
+          label={task.pinned ? 'Unpin' : 'Pin'}
+          icon="pin"
+          onPress={() => onTogglePin(task)}
+        />
+        <MetaButton label="Assign" icon="users" onPress={() => onAssign(task)} />
+        <MetaButton
+          label="Edit"
+          icon="pen"
+          onPress={() => sheets.open({ type: 'createTask', taskId: task.id })}
+        />
+        <MetaButton label="Delete" icon="x" variant="danger" onPress={() => onDelete(task)} />
+      </View>
+
+      {actionError != null && (
+        <Text variant="secondary" color="blockText">
+          {actionError}
+        </Text>
+      )}
 
       {/* Meta */}
       <Card padding={2}>

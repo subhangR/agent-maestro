@@ -1,18 +1,26 @@
 // CommandSheet — the body for the Conduct FAB's `{ type: 'command' }` sheet.
-// PHASE 2 STUB: the real hub (spawn a session, new task, new member, cast a
-// spell) lands in Phase 3, when this gets wired into Compass's SHEET_REGISTRY
-// and its rows call `sheet.open(...)` / the spawn flow. For now it renders the
-// four launch rows as DISABLED affordances so the shape is reviewable without
-// triggering any mutation. It is intentionally NOT registered yet.
+// The hub's four launchers, now LIVE (Phase 3):
+//   • Spawn session  → pick an open task (universal picker) → open runConfig
+//   • New task       → open the createTask sheet
+//   • New team member→ open the editMember sheet
+//   • Cast spell     → switch to the inline SpellCastView wizard
+// Cross-stream actions go ONLY through `sheet.open(...)` — never by importing a
+// Stream-A component.
+import { useState } from 'react';
 import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { SheetHeader, SheetSection, PickerRow, Text } from '@/components';
+import { IconButton, PickerRow, SheetHeader, SheetSection, Text } from '@/components';
+import { useOpenTasks, useUiStore } from '@/state';
+import { asProjectId } from '@/domain';
 import type { IconName } from '@/theme';
 
 import type { SheetBodyProps } from '../../../navigation/sheets';
+import { SpellCastView } from './SpellCastView';
 
-/** The four Conduct launch actions (wired in Phase 3). */
+type HubView = 'menu' | 'spell';
+
+/** The four Conduct launch actions. */
 const ACTIONS: { id: string; label: string; detail: string; icon: IconName }[] = [
   { id: 'spawn', label: 'Spawn session', detail: 'Run an agent on a task', icon: 'play' },
   { id: 'newTask', label: 'New task', detail: 'Create a task', icon: 'listChecks' },
@@ -21,6 +29,65 @@ const ACTIONS: { id: string; label: string; detail: string; icon: IconName }[] =
 ];
 
 export function CommandSheet({ sheet }: SheetBodyProps<{ type: 'command' }>): React.JSX.Element {
+  const [view, setView] = useState<HubView>('menu');
+  const projectId = useUiStore((s) => s.activeProjectId);
+  const openTasks = useOpenTasks(projectId ?? asProjectId(''));
+
+  // Spawn: pick a task via the universal picker, then open its run config.
+  function startSpawn(): void {
+    sheet.open({
+      type: 'picker',
+      config: {
+        title: 'Spawn on task',
+        selectedIds: [],
+        searchable: true,
+        options: openTasks.map((t) => ({ id: t.id, label: t.title, sublabel: t.status })),
+        onSubmit: (ids) => {
+          const taskId = ids[0];
+          if (taskId) sheet.open({ type: 'runConfig', taskId });
+        },
+      },
+    });
+  }
+
+  function onAction(id: string): void {
+    switch (id) {
+      case 'spawn':
+        startSpawn();
+        break;
+      case 'newTask':
+        sheet.open({ type: 'createTask' });
+        break;
+      case 'newMember':
+        sheet.open({ type: 'editMember' });
+        break;
+      case 'castSpell':
+        setView('spell');
+        break;
+    }
+  }
+
+  if (view === 'spell') {
+    return (
+      <View style={styles.root}>
+        <SheetHeader
+          title="Cast spell"
+          eyebrow="CONDUCT"
+          trailing={<IconButton icon="chevronL" onPress={() => setView('menu')} accessibilityLabel="Back" />}
+        />
+        {projectId == null ? (
+          <SheetSection>
+            <Text variant="secondary" color="ink3">
+              Select a project first.
+            </Text>
+          </SheetSection>
+        ) : (
+          <SpellCastView projectId={projectId} onDismiss={sheet.dismissAll} />
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <SheetHeader title="Conduct" eyebrow="LAUNCH" onClose={sheet.dismiss} />
@@ -31,15 +98,12 @@ export function CommandSheet({ sheet }: SheetBodyProps<{ type: 'command' }>): Re
               key={a.id}
               label={a.label}
               detail={a.detail}
-              // Phase-2 stub: rows are inert (no onPress) until Phase 3 wiring.
-              accessibilityHint="Available in a later build"
+              onPress={() => onAction(a.id)}
+              accessibilityHint={a.detail}
             />
           ))}
         </View>
       </SheetSection>
-      <Text variant="secondary" color="ink3" style={styles.note}>
-        Conduct actions arrive in Phase 3.
-      </Text>
     </View>
   );
 }
@@ -51,9 +115,5 @@ const styles = StyleSheet.create((theme) => ({
   rows: {
     width: '100%',
     gap: 2,
-  },
-  note: {
-    paddingHorizontal: theme.space[4],
-    paddingTop: theme.space[1],
   },
 }));

@@ -3,17 +3,19 @@
 // four READ tabs: Stats (derived fields), Timeline (session.timeline), Prompts
 // (inbound prompt events), and Docs (session.docs → DocsViewer). View-model lives
 // in useSessionDetail; mutations/cast are Phase 3.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { AgentAvatar, Button, FieldRow, IconButton, StatusGlyph, StatusDot, Text } from '@/components';
-import { toDisplayTool, type DocEntry } from '@/domain';
+import { AgentAvatar, Button, FieldRow, IconButton, Input, StatusGlyph, StatusDot, Text } from '@/components';
+import { getPtyTransport, hasPtyTransport } from '@/state';
+import { asSessionId, toUiSessionStatus, toDisplayTool, type DocEntry } from '@/domain';
 import { useTheme } from '@/theme';
 
 import { routes } from '../../../navigation';
+import { encodeUtf8 } from '../_shared';
 import { DocsViewer } from '../docs';
 import {
   useSessionDetail,
@@ -22,13 +24,37 @@ import {
   type TimelineRow,
 } from './useSessionDetail';
 
+/** Display statuses that imply a (re-)attachable live PTY worth replying to. */
+const REPLYABLE = new Set(['spawning', 'idle', 'working', 'run', 'wait']);
+
 export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [tab, setTab] = useState<SessionDetailTab>('stats');
+  const [reply, setReply] = useState('');
 
   const { session, statusLabel, agentLabel, stats, timeline, prompts, docs, status } = useSessionDetail(id);
+
+  const canReply = session != null && REPLYABLE.has(toUiSessionStatus(session)) && hasPtyTransport();
+
+  // Warm the PTY socket while a replyable session is open so a reply lands
+  // promptly. attach() is idempotent (reuses Relay's socket); we don't detach —
+  // tearing the shared socket down is Relay's terminal lifecycle, not ours.
+  useEffect(() => {
+    if (!canReply) return;
+    getPtyTransport().attach(asSessionId(id));
+  }, [canReply, id]);
+
+  function sendReply(): void {
+    const text = reply.trim();
+    if (!text || !canReply) return;
+    const pty = getPtyTransport();
+    const sid = asSessionId(id);
+    pty.attach(sid); // idempotent — re-open if the socket was closed since mount
+    pty.write(sid, encodeUtf8(text + '\r'));
+    setReply('');
+  }
 
   if (!session) {
     return (
@@ -68,6 +94,28 @@ export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
       <View style={styles.ctaRow}>
         <Button label="Open terminal" icon="terminal" variant="primary" onPress={() => router.push(routes.terminal(id))} />
       </View>
+
+      {canReply && (
+        <View style={styles.replyRow}>
+          <View style={styles.replyInput}>
+            <Input
+              value={reply}
+              onChangeText={setReply}
+              placeholder="Reply to agent…"
+              leadingIcon="at"
+              returnKeyType="send"
+              onSubmitEditing={sendReply}
+              blurOnSubmit={false}
+            />
+          </View>
+          <IconButton
+            icon="arrowUp"
+            onPress={sendReply}
+            disabled={reply.trim().length === 0}
+            accessibilityLabel="Send reply"
+          />
+        </View>
+      )}
 
       <TabBar tab={tab} onChange={setTab} />
 
@@ -252,6 +300,16 @@ const styles = StyleSheet.create((theme) => ({
   ctaRow: {
     paddingHorizontal: theme.space[4],
     paddingBottom: theme.space[3],
+  },
+  replyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.space[2],
+    paddingHorizontal: theme.space[4],
+    paddingBottom: theme.space[3],
+  },
+  replyInput: {
+    flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
