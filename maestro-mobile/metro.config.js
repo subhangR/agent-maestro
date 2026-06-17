@@ -21,4 +21,21 @@ config.resolver.blockList = [
   new RegExp(`${escapeRe(path.resolve(projectRoot, '..', 'maestro-server'))}.*`),
 ];
 
+const markdownItDir = path.resolve(projectRoot, 'node_modules/markdown-it');
+const nestedEntities = path.join(markdownItDir, 'node_modules/entities');
+// markdown-it@10 pins entities@2 (has lib/maps/entities.json); the hoisted
+// top-level entities@6 lacks that subpath. Redirect 'entities' requests that
+// ORIGINATE inside markdown-it to its own nested copy. Isolation preserved:
+// only markdown-it's own nested dep is reached, never ../maestro-server.
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (
+    (moduleName === 'entities' || moduleName.startsWith('entities/')) &&
+    context.originModulePath.startsWith(markdownItDir)
+  ) {
+    const rebased = moduleName.replace(/^entities/, nestedEntities);
+    return context.resolveRequest(context, rebased, platform);
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = config;
