@@ -1,19 +1,37 @@
 import { Text, View } from 'react-native';
+import { StyleSheet } from 'react-native-unistyles';
 
-// Phase-0 placeholder root. Confirms the native dev client boots green.
-// Replaced by Compass's expo-router tree (index.ts → 'expo-router/entry') and
-// wrapped by Bedrock's ThemeBoot once the theme layer lands.
+import { ThemeBoot, useAppFonts } from '@/theme';
+
+// Phase-0 placeholder root. Confirms the native dev client boots green and the
+// theme + fonts resolve. Compass replaces this with the expo-router tree
+// (index.ts → 'expo-router/entry'); ThemeBoot stays as the root boot wrapper.
 export function RootScaffold() {
+  const { loaded } = useAppFonts();
   return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#F4F2EC',
-      }}
-    >
-      <Text style={{ color: '#23201B', fontSize: 16 }}>Maestro</Text>
-    </View>
+    <ThemeBoot>
+      <View style={styles.center}>
+        <Text style={styles.brand}>Maestro</Text>
+        <Text style={styles.caption}>{loaded ? 'foundation ready' : 'loading fonts…'}</Text>
+      </View>
+    </ThemeBoot>
   );
 }
+
+const styles = StyleSheet.create((theme) => ({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.paper,
+  },
+  brand: {
+    ...theme.type.display,
+    color: theme.colors.ink,
+  },
+  caption: {
+    ...theme.type.eyebrow,
+    color: theme.colors.ink3,
+    marginTop: theme.space[3],
+  },
+}));
