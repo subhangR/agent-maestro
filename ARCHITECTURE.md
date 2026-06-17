@@ -53,6 +53,8 @@ Import rule (acyclic): `domain` → `theme` → `components` → (`services`, `s
 | `components/` | Palette | RN re-author of Atelier: `primitives/` (Icon/StatusGlyph/Mark/Gauge/StatusDot/AgentAvatar/Avatar/Text), `controls/`, `composite/` (MTaskTile, MSessionTile, NowPlaying, sheet content primitives). Presentational + intent-callbacks; zero data access. |
 | `navigation/` | Compass | expo-router v5; 5-slot tab bar + center Conduct FAB + persistent NowPlaying; per-tab native stacks; `@gorhom/bottom-sheet` v5 `SheetHost` + `useSheetStore` (replaces `window.MUI`); `terminal/[sessionId]` fullScreenModal; `maestro://` deep links; root `_layout` = **connect/host-entry** screen (no login). |
 | `terminal/` | Relay | WebView-hosted xterm.js renderer (offline HTML asset) + soft-keyboard control-sequence accessory bar; consumes Pulse's `PtyTransport`; owns the **lazy attach** policy (attach-on-open + bg/fg detach+replay via the server's 256KB scrollback ring). |
+| `whiteboard/` | Relay | WebView-hosted `@excalidraw/excalidraw`; loads a scene from a server **doc**, edits, saves back as a doc (`POST .../docs`, Excalidraw-scene JSON). Same WebView-bridge pattern as the terminal. No server change (scenes are docs, not Tauri assets). |
+| `features/docs/` | Forge (shared) | Read-only DocViewer: markdown + Mermaid + Excalidraw-scene render from `GET .../docs`; hands off to `whiteboard/` for edit. |
 | `__qa__` / tests | Sentinel | jest + jest-expo + `@testing-library/react-native` + MSW v2 + in-repo **Maelstrom** fake server (reproduces entity-sync array/single framing AND `/pty` binary protocol); per-package `tsc --noEmit` gate; phase-gate VERDICT verdicts. |
 
 ## 4. Data flow
@@ -75,9 +77,11 @@ Import rule (acyclic): `domain` → `theme` → `components` → (`services`, `s
 
 ## 5. Cross-cutting decisions
 
-- **No auth (v1):** every channel connects to the bare `host:port`. `getToken()` returns null; `?token=` retained only as a future seam. (Server actually accepts cookie + `?token=` — never `Authorization: Bearer`; preserved as future reference in `services/api`.)
+- **No auth (v1) — Tailscale/VPN only:** every channel connects to the bare `host:port`; the private network is the security boundary. `getToken()` returns null; `?token=` retained only as a future seam. (Server actually accepts cookie + `?token=` — never `Authorization: Bearer`; preserved as future reference in `services/api`.)
 - **No entity persistence (v1):** only tiny prefs (theme mode, last host) persist (MMKV); entities are always re-fetched on connect.
-- **Phone-only (v1):** tablet two-pane deferred.
+- **Android-first (v1):** RN/cross-platform, but dev-client + testing + platform handling (system back, status/nav bars, Material press, per-weight fonts) target Android first; iOS is a later port. Phone-only (tablet two-pane deferred).
+- **No notifications (v1):** background push would require a server-driven push service (a server change) — out of scope.
+- **Scope:** drop file browser / Monaco editor / recordings / SSH; **keep** the document viewer (read-only, server-backed) and the Excalidraw whiteboard (WebView + doc persistence).
 - **Dev client required:** unistyles v3 + react-native-webview + react-native-mmkv + svg + gorhom all preclude Expo Go.
 
 ## 6. Module boundary contracts (the seams that must agree)

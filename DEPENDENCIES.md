@@ -64,12 +64,13 @@ Domain types are **hand-mirrored** + a compile-time **drift guard** importing `m
 | `react-hook-form` | ^7 | Create/edit forms (task, member, run-config) with zod resolver reusing Lexicon schemas. | Formik (heavier, less perf); uncontrolled hand-rolled (revalidation pain). |
 | `@hookform/resolvers` | ^3 | Bridges react-hook-form ↔ zod. | — |
 
-## Terminal (Relay)
+## Terminal + whiteboard (Relay)
 
 | Package | Version | Why | Rejected |
 |---|---|---|---|
-| `react-native-webview` | ^13.12 | Hosts xterm.js (the proven renderer) bridged via `postMessage`. | Native VT emulator (large net-new build, no xterm parity). |
+| `react-native-webview` | ^13.12 | Hosts xterm.js (terminal) **and** Excalidraw (whiteboard), bridged via `postMessage`. One WebView competency, two consumers. | Native VT emulator / native canvas board (large net-new builds, no parity). |
 | `@xterm/xterm` | ^5.5 | Inlined into an **offline** HTML asset; **DOM renderer only**. | WebGL/Canvas addons (crash in this stack — see project memory); CDN load (no offline). |
+| `@excalidraw/excalidraw` | ^0.17 | The same web component the desktop uses; hosted in a WebView, scene loaded/saved as a **server doc** (Excalidraw-scene JSON via `POST/GET .../docs`) — no Tauri, no server change. | Native RN drawing lib (no Excalidraw parity; desktop scenes wouldn't interop); rough.js board (read-only, no edit). |
 
 ## QA / tooling (Sentinel)
 

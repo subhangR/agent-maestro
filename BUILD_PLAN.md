@@ -2,6 +2,14 @@
 
 > Supersedes the draft `COORDINATION_PLAN.md`. Phased implementation with **disjoint file scopes** per worker, the **maestro-panel / session-panel** feature split, Atlas integrating + committing, and Sentinel gating every phase. **No implementation until the user approves this plan.**
 
+## v1 scope (ratified by user, 2026-06-17)
+
+- **Reachability:** Tailscale/VPN only — no-auth is acceptable because the private network is the boundary. Never expose publicly without auth.
+- **Platform:** **Android-first.** App is RN/cross-platform, but dev-client, testing, and platform handling target Android first (system back button → nav/sheet dismiss; Android status/nav bars; Material press feedback; per-weight font families to avoid synthetic bolding). iOS is a later port.
+- **Notifications:** **skipped in v1** (true background push needs a server-driven push service = a server change).
+- **Native-only surfaces:** **DROP** file browser, code editor (Monaco), session recordings, SSH. **KEEP** the document/diagram **viewer** and the **Excalidraw whiteboard**.
+- **Excalidraw (verified, no server change):** drawings are stored as **doc content** — a diagram is a doc whose content is Excalidraw-scene JSON (`isExcalidrawSceneJson()` in maestro-ui `docHelpers.ts`), persisted via the existing `POST/GET .../docs` endpoints (NOT Tauri `save_session_asset`, which is only a desktop local-file convenience). Mobile = WebView-hosted `@excalidraw/excalidraw` (same bridge pattern as the terminal), scene saved as a doc. **Owner: Relay** (WebView specialist).
+
 ## Roster → scope (file-disjoint)
 
 | Member | Scope | Stream |
@@ -14,7 +22,7 @@
 | 🎨 Palette | `components/` (primitives, controls, composite tiles, sheet content) | core |
 | 🧭 Compass | `app/` + `navigation/` (router, tab bar, SheetHost, deep links, connect route) | shell |
 | 🛠️ Forge | `features/` **Stream A** (tasks/members/teams/skills/lists/graphs/profiles/more) **+ Stream B** (sessions/spawn/connect/conduct/_shared) — spawned as **two disjoint workers** | features |
-| ⌨️ Relay | `terminal/` (WebView xterm renderer, soft-keyboard bar, `measureTerminalSize`) | terminal |
+| ⌨️ Relay | `terminal/` (WebView xterm renderer, soft-keyboard bar, `measureTerminalSize`) **+ `whiteboard/`** (WebView-hosted Excalidraw, scene↔doc persistence) | terminal/whiteboard |
 | ✅ Sentinel | `__qa__/` (Maelstrom, integration, gates) — independent verify at every phase | QA |
 
 ## Phase 0 — Foundation (parallel: Bedrock ∥ Lexicon ∥ Sentinel-scaffold)
@@ -45,9 +53,10 @@
 - Palette: composite tiles (`MTaskTile`, `MSessionTile`, `NowPlaying`) + sheet content primitives.
 - **Forge Stream A** (maestro-panel): Tasks/Members/Teams(REST-poll)/Skills/Lists/Graphs/Profiles read-only, wired to Ledger selectors; mock `m-data` constants removed.
 - **Forge Stream B** (session-panel): Sessions list/tiles/detail/stats/timeline/prompts read-only; owns `_shared/` + `conduct/` bodies.
+- **Document/diagram viewer** (`features/docs/`, shared read-only): renders server docs via `GET .../docs` — markdown + Mermaid + Excalidraw scenes (read-only render here; editing is Phase 5).
 
-**Delivers:** all surfaces render **live** server data; A and B are file-disjoint; cross-stream actions only via `sheets.open`.
-**Gate (Sentinel):** every screen renders live data; boundary-lint proves no A↔B cross-import; no `m-data` constants remain.
+**Delivers:** all surfaces render **live** server data; doc/diagram viewer works; A and B are file-disjoint; cross-stream actions only via `sheets.open`.
+**Gate (Sentinel):** every screen renders live data; doc viewer renders the three content kinds; boundary-lint proves no A↔B cross-import; no `m-data` constants remain.
 
 ## Phase 3 — Actions & spawn (Forge A ∥ Forge B ∥ Conduit)
 
@@ -63,11 +72,13 @@
 
 **Gate (Sentinel):** live terminal attaches + echoes against `MAESTRO_PTY_HOST=server` (node, not bun); reattach replays scrollback.
 
-## Phase 5 — Polish & integration (Sentinel + all)
+## Phase 5 — Whiteboard, polish & integration (Relay + Sentinel + all)
 
-- Background/foreground reconnect hardening, optional WS subscription filtering, push from `notify:*`, empty/error states, a11y pass (reduced-motion, Dynamic Type, AA contrast), diagram board (Skia/SVG) or graceful read-only fallback, theming QA.
+- **Excalidraw whiteboard (Relay):** WebView-hosted `@excalidraw/excalidraw` (reuses the terminal's `react-native-webview` + bridge pattern); load a scene from a doc, edit, save back as a doc via `POST .../docs` (scene JSON). No server change.
+- Background/foreground reconnect hardening, optional WS subscription filtering, empty/error states, a11y pass (reduced-motion, Dynamic Type, AA contrast), theming QA.
+- **No notifications in v1** (per scope).
 
-**Gate:** final verify across the contract checklist.
+**Gate (Sentinel):** whiteboard round-trips a scene to a server doc and back; final verify across the contract checklist.
 
 ## Mechanics (unchanged)
 
@@ -79,6 +90,7 @@
 ## De-risked / open
 
 - ✅ `MAESTRO_PTY_HOST=server` confirmed live (web UI terminals work) → `/pty` proven for non-native clients.
-- ✅ No-auth direct connection (user directive) — simplest possible connect.
-- ⚠️ Confirm the deployed target box runs PTY host under **node** (not bun) before Phase 4.
-- ⚠️ Diagram board (rough.js) has no RN equivalent — Phase 5 Skia/SVG or read-only fallback.
+- ✅ No-auth direct connection over Tailscale (user directive) — simplest possible connect; network is the boundary.
+- ✅ Excalidraw whiteboard feasible with no server change — scenes persist as docs over REST (`isExcalidrawSceneJson`/`docHelpers.ts`); WebView-hosted editor.
+- ⚠️ Confirm the deployed target box runs PTY host under **node** (not bun) before Phase 4 (and `MAESTRO_PTY_HOST=server` on the actual Android-target server).
+- ⚠️ Verify the exact write endpoint for an Excalidraw scene per entity (task vs session docs) at Phase 5 start — `POST /api/tasks/:id/docs` is the proven path; confirm session-doc write parity.

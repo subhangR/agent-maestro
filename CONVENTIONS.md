@@ -73,3 +73,10 @@
 ## 11. Git (Atlas only)
 
 - Workers **never** run git. Atlas integrates and commits in the worktree after each worker reports complete. Sentinel verifies each phase gate before Atlas opens the next phase.
+
+## 12. Platform (Android-first) & connection scope
+
+- **Android is the primary target** in v1 (iOS is a later port). Handle Android specifics: hardware/system **back button** → pop nav stack / dismiss the top sheet (never exit the app from a detail); Android status + navigation bars (edge-to-edge + insets); Material press feedback (`android_ripple` where it fits Atelier); per-weight font families (no synthetic bolding). The dev client + CI device target is Android.
+- **Connection is Tailscale/VPN-only** (no auth — the private network is the boundary). The connect screen accepts a `host:port`; never assume public exposure.
+- **WebView surfaces** (terminal, whiteboard) share one `react-native-webview` competency (Relay). Offline-bundled HTML assets; bridge via `postMessage`.
+- **Docs/diagrams** are read via `GET .../docs`; an Excalidraw drawing is a **doc** whose content is scene JSON (detect with the `isExcalidrawSceneJson` pattern) — saved via `POST .../docs`, never a native asset write.

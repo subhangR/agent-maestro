@@ -22,8 +22,9 @@ mobile-wt/app/                      ← the feat/mobile-app worktree (this dir)
       realtime/                     (Pulse)
     state/                          (Ledger)
     components/                     (Palette)
-    features/                       (Forge — split A / B)
+    features/                       (Forge — split A / B; incl. docs/ viewer)
     terminal/                       (Relay)
+    whiteboard/                     (Relay) — WebView-hosted Excalidraw, scene↔doc persistence
     lib/                            tiny shared helpers (no domain logic)
   __qa__/                           (Sentinel) — fake server, integration, gates
   planning/                         the 10 specialist planning docs (this phase)
@@ -151,6 +152,8 @@ features/
   # ── straddle bodies: SINGLE OWNER = stream B (session-panel); stream A imports read-only ──
   conduct/    CommandSheet body — fires A (new task/member/spell) and B (spawn) via sheets.open; owned by B (spawn is session-panel)
   _shared/    useScreenStatus, optimistic helpers — owned by B; frozen after Phase 0, then read-only to A
+  # ── shared read-only viewer (cross-cutting: tasks + sessions docs) ──
+  docs/       DocViewer (markdown + Mermaid + read-only Excalidraw scene render via GET .../docs); opens the whiteboard editor for edit
 ```
 
 > `NowPlaying` *component* is authored by Palette (`components/composite/`); it is **mounted** by Compass as tab-bar chrome (reads Ledger `useActiveSession`), not by Forge.
