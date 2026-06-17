@@ -13,6 +13,19 @@ package-lock.json
 # TypeScript build artifacts
 *.tsbuildinfo
 
+# maestro-mobile (Expo / RN)
+maestro-mobile/.expo/
+maestro-mobile/.expo-shared/
+maestro-mobile/web-build/
+maestro-mobile/ios/
+maestro-mobile/android/
+maestro-mobile/*.jks
+maestro-mobile/*.p8
+maestro-mobile/*.p12
+maestro-mobile/*.key
+maestro-mobile/*.mobileprovision
+maestro-mobile/.metro-health-check*
+
 # Rust / Tauri
 src-tauri/target/
 src-tauri/.tauri/

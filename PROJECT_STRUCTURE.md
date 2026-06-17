@@ -4,15 +4,19 @@
 
 ## Top level
 
+> The `feat/mobile-app` worktree root is the **whole monorepo** (`maestro-ui/server/cli/web`). The mobile app is a **standalone package at `maestro-mobile/`** (sibling to `maestro-ui`), NOT added to the root bun `workspaces` list — so it stays outside the bun workspace and uses its own npm install. The drift-guard imports `../maestro-server/src/types.ts` (reachable in-tree).
+
 ```
-mobile-wt/app/                      ← the feat/mobile-app worktree (this dir)
+maestro-mobile/                     ← the standalone Expo app (this is the app root)
+  design-reference/                 pinned Atelier specimens (mobile-app/*.jsx, colors_and_type.css, assets)
   app.json / app.config.ts          Expo config (CNG, plugins, fonts)
   package.json                      standalone npm app (NOT in the bun workspace)
-  tsconfig.json                     extends base; path alias @/* → src/*
+  tsconfig.json                     path alias @/* → src/*; excludes src/domain/__sync__
+  tsconfig.drift.json               dedicated drift-guard gate (imports ../maestro-server/src/types.ts)
   babel.config.js                   unistyles + reanimated plugins
-  metro.config.js
+  metro.config.js                   blockList: src/domain/__sync__ + ../maestro-server
   index.ts                          Expo entry
-  assets/                           fonts, logos, the offline xterm HTML bundle
+  assets/                           fonts, logos, the offline xterm + excalidraw HTML bundles
   src/
     app/                            expo-router route tree (Compass)
     domain/                         (Lexicon)
