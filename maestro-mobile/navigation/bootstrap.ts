@@ -19,6 +19,7 @@ import {
   ingestEvent,
   resyncProject,
   hydratePrefs,
+  setPtyTransport,
   useEntityStore,
   useUiStore,
   usePrefsStore,
@@ -88,6 +89,9 @@ export async function bootstrap(host: string): Promise<BootstrapResult> {
     ledger,
   });
   activeRealtime = rt;
+  // Expose the pty transport to @/state so getPtyTransport() (reply-to-agent)
+  // resolves. `rt.pty` structurally satisfies the PtyClientApi seam (Wave 1).
+  setPtyTransport(rt.pty);
 
   // Push realtime status into the UI store (Forge reads `connected`). The
   // realtime layer has an extra 'idle' state the UI store doesn't model — map it
@@ -127,6 +131,7 @@ export async function bootstrapFromStoredHost(): Promise<boolean> {
 export function teardown(): void {
   activeRealtime?.stop();
   activeRealtime = null;
+  setPtyTransport(null);
   useUiStore.getState().setRealtimeStatus('disconnected');
 }
 

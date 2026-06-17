@@ -5,12 +5,6 @@
 // then `getMaestroClient().invokeSpell(payload)` and dismiss on success. When the
 // chosen spell targets a 'session', step 2 IS the session, so step 3 is skipped
 // and the entity doubles as the target.
-//
-// SEAM NOTE: getSpellDefinitions/getSpellEntities are implemented by the concrete
-// MaestroClient but not yet declared on the @/state `MaestroClientApi` surface
-// (Ledger owns it; flagged to Atlas). We read them through a narrow structural
-// extension so the runtime call is honest and tsc stays green without editing
-// src/state.
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
@@ -21,18 +15,8 @@ import {
   type ProjectId,
   type SpellDefinition,
   type SpellEntity,
-  type SpellEntityType,
   type SpellInvocationPayload,
 } from '@/domain';
-
-/** Reads the concrete client implements but the seam doesn't yet declare. */
-interface SpellReadClient {
-  getSpellDefinitions(): Promise<SpellDefinition[]>;
-  getSpellEntities(type: SpellEntityType, projectId?: string): Promise<SpellEntity[]>;
-}
-function spellClient(): SpellReadClient {
-  return getMaestroClient() as unknown as SpellReadClient;
-}
 
 export function SpellCastView({
   projectId,
@@ -59,7 +43,7 @@ export function SpellCastView({
   // Step 1: load spell definitions once.
   useEffect(() => {
     let alive = true;
-    spellClient()
+    getMaestroClient()
       .getSpellDefinitions()
       .then((d) => alive && setDefinitions(d))
       .catch((e) => alive && setDefsError(e instanceof Error ? e.message : 'Failed to load spells.'));
@@ -76,7 +60,7 @@ export function SpellCastView({
     setEntitiesError(null);
     setEntityId(null);
     setTargetSessionId(null);
-    spellClient()
+    getMaestroClient()
       .getSpellEntities(spell.entityType, projectId)
       .then((e) => alive && setEntities(e))
       .catch((e) => alive && setEntitiesError(e instanceof Error ? e.message : 'Failed to load targets.'));

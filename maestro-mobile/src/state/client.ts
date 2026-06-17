@@ -32,6 +32,9 @@ import type {
   UpdateSessionPayload,
   SpawnSessionResponse,
   SpellInvocationPayload,
+  SpellDefinition,
+  SpellEntity,
+  SpellEntityType,
 } from '@/domain';
 import type { SpawnSessionRequest } from '@/domain/schemas/spawn';
 
@@ -63,6 +66,8 @@ export interface MaestroClientApi {
   getModelProfiles(): Promise<ModelProfile[]>;
   getOrdering(projectId: string, entityType: 'task' | 'session'): Promise<Ordering>;
   getTaskListOrdering(projectId: string): Promise<Ordering>;
+  getSpellDefinitions(): Promise<SpellDefinition[]>;
+  getSpellEntities(type: SpellEntityType, projectId?: string): Promise<SpellEntity[]>;
 
   // ---- Tasks (write) ----
   createTask(data: CreateTaskPayload): Promise<Task>;

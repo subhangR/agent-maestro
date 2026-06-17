@@ -17,6 +17,10 @@ import type { ComponentType } from 'react';
 
 import { Text } from '@/components';
 import { useTheme } from '@/theme';
+import { CommandSheet } from '@/features/conduct';
+import { CreateTaskSheet } from '@/features/tasks';
+import { TeamMemberSheet } from '@/features/members';
+import { RunConfigSheet } from '@/features/sessions';
 
 import type { SheetBodyProps, SheetType } from './types';
 
@@ -64,11 +68,15 @@ const LABELS: Record<SheetType, string> = {
  * passing it). Swap a value here to ship a real sheet without touching the host.
  */
 export const SHEET_REGISTRY: Record<SheetType, ComponentType<SheetBodyProps>> = {
-  command: PlaceholderBody,
+  // Real Phase-3 bodies (Forge). Each is typed against its narrowed intent
+  // (`SheetBodyProps<{type:'…'}>`); the host narrows the intent before passing,
+  // so casting to the broad slot type at the registry site is safe.
+  command: CommandSheet as ComponentType<SheetBodyProps>,
+  createTask: CreateTaskSheet as ComponentType<SheetBodyProps>,
+  editMember: TeamMemberSheet as ComponentType<SheetBodyProps>,
+  runConfig: RunConfigSheet as ComponentType<SheetBodyProps>,
+  // No Phase-3 body yet — kept on the placeholder / Phase-2 viewers.
   project: PlaceholderBody,
-  createTask: PlaceholderBody,
-  editMember: PlaceholderBody,
-  runConfig: PlaceholderBody,
   picker: PlaceholderBody,
   doc: PlaceholderBody,
   diagram: PlaceholderBody,
