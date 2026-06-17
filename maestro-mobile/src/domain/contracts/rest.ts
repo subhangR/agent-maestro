@@ -383,5 +383,132 @@ export interface GitMergeResponse {
   success: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Auxiliary response types (NOT in maestro-server/src/types.ts — sourced from
+// service/route shapes; wire-observed forward contracts, NOT drift-guarded).
+// Authored for Conduit's MaestroClient.
+// ---------------------------------------------------------------------------
+
+// GET /sessions/:id/stats → LogDigestService.SessionStatsDigest
+export interface StatsTextEntry {
+  timestamp: EpochMs;
+  text: string;
+  source: 'assistant' | 'user';
+}
+
+export interface SessionStatsResponse {
+  sessionId: string;
+  source: 'claude' | 'codex' | null;
+  jsonlFound: boolean;
+  /** True when the file was too large and we truncated. */
+  partial: boolean;
+  tokens: {
+    input: number;
+    output: number;
+    cacheCreate: number;
+    cacheRead: number;
+    total: number;
+  };
+  messageCount: {
+    user: number;
+    assistant: number;
+    total: number;
+  };
+  toolCallCount: number;
+  toolUsage: Array<{ name: string; count: number }>;
+  models: string[];
+  firstMessageAt: EpochMs | null;
+  lastMessageAt: EpochMs | null;
+  lastMessages: StatsTextEntry[];
+}
+
+// GET /sessions/:id/command-usage → CommandUsageService.SessionCommandUsage
+export interface CommandUsageRecord {
+  /** ISO timestamp captured when the CLI process started. */
+  ts: string;
+  sessionId: string | null;
+  projectId: string | null;
+  /** Resolved command path, e.g. "task report complete". */
+  command: string | null;
+  argv: string[];
+  exitCode: number;
+  durationMs: number;
+  success: boolean;
+  cliVersion: string | null;
+}
+
+export interface CommandUsagePerCommand {
+  command: string;
+  total: number;
+  failed: number;
+}
+
+export interface CommandUsageSummary {
+  total: number;
+  succeeded: number;
+  failed: number;
+  /** Per-command tallies, sorted by total usage descending. */
+  byCommand: CommandUsagePerCommand[];
+}
+
+export interface SessionCommandUsage {
+  sessionId: string;
+  summary: CommandUsageSummary;
+  records: CommandUsageRecord[];
+}
+
+// GET /git/capabilities → GitService.capabilities()
+export interface GitCapabilities {
+  hasGit: boolean;
+  hasGh: boolean;
+  ghAuthed: boolean;
+}
+
+// GET /workflow-templates → workflowTemplateRoutes WorkflowTemplate[]
+export interface WorkflowPhase {
+  name: string;
+  instruction: string;
+}
+
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  mode: AgentMode;
+  phases: WorkflowPhase[];
+  builtIn: boolean;
+}
+
+/**
+ * GET /skills → a projected skill DTO (NOT the raw loader Skill { manifest,
+ * instructions }). Primary (multi-scope) branch carries skillScope/skillSource/
+ * skillPath; the basic-loader fallback carries `scope` instead — both optional
+ * here. `content` is present only when the request passes ?fields=full.
+ */
+export interface ClaudeCodeSkill {
+  id: string;
+  name: string;
+  description: string;
+  version: string;
+  triggers: string[];
+  role?: string;
+  /** Multi-scope branch. */
+  skillScope?: string;
+  skillSource?: string;
+  skillPath?: string;
+  /** Basic-loader fallback branch. */
+  scope?: string;
+  outputFormat?: string;
+  language?: string;
+  framework?: string;
+  tags: string[];
+  category?: string;
+  license?: string;
+  hasReferences: boolean;
+  referenceCount: number;
+  /** Only when ?fields=full. */
+  content?: string;
+}
+
 /** Re-exported entity types frequently needed alongside REST responses. */
 export type { Task, Session, JsonObject };
