@@ -472,6 +472,23 @@ export class MaestroClient {
     return this.request<DocEntry[]>(`/tasks/${taskId}/docs`);
   }
 
+  // The create-doc routes don't return the created DocEntry: POST /sessions/:id/docs
+  // responds with the full SESSION, and POST /tasks/:id/docs responds with a bare
+  // ack. Both paths funnel through this resolver, which digs the just-created doc
+  // (by its deterministic filePath, newest wins) out of a docs[] so callers get a
+  // real doc id for subsequent /docs/:docId/content updates (the whiteboard save).
+  private resolveCreatedDoc(docs: DocEntry[] | undefined, filePath: string): DocEntry {
+    const list = docs ?? [];
+    const matches = list.filter((d) => d.filePath === filePath);
+    const pool = matches.length > 0 ? matches : list;
+    let best: DocEntry | null = null;
+    for (const d of pool) {
+      if (best == null || (d.addedAt ?? 0) >= (best.addedAt ?? 0)) best = d;
+    }
+    if (best == null) throw new Error('Server created the doc but did not return it.');
+    return best;
+  }
+
   async addSessionDoc(
     sessionId: string,
     title: string,
@@ -480,10 +497,11 @@ export class MaestroClient {
   ): Promise<DocEntry> {
     const ext = kind === 'diagram' ? '.excalidraw' : '.md';
     const filePath = `${title.replace(/[^a-z0-9_\-]/gi, '_')}${ext}`;
-    return this.request<DocEntry>(`/sessions/${sessionId}/docs`, {
+    const session = await this.request<{ docs?: DocEntry[] }>(`/sessions/${sessionId}/docs`, {
       method: 'POST',
       body: JSON.stringify({ title, filePath, content, kind }),
     });
+    return this.resolveCreatedDoc(session.docs, filePath);
   }
 
   async addTaskDoc(
@@ -495,10 +513,13 @@ export class MaestroClient {
   ): Promise<DocEntry> {
     const ext = kind === 'diagram' ? '.excalidraw' : '.md';
     const filePath = `${title.replace(/[^a-z0-9_\-]/gi, '_')}${ext}`;
-    return this.request<DocEntry>(`/tasks/${taskId}/docs`, {
+    await this.request<unknown>(`/tasks/${taskId}/docs`, {
       method: 'POST',
       body: JSON.stringify({ title, filePath, content, sessionId, kind }),
     });
+    // The task route returns only an ack, so re-read the owning session's docs.
+    const docs = await this.getSessionDocs(sessionId);
+    return this.resolveCreatedDoc(docs, filePath);
   }
 
   async updateDocContent(sessionId: string, docId: string, content: string): Promise<DocEntry> {
