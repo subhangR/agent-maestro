@@ -1,7 +1,6 @@
-// Members home. FORGE (Stream A): replace with <MembersScreen/> from
-// features/members.
-import { TabPlaceholder } from '../../../navigation/TabPlaceholder';
+// Members home. Mounts Forge (Stream A) MembersScreen.
+import { MembersScreen } from '@/features/members';
 
 export default function MembersHome(): React.JSX.Element {
-  return <TabPlaceholder title="Members" />;
+  return <MembersScreen />;
 }

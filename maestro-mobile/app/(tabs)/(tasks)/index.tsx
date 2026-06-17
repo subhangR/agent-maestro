@@ -1,6 +1,6 @@
-// Tasks home. FORGE (Stream A): replace with <TasksScreen/> from features/tasks.
-import { TabPlaceholder } from '../../../navigation/TabPlaceholder';
+// Tasks home. Mounts Forge (Stream A) TasksScreen.
+import { TasksScreen } from '@/features/tasks';
 
 export default function TasksHome(): React.JSX.Element {
-  return <TabPlaceholder title="Tasks" />;
+  return <TasksScreen />;
 }

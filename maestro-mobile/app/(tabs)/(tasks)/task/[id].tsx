@@ -1,10 +1,9 @@
-// Task detail (pushed). FORGE (Stream A): replace with <TaskDetail/> (subtask
-// tree) from features/tasks; read `id` via useLocalSearchParams.
+// Task detail (pushed). Mounts Forge (Stream A) TaskDetailScreen.
 import { useLocalSearchParams } from 'expo-router';
 
-import { TabPlaceholder } from '../../../../navigation/TabPlaceholder';
+import { TaskDetailScreen } from '@/features/tasks';
 
 export default function TaskDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <TabPlaceholder title="Task" subtitle={`id: ${id ?? '—'}`} />;
+  return <TaskDetailScreen id={id} />;
 }

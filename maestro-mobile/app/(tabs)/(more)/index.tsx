@@ -1,8 +1,6 @@
-// More menu. FORGE (Stream A): replace with <MoreScreen/> from features/more;
-// its leaf items (skills / spells / lists / settings / about) become further
-// routes under (more)/ — Compass adds the route files, Forge fills the bodies.
-import { TabPlaceholder } from '../../../navigation/TabPlaceholder';
+// More menu. Mounts Forge (Stream A) MoreScreen (inline sub-screen stack).
+import { MoreScreen } from '@/features/more';
 
 export default function MoreHome(): React.JSX.Element {
-  return <TabPlaceholder title="More" />;
+  return <MoreScreen />;
 }

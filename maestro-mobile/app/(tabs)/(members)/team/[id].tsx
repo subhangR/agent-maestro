@@ -1,10 +1,9 @@
-// Team detail (pushed). FORGE (Stream A): replace with <TeamDetail/> from
-// features/members; read `id` via useLocalSearchParams.
+// Team detail (pushed). Mounts Forge (Stream A) TeamDetailScreen.
 import { useLocalSearchParams } from 'expo-router';
 
-import { TabPlaceholder } from '../../../../navigation/TabPlaceholder';
+import { TeamDetailScreen } from '@/features/teams';
 
 export default function TeamDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>();
-  return <TabPlaceholder title="Team" subtitle={`id: ${id ?? '—'}`} />;
+  return <TeamDetailScreen id={id} />;
 }
