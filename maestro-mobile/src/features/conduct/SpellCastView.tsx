@@ -113,10 +113,10 @@ export function SpellCastView({
           <View style={styles.rows}>
             {definitions.map((d) => (
               <PickerRow
-                key={d.name}
+                key={`${d.name}-${d.entityType}`}
                 label={d.label}
-                detail={d.description}
-                selected={spell?.name === d.name}
+                detail={d.description ? `${d.entityType} · ${d.description}` : d.entityType}
+                selected={spell?.name === d.name && spell?.entityType === d.entityType}
                 onPress={() => setSpell(d)}
               />
             ))}
