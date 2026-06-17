@@ -1,16 +1,58 @@
 # SENTINEL VERDICT — Phase 3 (Actions & spawn)
 
-**Status: PASS-WITH-WAIVERS** — the action/spawn/reply/optimistic surfaces are correct and
-the build is clean, but there is ONE real architectural defect (a `navigation ↔ features`
-runtime import **cycle** that violates the stated acyclic boundary in criterion 5) plus the
-Phase-1-style environment waiver (live disposable server can't boot here). The cycle is
-build-clean and analytically likely-benign, but it literally breaches criterion 5's
-"no features→navigation" rule — **if Atlas/Compass treat the acyclic boundary as a HARD gate
-invariant, this converts to FAIL.** Either way it should be fixed before Phase 4 (one-line
-decoupling; see W3).
+**Status: PASS** (after W3 fix `c0cd41c`) — the action/spawn/reply/optimistic surfaces are
+correct, the build is clean, and the `navigation↔features` import **cycle (W3)** that the first
+gate flagged has been **mechanically verified gone**. Atlas ruled the acyclic boundary a HARD
+invariant; Compass decoupled the navigation barrels; this re-gate confirms no value-import path
+from any feature-consumed navigation module back to `features/`, with `navigation→features`
+preserved strictly one-way. W4 (live disposable-server round-trip) is accepted by Atlas as an
+honest environment waiver.
 
-Date: 2026-06-17 · Branch: feat/mobile-app · Commits under test: `90ef3da` (Wave1 seams) + `22db5ed` (Wave2a mutations/spawn/reply) + `484ef79` (Wave2b registry+pty+spell)
+> **History:** the FIRST gate was PASS-WITH-WAIVERS with W3 (the cycle) as a blocking must-fix.
+> The full first-gate analysis + the original W3 evidence are retained below for the record;
+> the RE-GATE section immediately below supersedes the W3 verdict.
+
+Date: 2026-06-17 · Branch: feat/mobile-app · Commits under test: `90ef3da` + `22db5ed` + `484ef79` + **`c0cd41c` (W3 cycle fix)**
 Scope verified read-only from `__qa__/`. No app code modified. Git not run (Atlas integrates).
+
+---
+
+## RE-GATE — W3 (acyclic boundary) cleared, after `c0cd41c`
+
+**The fix (Compass, navigation-only — no feature files changed):** `navigation/sheets/index.ts`
+is now a pure LEAF barrel — it no longer re-exports `SheetHost` or `SHEET_REGISTRY` (both pull
+`registry → @/features/*`); `navigation/index.ts` (the mega-barrel the 9 feature screens import)
+dropped `SheetHost` from its export list; `app/_layout.tsx:23` imports `SheetHost` from the direct
+module `../navigation/sheets/SheetHost`.
+
+**Mechanical proof the cycle is gone** (value-imports only, comments stripped — `/tmp/reach.mjs`,
+transitive reachability to `src/features/`):
+
+```
+navigation/index.ts        → reaches a feature?  NO ✓   (the mega-barrel features import)
+navigation/sheets/index.ts → reaches a feature?  NO ✓   (the leaf: sheets + useSheetStore + types)
+navigation/routes.ts       → reaches a feature?  NO ✓
+navigation/sheets/SheetHost.tsx → reaches features YES   (host→registry→features — EXPECTED, one-way)
+```
+
+Every navigation module a feature can import now bottoms out at the leaf (`sheets`/`useSheetStore`/
+types) with **no path back to `features/`**. The sole `navigation→features` edge
+(`SheetHost → registry → @/features/*`) is consumed only by `app/_layout`, which nothing imports —
+a one-way DAG. The criterion-5 acyclic invariant holds.
+
+**Re-gate sanity (all green):**
+```
+tsc (app) ........... exit 0          jest ................ 76/76 (9 suites)
+tsc (drift) ......... exit 0          android export ...... exit 0 (77 files, 11M)
+bundle isolation .... maestro-server 0 · __sync__ 0 · markdown-it + entities(aacute) bundled
+```
+
+**W3 = CLEARED. Phase 3 = PASS** (W4 environment waiver accepted by Atlas). All other criteria
+were already PASS in the first gate (below) and are unaffected by the navigation-only fix.
+
+---
+<!-- ===================== FIRST-GATE RECORD (W3 still open) BELOW ===================== -->
+## (Archived) First gate — PASS-WITH-WAIVERS (W3 blocking)
 
 ---
 
