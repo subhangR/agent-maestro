@@ -71,7 +71,9 @@ export function WhiteboardView(props: WhiteboardViewProps): React.JSX.Element {
 
   const connected = hasMaestroClient();
   const [state, setState] = useState<LoadState>({ phase: 'idle' });
-  const [saveError, setSaveError] = useState<string | null>(null);
+  // `soft` notices (read-only / not-yet-saveable) render calm; only genuine
+  // persistence failures on an existing doc render as a red error.
+  const [saveError, setSaveError] = useState<{ text: string; soft?: boolean } | null>(null);
 
   // The doc we persist edits to (resolved on load; may be created on first save).
   const docRef = useRef<DocEntry | null>(null);
@@ -119,14 +121,14 @@ export function WhiteboardView(props: WhiteboardViewProps): React.JSX.Element {
         const existing = docRef.current;
         if (existing) {
           if (owner == null) {
-            setSaveError('Read-only: no owning session for this scene — edits are not saved.');
+            setSaveError({ text: 'Edits won’t persist — this scene has no owning session.', soft: true });
             return;
           }
           await client.updateDocContent(owner, existing.id, content);
         } else {
           // Brand-new board: create the doc. Requires a session to own it.
           if (sessionId == null) {
-            setSaveError('Read-only: provide a sessionId to create and save a new whiteboard.');
+            setSaveError({ text: 'Read-only — open from a session to save a new whiteboard.', soft: true });
             return;
           }
           const title = newDocTitle ?? 'Whiteboard';
@@ -138,7 +140,9 @@ export function WhiteboardView(props: WhiteboardViewProps): React.JSX.Element {
         }
         setSaveError(null);
       } catch (err) {
-        setSaveError(err instanceof Error ? err.message : String(err));
+        // A failure while creating the very first scene (no doc yet) is treated as
+        // a calm notice — an empty board hasn't committed anything to lose.
+        setSaveError({ text: err instanceof Error ? err.message : String(err), soft: docRef.current == null });
       } finally {
         savingRef.current = false;
       }
@@ -155,7 +159,7 @@ export function WhiteboardView(props: WhiteboardViewProps): React.JSX.Element {
         return;
       }
       if (msg.type === 'scene') void persistScene(msg.content);
-      else if (msg.type === 'error') setSaveError(`Editor: ${msg.message}`);
+      else if (msg.type === 'error') setSaveError({ text: `Editor: ${msg.message}` });
     },
     [persistScene],
   );
@@ -200,8 +204,8 @@ export function WhiteboardView(props: WhiteboardViewProps): React.JSX.Element {
       />
       {(saveError != null || readOnlyNotice) && (
         <View style={styles.banner}>
-          <Text variant="label" color={saveError != null ? 'block' : 'ink3'} numberOfLines={2}>
-            {saveError ??
+          <Text variant="label" color={saveError != null && !saveError.soft ? 'block' : 'ink3'} numberOfLines={2}>
+            {saveError?.text ??
               'Read-only — edits won’t persist without an owning session. Open from a session to edit.'}
           </Text>
         </View>
