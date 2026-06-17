@@ -14,6 +14,8 @@ package-lock.json
 *.tsbuildinfo
 
 # maestro-mobile (Expo / RN)
+# standalone npm app — DO track its lockfile (monorepo ignores package-lock.json globally)
+!maestro-mobile/package-lock.json
 maestro-mobile/.expo/
 maestro-mobile/.expo-shared/
 maestro-mobile/web-build/
