@@ -1,0 +1,16 @@
+{
+  // QA-only tsconfig. The app's tsconfig.json does NOT include __qa__ (its `include`
+  // is index.ts + src/app/navigation), so the harness's node/ws/jest usage never
+  // pollutes the app gate. This config typechecks __qa__ in isolation, with node +
+  // jest types, for Sentinel's own gate.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["../node_modules"]
+}

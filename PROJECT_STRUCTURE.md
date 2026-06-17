@@ -72,9 +72,14 @@ domain/
     rest.ts             request + response payload types (per endpoint)
     ws.ts               WsEnvelope {type,event,data,timestamp} + RealtimeEvent union
   schemas/              zod v4 — boundary-only (spawnBody, wsEnvelope parse)
-  derive/               toUiSessionStatus, tab predicates (isActiveTab/...), precedence
-  __drift__/            compile-time assignability assertions vs maestro-server/src/types.ts
+  derive/               toUiSessionStatus (8-state UI union), tab predicates, mode/agentTool display
+  __sync__/             compile-time assignability assertions vs maestro-server/src/types.ts (under tsconfig.drift.json)
   index.ts
+```
+
+> **Branch reality (feat/mobile-app):** this branch's server has a **minimal Spell** type and **no Ensemble / no SPELL_COLORS** (the rich spell system lives on `staging`). Lexicon mirrored only the real server types — no invented shapes. Rich spell-ring UI / ensembles are out of scope on this branch unless the server gains them.
+
+```
 ```
 
 ## `src/theme/` (Bedrock) — DATA + ASSETS only, no component files

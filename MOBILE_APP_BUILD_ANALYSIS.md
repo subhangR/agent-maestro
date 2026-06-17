@@ -46,7 +46,7 @@ The server runs **two separate WebSocket servers on the same HTTP port**, routed
 
 Each envelope is `{ type, event, data, timestamp }` where `type === event`. **A client must branch on `Array.isArray(parsed)`** because batched flushes arrive as arrays and immediate events as single objects — getting this wrong silently drops half the events. The authoritative payload shapes live in `domain/events/DomainEvents.ts` (`TypedEventMap`).
 
-Immediate (un-batched) events: `session:spawn`, `session:resume`, `session:prompt_send`, `session:modal`, `session:modal_action`, `session:modal_closed`, `spell:invoked|activated|deactivated`, `ensemble:created|updated|disbanded|message`.
+Immediate (un-batched) events — **exactly 7**, verified against `WebSocketBridge.ts` L16-24 (an earlier draft of this doc over-listed `spell:activated|deactivated` and `ensemble:*`, which are in fact **batched**): `session:spawn`, `session:resume`, `session:prompt_send`, `session:modal`, `session:modal_action`, `session:modal_closed`, `spell:invoked`.
 
 Known gap: `team:*` events are declared in `TypedEventMap` but are **not** in the bridge's subscribed-event list, so team CRUD is currently not broadcast over WS. Treat teams as REST-poll-only on mobile until verified.
 
