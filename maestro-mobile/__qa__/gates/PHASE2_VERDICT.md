@@ -1,12 +1,49 @@
 # SENTINEL VERDICT — Phase 2 (Shell + read surfaces)
 
-**Status: FAIL** — 5 of 6 gate criteria PASS, but the **Expo (Metro) build FAILS**: the
-new DocsViewer markdown dependency does not bundle for Android. A green tsc + green
-jest were necessary but **NOT sufficient** — exactly the integration gap this gate exists
-to catch. One FAIL vetoes the phase.
+**Status: PASS** (re-gate after metro fix `786a801`) — all 6 gate criteria pass, including
+the Android Metro build that previously FAILED. The build now exits 0 with a populated,
+isolation-clean bundle. Phase 2 is cleared.
 
-Date: 2026-06-17 · Branch: feat/mobile-app · Commits under test: `1ea1fe0` (shell+tiles) + `1dd5c6f` (read surfaces + docs viewer)
+> **History:** the FIRST gate was **FAIL** — a green tsc + green jest were necessary but
+> NOT sufficient; only the serialized Expo export surfaced that the new DocsViewer
+> `markdown-it → entities` chain could not resolve under the isolation metro config
+> (nested `entities@2` unreachable; top-level `entities@6` lacks `lib/maps/`). Bedrock
+> landed a tightly-scoped `resolveRequest` shim (commit `786a801`) and this re-gate
+> verifies the fix end-to-end. The detailed first-FAIL root cause is retained below for
+> the record.
+
+Date: 2026-06-17 · Branch: feat/mobile-app · Commits under test: `1ea1fe0` (shell+tiles) + `1dd5c6f` (read surfaces + docs viewer) + `786a801` (metro entities shim)
 Scope verified read-only from `__qa__/`. No app code modified. Git not run (Atlas integrates).
+
+---
+
+## RE-GATE result (after `786a801`)
+
+```
+EXPO BUILD (metro export, android) ........... ✓ PASS  (exit 0; dist/ = 77 files, 11M; hbc bundle 5.58 MB)
+  ├─ bundle isolation: 'maestro-server' string ... 0 hits   (clean)
+  ├─ bundle isolation: '__sync__' string ......... 0 hits   (clean)
+  ├─ bundle isolation: server-only tokens ........ 0 hits   (FileSystemTaskRepository/InMemoryEventBus/WebSocketBridge)
+  ├─ markdown-it bundled ......................... yes (4 string hits)
+  ├─ entities map bundled (proof shim worked) .... yes ('aacute' from entities/lib/maps/entities.json — 2 hits)
+  └─ mermaid bundled ............................. yes (7 hits)
+tsc (app --noEmit) ........................... ✓ PASS  (exit 0)
+jest (unit + integration) .................... ✓ PASS  (76/76, 9 suites)
+read-surface no-regression sweep ............. ✓ PASS  (no m-data; useShallow 0 violations; no A↔B; components↛state/features)
+```
+
+The metro shim (`metro.config.js:30-39`) rewrites only `entities`/`entities/*` requests whose
+`originModulePath` is inside `node_modules/markdown-it`, redirecting to its nested `entities@2`
+copy. `disableHierarchicalLookup=true` and the blockList are untouched — and the bundle scan
+confirms isolation held (zero server/`__sync__` leakage). The `aacute` HTML-entity name in the
+Hermes bundle is positive proof the previously-missing `lib/maps/entities.json` is now resolved
+and bundled — i.e. the exact failure is fixed, not merely worked around.
+
+**VERDICT: PASS → Phase 2 closed.**
+
+---
+<!-- ===================== ORIGINAL FIRST-GATE (FAIL) RECORD BELOW ===================== -->
+## (Archived) First gate — FAIL record
 
 ---
 
@@ -194,3 +231,10 @@ export re-run clean before Phase 3 opens.
 
 **One FAIL vetoes → Phase 2 = FAIL.** Hand to Conduit/Bedrock for the metro/dep fix; re-gate
 on a clean `run-gate.sh --with-export`.
+
+> **UPDATE (re-gate):** Bedrock landed the metro `resolveRequest` shim (`786a801`); the
+> serialized Android export now exits 0 with a populated, isolation-clean bundle (server/`__sync__`
+> zero leakage; markdown-it + entities map + mermaid bundled). All 6 criteria pass. **Final
+> Phase-2 verdict = PASS** — see the RE-GATE section at the top of this file. W1/W2 remain as
+> non-blocking carried waivers (W2's override is intentionally kept; the shim is the targeted
+> exception it called for).
