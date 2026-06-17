@@ -35,6 +35,7 @@ import type {
   SpellDefinition,
   SpellEntity,
   SpellEntityType,
+  DocEntry,
 } from '@/domain';
 import type { SpawnSessionRequest } from '@/domain/schemas/spawn';
 
@@ -105,6 +106,25 @@ export interface MaestroClientApi {
 
   // ---- Spells (reply-to-agent etc.) ----
   invokeSpell(invocation: SpellInvocationPayload): Promise<void>;
+
+  // ---- Docs (Whiteboard read + write) ----
+  getSessionDocs(sessionId: string): Promise<DocEntry[]>;
+  getTaskDocs(taskId: string): Promise<DocEntry[]>;
+  getProjectDocs(projectId: string): Promise<DocEntry[]>;
+  addSessionDoc(
+    sessionId: string,
+    title: string,
+    content: string,
+    kind?: 'markdown' | 'diagram',
+  ): Promise<DocEntry>;
+  addTaskDoc(
+    taskId: string,
+    sessionId: string,
+    title: string,
+    content: string,
+    kind?: 'markdown' | 'diagram',
+  ): Promise<DocEntry>;
+  updateDocContent(sessionId: string, docId: string, content: string): Promise<DocEntry>;
 }
 
 let client: MaestroClientApi | null = null;
