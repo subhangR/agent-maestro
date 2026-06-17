@@ -11,16 +11,20 @@ import type { ColorToken } from '../tokens';
 export type StatusKey = 'run' | 'wait' | 'block' | 'info' | 'idle';
 
 export interface StatusColorPair {
-  /** solid token — the dot/glyph stroke + label color */
+  /** solid token — the DOT/GLYPH stroke + fill (canonical hue, decorative) */
   solid: ColorToken;
   /** soft token — the translucent tag/chip background */
   soft: ColorToken;
+  /** text token — AA-safe LABEL color (darkened in light theme; == solid in dark) */
+  text: ColorToken;
 }
 
+// Palette: render status DOTS/GLYPHS with `solid`, status LABEL TEXT with `text`,
+// tag/chip backgrounds with `soft`. (Atelier law: dot + word, AA-readable word.)
 export const statusColorToken: Record<StatusKey, StatusColorPair> = {
-  run: { solid: 'run', soft: 'runSoft' },
-  wait: { solid: 'wait', soft: 'waitSoft' },
-  block: { solid: 'block', soft: 'blockSoft' },
-  info: { solid: 'info', soft: 'infoSoft' },
-  idle: { solid: 'idle', soft: 'idleSoft' },
+  run: { solid: 'run', soft: 'runSoft', text: 'runText' },
+  wait: { solid: 'wait', soft: 'waitSoft', text: 'waitText' },
+  block: { solid: 'block', soft: 'blockSoft', text: 'blockText' },
+  info: { solid: 'info', soft: 'infoSoft', text: 'infoText' },
+  idle: { solid: 'idle', soft: 'idleSoft', text: 'idleText' },
 };

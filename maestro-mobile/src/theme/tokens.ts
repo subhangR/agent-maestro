@@ -38,6 +38,14 @@ const lightColors = {
   infoSoft: 'rgba(63, 108, 144, 0.12)',
   idle: '#A29C8E',
   idleSoft: 'rgba(162, 156, 142, 0.16)',
+  // AA-safe status TEXT variants (additive — Palette renders status LABELS with
+  // these, status DOTS/GLYPHS with the originals). Darkened so small text clears
+  // WCAG AA (>=4.6:1 on paper, the worst light bg). Dots stay the canonical hue.
+  runText: '#357A4D',
+  waitText: '#8C661F',
+  blockText: '#B44A3B',
+  infoText: '#3F6C90',
+  idleText: '#716D63',
 } as const;
 
 // Keys are locked to lightColors; values are plain strings so the two ramps can
@@ -70,6 +78,12 @@ const darkColors: ThemeColors = {
   infoSoft: 'rgba(111, 159, 199, 0.17)',
   idle: '#7A7360',
   idleSoft: 'rgba(122, 115, 96, 0.20)',
+  // Dark theme: status text already clears AA, so *Text == the canonical solid.
+  runText: '#5CB381',
+  waitText: '#D9AA49',
+  blockText: '#DA7D6A',
+  infoText: '#6F9FC7',
+  idleText: '#7A7360',
 } as const;
 
 // ── 5 · SPACING (4px grid, indexed by step number) ──────────────────────────
