@@ -3,13 +3,15 @@
 // AND applied to Unistyles via @/theme.setThemeMode (the only mutation allowed in
 // Phase 2 — explicitly sanctioned). Rendered inline inside More.
 import { View } from 'react-native';
+import { router } from 'expo-router';
 
 import { Card, FieldRow, PickerRow, StatusDot, Text } from '@/components';
 import { usePrefsStore, useUiStore, useProject } from '@/state';
 import { asProjectId } from '@/domain';
 import { setThemeMode as applyThemeMode, type ThemeMode, useTheme } from '@/theme';
 
-import { sheets } from '../../../navigation';
+import { routes, sheets } from '../../../navigation';
+import { teardown } from '../../../navigation/bootstrap';
 import { Screen, SectionLabel } from './kit';
 
 const THEME_OPTIONS: { mode: ThemeMode; label: string; detail: string }[] = [
@@ -35,6 +37,15 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }): React.JSX.E
     applyThemeMode(mode);
   };
 
+  // Switch keeps the current connection live until the new host succeeds (bootstrap
+  // tears the old one down itself). Disconnect drops realtime now, then routes to
+  // the connect gate where the user can re-enter the same or a different host.
+  const onSwitchServer = () => router.push(routes.connect());
+  const onDisconnect = () => {
+    teardown();
+    router.replace(routes.connect());
+  };
+
   return (
     <Screen title="Settings" eyebrow="Preferences" onBack={onBack}>
       <View style={{ gap: theme.space[2] }}>
@@ -49,6 +60,12 @@ export function SettingsScreen({ onBack }: { onBack?: () => void }): React.JSX.E
               </Text>
             </View>
           </FieldRow>
+          <PickerRow
+            label="Switch server"
+            detail="Connect to a different host"
+            onPress={onSwitchServer}
+          />
+          <PickerRow label="Disconnect" detail="End this connection" onPress={onDisconnect} />
         </Card>
       </View>
 
