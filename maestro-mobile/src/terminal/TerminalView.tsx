@@ -348,6 +348,45 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
         } catch(e){}
       })();
       window.__term = term;
+
+      // Inertial (fling) scrolling — Android WebView gives xterm's viewport no
+      // native momentum, so we own the touch gesture: drag tracks velocity, and
+      // on release we animate a decaying fling for that native acceleration feel.
+      (function inertialScroll(){
+        var vp = document.querySelector('.xterm-viewport');
+        if(!vp) return;
+        var lastY=0, lastT=0, vy=0, raf=null, dragging=false;
+        function stopFling(){ if(raf){ cancelAnimationFrame(raf); raf=null; } }
+        vp.addEventListener('touchstart', function(e){
+          stopFling(); dragging=true; vy=0;
+          var t=e.touches[0]; lastY=t.clientY; lastT=Date.now();
+        }, {passive:true});
+        vp.addEventListener('touchmove', function(e){
+          if(!dragging || !e.touches.length) return;
+          var t=e.touches[0];
+          var now=Date.now();
+          var dy=t.clientY-lastY;
+          var dt=now-lastT || 16;
+          vy=dy/dt;                 // px per ms (sampled)
+          vp.scrollTop-=dy;         // drag finger down → reveal older output
+          lastY=t.clientY; lastT=now;
+          e.preventDefault();       // take over from xterm's touch handling
+        }, {passive:false});
+        vp.addEventListener('touchend', function(){
+          dragging=false;
+          var v=vy*16;              // px per ~60fps frame
+          if(Math.abs(v)<0.5) return;
+          var prev=-1;
+          (function fling(){
+            if(Math.abs(v)<0.4 || vp.scrollTop===prev){ raf=null; return; }
+            prev=vp.scrollTop;
+            vp.scrollTop-=v;
+            v*=0.95;                // friction
+            raf=requestAnimationFrame(fling);
+          })();
+        }, {passive:true});
+      })();
+
       function doFit(){
         try {
           if(fit){ fit.fit(); }
