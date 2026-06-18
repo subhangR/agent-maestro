@@ -20,6 +20,7 @@ import {
   resyncProject,
   hydratePrefs,
   setPtyTransport,
+  resetEntities,
   useEntityStore,
   useUiStore,
   usePrefsStore,
@@ -53,6 +54,10 @@ export async function bootstrap(host: string): Promise<BootstrapResult> {
     activeRealtime.stop();
     activeRealtime = null;
   }
+  // Wipe the previous host's entities so a reconnect to a DIFFERENT server starts
+  // clean — fetchProjects/etc. merge into the store, so without this the old
+  // host's projects/sessions linger and the app appears stuck on the old server.
+  resetEntities();
 
   // 1. Build ServerConfig from the bare host:port the user typed.
   const cfg = buildServerConfig(host);
@@ -138,6 +143,10 @@ export function teardown(): void {
   activeRealtime?.stop();
   activeRealtime = null;
   setPtyTransport(null);
+  // Drop the disconnected host's data + active project so the next connect (to the
+  // same or a different server) doesn't show stale entities from the old host.
+  resetEntities();
+  useUiStore.getState().setActiveProject(null);
   useUiStore.getState().setRealtimeStatus('disconnected');
 }
 
