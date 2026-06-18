@@ -31,8 +31,8 @@ import { StyleSheet as RNStyleSheet, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { Text } from '@/components';
-import { getPtyTransport, hasPtyTransport } from '@/state';
+import { Button, Text } from '@/components';
+import { getMaestroClient, getPtyTransport, hasPtyTransport } from '@/state';
 import { asSessionId } from '@/domain';
 import { buildTerminalTheme, useTheme, type Theme, type XtermTheme } from '@/theme';
 
@@ -76,6 +76,8 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
   const pendingRef = useRef<string[]>([]);
   const [exit, setExit] = useState<ExitState>(undefined);
   const [offline, setOffline] = useState(false);
+  const [resuming, setResuming] = useState(false);
+  const [resumeError, setResumeError] = useState<string | null>(null);
 
   // The HTML is theme-stable for a given theme + font size; rebuild only then.
   const html = useMemo(
@@ -164,6 +166,27 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
     }
   };
 
+  // ── Resume: revive a dead PTY via POST /sessions/:id/resume, then re-attach ──
+  const onResume = async (): Promise<void> => {
+    if (resuming) return;
+    setResuming(true);
+    setResumeError(null);
+    try {
+      const id = asSessionId(sessionId);
+      const { cols, rows } = measureTerminalSize({ fontSize: resolvedFontSize });
+      await getMaestroClient().resumeSession(sessionId, { cols, rows });
+      // Server has (re)spawned the PTY — re-attach so the live stream flows again.
+      const pty = getPtyTransport();
+      pty.attach(id);
+      pty.resize(id, cols, rows);
+      setExit(undefined);
+    } catch (e) {
+      setResumeError(e instanceof Error ? e.message : 'Could not resume the session.');
+    } finally {
+      setResuming(false);
+    }
+  };
+
   // ── Pre-connect guard: no transport wired yet ──────────────────────────────
   if (!connected) {
     return <Placeholder theme={theme} message="Not connected — the terminal will attach once realtime is online." />;
@@ -193,11 +216,28 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
         </Overlay>
       )}
       {exit !== undefined && (
-        <Overlay theme={theme}>
-          {exit.code === null
-            ? 'No live PTY — resume the session to reconnect.'
-            : `[process exited${exit.code ? ` · code ${exit.code}` : ''}]`}
-        </Overlay>
+        <View style={styles.exitOverlay}>
+          <Text variant="secondary" color="ink3" style={styles.centerText}>
+            {exit.code === null
+              ? 'No live terminal for this session.'
+              : `[process exited${exit.code ? ` · code ${exit.code}` : ''}]`}
+          </Text>
+          {resumeError != null && (
+            <Text variant="secondary" color="blockText" style={styles.centerText}>
+              {resumeError}
+            </Text>
+          )}
+          <View style={styles.resumeBtn}>
+            <Button
+              label={resuming ? 'Resuming…' : 'Resume session'}
+              icon="refresh"
+              variant="primary"
+              fullWidth
+              disabled={resuming}
+              onPress={() => void onResume()}
+            />
+          </View>
+        </View>
       )}
     </View>
   );
@@ -318,5 +358,23 @@ const styles = StyleSheet.create((theme) => ({
     paddingVertical: theme.space[3],
     borderTopWidth: RNStyleSheet.hairlineWidth,
     borderTopColor: theme.colors.line,
+  },
+  exitOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    gap: theme.space[2],
+    paddingHorizontal: theme.space[4],
+    paddingTop: theme.space[3],
+    paddingBottom: theme.space[5],
+    backgroundColor: theme.colors.surface,
+    borderTopWidth: RNStyleSheet.hairlineWidth,
+    borderTopColor: theme.colors.line,
+  },
+  resumeBtn: {
+    alignSelf: 'stretch',
+    marginTop: theme.space[1],
   },
 }));

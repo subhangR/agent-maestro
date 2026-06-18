@@ -103,6 +103,11 @@ export interface MaestroClientApi {
   updateSession(id: string, updates: UpdateSessionPayload): Promise<Session>;
   deleteSession(id: string): Promise<{ success: boolean }>;
   spawnSession(data: SpawnSessionRequest, opts?: { validate?: boolean }): Promise<SpawnSessionResponse>;
+  /** Revive an ended session's server PTY (POST /sessions/:id/resume). */
+  resumeSession(
+    sessionId: string,
+    size?: { cols?: number; rows?: number },
+  ): Promise<{ success: boolean; sessionId: string; claudeSessionId: string }>;
 
   // ---- Spells (reply-to-agent etc.) ----
   invokeSpell(invocation: SpellInvocationPayload): Promise<void>;
