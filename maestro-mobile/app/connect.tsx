@@ -92,6 +92,9 @@ export default function Connect(): React.JSX.Element {
           autoCorrect={false}
           keyboardType="url"
           placeholder="192.168.1.5:4569"
+          // Select-all on focus so editing a pre-filled host (e.g. an https VPS
+          // URL) replaces it cleanly instead of leaving a stale scheme behind.
+          selectTextOnFocus
           onSubmitEditing={onConnect}
         />
         {needsPassword && (

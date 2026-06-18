@@ -30,6 +30,17 @@ import { asProjectId } from '@/domain';
 /** Live handle stashed so a disconnect can stop realtime. */
 let activeRealtime: Realtime | null = null;
 
+/** True for an https URL carrying an explicit non-443 port — almost always a
+ *  stale scheme on a plain-http dev server (so an http retry is worth a shot). */
+function isHttpsNonStandardPort(serverUrl: string): boolean {
+  try {
+    const u = new URL(serverUrl);
+    return u.protocol === 'https:' && u.port !== '' && u.port !== '443';
+  } catch {
+    return false;
+  }
+}
+
 export interface BootstrapResult {
   /** The realtime handle (entity-sync + pty). Call `.stop()` to tear down. */
   realtime: Realtime;
@@ -60,15 +71,26 @@ export async function bootstrap(host: string, password?: string): Promise<Bootst
   resetEntities();
 
   // 1. Build ServerConfig from the bare host:port the user typed.
-  const cfg = buildServerConfig(host);
+  let cfg = buildServerConfig(host);
 
   // 2. Instantiate the real client + wire it into @/state. The client appends the
   // stored ?token= on every request (null/inert on no-auth servers).
-  const client = new MaestroClient(cfg, { getToken: () => usePrefsStore.getState().authToken });
+  const makeClient = (c: typeof cfg): MaestroClient =>
+    new MaestroClient(c, { getToken: () => usePrefsStore.getState().authToken });
+  let client = makeClient(cfg);
   setMaestroClient(client);
 
   // 3. GET {serverUrl}/health first — the boot gate (public, no token needed).
-  const ok = await client.probeHealth();
+  let ok = await client.probeHealth();
+  // Recover the common footgun: an https:// scheme left over from a prior server
+  // pointed at a plain-http dev port (e.g. https://192.168.1.5:4569) — the TLS
+  // probe fails. Retry once over http when the port isn't 443.
+  if (!ok && isHttpsNonStandardPort(cfg.serverUrl)) {
+    cfg = buildServerConfig(host.replace(/^https:\/\//i, 'http://'));
+    client = makeClient(cfg);
+    setMaestroClient(client);
+    ok = await client.probeHealth();
+  }
   if (!ok) throw new Error('health probe returned false');
 
   // 3b. Auth: if the user supplied a password, exchange it for a token now. Then
