@@ -43,9 +43,16 @@ import { DEFAULT_TERMINAL_FONT_SIZE, measureTerminalSize } from './measureTermin
 // caveat above — production should inline these.
 const XTERM_VERSION = '5.5.0';
 const FIT_ADDON_VERSION = '0.10.0';
+const WEBGL_ADDON_VERSION = '0.18.0';
+const CANVAS_ADDON_VERSION = '0.7.0';
 const XTERM_CSS = `https://cdn.jsdelivr.net/npm/@xterm/xterm@${XTERM_VERSION}/css/xterm.min.css`;
 const XTERM_JS = `https://cdn.jsdelivr.net/npm/@xterm/xterm@${XTERM_VERSION}/lib/xterm.min.js`;
 const FIT_JS = `https://cdn.jsdelivr.net/npm/@xterm/addon-fit@${FIT_ADDON_VERSION}/lib/addon-fit.min.js`;
+// GPU renderers — the default DOM renderer repaints poorly while scrolling on a
+// mobile WebView. WebGL is smoothest; Canvas is the fallback; both are optional
+// (a load/init failure silently leaves the working DOM renderer in place).
+const WEBGL_JS = `https://cdn.jsdelivr.net/npm/@xterm/addon-webgl@${WEBGL_ADDON_VERSION}/lib/addon-webgl.min.js`;
+const CANVAS_JS = `https://cdn.jsdelivr.net/npm/@xterm/addon-canvas@${CANVAS_ADDON_VERSION}/lib/addon-canvas.min.js`;
 
 export interface TerminalViewProps {
   /** The session whose PTY this terminal renders. */
@@ -282,6 +289,13 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
   html,body{margin:0;padding:0;height:100%;background:${xterm.background};overflow:hidden;}
   #term{width:100%;height:100%;}
   .xterm{padding:6px;}
+  /* Native momentum scrolling for the scrollback viewport (smooth touch-drag). */
+  .xterm .xterm-viewport{
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    will-change:scroll-position;
+    scroll-behavior:auto;
+  }
   #fallback{display:none;font-family:-apple-system,system-ui,sans-serif;color:${xterm.foreground};
     opacity:.7;font-size:13px;padding:16px;line-height:1.5;}
 </style></head><body>
@@ -297,6 +311,8 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
   </script>
   <script src="${XTERM_JS}" onerror="showFallback()"></script>
   <script src="${FIT_JS}"></script>
+  <script src="${WEBGL_JS}" onerror="window.__noWebgl=1"></script>
+  <script src="${CANVAS_JS}" onerror="window.__noCanvas=1"></script>
   <script>
   (function(){
     if(!window.Terminal){ showFallback(); return; }
@@ -308,11 +324,29 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
         cursorBlink: true,
         scrollback: 5000,
         convertEol: false,
-        allowProposedApi: true
+        allowProposedApi: true,
+        smoothScrollDuration: 0
       });
       var fit = null;
       try { if(window.FitAddon){ fit = new FitAddon.FitAddon(); term.loadAddon(fit); } } catch(e){}
       term.open(document.getElementById('term'));
+      // Attach a GPU renderer for smooth scrolling: WebGL first, Canvas fallback.
+      // Any failure leaves the working DOM renderer in place (never breaks).
+      (function attachRenderer(){
+        try {
+          if(!window.__noWebgl && window.WebglAddon){
+            var w = new WebglAddon.WebglAddon();
+            w.onContextLoss(function(){ try{ w.dispose(); }catch(e){} });
+            term.loadAddon(w);
+            return;
+          }
+        } catch(e){}
+        try {
+          if(!window.__noCanvas && window.CanvasAddon){
+            term.loadAddon(new CanvasAddon.CanvasAddon());
+          }
+        } catch(e){}
+      })();
       window.__term = term;
       function doFit(){
         try {
