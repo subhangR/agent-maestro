@@ -8,7 +8,8 @@
 // spawnSource is FORCED to 'ui' inside the client — never set here.
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { Button, Input, SheetHeader, SheetSection, FieldRow, Toggle, Text } from '@/components';
@@ -136,7 +137,7 @@ export function RunConfigSheet({
     <View style={styles.root}>
       <SheetHeader title="Run configuration" eyebrow="SPAWN" onClose={sheet.dismiss} />
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.scroll}>
+      <BottomSheetScrollView contentContainerStyle={styles.scroll}>
         <SheetSection label="Task">
           <Text variant="body" color="ink" numberOfLines={2}>
             {taskTitle}
@@ -209,7 +210,7 @@ export function RunConfigSheet({
             onPress={() => void onSpawn()}
           />
         </View>
-      </ScrollView>
+      </BottomSheetScrollView>
     </View>
   );
 }
@@ -218,9 +219,6 @@ const styles = StyleSheet.create((theme) => ({
   root: {
     paddingBottom: theme.space[4],
     maxHeight: '100%',
-  },
-  flex: {
-    flexGrow: 0,
   },
   scroll: {
     paddingBottom: theme.space[4],
