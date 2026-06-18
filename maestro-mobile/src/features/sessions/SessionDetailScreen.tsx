@@ -5,17 +5,17 @@
 // in useSessionDetail; mutations/cast are Phase 3.
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native-unistyles';
 
-import { AgentAvatar, Button, FieldRow, IconButton, Input, StatusGlyph, StatusDot, Text } from '@/components';
-import { getPtyTransport, hasPtyTransport } from '@/state';
-import { asSessionId, toUiSessionStatus, toDisplayTool, type DocEntry } from '@/domain';
+import { AgentAvatar, Button, FieldRow, IconButton, Input, MetaButton, StatusGlyph, StatusDot, Text } from '@/components';
+import { getMaestroClient, getPtyTransport, hasPtyTransport } from '@/state';
+import { asSessionId, toUiSessionStatus, toDisplayTool, type DocEntry, type UpdateSessionPayload } from '@/domain';
 import { useTheme } from '@/theme';
 
 import { routes } from '../../../navigation';
-import { encodeUtf8 } from '../_shared';
+import { encodeUtf8, optimisticEdit } from '../_shared';
 import { DocsViewer } from '../docs';
 import {
   useSessionDetail,
@@ -33,6 +33,7 @@ export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
   const router = useRouter();
   const [tab, setTab] = useState<SessionDetailTab>('stats');
   const [reply, setReply] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { session, statusLabel, agentLabel, stats, timeline, prompts, docs, status } = useSessionDetail(id);
 
@@ -72,6 +73,42 @@ export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
   }
 
   const displayTool = toDisplayTool(session.teamMemberSnapshot?.agentTool ?? null);
+  const isDone = session.humanCompletedAt != null;
+  const isArchived = session.archivedAt != null;
+
+  const patchLifecycle = (updates: UpdateSessionPayload, fallback: string): void =>
+    void optimisticEdit('sessions', id, updates, () => getMaestroClient().updateSession(id, updates)).then((r) =>
+      setActionError(r.ok ? null : r.error instanceof Error ? r.error.message : fallback),
+    );
+
+  // Close = stop the live agent (best-effort) and move the session to Completed.
+  const onClose = async (): Promise<void> => {
+    try {
+      await getMaestroClient().stopSessionPty(id);
+    } catch {
+      // No live PTY to stop — closing is still valid.
+    }
+    patchLifecycle({ humanCompletedAt: Date.now() }, 'Could not close the session.');
+  };
+  const onReopen = (): void => patchLifecycle({ humanCompletedAt: null }, 'Could not reopen the session.');
+  const onArchive = (): void => patchLifecycle({ archivedAt: Date.now() }, 'Could not archive the session.');
+  const onUnarchive = (): void => patchLifecycle({ archivedAt: null }, 'Could not unarchive the session.');
+  const onDelete = (): void =>
+    Alert.alert('Delete session', `Delete “${session.name}”? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          getMaestroClient()
+            .deleteSession(id)
+            .then(() => router.back())
+            .catch((e: unknown) =>
+              setActionError(e instanceof Error ? e.message : 'Could not delete the session.'),
+            );
+        },
+      },
+    ]);
 
   return (
     <View style={[styles.root, { paddingTop: insets.top + theme.space[2] }]}>
@@ -111,6 +148,29 @@ export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
           />
         </View>
       </View>
+
+      <View style={styles.actionRow}>
+        {isArchived ? (
+          <MetaButton label="Unarchive" icon="archive" onPress={onUnarchive} />
+        ) : isDone ? (
+          <>
+            <MetaButton label="Reopen" icon="refresh" onPress={onReopen} />
+            <MetaButton label="Archive" icon="archive" onPress={onArchive} />
+          </>
+        ) : (
+          <>
+            <MetaButton label="Close" icon="check" variant="run" onPress={() => void onClose()} />
+            <MetaButton label="Archive" icon="archive" onPress={onArchive} />
+          </>
+        )}
+        <MetaButton label="Delete" icon="x" variant="danger" onPress={onDelete} />
+      </View>
+
+      {actionError != null && (
+        <Text variant="secondary" color="blockText" style={styles.actionError}>
+          {actionError}
+        </Text>
+      )}
 
       {canReply && (
         <View style={styles.replyRow}>
@@ -322,6 +382,17 @@ const styles = StyleSheet.create((theme) => ({
   },
   ctaItem: {
     flex: 1,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.space[2],
+    paddingHorizontal: theme.space[4],
+    paddingBottom: theme.space[3],
+  },
+  actionError: {
+    paddingHorizontal: theme.space[4],
+    paddingBottom: theme.space[2],
   },
   replyRow: {
     flexDirection: 'row',

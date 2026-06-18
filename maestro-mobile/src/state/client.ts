@@ -102,6 +102,8 @@ export interface MaestroClientApi {
   createSession(data: CreateSessionPayload): Promise<Session>;
   updateSession(id: string, updates: UpdateSessionPayload): Promise<Session>;
   deleteSession(id: string): Promise<{ success: boolean }>;
+  /** Kill a session's live server PTY (POST /sessions/:id/pty/stop). */
+  stopSessionPty(id: string): Promise<{ success: boolean }>;
   spawnSession(data: SpawnSessionRequest, opts?: { validate?: boolean }): Promise<SpawnSessionResponse>;
   /** Revive an ended session's server PTY (POST /sessions/:id/resume). */
   resumeSession(
