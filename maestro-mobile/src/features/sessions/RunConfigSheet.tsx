@@ -24,7 +24,6 @@ import {
   type PermissionMode,
 } from '@/domain';
 import { spawnSessionRequestSchema, type SpawnSessionRequest } from '@/domain/schemas/spawn';
-import { measureTerminalSize } from '@/terminal';
 
 import { routes } from '../../../navigation';
 import type { SheetBodyProps } from '../../../navigation/sheets';
@@ -105,8 +104,9 @@ export function RunConfigSheet({
     setError(null);
     setBusy(true);
     try {
-      const { cols, rows } = measureTerminalSize();
-
+      // NOTE: no cols/rows here — the server's spawn schema is strict and the PTY
+      // is sized by the terminal's own resize once it attaches. Sending them got
+      // rejected as "Unrecognized keys" by stricter (e.g. hosted) servers.
       const request: SpawnSessionRequest = spawnSessionRequestSchema.parse({
         taskIds: [intent.taskId],
         ...(intent.sessionId ? { sessionId: intent.sessionId } : {}),
@@ -117,8 +117,6 @@ export function RunConfigSheet({
         permissionMode,
         ...(model.trim() ? { model: model.trim() } : {}),
         useWorktree,
-        cols,
-        rows,
       });
 
       const resp = await getMaestroClient().spawnSession(request);

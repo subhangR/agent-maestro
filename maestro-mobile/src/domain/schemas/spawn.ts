@@ -9,11 +9,10 @@
 import { z } from 'zod';
 import { AGENT_MODES, LAUNCH_PROVIDERS, LAUNCH_REASONING_EFFORTS, PERMISSION_MODES } from '../enums';
 
-// Server constraints (validation.ts): safeId, shortString, longString, ptyDimension.
+// Server constraints (validation.ts): safeId, shortString, longString.
 const safeId = z.string().min(1).max(200);
 const shortString = z.string().max(500);
 const longString = z.string().max(100_000);
-const ptyDimension = z.number().int().min(1).max(1000);
 
 const launchConfigSchema = z
   .object({
@@ -79,10 +78,6 @@ export const spawnSessionRequestSchema = z
     permissionMode: z.enum(PERMISSION_MODES).optional(),
     delegatePermissionMode: z.enum(PERMISSION_MODES).optional(),
     useWorktree: z.boolean().optional(),
-    // The measured PTY size (Relay supplies these) — the server boots the PTY at
-    // the real pane width instead of 80x24.
-    cols: ptyDimension.optional(),
-    rows: ptyDimension.optional(),
   })
   .strict();
 
