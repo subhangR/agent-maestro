@@ -4,9 +4,9 @@
 // detail `fetchSession`). WS `session:updated` keeps the entity fresh afterwards
 // — we do NOT poll. Everything the read tabs render (stats / timeline / prompts
 // / docs) is derived here from the Session entity; the screen stays presentational.
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { useSession, fetchSession } from '@/state';
+import { useSession, fetchSession, getMaestroClient, hasMaestroClient } from '@/state';
 import {
   asSessionId,
   toUiSessionStatus,
@@ -158,6 +158,28 @@ export function useSessionDetail(id: string): SessionDetailModel {
     if (id) void fetchSession(id);
   }, [id]);
 
+  // Doc CONTENT lives in separate files server-side; neither the entity GET nor
+  // ?fields=full inlines it (content arrives empty → "no inline content"). The
+  // /sessions/:id/docs endpoint hydrates it, so fetch that for the Docs tab.
+  const [hydratedDocs, setHydratedDocs] = useState<DocEntry[] | null>(null);
+  const docCount = session?.docs?.length ?? 0;
+  useEffect(() => {
+    if (!id || !hasMaestroClient()) return;
+    let cancelled = false;
+    getMaestroClient()
+      .getSessionDocs(id)
+      .then((d) => {
+        if (!cancelled) setHydratedDocs(d);
+      })
+      .catch(() => {
+        /* fall back to the (unhydrated) entity docs */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Re-hydrate when a doc is added/removed (count change) or the session swaps.
+  }, [id, docCount]);
+
   const status = useScreenStatus({ loadingKey: `session:${id}`, count: session ? 1 : 0 });
 
   const model = useMemo(() => {
@@ -181,9 +203,9 @@ export function useSessionDetail(id: string): SessionDetailModel {
       stats: buildStats(session, ui),
       timeline,
       prompts: timeline.filter((t) => t.type === 'prompt_received'),
-      docs: session.docs ?? [],
+      docs: hydratedDocs ?? session.docs ?? [],
     };
-  }, [session]);
+  }, [session, hydratedDocs]);
 
   return { session, ...model, status };
 }
