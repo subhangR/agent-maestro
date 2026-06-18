@@ -29,6 +29,8 @@ export interface TasksScreenModel {
   sections: TaskSection[];
   /** Direct-subtask count for a task id (whole project, not just open tasks). */
   childCountOf: (id: string) => number;
+  /** Direct subtasks for a task id (rendered nested when a tile is expanded). */
+  childrenOf: (id: string) => Task[];
   loading: boolean;
   refresh: () => void;
 }
@@ -40,23 +42,36 @@ export function useTasksScreen(): TasksScreenModel {
   const all = useProjectTasks(pid);
   const loading = useLoading(`tasks:${pid}`);
 
-  const childCounts = useMemo(() => {
-    const m = new Map<string, number>();
+  // Direct children per parent (whole project, minus archived/cancelled noise) so
+  // an expanded tile can reveal its real subtasks — including closed ones.
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string, Task[]>();
     for (const t of all) {
-      if (t.parentId) m.set(t.parentId, (m.get(t.parentId) ?? 0) + 1);
+      if (t.parentId && t.status !== 'archived' && t.status !== 'cancelled') {
+        const arr = m.get(t.parentId);
+        if (arr) arr.push(t);
+        else m.set(t.parentId, [t]);
+      }
     }
     return m;
   }, [all]);
 
+  const openIds = useMemo(() => new Set(open.map((t) => t.id)), [open]);
+
+  // Top level = open tasks whose parent isn't itself an open task (roots, plus
+  // orphans under a closed/missing parent). Subtasks of an open parent render
+  // nested under it on expand rather than duplicated as their own top-level row.
   const sections = useMemo<TaskSection[]>(() => {
+    const roots = open.filter((t) => !t.parentId || !openIds.has(t.parentId));
     return SECTION_ORDER.map((key) => ({
       key,
       label: TASK_STATUS_LABEL[key],
-      tasks: open.filter((t) => t.status === key),
+      tasks: roots.filter((t) => t.status === key),
     })).filter((s) => s.tasks.length > 0);
-  }, [open]);
+  }, [open, openIds]);
 
-  const childCountOf = useCallback((id: string) => childCounts.get(id) ?? 0, [childCounts]);
+  const childCountOf = useCallback((id: string) => childrenByParent.get(id)?.length ?? 0, [childrenByParent]);
+  const childrenOf = useCallback((id: string) => childrenByParent.get(id) ?? [], [childrenByParent]);
 
   const refresh = useCallback(() => {
     if (!projectId) return;
@@ -64,5 +79,5 @@ export function useTasksScreen(): TasksScreenModel {
     void fetchTaskOrdering(projectId);
   }, [projectId]);
 
-  return { hasProject: projectId != null, sections, childCountOf, loading, refresh };
+  return { hasProject: projectId != null, sections, childCountOf, childrenOf, loading, refresh };
 }

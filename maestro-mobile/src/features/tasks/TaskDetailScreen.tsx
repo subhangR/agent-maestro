@@ -146,6 +146,11 @@ export function TaskDetailScreen({ id }: { id: string }): React.JSX.Element {
 
       {/* Actions */}
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.space[2] }}>
+        <MetaButton
+          label="Run"
+          icon="play"
+          onPress={() => sheets.open({ type: 'runConfig', taskId: task.id })}
+        />
         {task.status !== 'completed' && (
           <MetaButton label="Complete" icon="check" variant="run" onPress={() => onComplete(task)} />
         )}
