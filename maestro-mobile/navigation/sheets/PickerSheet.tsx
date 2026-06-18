@@ -2,7 +2,7 @@
 // <select>. Opened via sheets.open({ type:'picker', config }). Single-select
 // auto-dismisses on pick; multi-select toggles then submits via a Done button.
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text, Input, Button } from '@/components';
 import { useTheme } from '@/theme';
@@ -42,7 +42,7 @@ export function PickerSheet({ intent, sheet }: SheetBodyProps<{ type: 'picker'; 
         <Input value={query} onChangeText={setQuery} placeholder="Search…" autoCapitalize="none" autoCorrect={false} />
       ) : null}
 
-      <ScrollView style={{ maxHeight: 380 }} contentContainerStyle={{ gap: theme.space[1] }} keyboardShouldPersistTaps="handled">
+      <View style={{ gap: theme.space[1] }}>
         {filtered.map((o) => {
           const isSel = selected.includes(o.id);
           return (
@@ -86,7 +86,7 @@ export function PickerSheet({ intent, sheet }: SheetBodyProps<{ type: 'picker'; 
             No options.
           </Text>
         ) : null}
-      </ScrollView>
+      </View>
 
       {multi ? (
         <Button

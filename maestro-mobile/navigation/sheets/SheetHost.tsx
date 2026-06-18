@@ -14,7 +14,7 @@ import { Keyboard } from 'react-native';
 import {
   BottomSheetBackdrop,
   BottomSheetModal,
-  BottomSheetView,
+  BottomSheetScrollView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,9 +87,12 @@ function SheetSlot({ entry }: { entry: SheetStackEntry }) {
       backgroundStyle={{ backgroundColor: theme.colors.surface }}
       handleIndicatorStyle={{ backgroundColor: theme.colors.line2 }}
     >
-      <BottomSheetView style={{ paddingBottom: insets.bottom + theme.space[4] }}>
+      <BottomSheetScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + theme.space[4] }}
+        keyboardShouldPersistTaps="handled"
+      >
         <Body intent={entry.intent} sheet={controller} />
-      </BottomSheetView>
+      </BottomSheetScrollView>
     </BottomSheetModal>
   );
 }

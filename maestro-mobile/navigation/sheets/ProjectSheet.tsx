@@ -1,7 +1,7 @@
 // ProjectSheet — the project switcher (sheets.open({ type:'project' })). Lists
 // every project; picking one sets the active project AND re-syncs its data so the
 // tabs repopulate (Members has no on-mount fetch, so we resync explicitly).
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { Text } from '@/components';
 import { asProjectId } from '@/domain';
@@ -29,7 +29,7 @@ export function ProjectSheet({ sheet }: SheetBodyProps<{ type: 'project' }>): Re
       <Text variant="title" color="ink">
         Switch project
       </Text>
-      <ScrollView style={{ maxHeight: 440 }} contentContainerStyle={{ gap: theme.space[1] }}>
+      <View style={{ gap: theme.space[1] }}>
         {projects.length === 0 ? (
           <Text variant="body" color="ink3">
             No projects.
@@ -66,7 +66,7 @@ export function ProjectSheet({ sheet }: SheetBodyProps<{ type: 'project' }>): Re
             );
           })
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 }
