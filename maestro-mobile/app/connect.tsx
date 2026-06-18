@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { Text, Input, Button, Card } from '@/components';
 import { useTheme } from '@/theme';
 import { usePrefsStore } from '@/state';
+import { AuthRequiredError } from '@/services/api';
 
 import { bootstrap } from '../navigation/bootstrap';
 
@@ -25,6 +26,18 @@ export default function Connect(): React.JSX.Element {
   const [host, setHost] = useState(initialHost);
   const [phase, setPhase] = useState<Phase>('idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Revealed when the server answers 401 — it needs a password.
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [password, setPassword] = useState('');
+
+  // Editing the host targets a (possibly different) server, so drop any stale
+  // password prompt and re-probe fresh on the next Connect.
+  const onHostChange = useCallback((next: string) => {
+    setHost(next);
+    setNeedsPassword(false);
+    setPassword('');
+    setErrorMsg(null);
+  }, []);
 
   const onConnect = useCallback(async () => {
     const trimmed = host.trim();
@@ -32,15 +45,21 @@ export default function Connect(): React.JSX.Element {
     setErrorMsg(null);
     setPhase('connecting');
     try {
-      await bootstrap(trimmed);
+      await bootstrap(trimmed, needsPassword && password ? password : undefined);
       // Persist only after a successful health probe + sync.
       setLastHost(trimmed);
       router.replace('/(tabs)');
     } catch (e) {
-      setErrorMsg(e instanceof Error ? e.message : String(e));
-      setPhase('error');
+      if (e instanceof AuthRequiredError) {
+        setNeedsPassword(true);
+        setErrorMsg('This server requires a password.');
+        setPhase('idle');
+      } else {
+        setErrorMsg(e instanceof Error ? e.message : String(e));
+        setPhase('error');
+      }
     }
-  }, [host, setLastHost]);
+  }, [host, password, needsPassword, setLastHost]);
 
   return (
     <View
@@ -68,18 +87,38 @@ export default function Connect(): React.JSX.Element {
         </Text>
         <Input
           value={host}
-          onChangeText={setHost}
+          onChangeText={onHostChange}
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType="url"
           placeholder="192.168.1.5:4569"
           onSubmitEditing={onConnect}
         />
+        {needsPassword && (
+          <>
+            <Text variant="label" color="ink2">
+              Password
+            </Text>
+            <Input
+              value={password}
+              onChangeText={setPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              placeholder="Server password"
+              onSubmitEditing={onConnect}
+            />
+          </>
+        )}
         <Button
-          label={phase === 'connecting' ? 'Connecting…' : 'Connect'}
+          label={phase === 'connecting' ? 'Connecting…' : needsPassword ? 'Log in' : 'Connect'}
           variant="primary"
           fullWidth
-          disabled={phase === 'connecting' || host.trim().length === 0}
+          disabled={
+            phase === 'connecting' ||
+            host.trim().length === 0 ||
+            (needsPassword && password.length === 0)
+          }
           onPress={onConnect}
         />
         {errorMsg ? (

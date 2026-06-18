@@ -6,7 +6,7 @@
 // first project, then stands up the realtime sockets and pushes status into the
 // UI store. The returned handle lets the connect/disconnect flow tear realtime
 // down. v1 is NO AUTH — bare host:port, nothing else.
-import { buildServerConfig, MaestroClient } from '@/services/api';
+import { buildServerConfig, MaestroClient, MaestroApiError, login, AuthRequiredError } from '@/services/api';
 import { createRealtime, type Realtime, type RealtimeLedger } from '@/services/realtime';
 import {
   setMaestroClient,
@@ -48,7 +48,7 @@ export interface BootstrapResult {
  *   → entitySync.onStatus(→ uiStore.setRealtimeStatus)
  *   → entitySync.setActiveProject → start()
  */
-export async function bootstrap(host: string): Promise<BootstrapResult> {
+export async function bootstrap(host: string, password?: string): Promise<BootstrapResult> {
   // Tear down any prior realtime before re-connecting.
   if (activeRealtime) {
     activeRealtime.stop();
@@ -62,13 +62,31 @@ export async function bootstrap(host: string): Promise<BootstrapResult> {
   // 1. Build ServerConfig from the bare host:port the user typed.
   const cfg = buildServerConfig(host);
 
-  // 2. Instantiate the real client + wire it into @/state.
-  const client = new MaestroClient(cfg);
+  // 2. Instantiate the real client + wire it into @/state. The client appends the
+  // stored ?token= on every request (null/inert on no-auth servers).
+  const client = new MaestroClient(cfg, { getToken: () => usePrefsStore.getState().authToken });
   setMaestroClient(client);
 
-  // 3. GET {serverUrl}/health first — the boot gate.
+  // 3. GET {serverUrl}/health first — the boot gate (public, no token needed).
   const ok = await client.probeHealth();
   if (!ok) throw new Error('health probe returned false');
+
+  // 3b. Auth: if the user supplied a password, exchange it for a token now. Then
+  // probe a guarded endpoint — a 401 means this server needs a (fresh) password,
+  // which we signal to the connect screen via AuthRequiredError.
+  if (password) {
+    const token = await login(cfg.apiBaseUrl, password);
+    usePrefsStore.getState().setAuthToken(token);
+  }
+  try {
+    await client.getProjects();
+  } catch (e) {
+    if (e instanceof MaestroApiError && e.status === 401) {
+      usePrefsStore.getState().setAuthToken(null);
+      throw new AuthRequiredError();
+    }
+    throw e;
+  }
 
   // 4. REST fetch → populates the entity store. Projects first so we can scope
   // the project-scoped fetches to the first project.
@@ -91,11 +109,18 @@ export async function bootstrap(host: string): Promise<BootstrapResult> {
   }
 
   // 5. Wire realtime (entity-sync WS + /pty) against the SAME config. The ledger
-  // is the realtime→state seam (Pulse's ingest functions).
+  // is the realtime→state seam (Pulse's ingest functions). WS upgrades are gated
+  // separately from REST, so the token rides as a query param here too (read at
+  // call time so reconnects pick up a refreshed token).
+  const withWsToken = (wsUrl: string): string => {
+    const token = usePrefsStore.getState().authToken;
+    if (!token) return wsUrl;
+    return `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
+  };
   const ledger: RealtimeLedger = { ingestBatch, ingestEvent, resyncProject };
   const rt = createRealtime({
-    getWsUrl: () => cfg.wsUrl,
-    getPtyWsUrl: () => cfg.ptyWsUrl,
+    getWsUrl: () => withWsToken(cfg.wsUrl),
+    getPtyWsUrl: () => withWsToken(cfg.ptyWsUrl),
     ledger,
   });
   activeRealtime = rt;

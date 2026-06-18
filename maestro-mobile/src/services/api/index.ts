@@ -22,5 +22,6 @@ export {
 } from './http/MaestroClient';
 
 export { MaestroApiError, TimeoutError, NetworkError } from './http/errors';
+export { login, AuthRequiredError } from './http/auth';
 export { buildQuery } from './http/buildQuery';
 export { DEFAULT_TIMEOUT_MS, DEFAULT_SERVER_PORT, HEALTH_PATH } from './constants';

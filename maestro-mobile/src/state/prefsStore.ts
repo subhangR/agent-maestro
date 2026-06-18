@@ -16,6 +16,7 @@ const STORAGE_ID = 'maestro-prefs';
 const KEY_THEME = 'theme';
 const KEY_LAST_HOST = 'lastHost';
 const KEY_LAST_PROJECT = 'lastProjectId';
+const KEY_AUTH_TOKEN = 'authToken';
 
 const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
 const isThemeMode = (v: string | null): v is ThemeMode =>
@@ -30,17 +31,27 @@ export interface PrefsState {
   lastHost: string | null;
   /** Last active project id — restored on cold boot so the switcher persists. */
   lastProjectId: string | null;
+  /** Auth token for password-protected servers — rides as ?token=. Non-secret-store
+   *  (MMKV) is acceptable for the Tailscale-only v1 threat model. */
+  authToken: string | null;
   setTheme: (mode: ThemeMode) => void;
   setLastHost: (host: string | null) => void;
   setLastProjectId: (id: string | null) => void;
+  setAuthToken: (token: string | null) => void;
 }
 
-function readInitial(): { theme: ThemeMode; lastHost: string | null; lastProjectId: string | null } {
+function readInitial(): {
+  theme: ThemeMode;
+  lastHost: string | null;
+  lastProjectId: string | null;
+  authToken: string | null;
+} {
   const storedTheme = storage.getString(KEY_THEME);
   return {
     theme: isThemeMode(storedTheme) ? storedTheme : 'system',
     lastHost: storage.getString(KEY_LAST_HOST),
     lastProjectId: storage.getString(KEY_LAST_PROJECT),
+    authToken: storage.getString(KEY_AUTH_TOKEN),
   };
 }
 
@@ -59,6 +70,11 @@ export const usePrefsStore = create<PrefsState>((set) => ({
     if (id == null) storage.delete(KEY_LAST_PROJECT);
     else storage.set(KEY_LAST_PROJECT, id);
     set({ lastProjectId: id });
+  },
+  setAuthToken: (token) => {
+    if (token == null) storage.delete(KEY_AUTH_TOKEN);
+    else storage.set(KEY_AUTH_TOKEN, token);
+    set({ authToken: token });
   },
 }));
 
