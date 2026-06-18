@@ -9,7 +9,6 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
-import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { Button, Input, SheetHeader, SheetSection, FieldRow, Toggle, Text } from '@/components';
@@ -137,8 +136,7 @@ export function RunConfigSheet({
     <View style={styles.root}>
       <SheetHeader title="Run configuration" eyebrow="SPAWN" onClose={sheet.dismiss} />
 
-      <BottomSheetScrollView contentContainerStyle={styles.scroll}>
-        <SheetSection label="Task">
+      <SheetSection label="Task">
           <Text variant="body" color="ink" numberOfLines={2}>
             {taskTitle}
           </Text>
@@ -210,18 +208,13 @@ export function RunConfigSheet({
             onPress={() => void onSpawn()}
           />
         </View>
-      </BottomSheetScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create((theme) => ({
   root: {
-    paddingBottom: theme.space[4],
-    maxHeight: '100%',
-  },
-  scroll: {
-    paddingBottom: theme.space[4],
+    paddingBottom: theme.space[2],
   },
   card: {
     marginHorizontal: theme.space[4],
