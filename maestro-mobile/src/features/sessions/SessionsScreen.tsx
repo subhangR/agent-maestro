@@ -12,6 +12,7 @@ import { MSessionTile, Text } from '@/components';
 import { useTheme } from '@/theme';
 
 import { routes } from '../../../navigation';
+import { ProjectSwitcher } from '../more/ProjectSwitcher';
 import { useSessionsScreen, SESSION_TABS } from './useSessionsScreen';
 import type { SessionTab } from '@/domain';
 
@@ -25,6 +26,7 @@ export function SessionsScreen(): React.JSX.Element {
   return (
     <View style={[styles.root, { paddingTop: insets.top + theme.space[3] }]}>
       <View style={styles.header}>
+        <ProjectSwitcher />
         <Text variant="display" color="ink">
           Sessions
         </Text>
@@ -125,6 +127,8 @@ const styles = StyleSheet.create((theme) => ({
   header: {
     paddingHorizontal: theme.space[4],
     paddingBottom: theme.space[2],
+    gap: 4,
+    alignItems: 'flex-start',
   },
   tabBar: {
     flexDirection: 'row',

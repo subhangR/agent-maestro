@@ -12,6 +12,7 @@ import { useTheme } from '@/theme';
 
 import { routes, sheets } from '../../../navigation';
 import { Screen, SectionLabel, StatusBlock } from '../more/kit';
+import { ProjectSwitcher } from '../more/ProjectSwitcher';
 import { useTasksScreen } from './useTasksScreen';
 
 export function TasksScreen(): React.JSX.Element {
@@ -73,7 +74,7 @@ export function TasksScreen(): React.JSX.Element {
   return (
     <Screen
       title="Tasks"
-      eyebrow="Maestro"
+      headerAccessory={<ProjectSwitcher />}
       refreshing={loading}
       onRefresh={refresh}
       trailing={

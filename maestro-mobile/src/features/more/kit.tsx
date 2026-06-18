@@ -17,6 +17,8 @@ export interface ScreenProps {
   title: string;
   /** Uppercase eyebrow over the title (tab homes) / under the back row (detail). */
   eyebrow?: string;
+  /** Node rendered above the eyebrow/title (e.g. the project switcher pill). */
+  headerAccessory?: ReactNode;
   /** When set, renders a compact back-header (detail screens). */
   onBack?: () => void;
   /** Trailing header slot (e.g. a `+` IconButton). */
@@ -30,6 +32,7 @@ export interface ScreenProps {
 export function Screen({
   title,
   eyebrow,
+  headerAccessory,
   onBack,
   trailing,
   children,
@@ -61,6 +64,7 @@ export function Screen({
           </View>
         )}
         <View style={{ flex: 1, gap: 3 }}>
+          {headerAccessory}
           {eyebrow != null && (
             <Text variant="eyebrow" color="ink3">
               {eyebrow}

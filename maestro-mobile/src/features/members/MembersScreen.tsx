@@ -11,6 +11,7 @@ import { useTheme } from '@/theme';
 
 import { routes, sheets } from '../../../navigation';
 import { Screen, StatusBlock } from '../more/kit';
+import { ProjectSwitcher } from '../more/ProjectSwitcher';
 import { MemberRow } from './MemberRow';
 
 export function MembersScreen(): React.JSX.Element {
@@ -25,7 +26,7 @@ export function MembersScreen(): React.JSX.Element {
   return (
     <Screen
       title="Members"
-      eyebrow="Roster"
+      headerAccessory={<ProjectSwitcher />}
       refreshing={false}
       onRefresh={() => projectId && void fetchTeamMembers(projectId)}
       trailing={
