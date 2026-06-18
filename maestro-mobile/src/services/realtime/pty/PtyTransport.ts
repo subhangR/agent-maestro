@@ -63,7 +63,11 @@ export function createPtyTransport(deps: PtyDeps): PtyTransport {
     const session = getOrCreate(id);
     if (socketAlive(session.socket)) return session;
 
-    const url = `${deps.getPtyWsUrl()}?sessionId=${encodeURIComponent(id)}`;
+    // getPtyWsUrl() may already carry a query (e.g. ?token= on auth servers), so
+    // pick the right separator — a hardcoded `?` would double up and corrupt the
+    // existing param (the token), getting the WS upgrade rejected.
+    const base = deps.getPtyWsUrl();
+    const url = `${base}${base.includes('?') ? '&' : '?'}sessionId=${encodeURIComponent(id)}`;
     const socket = new WebSocket(url);
     socket.binaryType = 'arraybuffer';
     session.socket = socket;
