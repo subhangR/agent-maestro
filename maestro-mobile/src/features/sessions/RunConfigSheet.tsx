@@ -179,15 +179,27 @@ export function RunConfigSheet({
           />
         </View>
 
-        <SheetSection label="Isolation">
-          <Toggle
-            label="Run in worktree"
-            on={useWorktree}
-            tone="worktree"
-            icon="gitBranch"
-            size="lg"
-            onToggle={setUseWorktree}
-          />
+        <SheetSection label="Options">
+          <View style={styles.toggleStack}>
+            <Toggle
+              label="Bypass permissions"
+              on={permissionMode === 'bypassPermissions'}
+              tone="danger"
+              icon="shield"
+              size="lg"
+              onToggle={(v) =>
+                setPermissionMode(v ? 'bypassPermissions' : member?.permissionMode ?? 'acceptEdits')
+              }
+            />
+            <Toggle
+              label="Run in worktree"
+              on={useWorktree}
+              tone="worktree"
+              icon="gitBranch"
+              size="lg"
+              onToggle={setUseWorktree}
+            />
+          </View>
         </SheetSection>
 
         {error != null && (
@@ -233,5 +245,8 @@ const styles = StyleSheet.create((theme) => ({
   actions: {
     paddingHorizontal: theme.space[4],
     paddingTop: theme.space[4],
+  },
+  toggleStack: {
+    gap: theme.space[2],
   },
 }));
