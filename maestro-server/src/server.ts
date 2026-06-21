@@ -45,8 +45,22 @@ async function startServer() {
   // Create Express app
   const app = express();
 
-  // Security headers
-  app.use(helmet());
+  // Security headers.
+  // The Maestro server speaks plain HTTP; TLS is normally terminated upstream
+  // (nginx / `tailscale serve` / a reverse proxy). Helmet's default CSP includes
+  // the `upgrade-insecure-requests` directive, which makes browsers force every
+  // asset request to HTTPS. When the SPA is served over a plain-HTTP origin
+  // (e.g. a VPS/Tailscale deployment reached by IP or an http:// host), those
+  // upgraded asset requests fail and the UI renders blank. Setting
+  // MAESTRO_DISABLE_CSP_UPGRADE=1 drops *only* that directive while keeping every
+  // other CSP protection. Default (env unset) is identical to `helmet()`.
+  const disableCspUpgrade = process.env.MAESTRO_DISABLE_CSP_UPGRADE === '1';
+  app.use(helmet(disableCspUpgrade ? {
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: { upgradeInsecureRequests: null },
+    },
+  } : undefined));
 
   // CORS configuration for Tauri app and web clients
   // NOTE: CORS must be registered before rate limiting so preflight OPTIONS
