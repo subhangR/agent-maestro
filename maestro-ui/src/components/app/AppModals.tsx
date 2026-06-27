@@ -34,6 +34,7 @@ import { ReplayModal } from "../modals/ReplayModal";
 import { AgentModalViewer } from "../modals/AgentModalViewer";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { SpellLauncher } from "../spells/SpellLauncher";
+import { TeamMemberIntroDialog } from "../maestro/TeamMemberIntroDialog";
 import { SpellbookDrawer } from "../spells/SpellbookDrawer";
 import { UndoToast } from "../spells/UndoToast";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
@@ -682,6 +683,9 @@ export function AppModals() {
 
       {/* Spell launcher (replaces SpellPicker) */}
       <SpellLauncher />
+
+      {/* Intro dialog for agent/CLI-created team members */}
+      <TeamMemberIntroDialog />
       <SpellbookHost />
       <UndoToast />
 

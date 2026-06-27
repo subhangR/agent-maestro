@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Buttons" subtitle="Ink-filled primary (brass on hover) · hairline secondary · ghost" viewport="700x180" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 26px; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .row + .row { margin-top: 16px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 14px; font-family: var(--pn-ui); font-size: 12.5px; font-weight: 600; border-radius: var(--pn-r-sm); border: 1px solid var(--pn-line-2); background: var(--pn-card); color: var(--pn-ink); cursor: pointer; transition: background 140ms, border-color 140ms, color 140ms; }
+  .btn:hover { background: var(--pn-hover); border-color: var(--pn-ink-4); }
+  .btn--primary { background: var(--pn-ink); color: var(--pn-paper); border-color: var(--pn-ink); }
+  .btn--primary:hover { background: var(--pn-brand); color: #20160a; border-color: var(--pn-brand); }
+  .btn--ghost { background: transparent; border-color: transparent; color: var(--pn-ink-2); }
+  .btn--ghost:hover { background: var(--pn-hover); }
+  .btn--danger { color: var(--pn-block); border-color: rgba(187,77,61,0.34); }
+  .kbd { font-family: var(--pn-mono); font-size: 10px; color: var(--pn-ink-4); border: 1px solid var(--pn-line-2); border-radius: 4px; padding: 0 4px; line-height: 15px; }
+  .lbl { font-family: var(--pn-mono); font-size: 9.5px; color: var(--pn-ink-4); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+  <div class="lbl">Hover the primary — ink fills to brass</div>
+  <div class="row">
+    <button class="btn btn--primary">+ New task</button>
+    <button class="btn">Spawn session</button>
+    <button class="btn btn--ghost">Cancel</button>
+    <button class="btn btn--danger">Stop</button>
+    <button class="btn">Run <span class="kbd">⌘R</span></button>
+  </div>
+</body>
+</html>

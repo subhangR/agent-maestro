@@ -30,6 +30,7 @@ import { WS_URL } from '../utils/serverConfig';
 import { playEventSound, soundManager } from '../services/soundManager';
 import { usePromptAnimationStore, selectPromptSurface, type PromptSurface } from './usePromptAnimationStore';
 import { useActiveSpellsStore } from './useActiveSpellsStore';
+import { useTeamMemberIntroStore } from './useTeamMemberIntroStore';
 import { useSpellCastPulseStore } from '../utils/useSpellCastPulse';
 import { buildTeamGroups } from '../utils/teamGrouping';
 
@@ -340,7 +341,12 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
    * Play a sound for a session-related event using team member instruments when available.
    * Falls back to project/global instrument if session has no team members registered.
    */
-  const playSessionAwareSound = (eventType: string, sessionOrData: { teamMemberIds?: string[]; teamMemberId?: string } | null) => {
+  const playSessionAwareSound = (eventType: string, sessionOrData: { id?: string; teamMemberIds?: string[]; teamMemberId?: string } | null) => {
+    // Per-session random instrument takes precedence over team member / project sounds
+    if (sessionOrData?.id) {
+      soundManager.playSessionInstrumentSound(eventType as any, sessionOrData.id).catch(() => {});
+      return;
+    }
     let teamMemberIds: string[] = [];
     if (sessionOrData?.teamMemberIds?.length) {
       teamMemberIds = sessionOrData.teamMemberIds;
@@ -389,7 +395,9 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         const session = normalizeSession(message.data.session || message.data);
         batchSet((prev) => ({ sessions: { ...prev.sessions, [session.id]: session } }));
         hydrateActiveSpellsFromSession(session);
-        // Play sound using team member instruments when available
+        // Assign a random instrument for this session at start
+        soundManager.getOrAssignSessionInstrument(session.id);
+        // Play sound using this session's instrument
         playSessionAwareSound(message.event, session);
         break;
       }
@@ -422,6 +430,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         });
         useActiveSpellsStore.getState().clearSession(message.data.id);
         playSessionAwareSound(message.event, deletedSession || message.data);
+        soundManager.clearSessionInstrument(message.data.id);
         break;
       }
       case 'session:spawn': {
@@ -615,19 +624,10 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'notify:session_failed':
       case 'notify:needs_input':
       case 'notify:progress': {
-        // Try to get team member IDs from the associated session for ensemble sound
+        // Use the associated session's randomly-assigned instrument when available
         const sessionId = message.data?.sessionId;
-        let teamMemberIds: string[] = [];
         if (sessionId) {
-          const session = get().sessions[sessionId];
-          if (session?.teamMemberIds?.length) {
-            teamMemberIds = session.teamMemberIds;
-          } else if (session?.teamMemberId) {
-            teamMemberIds = [session.teamMemberId];
-          }
-        }
-        if (teamMemberIds.length > 0) {
-          soundManager.playSessionEventSound(message.event as any, teamMemberIds).catch(() => { /* best-effort sound */ });
+          soundManager.playSessionInstrumentSound(message.event as any, sessionId).catch(() => { /* best-effort sound */ });
         } else {
           playEventSound(message.event as any);
         }
@@ -642,10 +642,16 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'team_member:updated':
       case 'team_member:archived': {
         const teamMember = message.data;
+        const isNewMember = message.event === 'team_member:created' && !get().teamMembers[teamMember.id];
         batchSet((prev) => ({ teamMembers: { ...prev.teamMembers, [teamMember.id]: teamMember } }));
         // Sync instrument with sound manager
         if (teamMember.soundInstrument) {
           soundManager.registerTeamMember(teamMember.id, teamMember.soundInstrument);
+        }
+        // Introduce members created by agents/CLI (or other clients). Members
+        // created by this client's own modal are suppressed via markLocallyCreated.
+        if (isNewMember) {
+          useTeamMemberIntroStore.getState().enqueue(teamMember.id);
         }
         // Play sound for event
         playEventSound(message.event as any);
@@ -1245,6 +1251,10 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
 
     createTeamMember: async (data) => {
       const teamMember = await maestroClient.createTeamMember(data);
+      // Suppress the intro dialog for members created by this client's own
+      // modal — the user already configured them. The matching WS event will
+      // consume this mark instead of enqueuing an introduction.
+      useTeamMemberIntroStore.getState().markLocallyCreated(teamMember.id);
       set((prev) => ({ teamMembers: { ...prev.teamMembers, [teamMember.id]: teamMember } }));
       return teamMember;
     },

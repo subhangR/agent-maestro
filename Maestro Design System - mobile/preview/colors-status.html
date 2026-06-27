@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Colors" name="Status Colors" subtitle="Agent lifecycle — desaturated for a paper world, always paired with a word" viewport="700x230" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 24px 26px; color: var(--pn-ink-2); }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .cell { display: flex; flex-direction: column; gap: 9px; align-items: flex-start; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; font-weight: 600; padding: 4px 10px; border-radius: var(--pn-r-pill); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .name { font-family: var(--pn-mono); font-size: 10px; color: var(--pn-ink-3); }
+  .hex { font-family: var(--pn-mono); font-size: 10px; color: var(--pn-ink-4); }
+  .cap { display: block; margin-top: 22px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell"><span class="pill" style="color:#3E8E5A;background:rgba(62,142,90,0.12);"><span class="dot" style="background:#3E8E5A;"></span>running</span><span class="name">run</span><span class="hex">#3E8E5A</span></div>
+    <div class="cell"><span class="pill" style="color:#BD8A2A;background:rgba(189,138,42,0.14);"><span class="dot" style="background:#BD8A2A;"></span>waiting</span><span class="name">wait</span><span class="hex">#BD8A2A</span></div>
+    <div class="cell"><span class="pill" style="color:#BB4D3D;background:rgba(187,77,61,0.12);"><span class="dot" style="background:#BB4D3D;"></span>blocked</span><span class="name">block</span><span class="hex">#BB4D3D</span></div>
+    <div class="cell"><span class="pill" style="color:#3F6C90;background:rgba(63,108,144,0.12);"><span class="dot" style="background:#3F6C90;"></span>info</span><span class="name">info</span><span class="hex">#3F6C90</span></div>
+    <div class="cell"><span class="pill" style="color:#8E897B;background:rgba(162,156,142,0.16);"><span class="dot" style="background:#A29C8E;"></span>idle</span><span class="name">idle</span><span class="hex">#A29C8E</span></div>
+  </div>
+  <span class="cap t-eyebrow">Status reads by dot + word — never a colored left-border bar</span>
+</body>
+</html>

@@ -1378,9 +1378,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
   // Spawn session (complex endpoint - uses CLI for manifest generation)
   router.post('/sessions/spawn', validateBody(spawnSessionSchema), async (req: Request, res: Response) => {
     try {
-      // SPAWN GATE: when a session spawns another session, the sender must be a
-      // coordinator-role session. UI-initiated spawns (spawnSource === 'ui') are
-      // user-driven and have no sender session, so they bypass this gate.
+      // Any session may spawn another session — there is no coordinator-role
+      // gate. For session-initiated spawns we still resolve the sender so the
+      // child can be wired to its parent (parentSessionId/projectId fallback).
       const senderSessionId = req.headers['x-session-id'] as string | undefined;
       const isSessionSpawn = req.body?.spawnSource === 'session';
       let senderSession: any = null;
@@ -1401,16 +1401,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             error: true,
             code: 'sender_session_not_found',
             message: `Sender session ${senderSessionId} not found`,
-          });
-        }
-
-        const senderMode: AgentMode = (senderSession.metadata?.mode as AgentMode) || 'worker';
-        const senderRole = isCoordinatorMode(senderMode) ? 'coordinator' : 'worker';
-        if (senderRole !== 'coordinator') {
-          return res.status(403).json({
-            error: true,
-            code: 'spawn_requires_coordinator',
-            message: 'Spawning requires coordinator mode. Run `maestro coordinator enable` first.',
           });
         }
       } else if (senderSessionId) {

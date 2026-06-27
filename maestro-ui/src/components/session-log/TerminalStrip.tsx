@@ -5,7 +5,6 @@ import { parseJsonlText, groupMessages, checkMessagesOngoing } from '../../utils
 import type { ParsedMessage, ConversationGroup } from '../../utils/claude-log';
 import { LogMessageGroup } from './LogMessageGroup';
 import { useSpellLauncherStore } from '../../stores/useSpellLauncherStore';
-import { ActiveSpellsPanel } from '../spells/ActiveSpellsPanel';
 import { Icon } from '../Icon';
 import { SessionDocsMenu } from '../maestro/SessionDocsMenu';
 
@@ -323,9 +322,6 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           )}
         </div>
       )}
-
-      {/* Active spells strip — appears above the bar (03 §3.2 surface 1). */}
-      <ActiveSpellsPanel anchor="header-strip" sessionId={maestroSessionId} />
 
       {/* The fused bottom strip */}
       <div className="termStripBar">

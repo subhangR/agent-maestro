@@ -101,12 +101,19 @@ export const useSpellLibraryStore = create<SpellLibraryState>((set, get) => ({
   spellById: (id) => get().spells.find((s) => s.id === id),
 }));
 
-/** Selector: group spells into the launcher's nav categories. */
-export function selectSpellsByCategory(state: SpellLibraryState): Record<SpellCategory, Spell[]> {
+/**
+ * Group spells into the launcher's nav categories.
+ *
+ * NOTE: this allocates a fresh object every call, so it must NOT be passed
+ * directly to a Zustand hook as a selector — `useSyncExternalStore` would see a
+ * new snapshot reference on every store read and loop forever (React #185).
+ * Call it inside a `useMemo` keyed on the spells array instead.
+ */
+export function groupSpellsByCategory(spells: Spell[]): Record<SpellCategory, Spell[]> {
   const empty: Record<SpellCategory, Spell[]> = {
     featured: [], execute: [], plan: [], gate: [], notify: [], custom: [], skills: [],
   };
-  for (const s of state.spells) {
+  for (const s of spells) {
     empty[categoryForSpell(s)].push(s);
   }
   return empty;

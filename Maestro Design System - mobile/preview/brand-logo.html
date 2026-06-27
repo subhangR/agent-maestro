@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Brand" name="Logo Lockup" subtitle="Wordmark + the > ··· + command motif, in brass on paper" viewport="700x160" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-paper); padding: 30px 32px; display:flex; align-items:center; gap: 40px; }
+  .mark { display:flex; align-items:center; gap: 13px; }
+  .chev { font-family: var(--pn-mono); font-weight: 600; font-size: 44px; color: var(--pn-brand); line-height: 1; }
+  .dots { display:flex; gap: 8px; }
+  .dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--pn-brand); display:block; }
+  .dots i:nth-child(2){ opacity:.65; } .dots i:nth-child(3){ opacity:.4; }
+  .plus { color: var(--pn-brand-2); font-family: var(--pn-mono); font-weight: 400; font-size: 30px; margin-left: 2px; }
+  .word { display:flex; flex-direction: column; gap: 5px; }
+  .name { font-family: var(--pn-serif); font-weight: 500; font-size: 34px; letter-spacing: 0; color: var(--pn-ink); line-height: 1; }
+  .tag { font-family: var(--pn-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--pn-ink-3); }
+  .divider { width:1px; align-self: stretch; background: var(--pn-line-2); }
+</style>
+</head>
+<body>
+  <div class="word">
+    <div class="name">Maestro</div>
+    <div class="tag">Conduct your agents</div>
+  </div>
+  <div class="divider"></div>
+  <div class="mark" title="command spawns parallel agents">
+    <span class="chev">&gt;</span>
+    <span class="dots"><i></i><i></i><i></i></span>
+    <span class="plus">+</span>
+  </div>
+</body>
+</html>

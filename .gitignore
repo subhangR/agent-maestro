@@ -49,3 +49,10 @@ maestro-design-system/
 
 # Graphify knowledge-graph artifacts (generated, not source)
 graphify-out/
+
+# design-sync (transient)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

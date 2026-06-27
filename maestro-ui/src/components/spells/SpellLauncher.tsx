@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSpellLauncherStore } from '../../stores/useSpellLauncherStore';
-import { useSpellLibraryStore, selectSpellsByCategory } from '../../stores/useSpellLibraryStore';
+import { useSpellLibraryStore, groupSpellsByCategory } from '../../stores/useSpellLibraryStore';
 import { useSpellActivationStore } from '../../stores/useSpellActivationStore';
 import { useEnsembleStore } from '../../stores/useEnsembleStore';
 import { useProjectStore } from '../../stores/useProjectStore';
@@ -50,7 +50,9 @@ export const SpellLauncher = React.memo(function SpellLauncher() {
   const loading = useSpellLibraryStore((s) => s.loading);
   const recentIds = useSpellLibraryStore((s) => s.recentSpellIds);
   const fetchLibrary = useSpellLibraryStore((s) => s.fetchLibrary);
-  const byCategory = useSpellLibraryStore(selectSpellsByCategory);
+  // Derive grouped categories in-component. Subscribing to a selector that
+  // builds a new object each call would loop useSyncExternalStore (React #185).
+  const byCategory = useMemo(() => groupSpellsByCategory(spells), [spells]);
 
   const casting = useSpellActivationStore((s) => s.casting);
   const castSpellAction = useSpellActivationStore((s) => s.castSpell);

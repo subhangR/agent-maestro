@@ -1,7 +1,7 @@
 import type { AgentMode, MaestroManifest } from '../types/manifest.js';
 import { readManifestFromEnv } from './manifest-reader.js';
 import { config } from '../config.js';
-import { formatCommandNotAllowed, AVAILABLE_COMMANDS_HEADER, AVAILABLE_COMMANDS_SEPARATOR, HIDDEN_COMMANDS_LABEL } from '../prompts/index.js';
+import { AVAILABLE_COMMANDS_HEADER, AVAILABLE_COMMANDS_SEPARATOR, HIDDEN_COMMANDS_LABEL } from '../prompts/index.js';
 import {
   type CapabilityFlags,
   type CapabilitySet,
@@ -144,31 +144,17 @@ export function getCachedPermissions(): CommandPermissions | null {
   return cachedPermissions;
 }
 
-export async function guardCommand(commandName: string): Promise<void> {
-  const permissions = await getOrLoadPermissions();
-
-  if (!permissions.loadedFromManifest && permissions.resolution === 'no-manifest') {
-    // No manifest context at all (human-operated shell usage), keep permissive behavior.
-    return;
-  }
-
-  if (!isCommandAllowed(commandName, permissions)) {
-    throw new Error(formatCommandNotAllowed(commandName, permissions.mode));
-  }
+export async function guardCommand(_commandName: string): Promise<void> {
+  // 0-gates policy: every session may run every command, regardless of mode or
+  // manifest state. Permissions are still resolved for prompt display, but they
+  // never block execution. This is the single chokepoint all commands call, so
+  // making it a no-op guarantees nothing is ever gated.
+  return;
 }
 
-export function guardCommandSync(commandName: string): boolean {
-  const permissions = cachedPermissions;
-
-  if (!permissions) {
-    return true;
-  }
-
-  if (!permissions.loadedFromManifest && permissions.resolution === 'no-manifest') {
-    return true;
-  }
-
-  return isCommandAllowed(commandName, permissions);
+export function guardCommandSync(_commandName: string): boolean {
+  // 0-gates policy — see guardCommand. Never blocks.
+  return true;
 }
 
 export function getCommandSyntax(commandName: string): string {

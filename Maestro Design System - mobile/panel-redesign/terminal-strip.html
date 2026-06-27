@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Maestro — Terminal Strip</title>
+<link rel="stylesheet" href="theme.css" />
+<link rel="stylesheet" href="terminal-strip.css" />
+<style>
+  html, body { margin: 0; background: var(--pn-paper); }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 36px 28px 70px; }
+  h1 { font-family: 'Newsreader', Georgia, serif; font-weight: 500; font-size: 26px; letter-spacing: -0.01em; margin: 0 0 4px; color: #23201B; }
+  .sub { color: #5B564C; font-size: 14px; margin: 0 0 26px; max-width: 720px; line-height: 1.5; font-family: 'Hanken Grotesk', sans-serif; }
+  .cap { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #8E897B; margin: 26px 0 9px; }
+  /* faux terminal so the strip sits in real context */
+  .term { border-radius: 12px; overflow: hidden; box-shadow: 0 16px 44px rgba(40,34,24,.18); border: 1px solid #d8d3c6; display: flex; flex-direction: column; }
+  .term__bar { height: 38px; display: flex; align-items: center; gap: 9px; padding: 0 14px; background: #15120c; color: #a9a294; font-family: 'JetBrains Mono', monospace; font-size: 12px; border-bottom: 1px solid #2c2922; }
+  .term__bar .d { width: 7px; height: 7px; border-radius: 50%; background: #5aa777; }
+  .term__bar b { color: #e6e0d3; font-weight: 600; }
+  .term__bar .sl { color: #6a6457; }
+  .term__body { background: #1B1812; color: #cfc9bb; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; line-height: 1.7; padding: 16px 18px; min-height: 230px; }
+  .term__body .p { color: #E0A45A; } .term__body .dim { color: #8a8474; } .term__body .ok { color: #7FC08C; } .term__body .f { color: #cbb98a; }
+  .cur { display: inline-block; width: 8px; height: 15px; background: #E0A45A; vertical-align: -2px; animation: bl 1.1s steps(1) infinite; }
+  @keyframes bl { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Terminal strip</h1>
+  <p class="sub">The session-log stats (was a strip up top) and the action icons (were floating at the bottom) fused into one crafted bar at the foot of the terminal — a context gauge, live stats, and attach / draw / cast, all in the terminal's own warm palette with a green live accent. Click <strong>Session Log</strong> to expand the transcript.</p>
+
+  <div class="cap">In context · collapsed</div>
+  <div class="term">
+    <div class="term__bar"><span class="d"></span><b>fluffy-starlight</b><span class="sl">·</span>claude · opus-4.8<span style="margin-left:auto;color:#6a6457">fix/terminal-reparent</span></div>
+    <div class="term__body"><span class="p">›</span> Editing <span class="f">MultiProjectSessionsView.tsx</span>
+<span class="ok">&nbsp;&nbsp;+ registry.current.get(id)?.term.element</span>
+<span class="dim">&nbsp;&nbsp;re-running fit.fit() after the move…</span>
+<span class="ok">&nbsp;&nbsp;✓ 14 of 18 tests passing</span>
+
+<span class="p">›</span> Reparenting the terminal node now<span class="cur"></span></div>
+    <div id="strip1"></div>
+  </div>
+
+  <div class="cap">Expanded — session log open</div>
+  <div class="term">
+    <div class="term__bar"><span class="d"></span><b>fluffy-starlight</b><span class="sl">·</span>claude · opus-4.8</div>
+    <div class="term__body" style="min-height:120px"><span class="p">›</span> Reparenting the terminal node now<span class="cur"></span></div>
+    <div id="strip2"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="kit.jsx"></script>
+<script type="text/babel" src="terminal-strip.jsx"></script>
+<script type="text/babel">
+  ReactDOM.createRoot(document.getElementById('strip1')).render(<TerminalStrip />);
+  ReactDOM.createRoot(document.getElementById('strip2')).render(<TerminalStrip defaultOpen={true} />);
+</script>
+</body>
+</html>

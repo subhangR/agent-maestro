@@ -1,0 +1,140 @@
+/* ==========================================================================
+   MAESTRO · TERMINAL STRIP
+   One exquisite bottom strip that fuses the Session-Log stats (was a top strip)
+   with the action bar (attach · draw · cast). Lives inside the dark terminal,
+   so it owns its own warm-graphite palette + a green "live" accent.
+   Self-contained hexes (terminal is always dark) with a few local vars.
+   ========================================================================== */
+.pn-tstrip {
+  --ts-bg-top:   #242018;
+  --ts-bg-bot:   #1A170F;
+  --ts-line:     #322C20;
+  --ts-line-2:   #3C3525;
+  --ts-ink:      #D8D1C2;   /* values */
+  --ts-dim:      #897F6B;   /* labels */
+  --ts-faint:    #645B49;
+  --ts-green:    #7FC08C;   /* live / context healthy */
+  --ts-green-d:  #5C9E6E;
+  --ts-amber:    #E2A85C;   /* model / cache / cast */
+  --ts-red:      #D98469;
+
+  position: relative;
+  display: flex; align-items: stretch; gap: 0;
+  height: 46px; flex: 0 0 auto;
+  padding: 0 6px 0 0;
+  background: linear-gradient(180deg, var(--ts-bg-top), var(--ts-bg-bot));
+  border-top: 1px solid var(--ts-line-2);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--ts-ink);
+  user-select: none;
+}
+/* crafted top bevel + a whisper of green at the live edge */
+.pn-tstrip::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg, rgba(127,192,140,0.5), rgba(255,255,255,0.05) 22%, rgba(255,255,255,0.04));
+}
+
+/* ---- left: Session Log toggle ---- */
+.pn-tstrip__log {
+  display: flex; align-items: center; gap: 9px;
+  padding: 0 15px 0 14px; height: 100%;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--ts-ink); font-family: inherit; font-size: inherit;
+  transition: background 140ms;
+}
+.pn-tstrip__log:hover { background: rgba(255,255,255,0.025); }
+.pn-tstrip__chev { color: var(--ts-faint); display: inline-flex; transition: transform 160ms; }
+.pn-tstrip__chev svg { width: 12px; height: 12px; }
+.pn-tstrip--open .pn-tstrip__chev { transform: rotate(90deg); color: var(--ts-green); }
+.pn-tstrip__title { font-weight: 600; letter-spacing: 0.05em; color: #C7BFAE; white-space: nowrap; }
+.pn-tstrip__live { display: inline-flex; align-items: center; gap: 6px; padding-left: 2px; }
+.pn-tstrip__livedot { position: relative; width: 7px; height: 7px; border-radius: 50%; background: var(--ts-green); flex: 0 0 auto; }
+.pn-tstrip__livedot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid var(--ts-green); opacity: 0.5; animation: ts-ping 1.8s cubic-bezier(0.16,1,0.3,1) infinite; }
+@keyframes ts-ping { 0% { transform: scale(0.6); opacity: 0.6; } 70%,100% { transform: scale(1.5); opacity: 0; } }
+.pn-tstrip__livetag { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; color: var(--ts-green); }
+
+.pn-tstrip__div { width: 1px; align-self: center; height: 22px; background: var(--ts-line-2); flex: 0 0 auto; }
+
+/* ---- center: stats rail ---- */
+.pn-tstrip__stats {
+  flex: 1; min-width: 0; height: 100%;
+  display: flex; align-items: center; gap: 0;
+  padding: 0 4px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 14px), transparent);
+}
+.pn-tstrip__stat { display: inline-flex; align-items: center; gap: 6px; padding: 0 13px; white-space: nowrap; height: 100%; }
+.pn-tstrip__stat .k { color: var(--ts-faint); letter-spacing: 0.04em; }
+.pn-tstrip__stat .v { color: var(--ts-ink); font-weight: 500; }
+.pn-tstrip__stat--green .v { color: var(--ts-green); }
+.pn-tstrip__stat--amber .v { color: var(--ts-amber); }
+.pn-tstrip__bolt { color: var(--ts-amber); font-size: 10px; }
+
+/* context-window gauge — the signature flourish */
+.pn-tstrip__ctx { display: inline-flex; align-items: center; gap: 9px; padding: 0 14px 0 13px; height: 100%; }
+.pn-tstrip__gauge { position: relative; width: 26px; height: 26px; flex: 0 0 auto; }
+.pn-tstrip__gauge svg { transform: rotate(-90deg); display: block; }
+.pn-tstrip__gauge__track { stroke: #38301F; }
+.pn-tstrip__gauge__fill { stroke: var(--ts-green); stroke-linecap: round; transition: stroke-dashoffset 400ms; }
+.pn-tstrip__ctxlabels { display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
+.pn-tstrip__ctxval { color: var(--ts-ink); font-weight: 600; }
+.pn-tstrip__ctxval b { color: var(--ts-green); font-weight: 600; }
+.pn-tstrip__ctxsub { color: var(--ts-faint); font-size: 9px; letter-spacing: 0.04em; }
+
+/* model badge */
+.pn-tstrip__model {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 8px; flex: 0 0 auto;
+  padding: 4px 9px; border-radius: 999px;
+  color: var(--ts-amber); border: 1px solid rgba(226,168,92,0.32); background: rgba(226,168,92,0.08);
+  font-size: 10px; font-weight: 600; white-space: nowrap;
+}
+.pn-tstrip__model .dotmod { width: 5px; height: 5px; border-radius: 50%; background: var(--ts-amber); }
+
+/* ---- right: actions ---- */
+.pn-tstrip__actions { display: flex; align-items: center; gap: 2px; padding-left: 6px; }
+.pn-tstrip__btn {
+  position: relative; width: 34px; height: 34px; border-radius: 8px;
+  display: grid; place-items: center; cursor: pointer;
+  background: transparent; border: 1px solid transparent; color: var(--ts-dim);
+  transition: background 140ms, color 140ms, border-color 140ms;
+}
+.pn-tstrip__btn:hover { background: rgba(255,255,255,0.04); color: #EDE6D6; }
+.pn-tstrip__btn svg { width: 16px; height: 16px; }
+.pn-tstrip__btn--cast { color: var(--ts-amber); }
+.pn-tstrip__btn--cast:hover { background: rgba(226,168,92,0.14); color: #F2C079; border-color: rgba(226,168,92,0.32); }
+.pn-tstrip__spark { font-size: 15px; line-height: 1; }
+/* tiny tooltip */
+.pn-tstrip__btn[data-tip]:hover::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: #0E0C08; color: #D8D1C2; font-size: 10px; letter-spacing: 0.02em; white-space: nowrap;
+  padding: 4px 8px; border-radius: 6px; border: 1px solid #322C20; box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+  pointer-events: none;
+}
+
+/* ---- expanded session-log panel (rises above the strip) ---- */
+.pn-tlog {
+  flex: 0 0 auto; max-height: 0; overflow: hidden;
+  background: #16130D; border-top: 1px solid var(--ts-line, #322C20);
+  transition: max-height 220ms ease;
+}
+.pn-tlog--open { max-height: 280px; overflow-y: auto; }
+.pn-tlog__inner { padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; }
+.pn-tlog__turn { display: flex; gap: 9px; align-items: baseline; }
+.pn-tlog__role { width: 60px; flex: 0 0 auto; text-transform: uppercase; font-size: 9px; letter-spacing: 0.1em; font-weight: 700; padding-top: 2px; }
+.pn-tlog__role--user { color: #897F6B; }
+.pn-tlog__role--asst { color: #7FC08C; }
+.pn-tlog__text { flex: 1; min-width: 0; color: #CBC4B5; line-height: 1.55; }
+.pn-tlog__tool {
+  display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 7px;
+  background: #1E1A12; border: 1px solid #2C2619;
+}
+.pn-tlog__toolchev { color: #645B49; font-size: 10px; }
+.pn-tlog__toolname { color: #E2A85C; font-weight: 600; }
+.pn-tlog__toolsum { color: #897F6B; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pn-tlog__diffstat .add { color: #7FC08C; }
+.pn-tlog__diffstat .rem { color: #D98469; }
+.pn-tlog__bash { background: #120F0A; border: 1px solid #2C2619; border-radius: 7px; padding: 8px 10px; }
+.pn-tlog__bashcmd { color: #CBC4B5; }
+.pn-tlog__bashcmd .p { color: #7FC08C; margin-right: 6px; }
+.pn-tlog__bashout { color: #847B68; margin-top: 4px; white-space: pre-wrap; }
