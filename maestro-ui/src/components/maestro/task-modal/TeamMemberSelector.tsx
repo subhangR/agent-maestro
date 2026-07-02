@@ -1,5 +1,4 @@
 import React, { useRef } from "react";
-import { createPortal } from "react-dom";
 import { TeamMember } from "../../../app/types/maestro";
 import { useDropdownPosition } from "../../../hooks/useDropdownPosition";
 import { AGENT_TOOL_LABELS } from "../../../app/constants/agentTools";
@@ -55,7 +54,16 @@ export function TeamMemberSelector({
                     )}
                     <span className="themedDropdownCaret">{showDropdown ? '\u25B4' : '\u25BE'}</span>
                 </button>
-                {showDropdown && pos && createPortal(
+                {/*
+                  * Rendered inline (NOT portaled to document.body) so the
+                  * dropdown stays a DOM descendant of the footer's picker
+                  * panel. The footer's outside-click handler uses
+                  * pickerPanelRef.contains(target); a document.body sibling
+                  * would read as an "outside" click and swallow the selection
+                  * on mousedown (issue #131). The menu is position:fixed, so it
+                  * is still viewport-anchored and escapes the panel's overflow.
+                  */}
+                {showDropdown && pos && (
                     <>
                         <div
                             className="themedDropdownOverlay"
@@ -118,8 +126,7 @@ export function TeamMemberSelector({
                                 </div>
                             )}
                         </div>
-                    </>,
-                    document.body
+                    </>
                 )}
             </div>
             {selectedTeamMembers.length === 1 && (

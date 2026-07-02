@@ -1,7 +1,6 @@
 import React from "react";
 import { MentionsInput, Mention } from 'react-mentions';
-
-type SkillSuggestion = { id: string; display: string; description?: string; scope?: string };
+import { rankSkillSuggestions, ensureUniqueSuggestionIds, type SkillSuggestion } from "../../../utils/skillRanking";
 
 type TaskDescriptionFieldProps = {
     prompt: string;
@@ -114,7 +113,17 @@ export function TaskDescriptionField({
                     />
                     <Mention
                         trigger="/"
-                        data={skills}
+                        data={(query, callback) => {
+                            // Function data source: react-mentions renders and selects
+                            // (Tab/Enter) from exactly the array we return here, so the
+                            // displayed order is guaranteed to equal the selected item —
+                            // unlike the built-in array data source, which only applies a
+                            // substring filter and preserves insertion order (no relevance
+                            // ranking), which is what let a stale/irrelevant suggestion like
+                            // "gstack" render above "frontend-design" for a query like
+                            // "fronte" even though Tab correctly resolved to the latter.
+                            callback(ensureUniqueSuggestionIds(rankSkillSuggestions(skills, query)));
+                        }}
                         renderSuggestion={(entry, _search, _highlightedDisplay, _index, focused) => {
                             const skill = entry as SkillSuggestion;
                             const desc = typeof skill.description === 'string' ? skill.description : '';
