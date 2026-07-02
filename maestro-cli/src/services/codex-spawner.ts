@@ -63,6 +63,8 @@ export class CodexSpawner {
     }
     // Map Claude model names to Codex equivalents
     switch (model) {
+      case 'claude-fable-5':
+      case 'claude-fable-5[1m]':
       case 'claude-opus-4-8[1m]':
       case 'claude-opus-4-8':
       case 'claude-opus-4-7[1m]':
@@ -70,6 +72,7 @@ export class CodexSpawner {
       case 'opus':
       case 'opus[1m]':
         return 'gpt-5.4';
+      case 'claude-sonnet-5':
       case 'sonnet':
       case 'sonnet[1m]':
         // Map to a current Codex model. 'gpt-5.2-codex' was removed in PR #83 and

@@ -18,10 +18,13 @@ export type ClaudeModel =
   | 'sonnet[1m]'
   | 'opus'
   | 'opus[1m]'
+  | 'claude-fable-5'
+  | 'claude-fable-5[1m]'
   | 'claude-opus-4-8'
   | 'claude-opus-4-8[1m]'
   | 'claude-opus-4-7'
   | 'claude-opus-4-7[1m]'
+  | 'claude-sonnet-5'
   | 'claude-sonnet-4-6'
   | 'claude-haiku-4-5'
   | 'claude-opus-4-6';
@@ -39,6 +42,8 @@ export type GeminiModel = 'gemini-3-pro-preview' | 'gemini-2.5-pro';
 // Hermes models
 export type HermesModel =
   | 'hermes-default'
+  | 'anthropic:claude-fable-5'
+  | 'anthropic/claude-fable-5'
   | 'anthropic:claude-opus-4-8'
   | 'nous:anthropic/claude-opus-4.8'
   | 'openrouter:anthropic/claude-opus-4.8'

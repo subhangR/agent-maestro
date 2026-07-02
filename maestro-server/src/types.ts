@@ -214,15 +214,10 @@ export function normalizeMode(mode: string, hasCoordinator?: boolean): AgentMode
 /**
  * Retired model IDs mapped to their active replacements. Keep this map in sync
  * with the copies in maestro-cli (types/manifest.ts) and maestro-ui
- * (constants/agentTools.ts). Claude Fable 5 was retired; persisted configs are
- * migrated to Opus 4.8, preserving the 1M-context variant.
+ * (constants/agentTools.ts). Currently empty: Claude Fable 5 is an active model
+ * again, so its ids pass through unchanged. Add entries when a model is retired.
  */
-export const LEGACY_MODEL_ALIASES: Record<string, string> = {
-  'claude-fable-5': 'claude-opus-4-8',
-  'claude-fable-5[1m]': 'claude-opus-4-8[1m]',
-  'anthropic:claude-fable-5': 'anthropic:claude-opus-4-8',
-  'anthropic/claude-fable-5': 'anthropic:claude-opus-4-8',
-};
+export const LEGACY_MODEL_ALIASES: Record<string, string> = {};
 
 /** Normalize a (possibly retired) model id to its active replacement. */
 export function normalizeModelId(model: string): string;
