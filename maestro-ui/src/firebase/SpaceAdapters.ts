@@ -112,10 +112,10 @@ export async function installSpaceSpell(
   options?: SpellInstallOptions,
 ): Promise<SpellInstallResult> {
   const targetName = options?.nameOverride?.trim() || spaceSpell.name;
-  // NOTE: staging's spell system is action-based (createSpell/updateSpell/listSpells),
+  // NOTE: staging's spell system is rule-based (createSpell/updateSpell/listSpells),
   // replacing the old content-based custom-prompt API. The shared-spell `body`/`entityType`
   // fields have no direct home in the new model yet — spell push/pull is deferred, so we
-  // map name/description/icon and default color+action. TODO: wire body → SpellAction.
+  // map name/description/icon and install a single disabled inject-prompt rule (below).
   const existing = await maestroClient.listSpells();
   const conflict = (existing as any[]).find((p) => p?.name === targetName);
 
@@ -149,7 +149,15 @@ export async function installSpaceSpell(
     description: spaceSpell.description ?? '',
     icon: spaceSpell.icon ?? undefined,
     color: 'violet',
-    action: 'inject-prompt',
+    // Spells are multi-rule now. Shared-spell body/entityType have no home in the
+    // new model yet, so install a single disabled inject-prompt rule as a stub.
+    rules: [
+      {
+        enabled: false,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: { type: 'inject-prompt', prompt: spaceSpell.description || targetName },
+      },
+    ],
   });
   try {
     await SpaceSpellsClient.recordInstall(spaceSpell.spaceId, spaceSpell.id, user.uid);

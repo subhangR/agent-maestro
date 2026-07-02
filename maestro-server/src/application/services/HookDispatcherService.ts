@@ -6,8 +6,8 @@ import {
   HookDispatchSpellOutcome,
   Session,
   Spell,
-  SpellAction,
   SpellHookEvent,
+  SpellRule,
 } from '../../types';
 import { ISessionRepository } from '../../domain/repositories/ISessionRepository';
 import { ISpellRepository } from '../../domain/repositories/ISpellRepository';
@@ -16,28 +16,37 @@ import { ILogger } from '../../domain/common/ILogger';
 import { NotFoundError, ValidationError } from '../../domain/common/Errors';
 
 /**
- * P2/P3: Hook Dispatcher.
+ * Hook Dispatcher (v2 — multi-rule, no gate).
  *
  * Every Claude session binds each hook event once to `maestro hook dispatch <EVENT>`.
  * The CLI POSTs to /api/hooks/dispatch with {sessionId, event, payload}; we look up
- * Session.activeSpells, filter to spells whose trigger matches, execute the action,
- * and return a DispatchResult that the CLI translates to exit code + stdout/stderr.
+ * Session.activeSpells, resolve each to its Spell, iterate the spell's rules, keep
+ * enabled `hook`-type rules whose event + matcher match, execute each rule's action,
+ * and return a DispatchResult the CLI translates to exit code + stdout/stderr.
  *
- * Composition (when multiple active spells fire on the same event):
- *   - any spell with block:true wins → exit 2 with composed reasons
- *   - otherwise inject/feed stdout payloads are concatenated in iteration order
- *   - continue-loop signals compose by "any continue wins"; reasons joined
- *   - run-command / notify-channel actions all run; side effects accumulate
+ * Composition (when multiple rules across multiple active spells fire on one event):
+ *   - feed-context stdout is concatenated in (activeSpell × rule) order
+ *   - continue-loop signals compose by "any continue wins" on Stop/SubagentStop
+ *   - inject-prompt / run-command / notify-channel run for side effects
  *
- * failMode (per spell): on internal error inside that spell's action,
- *   - 'closed' → treated as a block (gate semantics) — fail-closed
- *   - 'open'   → spell is skipped, others continue (default)
+ * There is NO block path — `gate` was dropped. On an internal rule error the rule
+ * is skipped (fail-open) and the error surfaced for logging; other rules continue.
+ *
+ * run-command is ASYNC fire-and-forget (§11.5): the dispatcher kicks off execFile,
+ * returns from the hook immediately (contributes nothing to the synchronous exit
+ * code / stdout), and — when the command finishes, if `feedOutput` — delivers stdout
+ * asynchronously via `session:prompt_send`. This decouples command latency from the
+ * ~4s hook budget so long lint/test runs can still feed results back.
  */
 export class HookDispatcherService {
-  /** Hard cap on run-command duration; spells should not pin a hook for long. */
+  /** Hard cap on run-command duration; a runaway spell must not pin a process. */
   private static readonly COMMAND_TIMEOUT_MS = 30_000;
-  /** Max stdout returned by run-command per spell. */
+  /** Max stdout captured from a run-command before truncation. */
   private static readonly COMMAND_MAX_BUFFER = 256 * 1024;
+  /** Cap concurrent run-commands kicked off per dispatch (PI-10). */
+  private static readonly MAX_RUN_COMMANDS_PER_DISPATCH = 5;
+  /** Cap on target length fed to a user-supplied regex (ReDoS hardening). */
+  private static readonly MATCHER_TARGET_MAX = 4096;
 
   constructor(
     private sessionRepo: ISessionRepository,
@@ -53,14 +62,12 @@ export class HookDispatcherService {
     const session = await this.sessionRepo.findById(payload.sessionId);
     if (!session) throw new NotFoundError('Session', payload.sessionId);
 
-    const matchedActives = this.matchActiveSpells(session, payload.event, payload.payload);
-    if (matchedActives.length === 0) {
-      return this.emptyResult();
-    }
+    const actives = (session.activeSpells ?? []).filter(a => a.enabled);
+    if (actives.length === 0) return this.emptyResult();
 
-    // Resolve to Spell entities; drop any whose definition is missing.
+    // Resolve each active spell to its definition; drop any that are missing.
     const resolved: { active: ActiveSpell; spell: Spell }[] = [];
-    for (const active of matchedActives) {
+    for (const active of actives) {
       try {
         const spell = await this.spellRepo.findById(active.spellId);
         if (!spell) {
@@ -79,63 +86,57 @@ export class HookDispatcherService {
         });
       }
     }
-
     if (resolved.length === 0) return this.emptyResult();
 
     const outcomes: HookDispatchSpellOutcome[] = [];
+    // spellId → (ruleId → newIteration) — applied in one sessionRepo.update at the end.
+    const iterationUpdates = new Map<string, Record<string, number>>();
+    let runCommandsStarted = 0;
+
     for (const { active, spell } of resolved) {
-      try {
-        const outcome = await this.executeAction(session, active, spell, payload);
-        outcomes.push(outcome);
-      } catch (err) {
-        const msg = (err as Error).message;
-        this.logger.error('Spell action threw', err as Error);
-        // failMode === 'closed' → treat as a block; 'open' (default) → skip.
-        if (spell.failMode === 'closed') {
-          outcomes.push({
-            spellId: spell.id,
-            action: spell.action,
-            block: true,
-            reason: `Spell "${spell.name}" failed (fail-closed): ${msg}`,
-            error: msg,
+      const rules = (spell.rules ?? []).filter(rule => this.ruleMatches(rule, payload.event, payload.payload));
+      for (const rule of rules) {
+        try {
+          const outcome = await this.executeRuleAction(session, active, spell, rule, payload, {
+            iterationUpdates,
+            canStartRunCommand: () => {
+              if (runCommandsStarted >= HookDispatcherService.MAX_RUN_COMMANDS_PER_DISPATCH) return false;
+              runCommandsStarted += 1;
+              return true;
+            },
           });
-        } else {
-          outcomes.push({
+          outcomes.push(outcome);
+          void this.emitRuleFired(session, spell, rule, payload.event, outcome);
+        } catch (err) {
+          const msg = (err as Error).message;
+          this.logger.error('Spell rule action threw', err as Error);
+          const outcome: HookDispatchSpellOutcome = {
             spellId: spell.id,
-            action: spell.action,
+            ruleId: rule.id,
+            action: rule.action.type,
             error: msg,
-          });
+          };
+          outcomes.push(outcome);
+          void this.emitRuleFired(session, spell, rule, payload.event, outcome);
         }
       }
     }
+
+    await this.persistIterationUpdates(session, iterationUpdates);
 
     return this.composeResult(outcomes, payload.event);
   }
 
   // --- Matching ---
 
-  /**
-   * Pick the active spells whose enabled trigger matches the given hook event.
-   * Matcher semantics:
-   *   - PreToolUse / PostToolUse: regex against payload.tool_name (case-sensitive).
-   *   - other events with matcher: regex against payload.matcherTarget if provided,
-   *     else free-text match against JSON-stringified payload.
-   *   - no matcher: always matches the event.
-   * Invalid regex falls back to substring contains.
-   */
-  private matchActiveSpells(
-    session: Session,
-    event: SpellHookEvent,
-    payload?: Record<string, any>,
-  ): ActiveSpell[] {
-    const actives = session.activeSpells ?? [];
-    return actives.filter(a => {
-      if (!a.enabled) return false;
-      if (a.hookEvent && a.hookEvent !== event) return false;
-      if (!a.matcher) return true;
-      const target = this.matcherTarget(event, payload);
-      return this.matcherMatches(a.matcher, target);
-    });
+  /** A rule fires when it is enabled, is a hook trigger for this event, and its matcher matches. */
+  private ruleMatches(rule: SpellRule, event: SpellHookEvent, payload?: Record<string, any>): boolean {
+    if (!rule.enabled) return false;
+    if (rule.trigger.type !== 'hook') return false; // schedule rules never fire in v1
+    if (rule.trigger.hookEvent !== event) return false;
+    const matcher = rule.trigger.matcher;
+    if (!matcher) return true;
+    return this.matcherMatches(matcher, this.matcherTarget(event, payload));
   }
 
   private matcherTarget(event: SpellHookEvent, payload?: Record<string, any>): string {
@@ -155,20 +156,16 @@ export class HookDispatcherService {
     );
   }
 
-  /** Cap on target length fed to user-supplied regex (ReDoS hardening). */
-  private static readonly MATCHER_TARGET_MAX = 4096;
-
   private matcherMatches(matcher: string, target: string): boolean {
     if (!target) return false;
     // Cap target length so a pre-existing/legacy unsafe pattern can't stall the
-    // event loop on an attacker-influenced long input. Validation now also
-    // rejects catastrophic-backtracking patterns at create/update time.
+    // event loop on an attacker-influenced long input. Validation also rejects
+    // catastrophic-backtracking patterns at create/update time.
     const t = target.length > HookDispatcherService.MATCHER_TARGET_MAX
       ? target.slice(0, HookDispatcherService.MATCHER_TARGET_MAX)
       : target;
     try {
-      const re = new RegExp(matcher);
-      return re.test(t);
+      return new RegExp(matcher).test(t);
     } catch {
       return t.includes(matcher);
     }
@@ -176,46 +173,51 @@ export class HookDispatcherService {
 
   // --- Action execution ---
 
-  private async executeAction(
+  private async executeRuleAction(
     session: Session,
     active: ActiveSpell,
     spell: Spell,
+    rule: SpellRule,
     payload: HookDispatchPayload,
+    ctx: {
+      iterationUpdates: Map<string, Record<string, number>>;
+      canStartRunCommand: () => boolean;
+    },
   ): Promise<HookDispatchSpellOutcome> {
-    const action: SpellAction = spell.action;
-    switch (action) {
+    const action = rule.action;
+    switch (action.type) {
       case 'inject-prompt':
-        return this.execInjectPrompt(session, spell, payload);
+        return this.execInjectPrompt(session, spell, rule, action.prompt);
       case 'feed-context':
-        return this.execFeedContext(spell);
-      case 'gate':
-        return this.execGate(spell, payload);
+        return this.execFeedContext(spell, rule, action.prompt);
       case 'continue-loop':
-        return this.execContinueLoop(session, active, spell);
+        return this.execContinueLoop(active, spell, rule, action, ctx.iterationUpdates);
       case 'run-command':
-        return this.execRunCommand(spell);
+        return this.execRunCommand(session, spell, rule, action, payload, ctx.canStartRunCommand);
       case 'notify-channel':
-        return this.execNotifyChannel(session, spell, payload);
-      default:
+        return this.execNotifyChannel(session, spell, rule, action, payload);
+      default: {
+        // Exhaustiveness guard — the discriminated union makes this unreachable.
+        const _never: never = action;
         return {
           spellId: spell.id,
-          action,
-          error: `Unknown spell action: ${action}`,
+          ruleId: rule.id,
+          action: (_never as any)?.type,
+          error: 'Unknown spell action',
         };
+      }
     }
   }
 
   private async execInjectPrompt(
     session: Session,
     spell: Spell,
-    _payload: HookDispatchPayload,
+    rule: SpellRule,
+    prompt: string,
   ): Promise<HookDispatchSpellOutcome> {
-    const text = this.spellPromptText(spell);
-    // The PTY-write path: emit session:prompt_send so the running terminal
-    // receives it the same way as a UI cast.
     await this.eventBus.emit('session:prompt_send', {
       sessionId: session.id,
-      content: text,
+      content: prompt,
       mode: 'send' as const,
       senderSessionId: null,
       senderProjectId: null,
@@ -224,216 +226,241 @@ export class HookDispatcherService {
     });
     return {
       spellId: spell.id,
+      ruleId: rule.id,
       action: 'inject-prompt',
-      // Do NOT return stdout: the CLI's applyResult writes any stdout from this
-      // dispatch back to the terminal unconditionally, and we've already emitted
-      // session:prompt_send above — returning text here would double-deliver on
-      // any hook that surfaces stdout (UserPromptSubmit, SessionStart, etc.).
+      // No stdout: the prompt is delivered via session:prompt_send above, and the
+      // CLI writes any returned stdout back to the terminal — returning it here
+      // would double-deliver on stdout-surfacing hooks (UserPromptSubmit, etc.).
     };
   }
 
-  private async execFeedContext(spell: Spell): Promise<HookDispatchSpellOutcome> {
-    return {
-      spellId: spell.id,
-      action: 'feed-context',
-      stdout: this.spellPromptText(spell),
-    };
-  }
-
-  private async execGate(
+  private async execFeedContext(
     spell: Spell,
-    payload: HookDispatchPayload,
+    rule: SpellRule,
+    prompt: string,
   ): Promise<HookDispatchSpellOutcome> {
-    // The gate spell BLOCKS by default; the model can re-invoke after the block
-    // message lands in stderr. Reason composition includes the matched target so
-    // the agent knows which call was blocked.
-    const target = this.matcherTarget('PreToolUse', payload.payload);
-    const reason =
-      spell.description ||
-      `Blocked by spell "${spell.name}"${target ? ` (matched: ${target})` : ''}.`;
     return {
       spellId: spell.id,
-      action: 'gate',
-      block: true,
-      reason,
+      ruleId: rule.id,
+      action: 'feed-context',
+      stdout: prompt,
     };
   }
 
   private async execContinueLoop(
-    session: Session,
     active: ActiveSpell,
     spell: Spell,
+    rule: SpellRule,
+    action: { type: 'continue-loop'; loopType?: string; maxIterations?: number },
+    iterationUpdates: Map<string, Record<string, number>>,
   ): Promise<HookDispatchSpellOutcome> {
-    const cap = Math.max(1, spell.maxIterations ?? 1);
-    const next = (active.iteration ?? 0) + 1;
+    const cap = Math.max(1, action.maxIterations ?? 1);
+    const current = active.ruleIterations?.[rule.id] ?? 0;
+    const next = current + 1;
     if (next > cap) {
-      // Loop is done — return no block / no continue so Stop succeeds normally.
+      // Loop is done — no continue so Stop/SubagentStop succeeds normally.
       return {
         spellId: spell.id,
+        ruleId: rule.id,
         action: 'continue-loop',
         continue: false,
-        reason: `Loop "${spell.name}" reached max iterations (${cap}).`,
+        reason: `Loop "${rule.label ?? spell.name}" reached max iterations (${cap}).`,
       };
     }
-    // Persist the bumped iteration so subsequent Stops respect the cap.
-    const updatedActives = (session.activeSpells ?? []).map(a =>
-      a.spellId === spell.id ? { ...a, iteration: next } : a,
-    );
-    await this.sessionRepo.update(session.id, { activeSpells: updatedActives });
+    // Stage the bumped iteration; persisted once after all rules run.
+    const perSpell = iterationUpdates.get(spell.id) ?? {};
+    perSpell[rule.id] = next;
+    iterationUpdates.set(spell.id, perSpell);
 
-    const reason = this.loopContinuationReason(spell, next, cap);
+    const reason = this.loopContinuationReason(spell, rule, action.loopType, next, cap);
     return {
       spellId: spell.id,
+      ruleId: rule.id,
       action: 'continue-loop',
       continue: true,
       reason,
-      // Loops can also feed a hint into the next turn via stdout when allowed.
       stdout: reason,
     };
   }
 
-  private async execRunCommand(spell: Spell): Promise<HookDispatchSpellOutcome> {
-    // Until spells carry an explicit command, run-command is a metadata-only
-    // pass-through that records the intent. Real shell execution will arrive
-    // with the CLI's HookExecutor in a follow-up; until then we don't shell out
-    // implicitly to avoid arbitrary code execution from spell content.
-    const cmd = (spell as any).command as string | undefined;
-    const args = ((spell as any).commandArgs as string[] | undefined) ?? [];
-    if (!cmd || typeof cmd !== 'string') {
+  private execRunCommand(
+    session: Session,
+    spell: Spell,
+    rule: SpellRule,
+    action: { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean },
+    payload: HookDispatchPayload,
+    canStart: () => boolean,
+  ): HookDispatchSpellOutcome {
+    if (!canStart()) {
+      this.logger.warn('run-command skipped: per-dispatch concurrency cap reached', {
+        sessionId: session.id,
+        spellId: spell.id,
+        ruleId: rule.id,
+      });
       return {
         spellId: spell.id,
+        ruleId: rule.id,
         action: 'run-command',
-        stdout: '',
+        error: 'run-command skipped (concurrency cap)',
       };
     }
-    return new Promise<HookDispatchSpellOutcome>(resolve => {
-      execFile(
-        cmd,
-        args,
-        {
-          timeout: HookDispatcherService.COMMAND_TIMEOUT_MS,
-          maxBuffer: HookDispatcherService.COMMAND_MAX_BUFFER,
-        },
-        (err, stdout, stderr) => {
-          if (err) {
-            resolve({
-              spellId: spell.id,
-              action: 'run-command',
-              error: stderr?.toString() || err.message,
-            });
-            return;
-          }
-          resolve({
+
+    const cwd = action.cwd
+      || (payload.payload?.cwd as string | undefined)
+      || session.env?.PWD
+      || undefined;
+
+    // Fire-and-forget: kick off the child and return immediately. The command's
+    // latency is fully decoupled from the hook response. When it finishes, if
+    // feedOutput is set, stdout is delivered asynchronously via session:prompt_send.
+    execFile(
+      action.command,
+      action.args ?? [],
+      {
+        cwd,
+        timeout: HookDispatcherService.COMMAND_TIMEOUT_MS,
+        maxBuffer: HookDispatcherService.COMMAND_MAX_BUFFER,
+      },
+      (err, stdout, stderr) => {
+        const tag = `[${spell.name} · ${rule.label ?? rule.id}]`;
+        if (err) {
+          this.logger.warn('run-command failed', {
+            sessionId: session.id,
             spellId: spell.id,
-            action: 'run-command',
-            stdout: stdout?.toString() ?? '',
+            ruleId: rule.id,
+            error: (stderr?.toString() || err.message).slice(0, 500),
           });
-        },
-      );
-    });
+          return;
+        }
+        if (!action.feedOutput) return;
+        const out = (stdout?.toString() ?? '').trim();
+        if (!out) return;
+        void this.eventBus.emit('session:prompt_send', {
+          sessionId: session.id,
+          content: `${tag} command output:\n${out}`,
+          mode: 'send' as const,
+          senderSessionId: null,
+          senderProjectId: null,
+          targetProjectId: session.projectId ?? null,
+          timestamp: Date.now(),
+        });
+      },
+    );
+
+    // Synchronous outcome contributes nothing to exit code / stdout.
+    return {
+      spellId: spell.id,
+      ruleId: rule.id,
+      action: 'run-command',
+    };
   }
 
   private async execNotifyChannel(
     session: Session,
     spell: Spell,
+    rule: SpellRule,
+    action: { type: 'notify-channel'; channel?: string; message?: string },
     payload: HookDispatchPayload,
   ): Promise<HookDispatchSpellOutcome> {
-    // Surface as a notify:progress event. The frontend / channel relay picks it
-    // up and routes to the configured Telegram/Slack/etc. channel — keeping the
-    // dispatcher decoupled from any specific transport.
-    const message = `[${spell.name}] ${spell.description || 'spell fired'} on ${payload.event}`;
+    const message = action.message || `[${spell.name}] fired on ${payload.event}`;
+    // Thread `channel` as an optional routing hint (§11.7); the downstream relay
+    // falls back to a default channel when it is absent.
     await this.eventBus.emit('notify:progress', {
       sessionId: session.id,
       message,
+      channel: action.channel,
     });
     return {
       spellId: spell.id,
+      ruleId: rule.id,
       action: 'notify-channel',
     };
   }
 
   // --- Helpers ---
 
-  private spellPromptText(spell: Spell): string {
-    // For now the prompt body is the spell's description (the foundation Spell
-    // entity doesn't carry a separate body field). A future field can override
-    // this without changing the dispatcher contract.
-    return spell.description || spell.name;
-  }
-
-  private loopContinuationReason(spell: Spell, next: number, cap: number): string {
-    const base = `Loop "${spell.name}" iteration ${next}/${cap}`;
-    if (spell.loopType === 'critic-refine') {
+  private loopContinuationReason(
+    spell: Spell,
+    rule: SpellRule,
+    loopType: string | undefined,
+    next: number,
+    cap: number,
+  ): string {
+    const base = `Loop "${rule.label ?? spell.name}" iteration ${next}/${cap}`;
+    if (loopType === 'critic-refine') {
       return `${base}: critique your previous output and refine it. Address any issues you find.`;
     }
-    if (spell.loopType === 'plan-execute') {
+    if (loopType === 'plan-execute') {
       return `${base}: now execute the plan you wrote. Report progress as you go.`;
     }
-    if (spell.loopType === 'continue-until-done') {
+    if (loopType === 'continue-until-done') {
       return `${base}: continue until the task is complete.`;
     }
     return `${base}.`;
   }
 
-  private composeResult(outcomes: HookDispatchSpellOutcome[], event?: SpellHookEvent): DispatchResult {
-    const blocking = outcomes.filter(o => o.block);
-    const continuing = outcomes.filter(o => o.continue);
-
-    // Gate wins: any block → exit 2 with composed reasons.
-    if (blocking.length > 0) {
-      const reason = blocking
-        .map(o => o.reason || `Blocked by ${o.spellId}.`)
-        .join('\n\n');
-      return {
-        exitCode: 2,
-        stdout: '',
-        reason,
-        blocked: true,
-        continued: false,
-        spells: outcomes,
+  private async emitRuleFired(
+    session: Session,
+    spell: Spell,
+    rule: SpellRule,
+    event: SpellHookEvent,
+    outcome: HookDispatchSpellOutcome,
+  ): Promise<void> {
+    try {
+      await this.eventBus.emit('spell:rule_fired', {
+        sessionId: session.id,
+        spellId: spell.id,
+        ruleId: rule.id,
+        event,
+        action: rule.action.type,
+        outcome: outcome.error ? 'error' : 'ok',
         timestamp: Date.now(),
-      };
+      });
+    } catch {
+      // Observability event must never affect dispatch.
     }
+  }
 
-    // Continue-loop signal: exit 2 on Stop/SubagentStop tells Claude to keep
-    // going. On any other event, exit 2 BLOCKS instead of continues, so
-    // downgrade to exit 0 and surface the reason via stdout (hint, not block).
-    if (continuing.length > 0) {
+  private async persistIterationUpdates(
+    session: Session,
+    iterationUpdates: Map<string, Record<string, number>>,
+  ): Promise<void> {
+    if (iterationUpdates.size === 0) return;
+    const nextActives = (session.activeSpells ?? []).map(a => {
+      const updates = iterationUpdates.get(a.spellId);
+      if (!updates) return a;
+      return { ...a, ruleIterations: { ...(a.ruleIterations ?? {}), ...updates } };
+    });
+    await this.sessionRepo.update(session.id, { activeSpells: nextActives });
+  }
+
+  /**
+   * Simplified composition (§11.3): no block path. The only exit-2 signal is a
+   * continue-loop on Stop/SubagentStop. Everything else → exit 0 + concatenated
+   * feed-context stdout.
+   */
+  private composeResult(outcomes: HookDispatchSpellOutcome[], event?: SpellHookEvent): DispatchResult {
+    const continuing = outcomes.filter(o => o.continue);
+    const isStopEvent = event === 'Stop' || event === 'SubagentStop';
+    const stdout = outcomes.map(o => o.stdout ?? '').filter(Boolean).join('\n\n');
+
+    if (continuing.length > 0 && isStopEvent) {
       const reason = continuing
         .map(o => o.reason || `Continue from ${o.spellId}.`)
         .join('\n\n');
-      const stdout = outcomes
-        .map(o => o.stdout ?? '')
-        .filter(Boolean)
-        .join('\n\n');
-      const isStopEvent = event === 'Stop' || (event as string) === 'SubagentStop';
-      if (isStopEvent) {
-        return {
-          exitCode: 2,
-          stdout,
-          reason,
-          blocked: false,
-          continued: true,
-          spells: outcomes,
-          timestamp: Date.now(),
-        };
-      }
-      // Non-Stop event: emit hint via stdout, do NOT block.
       return {
-        exitCode: 0,
-        stdout: [stdout, reason].filter(Boolean).join('\n\n'),
+        exitCode: 2,
+        stdout,
+        reason,
         blocked: false,
-        continued: false,
+        continued: true,
         spells: outcomes,
         timestamp: Date.now(),
       };
     }
 
-    // Plain composition: concatenate stdout payloads.
-    const stdout = outcomes
-      .map(o => o.stdout ?? '')
-      .filter(Boolean)
-      .join('\n\n');
+    // Non-Stop continue-loop is downgraded to a stdout hint (composeResult never
+    // blocks a non-Stop event); plain feed-context stdout flows through here too.
     return {
       exitCode: 0,
       stdout,

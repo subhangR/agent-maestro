@@ -26,7 +26,8 @@ interface SpellActivationState {
   castSpell: (input: CastSpellInput) => Promise<CastResult>;
   setSpellEnabled: (sessionId: string, spellId: string, enabled: boolean) => Promise<void>;
   removeActiveSpell: (sessionId: string, spellId: string) => Promise<void>;
-  resetIteration: (sessionId: string, spellId: string) => Promise<void>;
+  /** Reset loop counters for a spell; pass ruleId to target a single rule. */
+  resetIteration: (sessionId: string, spellId: string, ruleId?: string) => Promise<void>;
   consumeReceipt: () => void;
 }
 
@@ -83,8 +84,11 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
     await maestroClient.deactivateSpell(spellId, [sessionId]);
   },
 
-  resetIteration: async (_sessionId, _spellId) => {
-    // Server-side reset endpoint not yet exposed. Placeholder for P3 wiring.
+  resetIteration: async (sessionId, spellId, ruleId) => {
+    // Optimistic per-rule reset (ruleIterations[ruleId] = 0). A dedicated server
+    // reset endpoint is not exposed yet; the WS spell:activated reconciliation
+    // overwrites this once the dispatcher advances counters again.
+    useActiveSpellsStore.getState().resetRuleIterations({ maestroSessionId: sessionId, spellId, ruleId });
   },
 
   consumeReceipt: () => set({ lastCastReceipt: null }),
@@ -98,10 +102,12 @@ export function useActiveSpellsForSession(sessionId: string | null | undefined):
 }
 const EMPTY_LIST: ActiveSpellView[] = [];
 
-/** Iteration progress for a session/spell pair. */
+/** Summed loop-iteration count for a session/spell pair (across loop rules). */
 export function useIterationState(sessionId: string, spellId: string): { current: number; max: number } {
-  return useActiveSpellsStore((s) => {
+  const current = useActiveSpellsStore((s) => {
     const row = s.byMaestroSessionId[sessionId]?.find((x) => x.spellId === spellId);
-    return { current: row?.iteration ?? 0, max: 0 };
+    const iters = row?.ruleIterations ?? {};
+    return Object.values(iters).reduce((a, b) => a + b, 0);
   });
+  return { current, max: 0 };
 }

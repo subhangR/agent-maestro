@@ -2,6 +2,7 @@ import React from 'react';
 import { useMaestroStore } from '../../stores/useMaestroStore';
 import { useSpellLibraryStore } from '../../stores/useSpellLibraryStore';
 import { useSpellLauncherStore } from '../../stores/useSpellLauncherStore';
+import { spellRuleSummary } from '../../utils/spellSummary';
 
 export interface TaskSpellAssignmentProps {
   taskId: string;
@@ -51,7 +52,7 @@ export const TaskSpellAssignment = React.memo(function TaskSpellAssignment({
             <li key={id} className="sp-task-spells__item" data-spell-color={spell?.color}>
               <span className="sp-task-spells__icon" aria-hidden>{spell?.icon ?? '✦'}</span>
               <span className="sp-task-spells__name">{spell?.name ?? id}</span>
-              <span className="sp-task-spells__action">{spell?.action ?? ''}</span>
+              <span className="sp-task-spells__action">{spell ? spellRuleSummary(spell) : ''}</span>
               {editable && (
                 <button
                   type="button"

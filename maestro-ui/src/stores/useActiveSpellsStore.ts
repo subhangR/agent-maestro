@@ -14,7 +14,8 @@ export interface ActiveSpellView {
   /** ms epoch — cast time defines outside-in order (oldest outermost). */
   castAt: number;
   enabled: boolean;
-  iteration: number;
+  /** ruleId → iteration (loops are per-rule now). */
+  ruleIterations: Record<string, number>;
 }
 
 interface ActiveSpellsState {
@@ -30,7 +31,7 @@ interface ActiveSpellsState {
     ensembleId?: string;
     castAt: number;
     enabled: boolean;
-    iteration: number;
+    ruleIterations?: Record<string, number>;
   }) => void;
 
   /** Remove a spell from the named sessions (handles `spell:deactivated`). */
@@ -50,9 +51,20 @@ interface ActiveSpellsState {
       ensembleId?: string;
       castAt: number;
       enabled: boolean;
-      iteration: number;
+      ruleIterations?: Record<string, number>;
     }>,
   ) => void;
+
+  /**
+   * Optimistically reset loop iteration counters for a spell on a session.
+   * Zeroes a single rule when `ruleId` is given, else all of them. The server
+   * WS reconciliation (spell:activated) overwrites this once wired.
+   */
+  resetRuleIterations: (params: {
+    maestroSessionId: string;
+    spellId: string;
+    ruleId?: string;
+  }) => void;
 
   /** Clear all active spells for one or more sessions (e.g. on close). */
   clearSession: (maestroSessionId: string) => void;
@@ -66,13 +78,13 @@ function sortByCastAt(a: ActiveSpellView, b: ActiveSpellView): number {
 export const useActiveSpellsStore = create<ActiveSpellsState>((set) => ({
   byMaestroSessionId: {},
 
-  activate: ({ sessionIds, spellId, spellName, color, ensembleId, castAt, enabled, iteration }) => {
+  activate: ({ sessionIds, spellId, spellName, color, ensembleId, castAt, enabled, ruleIterations }) => {
     set((state) => {
       const next = { ...state.byMaestroSessionId };
       const colorId = resolveSpellColorId(color);
       for (const sid of sessionIds) {
         const current = next[sid] ? next[sid].filter((s) => s.spellId !== spellId) : [];
-        current.push({ spellId, spellName, colorId, ensembleId, castAt, enabled, iteration });
+        current.push({ spellId, spellName, colorId, ensembleId, castAt, enabled, ruleIterations: ruleIterations ?? {} });
         current.sort(sortByCastAt);
         next[sid] = current;
       }
@@ -103,12 +115,28 @@ export const useActiveSpellsStore = create<ActiveSpellsState>((set) => ({
         ensembleId: s.ensembleId,
         castAt: s.castAt,
         enabled: s.enabled,
-        iteration: s.iteration,
+        ruleIterations: s.ruleIterations ?? {},
       }));
       list.sort(sortByCastAt);
       const next = { ...state.byMaestroSessionId };
       if (list.length === 0) delete next[maestroSessionId];
       else next[maestroSessionId] = list;
+      return { byMaestroSessionId: next };
+    });
+  },
+
+  resetRuleIterations: ({ maestroSessionId, spellId, ruleId }) => {
+    set((state) => {
+      const current = state.byMaestroSessionId[maestroSessionId];
+      if (!current) return state;
+      const next = { ...state.byMaestroSessionId };
+      next[maestroSessionId] = current.map((s) => {
+        if (s.spellId !== spellId) return s;
+        const iters = { ...s.ruleIterations };
+        if (ruleId) iters[ruleId] = 0;
+        else for (const k of Object.keys(iters)) iters[k] = 0;
+        return { ...s, ruleIterations: iters };
+      });
       return { byMaestroSessionId: next };
     });
   },

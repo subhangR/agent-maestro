@@ -10,8 +10,10 @@ const HOOK_EVENTS = [
   'PostToolUse',
   'UserPromptSubmit',
   'Stop',
+  'SubagentStop',
   'Notification',
   'SessionStart',
+  'SessionEnd',
 ] as const;
 type HookEvent = typeof HOOK_EVENTS[number];
 

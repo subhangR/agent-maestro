@@ -2012,18 +2012,14 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             }
           }
           if (uniqueSpellIds.length > 0) {
+            // The CLI auto-activator only needs id + display fields; it activates
+            // by id and the server re-reads the full rules at dispatch time.
             const resolvedSpells: Array<{
               id: string;
               name: string;
               description?: string;
               icon?: string;
               color?: string;
-              action?: string;
-              loopType?: string;
-              trigger?: { hookEvent: string; matcher?: string; enabled?: boolean };
-              failMode?: 'open' | 'closed';
-              maxIterations?: number;
-              skillRef?: string;
             }> = [];
             for (const id of uniqueSpellIds) {
               try {
@@ -2035,18 +2031,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
                   description: spell.description,
                   icon: spell.icon,
                   color: spell.color,
-                  action: spell.action,
-                  loopType: spell.loopType,
-                  trigger: spell.trigger
-                    ? {
-                        hookEvent: spell.trigger.hookEvent,
-                        matcher: spell.trigger.matcher,
-                        enabled: spell.trigger.enabled,
-                      }
-                    : undefined,
-                  failMode: spell.failMode,
-                  maxIterations: spell.maxIterations,
-                  skillRef: spell.skillRef,
                 });
               } catch {
                 // Missing/broken spell: skip silently so spawn isn't blocked.

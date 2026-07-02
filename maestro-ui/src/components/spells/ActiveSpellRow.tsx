@@ -1,6 +1,7 @@
 import React from 'react';
 import { useSpellLibraryStore } from '../../stores/useSpellLibraryStore';
 import { useSpellActivationStore } from '../../stores/useSpellActivationStore';
+import { loopRules, spellRuleSummary } from '../../utils/spellSummary';
 import type { ActiveSpellView } from '../../stores/useActiveSpellsStore';
 
 export interface ActiveSpellRowProps {
@@ -19,20 +20,25 @@ export const ActiveSpellRow = React.memo(function ActiveSpellRow({
   const resetIteration = useSpellActivationStore((s) => s.resetIteration);
 
   const name = spell?.name ?? active.spellName;
-  const isLoop = spell?.action === 'continue-loop';
-  const max = spell?.maxIterations ?? 0;
+  const loops = loopRules(spell);
+  const isLoop = loops.length > 0;
+  // Beads track the first loop rule; the reset button zeroes every loop rule.
+  const firstLoop = loops[0];
+  const max = firstLoop && firstLoop.action.type === 'continue-loop' ? (firstLoop.action.maxIterations ?? 0) : 0;
+  const cur = firstLoop ? (active.ruleIterations?.[firstLoop.id] ?? 0) : 0;
+  const summary = spell ? spellRuleSummary(spell) : '';
 
   return (
     <div className="sp-row" data-spell-color={active.colorId}>
       <span className="sp-row__dot" aria-hidden />
       <span className="sp-row__name">{name}</span>
-      {spell?.description && (
-        <span className="sp-row__desc">{spell.description}</span>
+      {summary && (
+        <span className="sp-row__desc">{summary}</span>
       )}
       {isLoop && max > 0 && (
-        <span className="sp-row__beads" aria-label={`Iteration ${active.iteration} of ${max}`}>
+        <span className="sp-row__beads" aria-label={`Iteration ${cur} of ${max}`}>
           {Array.from({ length: max }, (_, i) => (
-            <span key={i} className={`sp-row__bead ${i < active.iteration ? 'sp-row__bead--on' : ''}`} aria-hidden />
+            <span key={i} className={`sp-row__bead ${i < cur ? 'sp-row__bead--on' : ''}`} aria-hidden />
           ))}
         </span>
       )}

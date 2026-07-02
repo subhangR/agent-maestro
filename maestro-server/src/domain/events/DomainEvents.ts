@@ -157,7 +157,8 @@ export interface NotifyNeedsInputEvent {
 
 export interface NotifyProgressEvent {
   type: 'notify:progress';
-  data: { sessionId: string; taskId?: string; message?: string };
+  /** `channel` is an optional routing hint from notify-channel spell rules (§11.7). */
+  data: { sessionId: string; taskId?: string; message?: string; channel?: string };
 }
 
 // Modal Events
@@ -432,7 +433,7 @@ export interface TypedEventMap {
   'notify:session_completed': { sessionId: string; name: string };
   'notify:session_failed': { sessionId: string; name: string };
   'notify:needs_input': { sessionId: string; name: string; message?: string };
-  'notify:progress': { sessionId: string; taskId?: string; message?: string };
+  'notify:progress': { sessionId: string; taskId?: string; message?: string; channel?: string };
   'session:modal': {
     sessionId: string;
     modalId: string;
@@ -478,6 +479,16 @@ export interface TypedEventMap {
   'spell:invoked': SpellInvocationResult;
   'spell:activated': SpellActivatedPayload;
   'spell:deactivated': SpellDeactivatedPayload;
+  // PI-6: lightweight per-rule observability so silent dispatch failures are visible.
+  'spell:rule_fired': {
+    sessionId: string;
+    spellId: string;
+    ruleId: string;
+    event: string;
+    action: string;
+    outcome: 'ok' | 'error';
+    timestamp: number;
+  };
   // Ensemble events
   'ensemble:created': Ensemble;
   'ensemble:updated': Ensemble;

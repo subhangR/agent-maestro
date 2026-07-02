@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Request, Response, NextFunction } from 'express';
+import { ACTIONS_BY_EVENT } from '../types';
 
 // --- Reusable patterns ---
 
@@ -510,21 +511,21 @@ export const updateCustomPromptSchema = z.object({
   entityType: spellEntityTypeSchema.optional(),
 }).strict();
 
-// --- Spell entity (P1 foundation) ---
+// --- Spell entity (v2 — multi-rule, discriminated unions) ---
 
 const spellColorSchema = z.enum([
   'amber', 'rose', 'violet', 'sky', 'emerald', 'fuchsia', 'lime', 'cyan', 'indigo',
 ]);
-const spellActionSchema = z.enum([
-  'inject-prompt', 'feed-context', 'gate', 'continue-loop', 'run-command', 'notify-channel',
+const spellActionTypeSchema = z.enum([
+  'inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel',
 ]);
 const spellLoopTypeSchema = z.enum([
   'single-shot', 'continue-until-done', 'plan-execute', 'critic-refine',
 ]);
 const spellHookEventSchema = z.enum([
-  'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop', 'Notification', 'SessionStart',
+  'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop',
+  'SubagentStop', 'Notification', 'SessionStart', 'SessionEnd',
 ]);
-const spellFailModeSchema = z.enum(['open', 'closed']);
 /**
  * Reject regular-expression patterns prone to catastrophic backtracking.
  * The spell matcher runs `new RegExp(matcher).test(target)` on the hot hook
@@ -559,7 +560,10 @@ function isSafeRegex(pattern: string): boolean {
   return true;
 }
 
-const spellTriggerSchema = z.object({
+// Trigger — discriminated union on `type`. `schedule` is schema-ready but a
+// rule that carries one is REJECTED at save in v1 (see spellRuleSchema below).
+const spellHookTriggerSchema = z.object({
+  type: z.literal('hook'),
   hookEvent: spellHookEventSchema,
   matcher: z
     .string()
@@ -568,20 +572,83 @@ const spellTriggerSchema = z.object({
       message: 'matcher must be a valid, non-backtracking regular expression',
     })
     .optional(),
-  enabled: z.boolean(),
 }).strict();
+
+const spellScheduleTriggerSchema = z.object({
+  type: z.literal('schedule'),
+  cron: z.string().max(200).optional(),
+  intervalMs: z.number().int().positive().max(2_147_483_647).optional(),
+}).strict();
+
+const spellTriggerSchema = z.discriminatedUnion('type', [
+  spellHookTriggerSchema,
+  spellScheduleTriggerSchema,
+]);
+
+// Action config — discriminated union on `type` (PI-1). Each variant carries
+// and requires only its own fields; run-command exposes no timeoutMs (async).
+const spellActionConfigSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('inject-prompt'),
+    prompt: z.string().min(1).max(10_000),
+  }).strict(),
+  z.object({
+    type: z.literal('feed-context'),
+    prompt: z.string().min(1).max(10_000),
+  }).strict(),
+  z.object({
+    type: z.literal('run-command'),
+    command: z.string().min(1).max(1_000),
+    args: z.array(z.string().max(2_000)).max(50).optional(),
+    cwd: z.string().max(1_000).optional(),
+    feedOutput: z.boolean().optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('continue-loop'),
+    loopType: spellLoopTypeSchema.optional(),
+    maxIterations: z.number().int().min(1).max(100).optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('notify-channel'),
+    channel: z.string().max(100).optional(),
+    message: z.string().max(2_000).optional(),
+  }).strict(),
+]);
+
+// A single { trigger → action } rule. Cross-field checks (§11.4):
+//   1. reject `schedule` triggers in v1 (no engine yet — no dead config accrues)
+//   2. action.type must be allowed for the hook event (ACTIONS_BY_EVENT matrix)
+const spellRuleSchema = z.object({
+  id: safeId.optional(),
+  label: z.string().max(100).optional(),
+  enabled: z.boolean(),
+  trigger: spellTriggerSchema,
+  action: spellActionConfigSchema,
+}).strict().superRefine((rule, ctx) => {
+  if (rule.trigger.type === 'schedule') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['trigger', 'type'],
+      message: 'Scheduled triggers are not available yet',
+    });
+    return;
+  }
+  const allowed = ACTIONS_BY_EVENT[rule.trigger.hookEvent] ?? [];
+  if (!allowed.includes(rule.action.type)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['action', 'type'],
+      message: `Action "${rule.action.type}" is not allowed for hook event "${rule.trigger.hookEvent}"`,
+    });
+  }
+});
 
 export const createSpellSchema = z.object({
   name: shortString,
   description: z.string().max(1000),
   icon: z.string().max(10).optional(),
   color: spellColorSchema,
-  action: spellActionSchema,
-  loopType: spellLoopTypeSchema.optional(),
-  trigger: spellTriggerSchema.optional(),
-  failMode: spellFailModeSchema.optional(),
-  maxIterations: z.number().int().min(1).max(100).optional(),
-  skillRef: z.string().max(500).optional(),
+  rules: z.array(spellRuleSchema).min(1).max(20),
 }).strict();
 
 export const updateSpellSchema = z.object({
@@ -589,12 +656,7 @@ export const updateSpellSchema = z.object({
   description: z.string().max(1000).optional(),
   icon: z.string().max(10).optional(),
   color: spellColorSchema.optional(),
-  action: spellActionSchema.optional(),
-  loopType: spellLoopTypeSchema.optional(),
-  trigger: spellTriggerSchema.optional(),
-  failMode: spellFailModeSchema.optional(),
-  maxIterations: z.number().int().min(1).max(100).optional(),
-  skillRef: z.string().max(500).optional(),
+  rules: z.array(spellRuleSchema).min(1).max(20).optional(),
 }).strict();
 
 export const spellActivationSchema = z.object({

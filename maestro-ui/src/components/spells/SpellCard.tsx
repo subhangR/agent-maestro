@@ -1,5 +1,6 @@
 import React from 'react';
 import { resolveSpellColorId } from '../../app/constants/spellColors';
+import { describeRule, spellRuleSummary } from '../../utils/spellSummary';
 import type { Spell } from '../../app/types/maestro';
 
 export interface SpellCardProps {
@@ -21,12 +22,13 @@ export const SpellCard = React.memo(function SpellCard({
   density = 'comfortable',
 }: SpellCardProps) {
   const colorId = resolveSpellColorId(spell.color);
+  const rules = spell.rules ?? [];
   return (
     <button
       type="button"
       role="option"
       aria-selected={isSelected}
-      aria-label={`${spell.name} — ${spell.action}`}
+      aria-label={`${spell.name} — ${spellRuleSummary(spell)}`}
       data-spell-id={spell.id}
       data-focused={isFocused || undefined}
       className={`sp-card ${density === 'compact' ? 'sp-card--compact' : ''}`}
@@ -45,12 +47,12 @@ export const SpellCard = React.memo(function SpellCard({
         <span className="sp-card__name">{spell.name}</span>
         <span className="sp-card__desc">{spell.description}</span>
         <span className="sp-card__chips">
-          <span className="sp-card__chip">{spell.action}</span>
-          {spell.loopType && spell.loopType !== 'single-shot' && (
-            <span className="sp-card__chip">{spell.loopType}</span>
-          )}
-          {spell.trigger?.hookEvent && (
-            <span className="sp-card__chip sp-card__chip--trigger">🪝 {spell.trigger.hookEvent}</span>
+          {rules.length === 0 && <span className="sp-card__chip">no rules</span>}
+          {rules.slice(0, 2).map((r) => (
+            <span key={r.id} className="sp-card__chip sp-card__chip--trigger">🪝 {describeRule(r)}</span>
+          ))}
+          {rules.length > 2 && (
+            <span className="sp-card__chip">+{rules.length - 2} more</span>
           )}
         </span>
       </span>

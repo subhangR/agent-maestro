@@ -1423,6 +1423,226 @@ html[data-redesign] .sp-editor__save:disabled {
 }
 html[data-redesign] .sp-editor__discard { color: var(--pn-block) !important; }
 
+/* ---- Rule-list editor (redesign v2 multi-rule) ---- */
+html[data-redesign] .sp-editor__meta {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+html[data-redesign] .sp-editor__meta .sp-editor__field { flex: 1; }
+html[data-redesign] .sp-editor__field--icon { flex: 0 0 72px !important; }
+
+html[data-redesign] .sp-editor__rules-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+html[data-redesign] .sp-editor__rules-title {
+  font-family: var(--pn-mono);
+  font-size: var(--spell-type-eyebrow-size);
+  letter-spacing: var(--spell-type-eyebrow-tracking);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .sp-editor__add-rule {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--pn-r-sm);
+  border: 1px dashed var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+html[data-redesign] .sp-editor__add-rule:hover { background: var(--pn-hover); border-style: solid; }
+
+html[data-redesign] .sp-editor__rules {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-redesign] .sp-rule {
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-md, 10px);
+  padding: 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--pn-surface);
+}
+html[data-redesign] .sp-rule--off { opacity: 0.6; }
+
+html[data-redesign] .sp-rule__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+html[data-redesign] .sp-rule__enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--pn-ink-3);
+  white-space: nowrap;
+}
+html[data-redesign] .sp-rule__label {
+  flex: 1;
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  padding: 6px 9px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-rule__remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  opacity: 0.7;
+}
+html[data-redesign] .sp-rule__remove:hover { opacity: 1; }
+
+html[data-redesign] .sp-rule__trigger-type { display: inline-flex; gap: 4px; }
+html[data-redesign] .sp-rule__tt {
+  height: 26px;
+  padding: 0 12px;
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink-2);
+  border-radius: var(--pn-r-sm);
+  font-size: 12px;
+  cursor: pointer;
+}
+html[data-redesign] .sp-rule__tt--active {
+  background: var(--pn-brand);
+  color: var(--pn-card);
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .sp-rule__tt:disabled { opacity: 0.5; cursor: not-allowed; }
+
+html[data-redesign] .sp-rule__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+html[data-redesign] .sp-rule__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-family: var(--pn-mono);
+  font-size: 11px;
+  letter-spacing: var(--spell-type-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .sp-rule__field input,
+html[data-redesign] .sp-rule__field select,
+html[data-redesign] .sp-rule__field textarea {
+  font-family: var(--pn-ui);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  outline: none;
+}
+html[data-redesign] .sp-rule__field textarea { min-height: 70px; resize: vertical; font-family: var(--pn-mono); font-size: 12.5px; }
+
+html[data-redesign] .sp-rule__cmd { display: flex; flex-direction: column; gap: 8px; }
+html[data-redesign] .sp-rule__check,
+html[data-redesign] .sp-rule__warn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--pn-ui);
+  font-size: 12.5px;
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .sp-rule__warn {
+  padding: 8px 10px;
+  background: var(--pn-wait-soft);
+  border-left: 3px solid var(--pn-wait);
+  border-radius: 0 var(--pn-r-sm) var(--pn-r-sm) 0;
+  color: var(--pn-ink);
+}
+
+html[data-redesign] .sp-rule__advanced {
+  font-family: var(--pn-ui);
+  font-size: 12px;
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .sp-rule__advanced summary { cursor: pointer; }
+html[data-redesign] .sp-rule__adv-toggle { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+html[data-redesign] .sp-rule__adv-input {
+  width: 100%;
+  font-family: var(--pn-mono);
+  font-size: 12.5px;
+  padding: 7px 9px;
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+}
+
+html[data-redesign] .sp-rule__summary {
+  margin: 0;
+  font-family: var(--pn-mono);
+  font-size: 12px;
+  color: var(--pn-ink-2);
+  padding: 6px 8px;
+  background: var(--pn-hover);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .sp-rule__err { margin: 0; color: var(--pn-block); font-size: 11.5px; }
+html[data-redesign] .sp-editor__err--form { margin-top: 6px; }
+
+/* ---- Detail flyout rules list ---- */
+html[data-redesign] .sp-detail__rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+html[data-redesign] .sp-detail__rules-title {
+  font-family: var(--pn-mono);
+  font-size: 11px;
+  letter-spacing: var(--spell-type-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--pn-ink-3);
+  margin: 0;
+}
+html[data-redesign] .sp-detail__rules-empty { margin: 0; font-size: 12.5px; color: var(--pn-ink-3); }
+html[data-redesign] .sp-detail__rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pn-mono);
+  font-size: 12px;
+  color: var(--pn-ink-2);
+  padding: 6px 8px;
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .sp-detail__rule--off { opacity: 0.55; }
+html[data-redesign] .sp-detail__rule-label {
+  font-family: var(--pn-ui);
+  font-weight: 600;
+  color: var(--pn-ink);
+}
+html[data-redesign] .sp-detail__rule-arrow { opacity: 0.6; }
+html[data-redesign] .sp-detail__rule-off { color: var(--pn-wait); font-size: 11px; }
+
 /* ============================================================================
    12. UndoToast — 03 §1.10.1
    ============================================================================ */

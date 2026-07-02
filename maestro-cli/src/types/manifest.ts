@@ -18,16 +18,6 @@ export interface ManifestSpell {
   description?: string;
   icon?: string;
   color?: string;
-  action?: string;
-  loopType?: string;
-  trigger?: {
-    hookEvent: string;
-    matcher?: string;
-    enabled?: boolean;
-  };
-  failMode?: 'open' | 'closed';
-  maxIterations?: number;
-  skillRef?: string;
 }
 
 /** Agent mode — four-mode model covering all session scenarios */

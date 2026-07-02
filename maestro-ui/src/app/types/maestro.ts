@@ -849,19 +849,19 @@ export interface TaskListOrdering {
   updatedAt: number;
 }
 
-// ─── Spell Types (P1+ — first-class Spell entity, server-aligned) ───
+// ─── Spell Types (redesign v2 — multi-rule; mirrors maestro-server §11.1) ───
 
 /** Frozen palette — must mirror SPELL_COLORS in maestro-server/src/types.ts. */
 export type SpellColorSlug =
   | 'amber' | 'rose' | 'violet' | 'sky' | 'emerald'
   | 'fuchsia' | 'lime' | 'cyan' | 'indigo';
 
-export type SpellAction =
+/** v1 action taxonomy (no `gate`). */
+export type SpellActionType =
   | 'inject-prompt'
   | 'feed-context'
-  | 'gate'
-  | 'continue-loop'
   | 'run-command'
+  | 'continue-loop'
   | 'notify-channel';
 
 export type SpellLoopType =
@@ -870,21 +870,45 @@ export type SpellLoopType =
   | 'plan-execute'
   | 'critic-refine';
 
+/** 8 Claude Code hook events (was 6 — SubagentStop + SessionEnd added). */
 export type SpellHookEvent =
   | 'PreToolUse'
   | 'PostToolUse'
   | 'UserPromptSubmit'
   | 'Stop'
+  | 'SubagentStop'
   | 'Notification'
-  | 'SessionStart';
+  | 'SessionStart'
+  | 'SessionEnd';
 
-export interface SpellTrigger {
-  hookEvent: SpellHookEvent;
-  matcher?: string;
-  enabled: boolean;
-}
+/** Discriminated on `type`. `schedule` is Phase-2 (rejected at save in v1). */
+export type SpellTrigger =
+  | { type: 'hook'; hookEvent: SpellHookEvent; matcher?: string }
+  | { type: 'schedule'; cron?: string; intervalMs?: number };
 
-export type SpellFailMode = 'open' | 'closed';
+/** Discriminated on `type` — exhaustive narrowing in dispatcher + editor. */
+export type SpellActionConfig =
+  | { type: 'inject-prompt'; prompt: string }
+  | { type: 'feed-context'; prompt: string }
+  | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
+  | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
+  | { type: 'notify-channel'; channel?: string; message?: string };
+
+/**
+ * Per-event capability matrix (§11.2) — single source of truth shared by the
+ * editor action dropdown (and mirrored by the server Zod schema). An action not
+ * listed for an event is unselectable in the UI and rejected server-side.
+ */
+export const ACTIONS_BY_EVENT: Record<SpellHookEvent, SpellActionType[]> = {
+  PreToolUse:       ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  PostToolUse:      ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  UserPromptSubmit: ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  Stop:             ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  SubagentStop:     ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  Notification:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionStart:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionEnd:       ['run-command', 'notify-channel'],
+};
 
 /** Library category used by SpellLauncher nav. */
 export type SpellCategory =
@@ -896,18 +920,30 @@ export type SpellCategory =
   | 'custom'
   | 'skills';
 
+export interface SpellRule {
+  id: string;                     // idGenerator('rule'); stable per-rule
+  label?: string;                 // optional human handle — drives summary line
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+/** Rule shape accepted by create/update payloads (server assigns id if absent). */
+export interface SpellRuleInput {
+  id?: string;
+  label?: string;
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
 export interface Spell {
   id: string;
   name: string;
-  description: string;
+  description: string;            // human summary only (NOT the injected body)
   icon?: string;
   color: SpellColorSlug;
-  action: SpellAction;
-  loopType?: SpellLoopType;
-  trigger?: SpellTrigger;
-  failMode?: SpellFailMode;
-  maxIterations?: number;
-  skillRef?: string;
+  rules: SpellRule[];             // 1..20
   isDefault?: boolean;
   createdAt: number;
   updatedAt: number;
@@ -918,9 +954,7 @@ export interface ActiveSpell {
   spellId: string;
   color: SpellColorSlug;
   enabled: boolean;
-  hookEvent?: SpellHookEvent;
-  matcher?: string;
-  iteration: number;
+  ruleIterations: Record<string, number>;  // ruleId → iteration (loops are per-rule)
   ensembleId?: string;
   castAt: number;
   castBy: string | null;
@@ -931,12 +965,7 @@ export interface CreateSpellPayload {
   description: string;
   icon?: string;
   color: SpellColorSlug;
-  action: SpellAction;
-  loopType?: SpellLoopType;
-  trigger?: SpellTrigger;
-  failMode?: SpellFailMode;
-  maxIterations?: number;
-  skillRef?: string;
+  rules: SpellRuleInput[];
 }
 
 export interface UpdateSpellPayload {
@@ -944,12 +973,7 @@ export interface UpdateSpellPayload {
   description?: string;
   icon?: string;
   color?: SpellColorSlug;
-  action?: SpellAction;
-  loopType?: SpellLoopType;
-  trigger?: SpellTrigger;
-  failMode?: SpellFailMode;
-  maxIterations?: number;
-  skillRef?: string;
+  rules?: SpellRuleInput[];
 }
 
 /** Server cast-spell request shape (matches POST /api/spells/:id/activate). */

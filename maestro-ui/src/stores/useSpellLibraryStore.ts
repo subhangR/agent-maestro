@@ -18,18 +18,18 @@ function persistRecents(ids: string[]) {
   try { localStorage.setItem(RECENT_KEY, JSON.stringify(ids.slice(0, RECENT_CAP))); } catch { /* */ }
 }
 
-/** Map a Spell to a launcher category. Custom = !isDefault. */
+/**
+ * Map a Spell to a launcher category, derived from its rule SET (spells are
+ * multi-rule now — no single `action`). Custom = !isDefault.
+ */
 export function categoryForSpell(s: Spell): SpellCategory {
   if (!s.isDefault) return 'custom';
-  switch (s.action) {
-    case 'gate':            return 'gate';
-    case 'notify-channel':  return 'notify';
-    case 'continue-loop':
-    case 'run-command':
-    case 'inject-prompt':   return 'execute';
-    case 'feed-context':    return 'plan';
-    default:                return 'featured';
-  }
+  const rules = s.rules ?? [];
+  const has = (t: string) => rules.some((r) => r.action?.type === t);
+  if (has('run-command') || has('continue-loop') || has('inject-prompt')) return 'execute';
+  if (has('feed-context')) return 'plan';
+  if (has('notify-channel')) return 'notify';
+  return 'featured';
 }
 
 interface SpellLibraryState {

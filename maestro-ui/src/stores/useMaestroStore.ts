@@ -93,7 +93,7 @@ function hydrateActiveSpellsFromSession(session: MaestroSession | undefined | nu
       ensembleId: s.ensembleId,
       castAt: typeof s.castAt === 'number' ? s.castAt : Date.now(),
       enabled: s.enabled ?? true,
-      iteration: typeof s.iteration === 'number' ? s.iteration : 0,
+      ruleIterations: (s.ruleIterations && typeof s.ruleIterations === 'object') ? s.ruleIterations : {},
     })),
   );
 }
@@ -584,7 +584,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           ensembleId: activeSpell.ensembleId,
           castAt: activeSpell.castAt ?? Date.now(),
           enabled: activeSpell.enabled ?? true,
-          iteration: activeSpell.iteration ?? 0,
+          ruleIterations: activeSpell.ruleIterations ?? {},
         });
         // Trigger the transient ring-host cast-pulse on each affected session.
         const markCast = useSpellCastPulseStore.getState().markCast;

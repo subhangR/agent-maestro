@@ -8,6 +8,8 @@ import {
   CreateCustomPromptPayload,
   UpdateCustomPromptPayload,
   Spell,
+  SpellRule,
+  SpellRuleInput,
   CreateSpellPayload,
   UpdateSpellPayload,
   ActiveSpell,
@@ -849,6 +851,14 @@ export class SpellService {
     return spell;
   }
 
+  /** Assign a stable id to any rule that arrives without one (create/update). */
+  private materializeRules(rules: SpellRuleInput[]): SpellRule[] {
+    return rules.map(rule => ({
+      ...rule,
+      id: rule.id || this.idGenerator.generate('rule'),
+    }));
+  }
+
   async createSpell(data: CreateSpellPayload): Promise<Spell> {
     const now = Date.now();
     const spell: Spell = {
@@ -857,12 +867,7 @@ export class SpellService {
       description: data.description,
       icon: data.icon,
       color: data.color,
-      action: data.action,
-      loopType: data.loopType,
-      trigger: data.trigger,
-      failMode: data.failMode,
-      maxIterations: data.maxIterations,
-      skillRef: data.skillRef,
+      rules: this.materializeRules(data.rules ?? []),
       isDefault: false,
       createdAt: now,
       updatedAt: now,
@@ -871,7 +876,50 @@ export class SpellService {
   }
 
   async updateSpell(id: string, data: UpdateSpellPayload): Promise<Spell> {
-    return this.spellRepo.update(id, data);
+    // Assign ids to any new rules before persisting.
+    const { rules, ...rest } = data;
+    const patch: Partial<Spell> = { ...rest };
+    if (rules) {
+      patch.rules = this.materializeRules(rules);
+    }
+    const updated = await this.spellRepo.update(id, patch);
+
+    // F6: GC orphaned ruleIterations on every session where this spell is active —
+    // rule ids that no longer exist would otherwise leak stale loop counters.
+    if (data.rules) {
+      await this.reconcileRuleIterations(id, updated.rules);
+    }
+    return updated;
+  }
+
+  /** Drop ruleIterations keys for rule ids that no longer exist on the spell (F6). */
+  private async reconcileRuleIterations(spellId: string, rules: SpellRule[]): Promise<void> {
+    const validIds = new Set(rules.map(r => r.id));
+    let sessions: any[];
+    try {
+      sessions = await this.sessionRepo.findAll();
+    } catch {
+      return;
+    }
+    for (const session of sessions) {
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      let sessionChanged = false;
+      const nextActives = actives.map(a => {
+        if (a.spellId !== spellId || !a.ruleIterations) return a;
+        const kept: Record<string, number> = {};
+        let activeChanged = false;
+        for (const [ruleId, count] of Object.entries(a.ruleIterations)) {
+          if (validIds.has(ruleId)) kept[ruleId] = count;
+          else activeChanged = true;
+        }
+        if (!activeChanged) return a;
+        sessionChanged = true;
+        return { ...a, ruleIterations: kept };
+      });
+      if (sessionChanged) {
+        await this.sessionRepo.update(session.id, { activeSpells: nextActives });
+      }
+    }
   }
 
   async deleteSpell(id: string): Promise<void> {
@@ -900,14 +948,20 @@ export class SpellService {
 
       const existing = session.activeSpells ?? [];
       // Idempotent: if already active, re-enable + bump castAt rather than duplicating.
+      const prior = existing.find(a => a.spellId === spellId);
       const filtered = existing.filter(a => a.spellId !== spellId);
+      // F8: preserve loop counters for rule ids that still exist, so re-casting an
+      // already-active spell mid-loop does not silently reset its counters.
+      const validRuleIds = new Set((spell.rules ?? []).map(r => r.id));
+      const ruleIterations: Record<string, number> = {};
+      for (const [ruleId, count] of Object.entries(prior?.ruleIterations ?? {})) {
+        if (validRuleIds.has(ruleId)) ruleIterations[ruleId] = count;
+      }
       const activeSpell: ActiveSpell = {
         spellId: spell.id,
         color: spell.color,
         enabled: true,
-        hookEvent: spell.trigger?.hookEvent,
-        matcher: spell.trigger?.matcher,
-        iteration: 0,
+        ruleIterations,
         castAt: now,
         castBy,
       };

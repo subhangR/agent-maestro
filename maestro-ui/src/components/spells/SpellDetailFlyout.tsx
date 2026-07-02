@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useSpellLibraryStore } from '../../stores/useSpellLibraryStore';
 import { useSpellActivationStore } from '../../stores/useSpellActivationStore';
+import { triggerSummary, actionSummary } from '../../utils/spellSummary';
 import type { Spell } from '../../app/types/maestro';
 
 export interface SpellDetailFlyoutProps {
@@ -90,35 +91,24 @@ export const SpellDetailFlyout = React.memo(function SpellDetailFlyout({
 
       <p className="sp-detail__desc">{spell.description}</p>
 
+      <div className="sp-detail__rules">
+        <p className="sp-detail__rules-title">Rules ({spell.rules?.length ?? 0})</p>
+        {(spell.rules ?? []).length === 0 && (
+          <p className="sp-detail__rules-empty">This spell has no rules.</p>
+        )}
+        {(spell.rules ?? []).map((rule) => (
+          <div key={rule.id} className={`sp-detail__rule ${rule.enabled ? '' : 'sp-detail__rule--off'}`}>
+            {rule.label?.trim() && <span className="sp-detail__rule-label">{rule.label.trim()}</span>}
+            <span className="sp-detail__rule-trigger">🪝 {triggerSummary(rule.trigger)}</span>
+            <span className="sp-detail__rule-arrow" aria-hidden>→</span>
+            <span className="sp-detail__rule-action">{actionSummary(rule.action)}</span>
+            {!rule.enabled && <span className="sp-detail__rule-off" aria-hidden>⏸ off</span>}
+          </div>
+        ))}
+      </div>
+
       <dl className="sp-detail__props">
-        <dt>Action</dt><dd>{spell.action}</dd>
-        {spell.trigger && (
-          <>
-            <dt>Trigger</dt>
-            <dd>{spell.trigger.hookEvent}{spell.trigger.matcher ? ` (${spell.trigger.matcher})` : ''}</dd>
-          </>
-        )}
-        {spell.loopType && spell.loopType !== 'single-shot' && (
-          <>
-            <dt>Loop</dt><dd>{spell.loopType}</dd>
-          </>
-        )}
-        {spell.maxIterations != null && (
-          <>
-            <dt>Max iterations</dt><dd>{spell.maxIterations}</dd>
-          </>
-        )}
-        {spell.failMode && (
-          <>
-            <dt>Fail mode</dt><dd>{spell.failMode}</dd>
-          </>
-        )}
         <dt>Color</dt><dd><span className={`sp-detail__swatch sp-detail__swatch--${spell.color}`} aria-hidden /> {spell.color}</dd>
-        {spell.skillRef && (
-          <>
-            <dt>Skill ref</dt><dd>{spell.skillRef}</dd>
-          </>
-        )}
         <dt>Created</dt>
         <dd>{spell.isDefault ? 'default · seed' : 'custom'}</dd>
       </dl>

@@ -601,13 +601,16 @@ export const SPELL_COLORS = [
 ] as const;
 export type SpellColorSlug = typeof SPELL_COLORS[number]['slug'];
 
-/** Frozen action taxonomy — see DESIGN_BRIEF.md "action taxonomy enum (frozen)". */
-export type SpellAction =
+/**
+ * Frozen action taxonomy (v2 — §11.1). `gate` is dropped; the dispatcher no
+ * longer blocks tool calls. The behavioral config for each action lives in the
+ * discriminated `SpellActionConfig` union below.
+ */
+export type SpellActionType =
   | 'inject-prompt'
   | 'feed-context'
-  | 'gate'
-  | 'continue-loop'
   | 'run-command'
+  | 'continue-loop'
   | 'notify-channel';
 
 export type SpellLoopType =
@@ -616,44 +619,84 @@ export type SpellLoopType =
   | 'plan-execute'
   | 'critic-refine';
 
-/** Hook event the spell's trigger fires on. Bound at session start by the dispatcher. */
+/**
+ * Hook event a rule's trigger fires on. v2 expands the list to 8 (adds
+ * SubagentStop + SessionEnd — these have REAL hook wiring, §11.6).
+ */
 export type SpellHookEvent =
   | 'PreToolUse'
   | 'PostToolUse'
   | 'UserPromptSubmit'
   | 'Stop'
+  | 'SubagentStop'
   | 'Notification'
-  | 'SessionStart';
-
-export interface SpellTrigger {
-  hookEvent: SpellHookEvent;
-  /** Optional matcher (e.g. tool name regex for PreToolUse, file glob, etc.). */
-  matcher?: string;
-  enabled: boolean;
-}
-
-export type SpellFailMode = 'open' | 'closed';
+  | 'SessionStart'
+  | 'SessionEnd';
 
 /**
- * First-class Spell entity. Persisted as data/spells/<id>.json and merged with
- * the curated SPELL_LIBRARY seeds at read time. `isDefault: true` spells are
- * non-deletable (see FileSystemSpellRepository).
+ * Trigger (discriminated union on `type`). `schedule` is schema-ready but
+ * REJECTED at save in v1 (§11.4) — the engine ships in a later phase.
+ */
+export type SpellTrigger =
+  | { type: 'hook'; hookEvent: SpellHookEvent; matcher?: string }
+  | { type: 'schedule'; cron?: string; intervalMs?: number };
+
+/**
+ * Action + its config, modelled as a discriminated union on `type` (PI-1) so
+ * the dispatcher switch and editor config panel narrow exhaustively — no
+ * `(spell as any)` field access. run-command exposes NO `timeoutMs` and runs
+ * async fire-and-forget (§11.5).
+ */
+export type SpellActionConfig =
+  | { type: 'inject-prompt'; prompt: string }
+  | { type: 'feed-context'; prompt: string }
+  | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
+  | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
+  | { type: 'notify-channel'; channel?: string; message?: string };
+
+/**
+ * A single { trigger → action } binding within a spell. A spell holds 1..20
+ * rules; each is independently enabled/disabled and matched at dispatch time.
+ */
+export interface SpellRule {
+  id: string;              // idGenerator('rule'); stable
+  label?: string;          // optional human handle; drives summary line + reset UX (PI-3)
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+/**
+ * Per-event capability matrix (§11.2) — single source of truth shared by the
+ * Zod schema and the editor action dropdown. An action not listed for an event
+ * is unselectable in the UI and rejected by the schema. `continue-loop` only
+ * means anything on Stop/SubagentStop; SessionEnd is terminal (no further turn
+ * to inject/feed/loop into).
+ */
+export const ACTIONS_BY_EVENT: Record<SpellHookEvent, SpellActionType[]> = {
+  PreToolUse:       ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  PostToolUse:      ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  UserPromptSubmit: ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  Stop:             ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  SubagentStop:     ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  Notification:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionStart:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionEnd:       ['run-command', 'notify-channel'],
+};
+
+/**
+ * First-class Spell entity (v2 — multi-rule). Persisted as data/spells/<id>.json
+ * and merged with the curated SPELL_LIBRARY seeds at read time. `isDefault: true`
+ * spells are non-deletable (see FileSystemSpellRepository).
  */
 export interface Spell {
   id: string;
   name: string;
+  /** Human summary only — NO longer the injected body (that lives on each rule's action). */
   description: string;
   icon?: string;
   color: SpellColorSlug;
-  action: SpellAction;
-  loopType?: SpellLoopType;
-  trigger?: SpellTrigger;
-  /** Behavior when the action's underlying step fails (gate honors this; others may too). */
-  failMode?: SpellFailMode;
-  /** For loops/gates that can iterate. */
-  maxIterations?: number;
-  /** Optional pointer to a skill markdown file the spell's prompt sources from. */
-  skillRef?: string;
+  rules: SpellRule[];
   /** True for curated library entries; false (or omitted) for user-created. */
   isDefault?: boolean;
   createdAt: number;
@@ -662,19 +705,29 @@ export interface Spell {
 
 /**
  * Per-session activation state for a Spell. Lives on Session.activeSpells.
- * `color` is denormalized so UI rings can render without a second lookup.
+ * `color` is denormalized so UI rings can render without a second lookup. The
+ * dispatcher re-reads the spell's rules at fire time, so no trigger fields are
+ * denormalized here — only per-rule loop counters.
  */
 export interface ActiveSpell {
   spellId: string;
   color: SpellColorSlug;
   enabled: boolean;
-  hookEvent?: SpellHookEvent;
-  matcher?: string;
-  iteration: number;
+  /** ruleId → iteration count (continue-loop is per-rule now). */
+  ruleIterations: Record<string, number>;
   ensembleId?: string;
   castAt: number;
   /** Session ID that cast it, or `null` for UI-cast. */
   castBy: string | null;
+}
+
+/** Rule as accepted on create/update — server assigns `id` where missing. */
+export interface SpellRuleInput {
+  id?: string;
+  label?: string;
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
 }
 
 export interface CreateSpellPayload {
@@ -682,12 +735,7 @@ export interface CreateSpellPayload {
   description: string;
   icon?: string;
   color: SpellColorSlug;
-  action: SpellAction;
-  loopType?: SpellLoopType;
-  trigger?: SpellTrigger;
-  failMode?: SpellFailMode;
-  maxIterations?: number;
-  skillRef?: string;
+  rules: SpellRuleInput[];
 }
 
 export interface UpdateSpellPayload {
@@ -695,12 +743,7 @@ export interface UpdateSpellPayload {
   description?: string;
   icon?: string;
   color?: SpellColorSlug;
-  action?: SpellAction;
-  loopType?: SpellLoopType;
-  trigger?: SpellTrigger;
-  failMode?: SpellFailMode;
-  maxIterations?: number;
-  skillRef?: string;
+  rules?: SpellRuleInput[];
 }
 
 export type SpellEntityType = 'maestro' | 'skill' | 'team-member' | 'task' | 'doc' | 'session' | 'custom-prompt';
@@ -750,23 +793,22 @@ export interface SpellInvocationResult {
   timestamp: number;
 }
 
-// --- P2: Hook Dispatch protocol ---
+// --- P2: Hook Dispatch protocol (v2 — multi-rule, no gate) ---
 //
 // The CLI binds every hook event once to `maestro hook dispatch <EVENT>`, which
 // POSTs to /api/hooks/dispatch and translates DispatchResult into:
-//   - exit 0 + stdout for inject-prompt / feed-context / continue-loop (continue:false)
-//   - exit 2 + stderr "reason" for gate(block:true) or continue-loop(continue:true)
-//   - exit 0 + side effects for run-command / notify-channel
+//   - exit 0 + stdout for inject-prompt / feed-context
+//   - exit 2 + stderr "reason" for continue-loop(continue:true) on Stop/SubagentStop
+//   - exit 0 + side effects for run-command (async, fire-and-forget) / notify-channel
 //
-// Composition (when multiple active spells fire on the same event):
-//   - any spell with block:true wins → exit 2 with composed reasons
-//   - otherwise inject/feed contexts are concatenated in spell-iteration order (join('\n\n'))
-//   - continue-loop signals compose by "any continue wins"; reasons joined
+// Composition (when multiple rules across multiple active spells fire on one event):
+//   - feed-context stdout is concatenated in (activeSpell × rule) order (join('\n\n'))
+//   - continue-loop signals compose by "any continue wins" on Stop/SubagentStop
 //   - run-command / notify-channel actions all execute (side effects accumulate)
 //
-// failMode (per spell): on internal error inside that spell's action,
-//   - 'closed' → treated as a block (gate semantics) — fail-closed
-//   - 'open'   → spell is skipped, others continue — fail-open
+// There is NO block path — `gate` was dropped, so composeResult never emits
+// exit 2 for a block. On any internal rule error the rule is skipped (fail-open)
+// and the error is surfaced for logging; other rules continue.
 //
 // The contract is intentionally small so the CLI can stay dumb: receive a
 // DispatchResult, fold it into exit code + stdout/stderr.
@@ -779,29 +821,30 @@ export interface HookDispatchPayload {
 
 export interface HookDispatchSpellOutcome {
   spellId: string;
-  action: SpellAction;
-  /** When set, the spell contributed feed-context / inject-prompt text. */
+  /** The rule that produced this outcome. */
+  ruleId?: string;
+  action: SpellActionType;
+  /** When set, the rule contributed feed-context text. */
   stdout?: string;
-  /** When set, the spell wants to block (gate) or continue (loop). */
-  block?: boolean;
+  /** When set, a continue-loop rule wants to continue (Stop/SubagentStop only). */
   continue?: boolean;
   reason?: string;
-  /** Internal error swallowed by failMode handling, surfaced for logging. */
+  /** Internal error swallowed by fail-open handling, surfaced for logging. */
   error?: string;
 }
 
 export interface DispatchResult {
-  /** Process exit code the CLI should use: 0 = allow, 2 = block/continue. */
+  /** Process exit code the CLI should use: 0 = allow, 2 = continue-loop. */
   exitCode: 0 | 2;
-  /** Concatenated stdout payloads from inject-prompt / feed-context actions. */
+  /** Concatenated stdout payloads from feed-context actions. */
   stdout: string;
-  /** Composed reason — gate block reason, or loop continue reason. */
+  /** Composed reason — loop continue reason. */
   reason?: string;
-  /** True when the result represents a gate block. */
+  /** Always false in v2 (gate dropped); retained for CLI wire compatibility. */
   blocked: boolean;
-  /** True when the result represents a loop continue signal (Stop hook). */
+  /** True when the result represents a loop continue signal (Stop/SubagentStop). */
   continued: boolean;
-  /** Per-spell breakdown, for logging and CLI debug. */
+  /** Per-rule breakdown, for logging and CLI debug. */
   spells: HookDispatchSpellOutcome[];
   timestamp: number;
 }

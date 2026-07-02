@@ -26,6 +26,23 @@
             "type": "command",
             "command": "maestro session complete",
             "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "maestro hook dispatch SessionEnd",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "maestro hook dispatch SubagentStop",
+            "timeout": 5
           }
         ]
       }

@@ -3,6 +3,7 @@ import { useSpellLibraryStore } from '../../stores/useSpellLibraryStore';
 import { useSpellActivationStore } from '../../stores/useSpellActivationStore';
 import { useSpellLauncherStore } from '../../stores/useSpellLauncherStore';
 import { ActiveSpellChipMenu } from './ActiveSpellChipMenu';
+import { loopRules, loopProgress } from '../../utils/spellSummary';
 import type { ActiveSpellView } from '../../stores/useActiveSpellsStore';
 
 export interface ActiveSpellChipProps {
@@ -26,10 +27,9 @@ export const ActiveSpellChip = React.memo(function ActiveSpellChip({
   const [menuOpen, setMenuOpen] = useState(false);
 
   const name = spell?.name ?? active.spellName;
-  const isLoop = spell?.action === 'continue-loop';
-  const iterText = isLoop && spell?.maxIterations
-    ? `${active.iteration}/${spell.maxIterations}`
-    : '';
+  const isLoop = loopRules(spell).length > 0;
+  const { current, max } = loopProgress(spell, active.ruleIterations);
+  const iterText = isLoop && max > 0 ? `${current}/${max}` : '';
 
   return (
     <span

@@ -10,6 +10,7 @@ import { SpellCard } from './SpellCard';
 import { SessionTargetChips } from './SessionTargetChips';
 import { CastModeToggle, type CastMode } from './CastModeToggle';
 import { SpellDetailFlyout } from './SpellDetailFlyout';
+import { isRiskySpell, spellRuleSummary } from '../../utils/spellSummary';
 import type { Spell, SpellCategory } from '../../app/types/maestro';
 
 const CATEGORY_LABELS: Record<SpellCategory | 'recent' | 'all' | 'mine', string> = {
@@ -27,11 +28,11 @@ const CATEGORY_LABELS: Record<SpellCategory | 'recent' | 'all' | 'mine', string>
 
 type CategoryKey = SpellCategory | 'recent' | 'all' | 'mine';
 
-const NAV_ORDER: CategoryKey[] = ['recent', 'featured', 'execute', 'plan', 'gate', 'notify', 'custom', 'skills'];
+// `gate` is dropped from the taxonomy; the nav no longer surfaces it.
+const NAV_ORDER: CategoryKey[] = ['recent', 'featured', 'execute', 'plan', 'notify', 'custom'];
 
 function isRisky(spell: Spell | undefined): boolean {
-  if (!spell) return false;
-  return spell.action === 'gate' || spell.action === 'run-command' || spell.action === 'continue-loop';
+  return isRiskySpell(spell);
 }
 
 /** SpellLauncher — replaces SpellPicker (03 §1). */
@@ -111,7 +112,7 @@ export const SpellLauncher = React.memo(function SpellLauncher() {
       list = spells.filter((s) =>
         s.name.toLowerCase().includes(q) ||
         s.description.toLowerCase().includes(q) ||
-        s.action.toLowerCase().includes(q),
+        spellRuleSummary(s).toLowerCase().includes(q),
       );
     } else if (category === 'recent') {
       const byId = new Map(spells.map((s) => [s.id, s] as const));
@@ -122,7 +123,8 @@ export const SpellLauncher = React.memo(function SpellLauncher() {
     } else if (category === 'mine') {
       list = spells.filter((s) => !s.isDefault);
     } else if (category === 'skills') {
-      list = spells.filter((s) => Boolean(s.skillRef));
+      // skillRef was removed with the redesign; no skill-backed spells for now.
+      list = [];
     } else {
       list = byCategory[category] ?? [];
     }
@@ -397,7 +399,7 @@ export const SpellLauncher = React.memo(function SpellLauncher() {
 
         {showRiskyConfirm && (
           <div className="sp-launcher__risky" role="alertdialog" aria-label="Confirm risky cast">
-            <p>This spell {focusedSpell?.action === 'gate' ? 'gates tool calls' : 'has side effects'}. Cast anyway?</p>
+            <p>This spell has side effects (runs commands or loops the agent). Cast anyway?</p>
             <div>
               <button type="button" onClick={() => setShowRiskyConfirm(false)}>Back</button>
               <button type="button" className="sp-launcher__cta" onClick={handleCastClick}>Cast anyway</button>

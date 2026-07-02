@@ -8,51 +8,31 @@ import { NotFoundError, ValidationError } from '../../domain/common/Errors';
 import { atomicWriteFile } from './utils/atomicWrite';
 
 /**
- * Curated SPELL_LIBRARY — 9 seeded spells (DESIGN_BRIEF.md). These are merged
- * into the findAll/findById results at read time; user-created spells live in
+ * Curated SPELL_LIBRARY (v2 — §11.10). Fewer, higher-confidence multi-rule seeds.
+ * Merged into findAll/findById at read time; user-created spells live in
  * data/spells/*.json alongside. isDefault: true makes them non-deletable
  * (see SpellService.deleteSpell), mirroring the 'default_' guard pattern.
+ *
+ * Every run-command rule ships `enabled: false` so a fresh install never fires a
+ * command that may not exist; the user opts in after pointing it at a real script.
+ * A seed-contract test runs each seed's rules through the real Zod schema.
  */
 export const SPELL_LIBRARY: Spell[] = [
   {
-    id: 'spell_guardian',
-    name: 'Guardian',
-    description: 'Gate dangerous commands (rm -rf, force push, etc.) before execution.',
-    icon: '🛡️',
-    color: 'rose',
-    action: 'gate',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'PreToolUse', matcher: 'Bash', enabled: true },
-    failMode: 'closed',
-    isDefault: true,
-    createdAt: 0,
-    updatedAt: 0,
-  },
-  {
-    id: 'spell_test_sentinel',
-    name: 'Test Sentinel',
-    description: 'Run the test suite after each edit and surface failures inline.',
-    icon: '🧪',
-    color: 'emerald',
-    action: 'run-command',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'PostToolUse', matcher: 'Edit|Write', enabled: true },
-    failMode: 'open',
-    isDefault: true,
-    createdAt: 0,
-    updatedAt: 0,
-  },
-  {
     id: 'spell_self_critic',
     name: 'Self-Critic',
-    description: 'Loop a critique-and-refine pass until the work meets quality bar.',
+    description: 'Loop a critique-and-refine pass until the work meets the quality bar.',
     icon: '🪞',
     color: 'violet',
-    action: 'continue-loop',
-    loopType: 'critic-refine',
-    trigger: { hookEvent: 'Stop', enabled: true },
-    failMode: 'open',
-    maxIterations: 3,
+    rules: [
+      {
+        id: 'rule_self_critic_stop',
+        label: 'Critique on stop',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: { type: 'continue-loop', loopType: 'critic-refine', maxIterations: 3 },
+      },
+    ],
     isDefault: true,
     createdAt: 0,
     updatedAt: 0,
@@ -60,17 +40,18 @@ export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_plan_first',
     name: 'Plan-First',
-    description: 'Force a plan-execute loop: write the plan, then execute against it.',
+    description: 'Write the plan, then loop back to execute against it.',
     icon: '🗺️',
     color: 'sky',
-    action: 'continue-loop',
-    loopType: 'plan-execute',
-    // continue-loop is only meaningful on Stop / SubagentStop — exit 2 means
-    // "keep going" there. On UserPromptSubmit the same exit code BLOCKS the
-    // user's prompt, so bind plan-execute to Stop like spell_self_critic.
-    trigger: { hookEvent: 'Stop', enabled: true },
-    failMode: 'open',
-    maxIterations: 2,
+    rules: [
+      {
+        id: 'rule_plan_first_stop',
+        label: 'Execute the plan',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: { type: 'continue-loop', loopType: 'plan-execute', maxIterations: 2 },
+      },
+    ],
     isDefault: true,
     createdAt: 0,
     updatedAt: 0,
@@ -78,13 +59,21 @@ export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_progress_pulse',
     name: 'Progress Pulse',
-    description: 'Inject a "report progress" nudge at regular intervals.',
+    description: 'Nudge the agent to report progress when it goes idle.',
     icon: '📡',
     color: 'cyan',
-    action: 'inject-prompt',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'Notification', enabled: true },
-    failMode: 'open',
+    rules: [
+      {
+        id: 'rule_progress_pulse_notify',
+        label: 'Report progress',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Notification' },
+        action: {
+          type: 'inject-prompt',
+          prompt: 'Briefly report your current progress: what you just did, what is next, and any blockers.',
+        },
+      },
+    ],
     isDefault: true,
     createdAt: 0,
     updatedAt: 0,
@@ -92,27 +81,21 @@ export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_context_primer',
     name: 'Context Primer',
-    description: 'Feed relevant docs and task context at session start.',
+    description: 'Feed a working-context primer at session start.',
     icon: '📚',
     color: 'amber',
-    action: 'feed-context',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'SessionStart', enabled: true },
-    failMode: 'open',
-    isDefault: true,
-    createdAt: 0,
-    updatedAt: 0,
-  },
-  {
-    id: 'spell_lint_on_edit',
-    name: 'Lint-on-Edit',
-    description: 'Run the linter after each file edit and feed errors back.',
-    icon: '✨',
-    color: 'lime',
-    action: 'run-command',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'PostToolUse', matcher: 'Edit|Write', enabled: true },
-    failMode: 'open',
+    rules: [
+      {
+        id: 'rule_context_primer_start',
+        label: 'Prime context',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'SessionStart' },
+        action: {
+          type: 'feed-context',
+          prompt: 'Before starting, review your assigned tasks and any attached docs. Confirm the goal and constraints, then proceed.',
+        },
+      },
+    ],
     isDefault: true,
     createdAt: 0,
     updatedAt: 0,
@@ -120,27 +103,64 @@ export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_notify_on_done',
     name: 'Notify-on-Done',
-    description: 'Send a notification to the configured channel when the session stops.',
+    description: 'Send a notification when the session stops.',
     icon: '🔔',
     color: 'fuchsia',
-    action: 'notify-channel',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'Stop', enabled: true },
-    failMode: 'open',
+    rules: [
+      {
+        id: 'rule_notify_on_done_stop',
+        label: 'Notify on stop',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: { type: 'notify-channel', message: 'Session finished a turn.' },
+      },
+    ],
     isDefault: true,
     createdAt: 0,
     updatedAt: 0,
   },
   {
-    id: 'spell_scope_keeper',
-    name: 'Scope Keeper',
-    description: 'Gate file edits outside the task\'s declared scope.',
-    icon: '🎯',
+    id: 'spell_lint_on_edit',
+    name: 'Lint-on-Edit',
+    description: 'Run the linter after each file edit and feed errors back. Point it at your project\'s lint script, then enable it.',
+    icon: '✨',
+    color: 'lime',
+    rules: [
+      {
+        id: 'rule_lint_on_edit_post',
+        label: 'Lint after edit',
+        // run-command seeds ship disabled — the user wires a real command first.
+        enabled: false,
+        trigger: { type: 'hook', hookEvent: 'PostToolUse', matcher: 'Edit|Write' },
+        action: { type: 'run-command', command: 'npm', args: ['run', 'lint'], feedOutput: true },
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'spell_guardrail_combo',
+    name: 'Guardrail Combo',
+    description: 'Multi-rule demo: lint after edits (disabled until wired) plus a notification when the session stops.',
+    icon: '🧱',
     color: 'indigo',
-    action: 'gate',
-    loopType: 'single-shot',
-    trigger: { hookEvent: 'PreToolUse', matcher: 'Edit|Write', enabled: true },
-    failMode: 'closed',
+    rules: [
+      {
+        id: 'rule_guardrail_lint',
+        label: 'Lint after edit',
+        enabled: false,
+        trigger: { type: 'hook', hookEvent: 'PostToolUse', matcher: 'Edit|Write' },
+        action: { type: 'run-command', command: 'npm', args: ['run', 'lint'], feedOutput: true },
+      },
+      {
+        id: 'rule_guardrail_notify',
+        label: 'Notify on stop',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: { type: 'notify-channel', message: 'Session finished a turn.' },
+      },
+    ],
     isDefault: true,
     createdAt: 0,
     updatedAt: 0,

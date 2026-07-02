@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, readdirSync, readFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { Config } from './infrastructure/config';
 import { ConsoleLogger } from './infrastructure/common/ConsoleLogger';
@@ -100,6 +100,78 @@ async function migrateTeamMemberTasks(taskRepo: ITaskRepository, logger: ILogger
     writeFileSync(sentinelPath, new Date().toISOString());
   } catch (err) {
     logger.error('Error during team member task migration:', err instanceof Error ? err : new Error(String(err)));
+    // Don't throw - allow server to start even if migration fails
+  }
+}
+
+/**
+ * Clean-break migration for the v2 spell redesign (§11.9). The data model changed
+ * shape (single-action `Spell` → multi-rule `Spell.rules[]`, and `ActiveSpell`
+ * dropped `iteration`/`hookEvent`/`matcher` for `ruleIterations`). Old-shaped JSON
+ * is NOT parsed into the new type, so this one-shot:
+ *   (a) deletes any data/spells/*.json that lacks a `rules[]` array (old shape), and
+ *   (b) strips `activeSpells` from every data/sessions/* file so no stale rings render.
+ * Fresh seeds reappear from code (SPELL_LIBRARY). Guarded by a sentinel; malformed
+ * files are skipped, and any failure is non-fatal so the server still starts.
+ *
+ * To run manually (e.g. on a box that already has the sentinel), delete
+ * `<dataDir>/.migrated-spell-redesign-v2` and restart the server.
+ */
+function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
+  try {
+    const sentinelPath = join(dataDir, '.migrated-spell-redesign-v2');
+    if (existsSync(sentinelPath)) {
+      logger.info('Spell clean-break migration already completed, skipping.');
+      return;
+    }
+    logger.info('Running spell clean-break migration (v2)...');
+
+    // (a) Delete old-shape spell files (anything without a rules[] array).
+    let deletedSpells = 0;
+    const spellsDir = join(dataDir, 'spells');
+    if (existsSync(spellsDir)) {
+      for (const file of readdirSync(spellsDir)) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = join(spellsDir, file);
+        try {
+          const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
+          if (!parsed || !Array.isArray(parsed.rules)) {
+            unlinkSync(filePath);
+            deletedSpells++;
+          }
+        } catch {
+          // Malformed JSON — leave it untouched rather than guess.
+        }
+      }
+    }
+
+    // (b) Strip activeSpells from every session file.
+    let strippedSessions = 0;
+    const sessionsDir = join(dataDir, 'sessions');
+    if (existsSync(sessionsDir)) {
+      for (const file of readdirSync(sessionsDir)) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = join(sessionsDir, file);
+        try {
+          const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
+          if (parsed && Array.isArray(parsed.activeSpells) && parsed.activeSpells.length > 0) {
+            parsed.activeSpells = [];
+            writeFileSync(filePath, JSON.stringify(parsed));
+            strippedSessions++;
+          }
+        } catch {
+          // Malformed JSON — skip.
+        }
+      }
+    }
+
+    logger.info(
+      `Spell clean-break migration complete: deleted ${deletedSpells} old spell file(s), ` +
+      `cleared activeSpells on ${strippedSessions} session(s).`,
+    );
+    writeFileSync(sentinelPath, new Date().toISOString());
+  } catch (err) {
+    logger.error('Error during spell clean-break migration:', err instanceof Error ? err : new Error(String(err)));
     // Don't throw - allow server to start even if migration fails
   }
 }
@@ -312,6 +384,10 @@ export async function createContainer(): Promise<Container> {
 
     async initialize() {
       logger.info('Initializing container...');
+
+      // Clean-break spell migration (§11.9) — runs on-disk BEFORE repos load their
+      // caches, so stale activeSpells / old-shape spell files never reach memory.
+      migrateSpellCleanBreak(logger, config.dataDir);
 
       // Initialize repositories in parallel
       await Promise.all([
