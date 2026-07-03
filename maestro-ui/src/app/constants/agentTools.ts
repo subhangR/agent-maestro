@@ -15,10 +15,14 @@ const withIds = (models: { value: ModelType; label: string }[]) =>
 
 export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: string }[]> = {
   "claude-code": [
+    { value: "claude-fable-5", label: "Fable 5" },
+    { value: "claude-fable-5[1m]", label: "Fable 5 1M" },
     { value: "claude-opus-4-8", label: "Opus 4.8" },
     { value: "claude-opus-4-8[1m]", label: "Opus 4.8 1M" },
     { value: "claude-opus-4-7", label: "Opus 4.7" },
     { value: "claude-opus-4-7[1m]", label: "Opus 4.7 1M" },
+    { value: "claude-sonnet-5", label: "Sonnet 5" },
+    { value: "claude-sonnet-5[1m]", label: "Sonnet 5 1M" },
     { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
     { value: "claude-haiku-4-5", label: "Haiku 4.5" },
     { value: "claude-opus-4-6", label: "Opus 4.6 Legacy" },
@@ -57,16 +61,11 @@ export const DEFAULT_MODEL_BY_AGENT_TOOL: Record<AgentTool, ModelType> = {
   gemini: "gemini-2.5-pro",
 };
 
-// Retired model IDs mapped to their active replacements. Keep this map in sync
-// with the copies in maestro-server (types.ts) and maestro-cli
-// (types/manifest.ts). Claude Fable 5 was retired; persisted configs are
-// migrated to Opus 4.8, preserving the 1M-context variant.
-export const LEGACY_MODEL_ALIASES: Record<string, string> = {
-  "claude-fable-5": "claude-opus-4-8",
-  "claude-fable-5[1m]": "claude-opus-4-8[1m]",
-  "anthropic:claude-fable-5": "anthropic:claude-opus-4-8",
-  "anthropic/claude-fable-5": "anthropic:claude-opus-4-8",
-};
+// Retired model IDs mapped to active replacements. Currently empty — Claude
+// Fable 5 is a live model again. Keep this map (and normalizeModelId) for
+// future retirements. Keep in sync with maestro-server (types.ts) and
+// maestro-cli (types/manifest.ts).
+export const LEGACY_MODEL_ALIASES: Record<string, string> = {};
 
 // Normalize a (possibly retired) model id to its active replacement.
 export function normalizeModelId(model?: string): string | undefined {
@@ -78,6 +77,8 @@ export function normalizeModelId(model?: string): string | undefined {
 // has several assigned. Must stay in sync with MODEL_POWER in
 // maestro-server/src/api/sessionRoutes.ts so the badge mirrors what launches.
 export const MODEL_POWER: Record<string, number> = {
+  "claude-fable-5[1m]": 6.1,
+  "claude-fable-5": 6.0,
   "claude-opus-4-8[1m]": 5.9,
   "claude-opus-4-8": 5.8,
   "gpt-5.5": 5.5,
@@ -88,6 +89,8 @@ export const MODEL_POWER: Record<string, number> = {
   "gpt-5.3-codex": 4.2,
   opus: 4,
   "gpt-5.2-codex": 3.8,
+  "claude-sonnet-5[1m]": 3.6,
+  "claude-sonnet-5": 3.4,
   "sonnet[1m]": 3,
   "gpt-5.1-codex-max": 2.8,
   sonnet: 2.5,
@@ -245,10 +248,14 @@ export function sanitizeLaunchConfig(config?: Partial<LaunchConfig> | null): Lau
 }
 
 const MODEL_LABEL_OVERRIDES: Record<string, string> = {
+  "claude-fable-5": "Fable 5",
+  "claude-fable-5[1m]": "Fable 5 1M",
   "claude-opus-4-8": "Opus 4.8",
   "claude-opus-4-8[1m]": "Opus 4.8 1M",
   "claude-opus-4-7": "Opus 4.7",
   "claude-opus-4-7[1m]": "Opus 4.7 1M",
+  "claude-sonnet-5": "Sonnet 5",
+  "claude-sonnet-5[1m]": "Sonnet 5 1M",
   "claude-sonnet-4-6": "Sonnet 4.6",
   "claude-haiku-4-5": "Haiku 4.5",
   "claude-opus-4-6": "Opus 4.6 Legacy",

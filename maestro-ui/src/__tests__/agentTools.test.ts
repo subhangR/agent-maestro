@@ -73,8 +73,8 @@ describe('agent tool UI constants', () => {
   it('matches Claude CLI effort support and excludes speed', () => {
     expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
     expect(MODELS_BY_AGENT_TOOL['claude-code'][0]).toEqual({
-      value: 'claude-opus-4-8',
-      label: 'Opus 4.8',
+      value: 'claude-fable-5',
+      label: 'Fable 5',
     });
     expect(getReasoningOptionsForProvider('claude').map((item) => item.value)).toEqual(claudeReasoningEfforts);
 
@@ -217,38 +217,33 @@ describe('agent tool UI constants', () => {
     expect(getModelDisplayLabel('gpt-5.2-codex')).toBe('Codex 5.2');
   });
 
-  it('no longer offers retired Claude Fable 5 and tops the Claude list with Opus 4.8', () => {
+  it('offers live Claude Fable 5 and Sonnet 5 and tops the Claude list with Fable 5', () => {
     const claudeValues = MODELS_BY_AGENT_TOOL['claude-code'].map((model) => model.value);
-    expect(claudeValues).not.toContain('claude-fable-5');
-    expect(claudeValues).not.toContain('claude-fable-5[1m]');
-    expect(claudeValues[0]).toBe('claude-opus-4-8');
-    expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
-    expect(MODELS_BY_AGENT_TOOL.hermes.map((m) => m.value)).not.toContain('anthropic:claude-fable-5');
-    expect(MODEL_POWER['claude-fable-5']).toBeUndefined();
-    expect(MODEL_POWER['claude-fable-5[1m]']).toBeUndefined();
+    expect(claudeValues).toContain('claude-fable-5');
+    expect(claudeValues).toContain('claude-sonnet-5');
+    expect(claudeValues[0]).toBe('claude-fable-5');
+    expect(MODEL_POWER['claude-fable-5']).toBe(6.0);
+    expect(MODEL_POWER['claude-fable-5[1m]']).toBe(6.1);
   });
 
-  it('migrates retired Fable 5 model ids to their Opus 4.8 replacements', () => {
-    // Fable 5 -> Opus 4.8; Fable 5 1M -> Opus 4.8 1M (per-variant migration).
-    expect(normalizeModelId('claude-fable-5')).toBe('claude-opus-4-8');
-    expect(normalizeModelId('claude-fable-5[1m]')).toBe('claude-opus-4-8[1m]');
-    expect(normalizeModelId('anthropic:claude-fable-5')).toBe('anthropic:claude-opus-4-8');
-    expect(normalizeModelId('anthropic/claude-fable-5')).toBe('anthropic:claude-opus-4-8');
-    // Non-retired ids pass through unchanged.
+  it('passes live Fable 5 and Sonnet 5 model ids through normalizeModelId unchanged', () => {
+    // Both are live models again — no alias remapping.
+    expect(normalizeModelId('claude-fable-5')).toBe('claude-fable-5');
+    expect(normalizeModelId('claude-sonnet-5')).toBe('claude-sonnet-5');
+    // Non-aliased ids pass through unchanged.
     expect(normalizeModelId('claude-opus-4-8')).toBe('claude-opus-4-8');
     expect(normalizeModelId(undefined)).toBeUndefined();
   });
 
-  it('keeps legacy Fable setups working: display, ranking, and launch config resolve to Opus', () => {
-    // A persisted team member still on Fable shows and launches as Opus 4.8.
-    expect(getModelDisplayLabel('claude-fable-5')).toBe('Opus 4.8');
-    expect(getModelDisplayLabel('claude-fable-5[1m]')).toBe('Opus 4.8 1M');
+  it('labels, launches, and ranks live Fable 5 and Sonnet 5 as themselves', () => {
+    expect(getModelDisplayLabel('claude-fable-5')).toBe('Fable 5');
+    expect(getModelDisplayLabel('claude-sonnet-5')).toBe('Sonnet 5');
     expect(sanitizeLaunchConfig({ provider: 'claude', model: 'claude-fable-5' })).toEqual({
       provider: 'claude',
-      model: 'claude-opus-4-8',
+      model: 'claude-fable-5',
     });
-    // Ranking treats a legacy Fable member as its Opus 4.8 equivalent (not unranked/0).
-    const members = [{ model: 'claude-fable-5' }, { model: 'claude-sonnet-4-6' }];
+    // Fable 5 (6.0) outranks Opus 4.8 (5.8).
+    const members = [{ model: 'claude-fable-5' }, { model: 'claude-opus-4-8' }];
     expect(pickTopMember(members)?.model).toBe('claude-fable-5');
   });
 });

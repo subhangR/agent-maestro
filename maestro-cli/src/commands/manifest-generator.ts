@@ -588,7 +588,8 @@ export class ManifestGeneratorCLICommand {
             manifest.session.permissionMode = teamMember.permissionMode;
           }
           // Override model with team member's model (if not explicitly set by launch settings).
-          // Coerce any retired model id (e.g. claude-fable-5) to its active replacement.
+          // Coerce any retired model id to its active replacement via LEGACY_MODEL_ALIASES
+          // (currently empty / a no-op — retained for future retirements).
           if (teamMember.model && !hasExplicitModel) {
             manifest.session.model = normalizeModelId(teamMember.model);
           }
@@ -599,6 +600,8 @@ export class ManifestGeneratorCLICommand {
         // Multi-identity: fetch all and build profiles array
         const profiles: TeamMemberProfile[] = [];
         const MODEL_POWER: Record<string, number> = {
+          'claude-fable-5[1m]': 6.1,
+          'claude-fable-5': 6.0,
           'claude-opus-4-8[1m]': 5.9,
           'claude-opus-4-8': 5.8,
           'gpt-5.5': 5.5,
@@ -609,6 +612,8 @@ export class ManifestGeneratorCLICommand {
           'gpt-5.3-codex': 4.2,
           'opus': 4,
           'gpt-5.2-codex': 3.8,
+          'claude-sonnet-5[1m]': 3.6,
+          'claude-sonnet-5': 3.4,
           'sonnet[1m]': 3,
           'gpt-5.1-codex-max': 2.8,
           'sonnet': 2.5,
@@ -633,8 +638,8 @@ export class ManifestGeneratorCLICommand {
           try {
             const tmRaw: any = await api.get(`/api/team-members/${memberId}?projectId=${options.projectId}`);
             const tm = applyMemberOverride(tmRaw, memberOverrides[memberId]);
-            // Coerce any retired model id (e.g. claude-fable-5) so ranking and the
-            // collapsed model agree with what the spawner will launch.
+            // Coerce any retired model id via LEGACY_MODEL_ALIASES (currently empty / a
+            // no-op) so ranking and the collapsed model agree with what the spawner launches.
             if (tm.model) tm.model = normalizeModelId(tm.model);
             profiles.push({
               id: tm.id,

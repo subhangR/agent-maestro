@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import { useMaestroStore } from "../../stores/useMaestroStore";
+import { getModelDisplayLabel } from "../../app/constants/agentTools";
 import { MaestroSessionStatus } from "../../app/types/maestro";
 import { SessionTimeline } from "./SessionTimeline";
 import { DocsList } from "./DocsList";
@@ -134,6 +135,11 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
   const pillVariant = session ? (needsInput ? "wait" : STATUS_PILL[session.status]) : "idle";
   const dotVariant = session ? (needsInput ? "wait" : STATUS_DOT[session.status]) : "idle";
   const statusLive = !!session && session.status === "working" && !needsInput;
+  // Model badge: prefer the per-spawn launch model over the stored default, then render
+  // a friendly label (claude-fable-5 -> Fable 5). Enriched session carries metadata/
+  // launchConfig; fall through model -> launchConfig.model -> metadata.model -> teamMemberSnapshot.model.
+  const resolvedModelId = session?.model ?? session?.launchConfig?.model ?? session?.metadata?.model ?? session?.teamMemberSnapshot?.model;
+  const modelLabel = resolvedModelId ? getModelDisplayLabel(resolvedModelId) : null;
 
   return (
     <div className="maestroModalOverlay" onClick={onClose}>
@@ -152,8 +158,8 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
                   {needsInput ? "Needs Input" : SESSION_STATUS_LABELS[session.status]}
                 </span>
                 <StrategyBadge strategy={session.strategy} orchestratorStrategy={session.orchestratorStrategy} />
-                {session.model && (
-                  <span className="pn-badge pn-badge--model">{session.model.toUpperCase()}</span>
+                {modelLabel && (
+                  <span className="pn-badge pn-badge--model">{modelLabel}</span>
                 )}
                 {session.mode && (
                   <span className="pn-badge">{session.mode.toUpperCase()}</span>

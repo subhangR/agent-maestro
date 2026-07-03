@@ -63,6 +63,24 @@ function resolveMaestroCliRuntime(cliPathOverride?: string): { maestroBin: strin
   return { maestroBin: 'maestro', monorepoRoot: null };
 }
 
+/**
+ * Build the shell command that launches the maestro CLI for a spawned/resumed session.
+ *
+ * Wraps the resolved CLI entry point as `node <maestroBin>` so the spawned agent always runs THIS
+ * server's resolved CLI, and falls back to a bare `maestro` (PATH lookup) only when the path could
+ * not be resolved (packaged build). Extracted from the route handlers so the branch selection is
+ * unit-testable — the produced string is byte-identical to the previous inline builders.
+ *
+ * Contract: maestroBin (and any MAESTRO_CLI_PATH override) MUST be a Node-executable entry point —
+ * a .js/.cjs/.mjs file or a node-shebang symlink such as node_modules/.bin/maestro — NOT a
+ * pkg-compiled native binary, because the resolved-path form wraps it as `node ${maestroBin}`.
+ */
+export function buildMaestroSpawnCommand(maestroBin: string, initCommand: string, subcommand: string): string {
+  return maestroBin === 'maestro'
+    ? `maestro ${initCommand} ${subcommand}`
+    : `node ${maestroBin} ${initCommand} ${subcommand}`;
+}
+
 function getNodeRuntimePathEntries(monorepoRoot: string | null): string[] {
   const entries = [
     monorepoRoot ? join(monorepoRoot, 'node_modules', '.bin') : null,
@@ -620,6 +638,12 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       teamMemberSnapshot: session.teamMemberSnapshot,
       teamMemberId: session.teamMemberId,
       isMasterSession: session.isMasterSession,
+      // Surface the resolved per-spawn model + launch config in the list DTO so the
+      // session-list badge reflects the actually-launched model (e.g. claude-fable-5)
+      // rather than falling back to the team member's configured default. Both live
+      // only in metadata; the full/enriched path already exposes metadata directly.
+      model: session.metadata?.model ?? null,
+      launchConfig: session.metadata?.launchConfig ?? null,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
       createdAt: session.createdAt,
@@ -1721,6 +1745,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       // Fetch team member defaults from the effective members (after task-level fallback)
       const MODEL_POWER: Record<string, number> = {
+        'claude-fable-5[1m]': 6.1,
+        'claude-fable-5': 6.0,
         'claude-opus-4-8[1m]': 5.9,
         'claude-opus-4-8': 5.8,
         'gpt-5.5': 5.5,
@@ -1731,6 +1757,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'gpt-5.3-codex': 4.2,
         'opus': 4,
         'gpt-5.2-codex': 3.8,
+        'claude-sonnet-5[1m]': 3.6,
+        'claude-sonnet-5': 3.4,
         'sonnet[1m]': 3,
         'gpt-5.1-codex-max': 2.8,
         'sonnet': 2.5,
@@ -1757,8 +1785,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
                 : undefined;
               // Full launch config of the winning candidate (carries reasoning/speed/access).
               const effectiveLaunchConfig = override?.launchConfig || profileConfig || undefined;
-              // Coerce any retired model id (e.g. claude-fable-5) to its active
-              // replacement so ranking, the snapshot, and the launched model agree.
+              // Coerce any retired model id to its active replacement via
+              // LEGACY_MODEL_ALIASES (currently empty / a no-op — retained for
+              // future retirements) so ranking, the snapshot, and the launched
+              // model agree.
               const effectiveModel = normalizeModelId(override?.launchConfig?.model || profileConfig?.model || teamMember.model);
               const effectiveAgentTool = effectiveLaunchConfig
                 ? agentToolForProvider(effectiveLaunchConfig.provider)
@@ -2063,11 +2093,21 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const initCommand = isCoordinatorMode(resolvedMode) ? 'orchestrator' : 'worker';
       const cwd = worktreeResult?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
-      // On Windows, cmd.exe may not find bare `maestro` even with PATH set,
-      // so use `node <path>` to invoke the CLI entry point directly.
-      const command = platform() === 'win32'
-        ? `node ${maestroBin} ${initCommand} init`
-        : `maestro ${initCommand} init`;
+      if (maestroBin !== 'maestro' && !existsSync(maestroBin)) {
+        return res.status(500).json({
+          error: true,
+          code: 'maestro_cli_not_found',
+          message: `Resolved maestro CLI path does not exist: ${maestroBin}. Set MAESTRO_CLI_PATH to a valid Node-executable CLI entry point, or rebuild the CLI (cd maestro-cli && bun run build).`,
+        });
+      }
+      // Invoke the resolved CLI entry point directly via `node <path>` on ALL platforms, so the
+      // spawned agent always runs THIS server's resolved CLI (maestroBin) and never a stale/global
+      // `maestro` that happens to be first on PATH (which could still map retired model ids to their
+      // old replacements). Fall back to bare `maestro` only when the path couldn't be resolved.
+      // The resolved maestroBin (and any MAESTRO_CLI_PATH override) MUST be a Node-executable entry
+      // point — a .js/.cjs/.mjs file or a node-shebang symlink such as node_modules/.bin/maestro —
+      // NOT a pkg-compiled native binary, because the resolved-path form wraps it as `node ${maestroBin}`.
+      const command = buildMaestroSpawnCommand(maestroBin, initCommand, 'init');
 
       // Pass through auth-related API keys from server environment
       const authEnvKeys = [
@@ -2242,6 +2282,13 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       const cwd = session.metadata?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
+      if (maestroBin !== 'maestro' && !existsSync(maestroBin)) {
+        return res.status(500).json({
+          error: true,
+          code: 'maestro_cli_not_found',
+          message: `Resolved maestro CLI path does not exist: ${maestroBin}. Set MAESTRO_CLI_PATH to a valid Node-executable CLI entry point, or rebuild the CLI (cd maestro-cli && bun run build).`,
+        });
+      }
 
       // Regenerate manifest so MAESTRO_MANIFEST_PATH points to a valid file
       const mode = session.metadata?.mode || 'worker';
@@ -2323,9 +2370,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Determine command: resume if session had a Claude session ID, fresh spawn otherwise
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
       const subcommand = hadClaudeSessionId ? 'resume' : 'init';
-      const command = platform() === 'win32'
-        ? `node ${maestroBin} ${initCommand} ${subcommand}`
-        : `maestro ${initCommand} ${subcommand}`;
+      // Invoke the resolved CLI directly on all platforms (see the spawn path above); fall back to
+      // bare `maestro` only when maestroBin couldn't be resolved to a path.
+      const command = buildMaestroSpawnCommand(maestroBin, initCommand, subcommand);
 
       // Reconstruct env vars — reuse stored env, refresh dynamic values
       const finalEnvVars: Record<string, string> = {

@@ -18,10 +18,14 @@ export type ClaudeModel =
   | 'sonnet[1m]'
   | 'opus'
   | 'opus[1m]'
+  | 'claude-fable-5'
+  | 'claude-fable-5[1m]'
   | 'claude-opus-4-8'
   | 'claude-opus-4-8[1m]'
   | 'claude-opus-4-7'
   | 'claude-opus-4-7[1m]'
+  | 'claude-sonnet-5'
+  | 'claude-sonnet-5[1m]'
   | 'claude-sonnet-4-6'
   | 'claude-haiku-4-5'
   | 'claude-opus-4-6';
@@ -569,6 +573,7 @@ export interface MaestroSession {
   spawnedBy?: string;
   manifestPath?: string;
   model?: ModelType;
+  launchConfig?: LaunchConfig;  // Per-spawn launch override (model/effort/access) surfaced on the session summary DTO
   docs?: DocEntry[];
   teamMemberId?: string;
   teamMemberSnapshot?: TeamMemberSnapshot;
