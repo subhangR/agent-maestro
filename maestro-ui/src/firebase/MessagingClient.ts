@@ -25,9 +25,23 @@ import { getDb } from './firestore';
 import {
   Channel,
   Message,
+  MessageMention,
   CreateChannelInput,
   MESSAGES_PAGE_SIZE,
 } from './messagingTypes';
+
+/** Normalizes an unknown Firestore value into a MessageMention[]. */
+function mentionsFromData(raw: unknown): MessageMention[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((m): m is Record<string, unknown> => Boolean(m) && typeof m === 'object')
+    .map((m) => ({
+      id: String(m.id ?? ''),
+      displayName: String(m.displayName ?? ''),
+      kind: m.kind === 'agent' ? 'agent' : 'member',
+    }))
+    .filter((m) => m.id && m.displayName) as MessageMention[];
+}
 
 const SPACES = 'collabSpaces';
 const CHANNELS = 'channels';
@@ -82,6 +96,7 @@ function messageFromSnap(snap: QueryDocumentSnapshot | DocumentSnapshot): Messag
     deletedAt: data.deletedAt ?? null,
     threadId: data.threadId ?? null,
     replyCount: typeof data.replyCount === 'number' ? data.replyCount : 0,
+    mentions: mentionsFromData(data.mentions),
   };
 }
 
@@ -203,6 +218,7 @@ export const MessagingClient = {
     spaceId: string,
     channelId: string,
     content: string,
+    mentions: MessageMention[] = [],
   ): Promise<Message> {
     const now = serverTimestamp();
     const batch = writeBatch(getDb());
@@ -219,6 +235,11 @@ export const MessagingClient = {
       deletedAt: null,
       threadId: null,
       replyCount: 0,
+      mentions: mentions.map((m) => ({
+        id: m.id,
+        displayName: m.displayName,
+        kind: m.kind,
+      })),
     });
     batch.update(channelDoc(spaceId, channelId), {
       lastMessageAt: now,

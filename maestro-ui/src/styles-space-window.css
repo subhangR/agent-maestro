@@ -1128,6 +1128,27 @@
   opacity: 0.6;
 }
 
+.spaceMemberFullRow--busy {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.spaceMemberFullYou {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  color: var(--pn-muted, rgba(255, 255, 255, 0.6));
+  background: rgba(255, 255, 255, 0.08);
+}
+
+img.spaceMemberFullAvatar {
+  object-fit: cover;
+}
+
 .spaceMemberFullAvatarWrap {
   position: relative;
   width: 36px;

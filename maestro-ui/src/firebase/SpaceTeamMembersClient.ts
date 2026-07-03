@@ -59,7 +59,11 @@ function fromQuery(snap: QuerySnapshot): SpaceTeamMember[] {
 }
 
 export const SpaceTeamMembersClient = {
-  subscribe(spaceId: string, cb: (items: SpaceTeamMember[]) => void): Unsubscribe {
+  subscribe(
+    spaceId: string,
+    cb: (items: SpaceTeamMember[]) => void,
+    onError?: (err: Error) => void,
+  ): Unsubscribe {
     const q = query(tmCol(spaceId), orderBy('createdAt', 'desc'));
     return onSnapshot(
       q,
@@ -67,6 +71,7 @@ export const SpaceTeamMembersClient = {
       (err) => {
         // eslint-disable-next-line no-console
         console.warn('[SpaceTeamMembers] subscribe failed:', err);
+        onError?.(err);
       },
     );
   },

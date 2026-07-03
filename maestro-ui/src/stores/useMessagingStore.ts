@@ -5,10 +5,36 @@ import { MessagingClient } from '../firebase/MessagingClient';
 import {
   Channel,
   Message,
+  MessageMention,
   PendingMessage,
   CreateChannelInput,
   MESSAGES_PAGE_SIZE,
 } from '../firebase/messagingTypes';
+
+/**
+ * INTEGRATION POINT — @agent mention → invoke.
+ *
+ * When a delivered message tags one or more agents (shared team members),
+ * this is where the messaging layer would hand off to the session-spawn layer
+ * to actually wake a Maestro session for each mentioned agent. That wiring is
+ * cross-cutting (owned by the session/spawn vertical), so it is intentionally
+ * left as a no-op hook here: messaging is responsible only for tagging the
+ * message; a coordinator will connect this to real invocation.
+ */
+function notifyAgentMentions(
+  _spaceId: string,
+  _channelId: string,
+  _messageId: string | null,
+  mentions: MessageMention[],
+): void {
+  const agents = mentions.filter((m) => m.kind === 'agent');
+  if (agents.length === 0) return;
+  // eslint-disable-next-line no-console
+  console.info(
+    '[messaging] @agent mention(s) tagged (invoke integration point, not yet wired):',
+    agents.map((a) => a.displayName),
+  );
+}
 
 type SpaceId = string;
 type ChannelId = string;
@@ -46,7 +72,13 @@ interface MessagingState {
   unsubscribeFromMessages: (channelId: ChannelId) => void;
   loadOlder: (spaceId: SpaceId, channelId: ChannelId) => Promise<void>;
 
-  sendMessage: (user: User, spaceId: SpaceId, channelId: ChannelId, content: string) => Promise<void>;
+  sendMessage: (
+    user: User,
+    spaceId: SpaceId,
+    channelId: ChannelId,
+    content: string,
+    mentions?: MessageMention[],
+  ) => Promise<void>;
   retryPending: (user: User, spaceId: SpaceId, channelId: ChannelId, tempId: string) => Promise<void>;
   dismissPending: (channelId: ChannelId, tempId: string) => void;
 
@@ -249,9 +281,11 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     }
   },
 
-  sendMessage: async (user, spaceId, channelId, content) => {
+  sendMessage: async (user, spaceId, channelId, content, mentions = []) => {
     const trimmed = content.trim();
     if (!trimmed) return;
+    // Keep only mentions whose token still appears in the final text.
+    const activeMentions = mentions.filter((m) => trimmed.includes(`@${m.displayName}`));
     const tempId = nextTempId();
     const pending: PendingMessage = {
       tempId,
@@ -263,6 +297,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       content: trimmed,
       createdAtMs: Date.now(),
       status: 'sending',
+      mentions: activeMentions,
     };
     set((s) => ({
       pendingByChannel: {
@@ -272,7 +307,8 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       sending: { ...s.sending, [channelId]: true },
     }));
     try {
-      await MessagingClient.sendMessage(user, spaceId, channelId, trimmed);
+      const sent = await MessagingClient.sendMessage(user, spaceId, channelId, trimmed, activeMentions);
+      notifyAgentMentions(spaceId, channelId, sent.id, activeMentions);
       // The subscription will reconcile and remove the pending entry.
     } catch (e: any) {
       set((s) => {
@@ -309,7 +345,14 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       };
     });
     try {
-      await MessagingClient.sendMessage(user, spaceId, channelId, item.content);
+      const sent = await MessagingClient.sendMessage(
+        user,
+        spaceId,
+        channelId,
+        item.content,
+        item.mentions ?? [],
+      );
+      notifyAgentMentions(spaceId, channelId, sent.id, item.mentions ?? []);
     } catch (e: any) {
       set((s) => {
         const cur = s.pendingByChannel[channelId] ?? [];

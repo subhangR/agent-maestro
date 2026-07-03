@@ -2,6 +2,23 @@ import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { Message, PendingMessage } from "../../../firebase/messagingTypes";
 import { MessageBubble } from "./MessageBubble";
 
+const GROUP_WINDOW_MS = 5 * 60 * 1000;
+
+/**
+ * Consecutive same-author messages are grouped (avatar + header hidden) when
+ * they're within a short time window. Deleted messages always break grouping so
+ * their "[deleted]" placeholder keeps its own header/timestamp.
+ */
+function isGroupedWith(prev: Message | undefined, cur: Message): boolean {
+  if (!prev) return false;
+  if (prev.authorUid !== cur.authorUid) return false;
+  if (prev.deletedAt || cur.deletedAt) return false;
+  const prevMs = prev.createdAt?.toMillis?.() ?? null;
+  const curMs = cur.createdAt?.toMillis?.() ?? null;
+  if (prevMs == null || curMs == null) return true;
+  return curMs - prevMs < GROUP_WINDOW_MS;
+}
+
 type Props = {
   channelId: string;
   messages: Message[];
@@ -114,16 +131,21 @@ export function MessagesPane({
           </div>
         )}
 
-        {messages.map((m) => (
-          <MessageBubble
-            key={m.id}
-            message={m}
-            currentUid={currentUid}
-            isOwner={isOwner}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
-        ))}
+        {messages.map((m, i) => {
+          const prev = messages[i - 1];
+          const grouped = isGroupedWith(prev, m);
+          return (
+            <MessageBubble
+              key={m.id}
+              message={m}
+              currentUid={currentUid}
+              isOwner={isOwner}
+              grouped={grouped}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          );
+        })}
 
         {pending.map((p) => (
           <MessageBubble

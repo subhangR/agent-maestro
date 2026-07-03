@@ -1,120 +1,119 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { CollabSpace } from "../../../firebase/collabSpaceTypes";
 import { EmptySectionState } from "../shared/EmptySectionState";
+import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
+import { useProjectStore } from "../../../stores/useProjectStore";
+import { maestroClient } from "../../../utils/MaestroClient";
+import { SpaceShareClient } from "../../../firebase/SpaceShareClient";
+import { SpaceTasksClient } from "../../../firebase/SpaceTasksClient";
+import { pullSpaceTaskToLocal } from "../../../firebase/SpaceAdapters";
+import {
+    SpaceTask,
+    SpaceTaskStatus,
+    SpaceTaskPriority,
+} from "../../../firebase/spaceShareTypes";
+import type { MaestroTask } from "../../../app/types/maestro";
+import {
+    useSpaceTasks,
+    resolveOrigin,
+    canManageEntity,
+    formatRelative,
+    buildTaskShareInput,
+    SPACE_STATUS_LABELS,
+} from "../../../hooks/useSpaceSharing";
+import "../../../styles-space-sharing.css";
 
-type Status = "todo" | "in_progress" | "blocked" | "completed";
-type Priority = "low" | "medium" | "high";
-
-type MockSpaceTask = {
-    id: string;
-    title: string;
-    description: string;
-    status: Status;
-    priority: Priority;
-    originDisplayName: string;
-    originColor: string;
-    originAt: string;
-    pulledByCount: number;
-    pulledByYou: boolean;
-};
-
-const MOCK_TASKS: MockSpaceTask[] = [
-    {
-        id: "t-oauth",
-        title: "Add OAuth callback handler",
-        description:
-            "Wire the GitHub OAuth callback to the new `/api/auth/github/callback` route. Persist tokens in the keychain, not the JSON store.",
-        status: "in_progress",
-        priority: "high",
-        originDisplayName: "Devon",
-        originColor: "#66ddaa",
-        originAt: "2h ago",
-        pulledByCount: 2,
-        pulledByYou: false,
-    },
-    {
-        id: "t-session-mgr",
-        title: "Refactor session manager",
-        description:
-            "Collapse `SessionService.spawn()` and `SessionService.resume()` into one code path. Manzil is on it.",
-        status: "in_progress",
-        priority: "medium",
-        originDisplayName: "Subhang",
-        originColor: "#7c9eff",
-        originAt: "1d ago",
-        pulledByCount: 3,
-        pulledByYou: true,
-    },
-    {
-        id: "t-postgres",
-        title: "Plan migration off file-based persistence",
-        description:
-            "Spike doc on moving `~/.maestro/data` to Postgres. Schema, migration story, rollback plan.",
-        status: "todo",
-        priority: "medium",
-        originDisplayName: "Priya",
-        originColor: "#ffc864",
-        originAt: "3d ago",
-        pulledByCount: 0,
-        pulledByYou: false,
-    },
-    {
-        id: "t-ws-batching",
-        title: "Investigate WebSocket message batching latency",
-        description:
-            "The 50ms batch window is hurting the snappiness of session timeline updates. Look into a 16ms (1 frame) cap.",
-        status: "blocked",
-        priority: "low",
-        originDisplayName: "Manzil",
-        originColor: "#f06767",
-        originAt: "5d ago",
-        pulledByCount: 1,
-        pulledByYou: false,
-    },
-    {
-        id: "t-typecheck-ci",
-        title: "Add type-check to CI",
-        description:
-            "Run `tsc --noEmit` on every PR for all three packages. Server already has it; UI and CLI don't.",
-        status: "completed",
-        priority: "low",
-        originDisplayName: "Asha",
-        originColor: "#c084fc",
-        originAt: "1w ago",
-        pulledByCount: 4,
-        pulledByYou: true,
-    },
-];
-
-type StatusFilter = "all" | Status;
-
-const STATUS_LABELS: Record<Status, string> = {
-    todo: "todo",
-    in_progress: "in progress",
-    blocked: "blocked",
-    completed: "completed",
-};
+type StatusFilter = "all" | SpaceTaskStatus;
 
 type Props = {
     space: CollabSpace;
 };
 
 export const TasksSection: React.FC<Props> = ({ space }) => {
-    void space;
-    const [tasks] = useState<MockSpaceTask[]>(MOCK_TASKS);
+    const user = useFirebaseAuthStore((s) => s.user);
+    const activeProjectId = useProjectStore((s) => s.activeProjectId);
+    const { items: tasks, loading, error, retry } = useSpaceTasks(space.id);
+
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
     const [search, setSearch] = useState("");
     const [pushOpen, setPushOpen] = useState(false);
+    const [editTask, setEditTask] = useState<SpaceTask | null>(null);
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [errorDismissed, setErrorDismissed] = useState(false);
 
-    const filtered = tasks.filter((t) => {
-        if (statusFilter !== "all" && t.status !== statusFilter) return false;
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            if (!`${t.title} ${t.description}`.toLowerCase().includes(q)) return false;
+    // Optimistic overlays: rows the user just pulled / deleted before the
+    // subscription reconciles.
+    const [pulling, setPulling] = useState<Set<string>>(new Set());
+    const [optimisticPulled, setOptimisticPulled] = useState<Set<string>>(new Set());
+    const [deleting, setDeleting] = useState<Set<string>>(new Set());
+    const [rowError, setRowError] = useState<Record<string, string>>({});
+
+    useEffect(() => setErrorDismissed(false), [error]);
+
+    const filtered = useMemo(
+        () =>
+            tasks.filter((t) => {
+                if (deleting.has(t.id)) return false;
+                if (statusFilter !== "all" && t.status !== statusFilter) return false;
+                if (search.trim()) {
+                    const q = search.toLowerCase();
+                    if (!`${t.title} ${t.description}`.toLowerCase().includes(q)) return false;
+                }
+                return true;
+            }),
+        [tasks, statusFilter, search, deleting],
+    );
+
+    const isPulled = (t: SpaceTask) =>
+        optimisticPulled.has(t.id) || (user ? (t.pulledByUids ?? []).includes(user.uid) : false);
+
+    const pulledCount = (t: SpaceTask) => {
+        const base = new Set(t.pulledByUids ?? []);
+        if (optimisticPulled.has(t.id) && user) base.add(user.uid);
+        return base.size;
+    };
+
+    const handlePull = async (t: SpaceTask) => {
+        if (!user) return;
+        if (!activeProjectId) {
+            setRowError((p) => ({ ...p, [t.id]: "Open a local project first to pull into it." }));
+            return;
         }
-        return true;
-    });
+        setRowError((p) => {
+            const n = { ...p };
+            delete n[t.id];
+            return n;
+        });
+        setPulling((p) => new Set(p).add(t.id));
+        try {
+            await pullSpaceTaskToLocal(user, t, activeProjectId);
+            setOptimisticPulled((p) => new Set(p).add(t.id));
+        } catch (e: any) {
+            setRowError((p) => ({ ...p, [t.id]: e?.message ?? "Pull failed. Try again." }));
+        } finally {
+            setPulling((p) => {
+                const n = new Set(p);
+                n.delete(t.id);
+                return n;
+            });
+        }
+    };
+
+    const handleDelete = async (t: SpaceTask) => {
+        setDeleting((p) => new Set(p).add(t.id));
+        try {
+            await SpaceTasksClient.delete(space.id, t.id);
+        } catch (e: any) {
+            setRowError((p) => ({ ...p, [t.id]: e?.message ?? "Delete failed." }));
+            setDeleting((p) => {
+                const n = new Set(p);
+                n.delete(t.id);
+                return n;
+            });
+        }
+    };
+
+    const showError = error && !errorDismissed;
 
     return (
         <section className="spaceEntityPane spaceEntityPane--tasks">
@@ -139,25 +138,57 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                         <option value="all">All statuses</option>
                         <option value="todo">Todo</option>
                         <option value="in_progress">In progress</option>
+                        <option value="in_review">In review</option>
                         <option value="blocked">Blocked</option>
                         <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
                     </select>
                     <button
                         type="button"
                         className="spaceEntityPrimaryBtn"
                         onClick={() => setPushOpen(true)}
+                        disabled={!user}
+                        title={user ? undefined : "Sign in to push tasks"}
                     >
                         + Push from local
                     </button>
                 </div>
             </header>
 
+            {showError && (
+                <div className="spaceSharingError" role="alert">
+                    <span className="spaceSharingErrorMsg">{error}</span>
+                    <button type="button" className="spaceSharingErrorRetry" onClick={retry}>
+                        Retry
+                    </button>
+                    <button
+                        type="button"
+                        className="spaceSharingErrorDismiss"
+                        aria-label="Dismiss"
+                        onClick={() => setErrorDismissed(true)}
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
             <div className="spaceEntityBody">
-                {filtered.length === 0 ? (
+                {loading && tasks.length === 0 ? (
+                    <div className="spaceSharingSkeletonList" aria-busy="true">
+                        {[0, 1, 2, 3].map((i) => (
+                            <div key={i} className="spaceSharingSkeletonRow" />
+                        ))}
+                    </div>
+                ) : filtered.length === 0 ? (
                     tasks.length === 0 ? (
                         <EmptySectionState
                             title="No shared tasks yet"
                             body="Push tasks from your local Maestro project to share them with everyone in this space."
+                            action={
+                                user
+                                    ? { label: "Push from local", onClick: () => setPushOpen(true) }
+                                    : undefined
+                            }
                         />
                     ) : (
                         <div className="spaceEntityNoResults">
@@ -168,10 +199,14 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                     <div className="spaceEntityList">
                         {filtered.map((t) => {
                             const expanded = expandedId === t.id;
+                            const origin = resolveOrigin(space, t.sourceUserId ?? t.createdBy);
+                            const canManage = canManageEntity(space, user?.uid, t.createdBy);
+                            const pulled = isPulled(t);
+                            const isPulling = pulling.has(t.id);
                             return (
                                 <article
                                     key={t.id}
-                                    className={`spaceTaskItem ${expanded ? "spaceTaskItem--expanded" : ""}`}
+                                    className={`spaceTaskItem ${expanded ? "spaceTaskItem--expanded" : ""} ${isPulling ? "spaceTaskItem--pending" : ""}`}
                                 >
                                     <button
                                         type="button"
@@ -187,21 +222,26 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                             <StatusPill status={t.status} />
                                             <span
                                                 className="spaceTaskItemAuthor"
-                                                style={{ color: t.originColor }}
+                                                style={{ color: origin.color }}
                                             >
-                                                @{t.originDisplayName}
+                                                @{origin.displayName}
                                             </span>
-                                            <span className="spaceTaskItemAt">{t.originAt}</span>
+                                            <span className="spaceTaskItemAt">
+                                                {formatRelative(t.createdAt)}
+                                            </span>
                                         </div>
                                     </button>
 
                                     {expanded && (
                                         <div className="spaceTaskItemDetail">
-                                            <p className="spaceTaskItemDescription">{t.description}</p>
+                                            {t.description && (
+                                                <p className="spaceTaskItemDescription">{t.description}</p>
+                                            )}
                                             <div className="spaceTaskItemDetailMeta">
                                                 <span>
                                                     <span className="spaceEntityMetaLabel">Pulled by</span>{" "}
-                                                    {t.pulledByCount} {t.pulledByCount === 1 ? "member" : "members"}
+                                                    {pulledCount(t)}{" "}
+                                                    {pulledCount(t) === 1 ? "member" : "members"}
                                                 </span>
                                                 <span>
                                                     <span className="spaceEntityMetaLabel">Priority</span>{" "}
@@ -212,7 +252,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                     )}
 
                                     <div className="spaceTaskItemActions">
-                                        {t.pulledByYou ? (
+                                        {pulled ? (
                                             <button
                                                 type="button"
                                                 className="spaceEntityGhostBtn spaceEntityGhostBtn--success"
@@ -223,22 +263,43 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                         ) : (
                                             <button
                                                 type="button"
-                                                className="spaceEntityPrimaryBtn"
+                                                className={`spaceEntityPrimaryBtn ${isPulling ? "spaceSharingBtn--pending" : ""}`}
+                                                onClick={() => handlePull(t)}
+                                                disabled={!user || isPulling}
+                                                title={user ? undefined : "Sign in to pull"}
                                             >
-                                                ⤓ Pull to local
+                                                {isPulling ? (
+                                                    <>
+                                                        <span className="spaceSharingBtnSpinner" />
+                                                        Pulling…
+                                                    </>
+                                                ) : (
+                                                    "⤓ Pull to local"
+                                                )}
                                             </button>
                                         )}
-                                        <button type="button" className="spaceEntityGhostBtn" disabled>
-                                            Edit
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
-                                            disabled
-                                        >
-                                            Delete
-                                        </button>
+                                        {canManage && (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    className="spaceEntityGhostBtn"
+                                                    onClick={() => setEditTask(t)}
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
+                                                    onClick={() => handleDelete(t)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
+                                    {rowError[t.id] && (
+                                        <div className="spaceSharingRowError">{rowError[t.id]}</div>
+                                    )}
                                 </article>
                             );
                         })}
@@ -246,12 +307,25 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                 )}
             </div>
 
-            {pushOpen && <PushTaskModal onClose={() => setPushOpen(false)} />}
+            {pushOpen && user && (
+                <PushTaskModal
+                    space={space}
+                    projectId={activeProjectId}
+                    onClose={() => setPushOpen(false)}
+                />
+            )}
+            {editTask && (
+                <EditTaskModal
+                    space={space}
+                    task={editTask}
+                    onClose={() => setEditTask(null)}
+                />
+            )}
         </section>
     );
 };
 
-function PriorityDot({ priority }: { priority: Priority }) {
+function PriorityDot({ priority }: { priority: SpaceTaskPriority }) {
     return (
         <span
             className={`spaceTaskPriorityDot spaceTaskPriorityDot--${priority}`}
@@ -260,31 +334,88 @@ function PriorityDot({ priority }: { priority: Priority }) {
     );
 }
 
-function StatusPill({ status }: { status: Status }) {
-    const cls =
+function StatusPill({ status }: { status: SpaceTaskStatus }) {
+    const variant =
         status === "todo"
-            ? "spaceTaskStatus spaceTaskStatus--todo"
-            : status === "in_progress"
-                ? "spaceTaskStatus spaceTaskStatus--inProgress"
-                : status === "blocked"
-                    ? "spaceTaskStatus spaceTaskStatus--blocked"
-                    : "spaceTaskStatus spaceTaskStatus--done";
-    return <span className={cls}>{STATUS_LABELS[status]}</span>;
+            ? "todo"
+            : status === "in_progress" || status === "in_review"
+                ? "inProgress"
+                : status === "blocked" || status === "cancelled"
+                    ? "blocked"
+                    : "done";
+    return (
+        <span className={`spaceTaskStatus spaceTaskStatus--${variant}`}>
+            {SPACE_STATUS_LABELS[status] ?? status}
+        </span>
+    );
 }
 
-function PushTaskModal({ onClose }: { onClose: () => void }) {
+function PushTaskModal({
+    space,
+    projectId,
+    onClose,
+}: {
+    space: CollabSpace;
+    projectId: string;
+    onClose: () => void;
+}) {
+    const user = useFirebaseAuthStore((s) => s.user);
+    const projects = useProjectStore((s) => s.projects);
+    const projectName = projects.find((p) => p.id === projectId)?.name ?? "local project";
+
+    const [localTasks, setLocalTasks] = useState<MaestroTask[] | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-    const localTasks = [
-        { id: "lt1", title: "Wire up draft hook in TaskService", project: "agent-maestro" },
-        { id: "lt2", title: "Add tests for SpellService.invoke", project: "agent-maestro" },
-        { id: "lt3", title: "Bump bun to 1.2", project: "agent-maestro" },
-    ];
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let alive = true;
+        if (!projectId) {
+            setLocalTasks([]);
+            return;
+        }
+        maestroClient
+            .getTasks(projectId)
+            .then((tasks) => {
+                if (!alive) return;
+                setLocalTasks(tasks.filter((t) => t.status !== "archived"));
+            })
+            .catch((e) => alive && setLoadError(e?.message ?? "Failed to load local tasks."));
+        return () => {
+            alive = false;
+        };
+    }, [projectId]);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [onClose]);
 
     const toggle = (id: string) => {
-        const next = new Set(selectedIds);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        setSelectedIds(next);
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handlePush = async () => {
+        if (!user || selectedIds.size === 0 || !localTasks) return;
+        setSubmitting(true);
+        setSubmitError(null);
+        try {
+            const chosen = localTasks.filter((t) => selectedIds.has(t.id));
+            for (const t of chosen) {
+                await SpaceShareClient.shareTask(user, space.id, buildTaskShareInput(t));
+            }
+            onClose();
+        } catch (e: any) {
+            setSubmitError(e?.message ?? "Push failed. Try again.");
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -297,40 +428,184 @@ function PushTaskModal({ onClose }: { onClose: () => void }) {
             >
                 <div className="spaceModalTitle">Push tasks to space</div>
                 <p className="spaceModalBody">
-                    Pick tasks from your active local project to share with everyone in this space.
+                    Pick tasks from <strong>{projectName}</strong> to share with everyone in this
+                    space.
                 </p>
-                <div className="spacePushPickerList">
-                    {localTasks.map((lt) => {
-                        const checked = selectedIds.has(lt.id);
-                        return (
-                            <label
-                                key={lt.id}
-                                className={`spacePushPickerRow ${checked ? "spacePushPickerRow--checked" : ""}`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggle(lt.id)}
-                                />
-                                <div className="spacePushPickerBody">
-                                    <div className="spacePushPickerTitle">{lt.title}</div>
-                                    <div className="spacePushPickerProject">{lt.project}</div>
-                                </div>
-                            </label>
-                        );
-                    })}
-                </div>
+
+                {!projectId ? (
+                    <div className="spaceSharingPickerEmpty">
+                        No active local project. Open a project first, then push its tasks.
+                    </div>
+                ) : loadError ? (
+                    <div className="spaceSharingPickerEmpty">{loadError}</div>
+                ) : localTasks === null ? (
+                    <div className="spaceSharingPickerLoading">
+                        <span className="spaceSharingSpinner" />
+                        Loading local tasks…
+                    </div>
+                ) : localTasks.length === 0 ? (
+                    <div className="spaceSharingPickerEmpty">
+                        This project has no tasks to push yet.
+                    </div>
+                ) : (
+                    <div className="spacePushPickerList">
+                        {localTasks.map((lt) => {
+                            const checked = selectedIds.has(lt.id);
+                            return (
+                                <label
+                                    key={lt.id}
+                                    className={`spacePushPickerRow ${checked ? "spacePushPickerRow--checked" : ""}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggle(lt.id)}
+                                    />
+                                    <div className="spacePushPickerBody">
+                                        <div className="spacePushPickerTitle">{lt.title}</div>
+                                        <div className="spacePushPickerProject">
+                                            {lt.status} · {lt.priority}
+                                        </div>
+                                    </div>
+                                </label>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {submitError && <div className="spaceShareError">{submitError}</div>}
+
                 <div className="spaceModalActions">
-                    <button type="button" className="spaceEntityGhostBtn" onClick={onClose}>
+                    <button
+                        type="button"
+                        className="spaceEntityGhostBtn"
+                        onClick={onClose}
+                        disabled={submitting}
+                    >
                         Cancel
                     </button>
                     <button
                         type="button"
                         className="spaceModalPrimaryBtn"
-                        disabled={selectedIds.size === 0}
-                        onClick={onClose}
+                        disabled={selectedIds.size === 0 || submitting}
+                        onClick={handlePush}
                     >
-                        Push {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                        {submitting
+                            ? "Pushing…"
+                            : `Push ${selectedIds.size > 0 ? `(${selectedIds.size})` : ""}`}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function EditTaskModal({
+    space,
+    task,
+    onClose,
+}: {
+    space: CollabSpace;
+    task: SpaceTask;
+    onClose: () => void;
+}) {
+    const [title, setTitle] = useState(task.title);
+    const [description, setDescription] = useState(task.description);
+    const [status, setStatus] = useState<SpaceTaskStatus>(task.status);
+    const [priority, setPriority] = useState<SpaceTaskPriority>(task.priority);
+    const [saving, setSaving] = useState(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [onClose]);
+
+    const handleSave = async () => {
+        if (!title.trim()) return;
+        setSaving(true);
+        setSaveError(null);
+        try {
+            await SpaceTasksClient.update(space.id, task.id, {
+                title: title.trim(),
+                description,
+                status,
+                priority,
+            });
+            onClose();
+        } catch (e: any) {
+            setSaveError(e?.message ?? "Save failed. Try again.");
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="spaceModalOverlay" onClick={onClose}>
+            <div
+                className="spaceModal"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+            >
+                <div className="spaceModalTitle">Edit shared task</div>
+                <input
+                    type="text"
+                    className="spaceEntitySearchInput"
+                    style={{ width: "100%", marginBottom: 10 }}
+                    value={title}
+                    placeholder="Title"
+                    onChange={(e) => setTitle(e.target.value)}
+                />
+                <textarea
+                    className="spaceEntitySearchInput"
+                    style={{ width: "100%", minHeight: 96, marginBottom: 10, resize: "vertical" }}
+                    value={description}
+                    placeholder="Description"
+                    onChange={(e) => setDescription(e.target.value)}
+                />
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <select
+                        className="spaceEntityFilter"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value as SpaceTaskStatus)}
+                    >
+                        <option value="todo">Todo</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="in_review">In review</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select
+                        className="spaceEntityFilter"
+                        value={priority}
+                        onChange={(e) => setPriority(e.target.value as SpaceTaskPriority)}
+                    >
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+
+                {saveError && <div className="spaceShareError">{saveError}</div>}
+
+                <div className="spaceModalActions">
+                    <button
+                        type="button"
+                        className="spaceEntityGhostBtn"
+                        onClick={onClose}
+                        disabled={saving}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        className="spaceModalPrimaryBtn"
+                        disabled={!title.trim() || saving}
+                        onClick={handleSave}
+                    >
+                        {saving ? "Saving…" : "Save"}
                     </button>
                 </div>
             </div>

@@ -54,7 +54,11 @@ function fromQuery(snap: QuerySnapshot): SpaceSpell[] {
 }
 
 export const SpaceSpellsClient = {
-  subscribe(spaceId: string, cb: (items: SpaceSpell[]) => void): Unsubscribe {
+  subscribe(
+    spaceId: string,
+    cb: (items: SpaceSpell[]) => void,
+    onError?: (err: Error) => void,
+  ): Unsubscribe {
     const q = query(spellsCol(spaceId), orderBy('createdAt', 'desc'));
     return onSnapshot(
       q,
@@ -62,6 +66,7 @@ export const SpaceSpellsClient = {
       (err) => {
         // eslint-disable-next-line no-console
         console.warn('[SpaceSpells] subscribe failed:', err);
+        onError?.(err);
       },
     );
   },

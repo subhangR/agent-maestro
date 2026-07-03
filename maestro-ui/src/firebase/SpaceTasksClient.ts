@@ -57,7 +57,11 @@ function fromQuery(snap: QuerySnapshot): SpaceTask[] {
 }
 
 export const SpaceTasksClient = {
-  subscribe(spaceId: string, cb: (tasks: SpaceTask[]) => void): Unsubscribe {
+  subscribe(
+    spaceId: string,
+    cb: (tasks: SpaceTask[]) => void,
+    onError?: (err: Error) => void,
+  ): Unsubscribe {
     const q = query(tasksCol(spaceId), orderBy('createdAt', 'desc'));
     return onSnapshot(
       q,
@@ -65,6 +69,7 @@ export const SpaceTasksClient = {
       (err) => {
         // eslint-disable-next-line no-console
         console.warn('[SpaceTasks] subscribe failed:', err);
+        onError?.(err);
       },
     );
   },

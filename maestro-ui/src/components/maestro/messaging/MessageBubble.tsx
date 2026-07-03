@@ -2,7 +2,41 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { format, isToday, isYesterday } from "date-fns";
-import { Message, PendingMessage } from "../../../firebase/messagingTypes";
+import { Message, MessageMention, PendingMessage } from "../../../firebase/messagingTypes";
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Wraps `@mention` tokens found in plain-text children with a highlight span.
+ * Only string children are processed so it composes safely inside markdown
+ * output (paragraphs, list items, emphasis, …).
+ */
+function highlightMentions(
+  children: React.ReactNode,
+  mentions: MessageMention[],
+): React.ReactNode {
+  if (!mentions || mentions.length === 0) return children;
+  const tokens = Array.from(
+    new Set(mentions.map((m) => `@${m.displayName}`)),
+  ).sort((a, b) => b.length - a.length);
+  if (tokens.length === 0) return children;
+  const re = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "g");
+  return React.Children.map(children, (child) => {
+    if (typeof child !== "string") return child;
+    const parts = child.split(re);
+    return parts.map((part, i) =>
+      tokens.includes(part) ? (
+        <span key={i} className="messagingMention">
+          {part}
+        </span>
+      ) : (
+        part
+      ),
+    );
+  });
+}
 
 // Preserve single newlines (chat UX) outside of fenced code blocks by
 // converting them into markdown hard breaks (trailing two spaces).
@@ -37,6 +71,8 @@ type Props = {
   pending?: PendingMessage;
   currentUid: string | null;
   isOwner: boolean;
+  /** Grouped under the previous same-author message: hide avatar + header. */
+  grouped?: boolean;
   onEdit?: (messageId: string, content: string) => Promise<void>;
   onDelete?: (messageId: string) => Promise<void>;
   onRetry?: (tempId: string) => void;
@@ -80,6 +116,7 @@ export function MessageBubble({
   pending,
   currentUid,
   isOwner,
+  grouped = false,
   onEdit,
   onDelete,
   onRetry,
@@ -119,7 +156,7 @@ export function MessageBubble({
             )}
           </div>
           <div className="messagingBubbleContent messagingBubbleContentPlain">
-            {pending.content}
+            {highlightMentions(pending.content, pending.mentions ?? [])}
           </div>
           {pending.status === "failed" && (
             <div className="messagingBubbleFailedTag">
@@ -202,18 +239,48 @@ export function MessageBubble({
     }
   };
 
+  const mentions = message.mentions ?? [];
+  const mdComponents = {
+    a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
+      <a href={href} target="_blank" rel="noopener noreferrer">
+        {children}
+      </a>
+    ),
+    p: ({ children }: { children?: React.ReactNode }) => (
+      <p>{highlightMentions(children, mentions)}</p>
+    ),
+    li: ({ children }: { children?: React.ReactNode }) => (
+      <li>{highlightMentions(children, mentions)}</li>
+    ),
+    strong: ({ children }: { children?: React.ReactNode }) => (
+      <strong>{highlightMentions(children, mentions)}</strong>
+    ),
+    em: ({ children }: { children?: React.ReactNode }) => (
+      <em>{highlightMentions(children, mentions)}</em>
+    ),
+  };
+
   return (
-    <div className="messagingBubble">
-      <Avatar
-        name={message.authorDisplayName}
-        photoUrl={message.authorPhotoUrl}
-      />
+    <div className={`messagingBubble ${grouped ? "messagingBubbleGrouped" : ""}`}>
+      {grouped ? (
+        <div className="messagingAvatarSpacer" aria-hidden="true" />
+      ) : (
+        <Avatar
+          name={message.authorDisplayName}
+          photoUrl={message.authorPhotoUrl}
+        />
+      )}
       <div className="messagingBubbleMain">
-        <div className="messagingBubbleHeader">
-          <span className="messagingBubbleAuthor">{message.authorDisplayName}</span>
-          <span className="messagingBubbleTime">{formatTimestamp(createdAt)}</span>
-          {wasEdited && <span className="messagingBubbleEdited">(edited)</span>}
-        </div>
+        {!grouped && (
+          <div className="messagingBubbleHeader">
+            <span className="messagingBubbleAuthor">{message.authorDisplayName}</span>
+            <span className="messagingBubbleTime">{formatTimestamp(createdAt)}</span>
+            {wasEdited && <span className="messagingBubbleEdited">(edited)</span>}
+          </div>
+        )}
+        {grouped && wasEdited && (
+          <span className="messagingBubbleEdited messagingBubbleEditedInline">(edited)</span>
+        )}
 
         {isDeleted ? (
           <div className="messagingBubbleContent messagingBubbleDeleted">[deleted]</div>
@@ -249,16 +316,7 @@ export function MessageBubble({
           </div>
         ) : (
           <div className="messagingBubbleContent">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                a: ({ children, href }) => (
-                  <a href={href} target="_blank" rel="noopener noreferrer">
-                    {children}
-                  </a>
-                ),
-              }}
-            >
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
               {preserveSoftBreaks(message.content)}
             </ReactMarkdown>
           </div>

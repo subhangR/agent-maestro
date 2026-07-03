@@ -17,6 +17,23 @@ service cloud.firestore {
         && request.auth.uid == get(/databases/$(database)/documents/collabSpaces/$(spaceId)).data.ownerId;
     }
 
+    // Admin = a member whose denormalized role is 'admin'. Admins can moderate
+    // and manage members, but cannot delete the space or touch the owner.
+    function isSpaceAdmin(spaceId) {
+      return isSpaceMember(spaceId)
+        && get(/databases/$(database)/documents/collabSpaces/$(spaceId))
+             .data.members[request.auth.uid].role == 'admin';
+    }
+
+    // True when the space referenced will be owned by the caller AFTER this
+    // commit — lets the owner create the default #general channel in the same
+    // atomic batch as the space itself (the space doc doesn't exist pre-commit).
+    function willOwnSpace(spaceId) {
+      return isSignedIn()
+        && getAfter(/databases/$(database)/documents/collabSpaces/$(spaceId))
+             .data.ownerId == request.auth.uid;
+    }
+
     // Collab Spaces
     match /collabSpaces/{spaceId} {
 
@@ -37,11 +54,23 @@ service cloud.firestore {
         && (request.resource.data.visibility == 'public' || request.resource.data.visibility == 'private');
 
       // Owner can fully update.
+      // Admins can edit space profile + manage members (never the owner).
       // Anyone signed in can join a public space (add themselves to memberIds).
       // A member can leave (remove themselves from memberIds).
       allow update: if isSignedIn() && (
         // Owner: full edit
         resource.data.ownerId == request.auth.uid ||
+        // Admin: edit name/description/visibility + manage members
+        // (make admin/member, remove members). May NOT change ownerId,
+        // remove the owner, or demote the owner out of the 'owner' role.
+        (
+          isSpaceAdmin(spaceId) &&
+          request.resource.data.ownerId == resource.data.ownerId &&
+          request.resource.data.memberIds.hasAll([resource.data.ownerId]) &&
+          request.resource.data.members[resource.data.ownerId].role == 'owner' &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'description', 'visibility', 'memberIds', 'members', 'updatedAt'])
+        ) ||
         // Self-join on public space
         (
           resource.data.visibility == 'public' &&
@@ -65,7 +94,9 @@ service cloud.firestore {
       match /channels/{channelId} {
         allow read: if isSpaceMember(spaceId);
 
-        allow create: if isSpaceMember(spaceId)
+        // Members create channels; the owner may also create the default
+        // channel in the same batch that creates the space (willOwnSpace).
+        allow create: if (isSpaceMember(spaceId) || willOwnSpace(spaceId))
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.spaceId == spaceId
           && request.resource.data.name is string
@@ -116,8 +147,14 @@ service cloud.firestore {
           && request.resource.data.title.size() > 0
           && request.resource.data.title.size() <= 200;
 
-        allow update: if isSpaceMember(spaceId)
-          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+        // Creator/owner: full edit. Any member: pull fan-out fields only
+        // (records who materialized the shared task locally).
+        allow update: if isSpaceMember(spaceId) && (
+          request.auth.uid == resource.data.createdBy ||
+          isSpaceOwner(spaceId) ||
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['pulledByUids', 'linkedLocalIdsByUid', 'updatedAt'])
+        );
 
         allow delete: if isSignedIn()
           && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
@@ -134,8 +171,13 @@ service cloud.firestore {
           && request.resource.data.name.size() > 0
           && request.resource.data.name.size() <= 120;
 
-        allow update: if isSpaceMember(spaceId)
-          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+        // Creator/owner: full edit. Any member: adoption fan-out fields only.
+        allow update: if isSpaceMember(spaceId) && (
+          request.auth.uid == resource.data.createdBy ||
+          isSpaceOwner(spaceId) ||
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['adoptedByUids', 'adoptionCount', 'updatedAt'])
+        );
 
         allow delete: if isSignedIn()
           && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
@@ -152,8 +194,13 @@ service cloud.firestore {
           && request.resource.data.name.size() > 0
           && request.resource.data.name.size() <= 120;
 
-        allow update: if isSpaceMember(spaceId)
-          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+        // Creator/owner: full edit. Any member: install fan-out fields only.
+        allow update: if isSpaceMember(spaceId) && (
+          request.auth.uid == resource.data.createdBy ||
+          isSpaceOwner(spaceId) ||
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['installedByUids', 'installCount', 'updatedAt'])
+        );
 
         allow delete: if isSignedIn()
           && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));

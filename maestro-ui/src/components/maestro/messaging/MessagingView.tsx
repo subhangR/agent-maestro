@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { User } from "firebase/auth";
 import { useMessagingStore } from "../../../stores/useMessagingStore";
 import { CollabSpace } from "../../../firebase/collabSpaceTypes";
-import { Channel } from "../../../firebase/messagingTypes";
+import {
+  Channel,
+  Mentionable,
+  MessageMention,
+} from "../../../firebase/messagingTypes";
 import { ChannelList } from "./ChannelList";
 import { ChannelHeader } from "./ChannelHeader";
 import { MessagesPane } from "./MessagesPane";
@@ -50,6 +54,22 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
 
   const [showCreate, setShowCreate] = useState(false);
 
+  // @mention candidates: the space's human members (excluding self).
+  // NOTE: agent mentionables (shared team members, kind: 'agent') would be
+  // merged in here from the team-members vertical to enable @agent→invoke.
+  const mentionables = useMemo<Mentionable[]>(() => {
+    const members = Object.values(space.members ?? {});
+    return members
+      .filter((m) => m.uid !== user?.uid)
+      .map((m) => ({
+        id: m.uid,
+        displayName: m.displayName || m.email || "member",
+        kind: "member" as const,
+        photoUrl: m.photoUrl,
+        subtitle: m.role !== "member" ? m.role : m.email,
+      }));
+  }, [space.members, user?.uid]);
+
   // Subscribe to channels for this space
   useEffect(() => {
     if (!isMember) return;
@@ -96,9 +116,9 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
     ? messagesLoadingOlderMap[activeChannelId] ?? false
     : false;
 
-  const handleSend = async (content: string) => {
+  const handleSend = async (content: string, mentions: MessageMention[]) => {
     if (!user || !activeChannelId) return;
-    await sendMessage(user, space.id, activeChannelId, content);
+    await sendMessage(user, space.id, activeChannelId, content, mentions);
   };
 
   const handleEdit = async (messageId: string, content: string) => {
@@ -161,6 +181,7 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
               channelName={activeChannel.name}
               disabled={!user}
               disabledReason={!user ? "Sign in to post messages." : undefined}
+              mentionables={mentionables}
               onSend={handleSend}
             />
           </>
