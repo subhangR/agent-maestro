@@ -36,11 +36,17 @@ export class HermesSpawner {
 
   static readonly MODELS = [
     HERMES_DEFAULT_MODEL,
+    'anthropic:claude-fable-5',
+    'anthropic/claude-fable-5',
+    'claude-fable-5',
     'anthropic:claude-opus-4-8',
     'nous:anthropic/claude-opus-4.8',
     'openrouter:anthropic/claude-opus-4.8',
     'anthropic/claude-opus-4.8',
     'claude-opus-4-8',
+    'anthropic:claude-sonnet-5',
+    'anthropic/claude-sonnet-5',
+    'claude-sonnet-5',
     'anthropic/claude-sonnet-4.6',
     'openai/gpt-5.5',
     'openai/gpt-5.4',

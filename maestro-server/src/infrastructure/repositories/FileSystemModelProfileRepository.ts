@@ -9,7 +9,7 @@ import { atomicWriteFile } from './utils/atomicWrite';
 
 /**
  * Workspace-global model profiles, stored flat at <dataDir>/model-profiles/<id>.json
- * (not scoped to a project). On first run, four default tiers are seeded.
+ * (not scoped to a project). On first run, five default tiers are seeded.
  */
 export class FileSystemModelProfileRepository implements IModelProfileRepository {
   private profilesDir: string;
@@ -42,7 +42,7 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
     if (!this.initialized) await this.initialize();
   }
 
-  /** Seed the 4 default tiers only when no profiles exist yet (respects user deletions). */
+  /** Seed the 5 default tiers only when no profiles exist yet (respects user deletions). */
   private async seedDefaultsIfEmpty(): Promise<void> {
     let existing: string[] = [];
     try {
@@ -57,8 +57,8 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
       {
         id: 'mp_ultra',
         name: 'Ultra',
-        description: 'Most capable tier — Opus 4.8 (1M context).',
-        launchConfig: { provider: 'claude', model: 'claude-opus-4-8[1m]' },
+        description: 'Most capable tier — Fable 5.',
+        launchConfig: { provider: 'claude', model: 'claude-fable-5' },
         isDefault: true,
         createdAt: now,
         updatedAt: now,
@@ -68,6 +68,15 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
         name: 'Heavy',
         description: 'High-capability tier — Opus 4.8.',
         launchConfig: { provider: 'claude', model: 'claude-opus-4-8' },
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: 'mp_sonnet5',
+        name: 'Sonnet 5',
+        description: 'Balanced 5th-gen tier — Sonnet 5.',
+        launchConfig: { provider: 'claude', model: 'claude-sonnet-5' },
         isDefault: true,
         createdAt: now,
         updatedAt: now,
