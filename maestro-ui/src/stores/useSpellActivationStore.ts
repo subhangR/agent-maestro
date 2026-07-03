@@ -85,10 +85,16 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
   },
 
   resetIteration: async (sessionId, spellId, ruleId) => {
-    // Optimistic per-rule reset (ruleIterations[ruleId] = 0). A dedicated server
-    // reset endpoint is not exposed yet; the WS spell:activated reconciliation
-    // overwrites this once the dispatcher advances counters again.
+    // Optimistic per-rule reset for snappy UI, then persist via the real
+    // endpoint (CONTRACT-ADDENDUM Addition 1). The authoritative
+    // `spell:loop_reset` WS event reconciles ruleIterations in useActiveSpellsStore.
     useActiveSpellsStore.getState().resetRuleIterations({ maestroSessionId: sessionId, spellId, ruleId });
+    try {
+      await maestroClient.resetSpellLoop(spellId, sessionId, ruleId);
+    } catch (e: any) {
+      set({ error: e?.message ?? 'Failed to reset loop' });
+      throw e;
+    }
   },
 
   consumeReceipt: () => set({ lastCastReceipt: null }),

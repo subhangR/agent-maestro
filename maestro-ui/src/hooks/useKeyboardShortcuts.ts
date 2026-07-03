@@ -12,7 +12,7 @@ import { usePathPickerStore } from "../stores/usePathPickerStore";
 import { useSecureStorageStore } from "../stores/useSecureStorageStore";
 import { useUIStore } from "../stores/useUIStore";
 import { useSpellbookStore } from "../stores/useSpellbookStore";
-import { useSpellLauncherStore } from "../stores/useSpellLauncherStore";
+import { useSpellStudioStore } from "../stores/useSpellStudioStore";
 
 export function useKeyboardShortcuts() {
     // ── Read modal open states reactively ──
@@ -207,14 +207,16 @@ export function useKeyboardShortcuts() {
                 return;
             }
 
-            // Cmd+Shift+S / Ctrl+Shift+S — Open the SpellLauncher targeted at the focused session.
+            // Cmd+Shift+S / Ctrl+Shift+S — Open the Spell Studio. If a session is
+            // focused, jump straight to Cast targeting it; otherwise browse the Library.
             if (modKey && e.shiftKey && e.key.toLowerCase() === "s") {
                 e.preventDefault();
                 const { activeId } = useSessionStore.getState();
-                useSpellLauncherStore.getState().openLauncher({
-                    source: 'command-palette',
-                    targetSessionIds: activeId ? [activeId] : [],
-                });
+                useSpellStudioStore.getState().openStudio(
+                    activeId
+                        ? { route: 'cast', targetSessionIds: [activeId] }
+                        : { route: 'library' },
+                );
                 return;
             }
 

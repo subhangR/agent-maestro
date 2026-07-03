@@ -39,6 +39,8 @@ interface SpellLibraryState {
   recentSpellIds: string[];
 
   fetchLibrary: () => Promise<void>;
+  /** Alias of fetchLibrary — kept for cross-track callers (UI-C spellbook). */
+  fetchSpells: () => Promise<void>;
   upsertSpell: (spell: Spell) => void;
   removeSpell: (id: string) => void;
 
@@ -67,6 +69,8 @@ export const useSpellLibraryStore = create<SpellLibraryState>((set, get) => ({
       set({ loading: false, error: e?.message ?? 'Failed to load spells' });
     }
   },
+
+  fetchSpells: async () => { await get().fetchLibrary(); },
 
   upsertSpell: (spell) => set((s) => {
     const others = s.spells.filter((x) => x.id !== spell.id);

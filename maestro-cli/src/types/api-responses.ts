@@ -189,3 +189,105 @@ export interface SpellCustomPromptResponse {
   createdAt: string;
 }
 
+// ── Multi-rule Spells (Mechanism A) ──
+// Mirrors maestro-server/src/types.ts. Source of truth: 04-backend-contract.md.
+
+export type SpellColorSlug =
+  | 'amber' | 'rose' | 'violet' | 'sky' | 'emerald' | 'fuchsia' | 'lime' | 'cyan' | 'indigo';
+
+export type SpellActionType =
+  | 'inject-prompt' | 'feed-context' | 'run-command' | 'continue-loop' | 'notify-channel';
+
+export type SpellLoopType =
+  | 'single-shot' | 'continue-until-done' | 'plan-execute' | 'critic-refine';
+
+export type SpellHookEvent =
+  | 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit' | 'Stop'
+  | 'SubagentStop' | 'Notification' | 'SessionStart' | 'SessionEnd';
+
+export type SpellTrigger =
+  | { type: 'hook'; hookEvent: SpellHookEvent; matcher?: string }
+  | { type: 'schedule'; cron?: string; intervalMs?: number };
+
+export type SpellActionConfig =
+  | { type: 'inject-prompt'; prompt: string }
+  | { type: 'feed-context'; prompt: string }
+  | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
+  | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
+  | { type: 'notify-channel'; channel?: string; message?: string };
+
+export interface SpellRule {
+  id: string;
+  label?: string;
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+export interface SpellRuleInput {
+  id?: string;
+  label?: string;
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+export interface SpellResponse {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  rules: SpellRule[];
+  isDefault?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ActiveSpellResponse {
+  spellId: string;
+  color: SpellColorSlug;
+  enabled: boolean;
+  ruleIterations: Record<string, number>;
+  ensembleId?: string;
+  castAt: number;
+  castBy: string | null;
+}
+
+export interface CreateSpellPayload {
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  rules: SpellRuleInput[];
+}
+
+export interface UpdateSpellPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  color?: SpellColorSlug;
+  rules?: SpellRuleInput[];
+}
+
+export interface SpellActivateResponse {
+  spell: SpellResponse;
+  sessions: { sessionId: string; activeSpell: ActiveSpellResponse }[];
+}
+
+export interface SpellDeactivateResponse {
+  spell: SpellResponse;
+  sessionIds: string[];
+}
+
+export interface SpellResetLoopResponse {
+  spell: SpellResponse;
+  sessionId: string;
+  activeSpell: ActiveSpellResponse;
+}
+
+// Session shape carrying live active spells (GET /api/sessions/:id).
+export interface SessionWithActiveSpellsResponse extends SessionResponse {
+  activeSpells?: ActiveSpellResponse[];
+}
+

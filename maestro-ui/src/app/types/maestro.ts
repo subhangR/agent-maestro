@@ -1008,6 +1008,100 @@ export interface Ensemble {
   disbandedAt?: number | null;
 }
 
+// ─── Mechanism B — Casts / Entities / Custom Prompts (mirrors server §types) ───
+
+/** Entity kinds a one-shot cast can be launched from. */
+export type SpellEntityType =
+  | 'maestro'
+  | 'skill'
+  | 'team-member'
+  | 'task'
+  | 'doc'
+  | 'session'
+  | 'custom-prompt';
+
+/** A castable verb/template available for an entity type (GET /spells/definitions). */
+export interface SpellDefinition {
+  name: string;
+  entityType: SpellEntityType;
+  label: string;
+  description: string;
+  icon?: string;
+  promptTemplate: string;
+}
+
+/** A concrete entity that can be cast from (GET /spells/entities/:type). */
+export interface SpellEntity {
+  id: string;
+  type: SpellEntityType;
+  name: string;
+  description?: string;
+  icon?: string;
+  availableSpells: string[];
+  metadata?: Record<string, any>;
+}
+
+/** POST /spells/invoke — one-shot cast (Mechanism B, no persistence/ring). */
+export interface SpellInvocationPayload {
+  entityType: SpellEntityType;
+  entityId: string;
+  /** Defaults to 'send' when omitted or null. */
+  spellName?: string | null;
+  targetSessionId?: string;
+  targetSessionIds?: string[];
+  invokerSessionId?: string | null;
+  projectId: string;
+  args?: Record<string, any>;
+}
+
+export interface SpellInvocationResult {
+  success: boolean;
+  prompt: string;
+  entityType: SpellEntityType;
+  entityId: string;
+  spellName: string;
+  targetSessionId: string;
+  timestamp: number;
+}
+
+/** Reusable one-shot prompt snippet (custom-prompt CRUD). */
+export interface CustomPrompt {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  content: string;
+  tags?: string[];
+  entityType?: SpellEntityType;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateCustomPromptPayload {
+  name: string;
+  description?: string;
+  icon?: string;
+  content: string;
+  tags?: string[];
+  entityType?: SpellEntityType;
+}
+
+export interface UpdateCustomPromptPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  content?: string;
+  tags?: string[];
+  entityType?: SpellEntityType;
+}
+
+/** Response of POST /spells/:id/reset-loop (CONTRACT-ADDENDUM Addition 1). */
+export interface ResetLoopResult {
+  spell: Spell;
+  sessionId: string;
+  activeSpell: ActiveSpell;
+}
+
 /** Minimal Skill type (P6, partial — UI manages local list for now). */
 export interface Skill {
   id: string;

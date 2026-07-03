@@ -90,6 +90,61 @@ export function describeRule(rule: SpellRule): string {
   return `${head}${triggerSummary(rule.trigger)} → ${actionSummary(rule.action)}`;
 }
 
+/** Plain-English nudge copy per loop type (used by the verbose rule sentence). */
+export const LOOP_TYPE_SENTENCE: Record<SpellLoopType, string> = {
+  'single-shot': 'nudging it to keep going',
+  'continue-until-done': 'until the task is complete',
+  'plan-execute': 'to execute the plan it wrote',
+  'critic-refine': 'to critique and refine its output',
+};
+
+/** Trigger clause as a plain-English "when…" phrase (matcher-aware). */
+function triggerClause(trigger: SpellTrigger | undefined | null): string {
+  if (!trigger) return 'When triggered';
+  if (trigger.type === 'schedule') return 'On a schedule (coming soon)';
+  const base = HOOK_EVENT_DESCRIPTIONS[trigger.hookEvent] ?? 'a hook fires';
+  const matcher = trigger.matcher?.trim();
+  if (!matcher) return `When ${base}`;
+  return isToolEvent(trigger.hookEvent)
+    ? `When ${base} matching \`${matcher}\``
+    : `When ${base} (matching \`${matcher}\`)`;
+}
+
+/** Action clause as a plain-English verb phrase. */
+function actionClause(action: SpellActionConfig | undefined | null): string {
+  if (!action) return 'do nothing';
+  switch (action.type) {
+    case 'inject-prompt':
+      return 'inject a prompt into the session';
+    case 'feed-context':
+      return 'feed the agent context';
+    case 'run-command': {
+      const cmd = action.command?.trim() || 'a command';
+      return `run \`${cmd}\`${action.feedOutput ? ' and feed the output back' : ''}`;
+    }
+    case 'continue-loop': {
+      const type = action.loopType ?? 'single-shot';
+      const cap = action.maxIterations ?? 1;
+      return `keep the agent going — ${LOOP_TYPE_SENTENCE[type]} (up to ${cap}×)`;
+    }
+    case 'notify-channel':
+      return `send a notification${action.channel?.trim() ? ` to ${action.channel.trim()}` : ''}`;
+    default:
+      return 'act';
+  }
+}
+
+/**
+ * A full plain-English sentence for one rule — the live summary shown while
+ * configuring a rule and reusable anywhere a human-readable rule line is needed.
+ * e.g. "When after a tool runs matching `Edit|Write`, run `npm run lint` and
+ * feed the output back."
+ */
+export function ruleSentence(rule: SpellRule): string {
+  const head = rule.label?.trim() ? `${rule.label.trim()} — ` : '';
+  return `${head}${triggerClause(rule.trigger)}, ${actionClause(rule.action)}.`;
+}
+
 /** Short spell-level summary for cards / rows. */
 export function spellRuleSummary(spell: Spell | undefined | null): string {
   const rules = spell?.rules ?? [];

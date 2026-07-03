@@ -1,5 +1,25 @@
 import { create } from 'zustand';
 import { resolveSpellColorId, type SpellColorId } from '../app/constants/spellColors';
+import { maestroClient } from '../utils/MaestroClient';
+
+/**
+ * One rule-fired observability entry (S8). Mirrors the `spell:rule_fired` WS
+ * payload (CONTRACT-ADDENDUM Addition 2) — spell·rule·event·action·outcome.
+ */
+export interface RuleFiredEntry {
+  /** Stable client key: `${timestamp}:${spellId}:${ruleId}:${seq}`. */
+  key: string;
+  spellId: string;
+  ruleId: string;
+  event: string;
+  action: string;
+  outcome: 'ok' | 'error';
+  /** ms epoch when the rule fired (server timestamp when present). */
+  timestamp: number;
+}
+
+/** Per-session activity ring buffer cap — keep the feed bounded (S8). */
+const ACTIVITY_CAP = 60;
 
 /**
  * UI-side view of one active spell on a session. Mirrors the relevant subset
@@ -21,6 +41,12 @@ export interface ActiveSpellView {
 interface ActiveSpellsState {
   /** Per maestroSessionId → ordered list (oldest → newest = outermost → innermost). */
   byMaestroSessionId: Record<string, ActiveSpellView[]>;
+
+  /** Per maestroSessionId → recent rule-fired entries (newest first, capped). */
+  activityByMaestroSessionId: Record<string, RuleFiredEntry[]>;
+
+  /** Monotonic sequence to disambiguate same-ms rule-fired events. */
+  _activitySeq: number;
 
   /** Add or replace a spell from a `spell:activated` WS payload. */
   activate: (params: {
@@ -66,6 +92,40 @@ interface ActiveSpellsState {
     ruleId?: string;
   }) => void;
 
+  /**
+   * Reset a loop's counters against the SERVER (FR-6.6, CONTRACT-ADDENDUM
+   * Addition 1). Optimistically zeroes locally, then POSTs /reset-loop; the
+   * authoritative `spell:loop_reset` WS event reconciles via `applyLoopReset`.
+   * Rethrows on failure so the caller can surface an error.
+   */
+  resetLoop: (params: {
+    maestroSessionId: string;
+    spellId: string;
+    ruleId?: string;
+  }) => Promise<void>;
+
+  /**
+   * Authoritative loop-reset from a `spell:loop_reset` WS payload — replaces the
+   * spell's `ruleIterations` wholesale from the server's ActiveSpell, superseding
+   * any optimistic `resetRuleIterations`.
+   */
+  applyLoopReset: (params: {
+    maestroSessionId: string;
+    spellId: string;
+    ruleIterations: Record<string, number>;
+  }) => void;
+
+  /** Append a rule-fired observability entry (S8) from `spell:rule_fired`. */
+  recordRuleFired: (params: {
+    maestroSessionId: string;
+    spellId: string;
+    ruleId: string;
+    event: string;
+    action: string;
+    outcome: 'ok' | 'error';
+    timestamp?: number;
+  }) => void;
+
   /** Clear all active spells for one or more sessions (e.g. on close). */
   clearSession: (maestroSessionId: string) => void;
 }
@@ -75,8 +135,10 @@ function sortByCastAt(a: ActiveSpellView, b: ActiveSpellView): number {
   return a.castAt - b.castAt;
 }
 
-export const useActiveSpellsStore = create<ActiveSpellsState>((set) => ({
+export const useActiveSpellsStore = create<ActiveSpellsState>((set, get) => ({
   byMaestroSessionId: {},
+  activityByMaestroSessionId: {},
+  _activitySeq: 0,
 
   activate: ({ sessionIds, spellId, spellName, color, ensembleId, castAt, enabled, ruleIterations }) => {
     set((state) => {
@@ -141,12 +203,59 @@ export const useActiveSpellsStore = create<ActiveSpellsState>((set) => ({
     });
   },
 
+  resetLoop: async ({ maestroSessionId, spellId, ruleId }) => {
+    // Optimistic zero for snappy UI; the server WS reconciles authoritatively.
+    get().resetRuleIterations({ maestroSessionId, spellId, ruleId });
+    await maestroClient.resetSpellLoop(spellId, maestroSessionId, ruleId);
+  },
+
+  applyLoopReset: ({ maestroSessionId, spellId, ruleIterations }) => {
+    set((state) => {
+      const current = state.byMaestroSessionId[maestroSessionId];
+      if (!current) return state;
+      const next = { ...state.byMaestroSessionId };
+      next[maestroSessionId] = current.map((s) =>
+        s.spellId === spellId ? { ...s, ruleIterations: { ...ruleIterations } } : s,
+      );
+      return { byMaestroSessionId: next };
+    });
+  },
+
+  recordRuleFired: ({ maestroSessionId, spellId, ruleId, event, action, outcome, timestamp }) => {
+    set((state) => {
+      const ts = timestamp ?? Date.now();
+      const seq = state._activitySeq + 1;
+      const entry: RuleFiredEntry = {
+        key: `${ts}:${spellId}:${ruleId}:${seq}`,
+        spellId,
+        ruleId,
+        event,
+        action,
+        outcome,
+        timestamp: ts,
+      };
+      const prev = state.activityByMaestroSessionId[maestroSessionId] ?? [];
+      const nextList = [entry, ...prev].slice(0, ACTIVITY_CAP);
+      return {
+        activityByMaestroSessionId: {
+          ...state.activityByMaestroSessionId,
+          [maestroSessionId]: nextList,
+        },
+        _activitySeq: seq,
+      };
+    });
+  },
+
   clearSession: (maestroSessionId) => {
     set((state) => {
-      if (!state.byMaestroSessionId[maestroSessionId]) return state;
+      const hasActive = Boolean(state.byMaestroSessionId[maestroSessionId]);
+      const hasActivity = Boolean(state.activityByMaestroSessionId[maestroSessionId]);
+      if (!hasActive && !hasActivity) return state;
       const next = { ...state.byMaestroSessionId };
+      const nextActivity = { ...state.activityByMaestroSessionId };
       delete next[maestroSessionId];
-      return { byMaestroSessionId: next };
+      delete nextActivity[maestroSessionId];
+      return { byMaestroSessionId: next, activityByMaestroSessionId: nextActivity };
     });
   },
 }));
@@ -160,5 +269,18 @@ const EMPTY_ACTIVE_SPELLS: ActiveSpellView[] = [];
 export function useActiveSpellsForSession(maestroSessionId: string | null | undefined): ActiveSpellView[] {
   return useActiveSpellsStore((s) =>
     maestroSessionId ? (s.byMaestroSessionId[maestroSessionId] ?? EMPTY_ACTIVE_SPELLS) : EMPTY_ACTIVE_SPELLS,
+  );
+}
+
+/** Stable empty ref for activity selectors. */
+const EMPTY_ACTIVITY: RuleFiredEntry[] = [];
+
+/**
+ * Selector — recent rule-fired entries for a maestro session (S8 feed),
+ * newest-first and capped. Empty array (stable ref) when nothing has fired.
+ */
+export function useSpellActivityForSession(maestroSessionId: string | null | undefined): RuleFiredEntry[] {
+  return useActiveSpellsStore((s) =>
+    maestroSessionId ? (s.activityByMaestroSessionId[maestroSessionId] ?? EMPTY_ACTIVITY) : EMPTY_ACTIVITY,
   );
 }

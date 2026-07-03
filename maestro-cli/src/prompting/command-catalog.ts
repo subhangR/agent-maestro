@@ -128,10 +128,19 @@ const COMMAND_DEFINITIONS: Array<Omit<CommandCatalogEntry, 'syntax'>> = [
 
   // Spell commands
   { id: 'spell:entities', description: 'List available spell entities', group: 'spell', allowedModes: ALL_MODES },
-  { id: 'spell:list', description: 'List spells for entity or all', group: 'spell', allowedModes: ALL_MODES },
-  { id: 'spell:invoke', description: 'Invoke a spell on a target session', group: 'spell', allowedModes: ALL_MODES },
-  { id: 'spell:create', description: 'Create a custom prompt spell', group: 'spell', allowedModes: ALL_MODES },
-  { id: 'spell:delete', description: 'Delete a custom prompt spell', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:list', description: 'List spell definitions (cast templates)', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:library', description: 'List multi-rule spells (seeds + custom)', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:show', description: 'Show a multi-rule spell with rules expanded', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:invoke', description: 'Invoke a one-shot cast on a target session', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:create', description: 'Create a multi-rule spell', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:edit', description: 'Update a multi-rule spell', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:remove', description: 'Delete a multi-rule spell', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:activate', description: 'Activate a spell on target sessions', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:deactivate', description: 'Deactivate a spell on target sessions', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:active', description: "List a session's active spells", group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:reset-loop', description: 'Reset loop counters for an active spell', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:prompt-create', description: 'Create a custom prompt spell', group: 'spell', allowedModes: ALL_MODES },
+  { id: 'spell:prompt-delete', description: 'Delete a custom prompt spell', group: 'spell', allowedModes: ALL_MODES },
 
   // Command-log (CLI command-usage audit trail)
   { id: 'command-log:list', description: 'List tracked CLI commands for a session', group: 'command-log', allowedModes: ALL_MODES, hiddenFromPrompt: true },
@@ -245,9 +254,18 @@ const COMMAND_SYNTAX_MAP: Record<string, string> = {
   // Spell commands
   'spell:entities': 'maestro spell entities [--type <entityType>] [--project <projectId>]',
   'spell:list': 'maestro spell list [entityId] [--type <entityType>] [--project-id <id>] [--all-projects]',
+  'spell:library': 'maestro spell library',
+  'spell:show': 'maestro spell show <id>',
   'spell:invoke': 'maestro spell invoke <entityId> [spellName] --target <sessionId> [--args <json>]',
-  'spell:create': 'maestro spell create "<name>" --prompt "<text>" [--description "<text>"]',
-  'spell:delete': 'maestro spell delete <entityId>',
+  'spell:create': 'maestro spell create [--file <json>] [--name <name>] [--color <slug>] [--rule <json>...]',
+  'spell:edit': 'maestro spell edit <id> [--file <json>] [--name <name>] [--color <slug>] [--rule <json>...]',
+  'spell:remove': 'maestro spell remove <id>',
+  'spell:activate': 'maestro spell activate <id> --targets <a,b> [--invoker <sessionId>]',
+  'spell:deactivate': 'maestro spell deactivate <id> --targets <a,b>',
+  'spell:active': 'maestro spell active [--session <id>]',
+  'spell:reset-loop': 'maestro spell reset-loop <id> --session <id> [--rule <ruleId>]',
+  'spell:prompt-create': 'maestro spell prompt-create "<name>" --content "<text>" [--description "<text>"]',
+  'spell:prompt-delete': 'maestro spell prompt-delete <id>',
 
   // Init commands
   'worker:init': 'maestro worker init',

@@ -13,6 +13,7 @@ import {
   createSpellSchema,
   updateSpellSchema,
   spellActivationSchema,
+  resetLoopSchema,
   idParamSchema,
 } from './validation';
 
@@ -212,6 +213,21 @@ export function createSpellRoutes(spellService: SpellService): express.Router {
     try {
       const { targetSessionIds } = req.body as { targetSessionIds: string[] };
       const result = await spellService.deactivateSpell(req.params.id as string, targetSessionIds);
+      res.json(result);
+    } catch (err: any) {
+      res.status(err.statusCode || 500).json({
+        error: true,
+        code: err.code || 'INTERNAL_ERROR',
+        message: err.message || 'Unknown error',
+      });
+    }
+  });
+
+  // POST /api/spells/:id/reset-loop — body: { sessionId, ruleId? }
+  router.post('/spells/:id/reset-loop', validateParams(idParamSchema), validateBody(resetLoopSchema), async (req: Request, res: Response) => {
+    try {
+      const { sessionId, ruleId } = req.body as { sessionId: string; ruleId?: string };
+      const result = await spellService.resetLoop(req.params.id as string, sessionId, ruleId);
       res.json(result);
     } catch (err: any) {
       res.status(err.statusCode || 500).json({

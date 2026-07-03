@@ -23,6 +23,8 @@ const IMMEDIATE_EVENTS = new Set<string>([
   'spell:invoked',
   'spell:activated',
   'spell:deactivated',
+  'spell:rule_fired',
+  'spell:loop_reset',
   // Ensemble lifecycle is low-volume and UI must repaint rings immediately
   // when an ensemble is created/updated/disbanded.
   'ensemble:created',
@@ -194,6 +196,8 @@ export class WebSocketBridge {
       'spell:invoked',
       'spell:activated',
       'spell:deactivated',
+      'spell:rule_fired',
+      'spell:loop_reset',
       // Ensemble events (P4)
       'ensemble:created',
       'ensemble:updated',
@@ -381,14 +385,18 @@ export class WebSocketBridge {
       return false;
     }
 
-    // Spell events — filter by target sessionId (invoked) or sessionIds[] (activated/deactivated)
+    // Spell events — filter by target session(s). Payloads vary:
+    //   activated/deactivated → sessionIds[]; invoked → targetSessionId;
+    //   rule_fired/loop_reset → singular sessionId.
     if (event.startsWith('spell:')) {
       if (!sub.sessionIds) return false;
       const targetIds: string[] = Array.isArray(data?.sessionIds)
         ? data.sessionIds
         : data?.targetSessionId
           ? [data.targetSessionId]
-          : [];
+          : data?.sessionId
+            ? [data.sessionId]
+            : [];
       if (targetIds.length === 0) return false;
       return !targetIds.some((id) => sub.sessionIds!.has(id));
     }

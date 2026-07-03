@@ -548,6 +548,9 @@ export class FileSystemSessionRepository implements ISessionRepository {
     if (updates.archivedAt !== undefined) {
       session.archivedAt = updates.archivedAt;
     }
+    if (updates.activeSpells !== undefined) {
+      session.activeSpells = updates.activeSpells;
+    }
 
     session.lastActivity = Date.now();
 

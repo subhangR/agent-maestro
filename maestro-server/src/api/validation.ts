@@ -667,6 +667,12 @@ export const spellActivationSchema = z.object({
   invokerSessionId: safeId.nullable().optional(),
 }).strict();
 
+// D8/FR-6.6: reset loop counter(s) for a spell active on a session.
+export const resetLoopSchema = z.object({
+  sessionId: z.string().min(1),
+  ruleId: z.string().optional(),
+}).strict();
+
 // --- Hook dispatch (P2) ---
 
 export const hookDispatchSchema = z.object({
