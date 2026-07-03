@@ -308,22 +308,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
 
   return (
     <div className={`termStrip ${expanded ? 'termStrip--expanded' : ''}`}>
-      {/* Expanded: full log transcript — opens UPWARD, above the strip */}
-      {expanded && (
-        <div className="termStripOverlay" ref={bodyRef} onScroll={handleScroll}>
-          {allMessages.length === 0 ? (
-            <div className="termStripEmpty">Waiting for log data...</div>
-          ) : (
-            <div className="sessionLogViewer">
-              {groups.map((group, i) => (
-                <LogMessageGroup key={i} group={group} index={i} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* The fused bottom strip */}
+      {/* The fused vertical strip — pinned to the left edge of the terminal */}
       <div className="termStripBar">
         {/* 1. Session Log toggle */}
         <button
@@ -333,7 +318,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           aria-expanded={expanded}
           title={expanded ? 'Collapse session log' : 'Expand session log'}
         >
-          <span className="termStripChevron">{expanded ? '▾' : '▸'}</span>
+          <span className="termStripChevron">{expanded ? '◂' : '▸'}</span>
           <span className="termStripLabel">Session Log</span>
           {isOngoing && <span className="termStripLiveDot" />}
           {isOngoing && <span className="termStripLiveTag">LIVE</span>}
@@ -402,6 +387,21 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           </button>
         </div>
       </div>
+
+      {/* Expanded: full log transcript — opens to the RIGHT of the strip */}
+      {expanded && (
+        <div className="termStripOverlay" ref={bodyRef} onScroll={handleScroll}>
+          {allMessages.length === 0 ? (
+            <div className="termStripEmpty">Waiting for log data...</div>
+          ) : (
+            <div className="sessionLogViewer">
+              {groups.map((group, i) => (
+                <LogMessageGroup key={i} group={group} index={i} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

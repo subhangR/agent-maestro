@@ -1502,30 +1502,35 @@ html[data-redesign] .mermaidDiagramFallback {
 
 /* ─── Session docs tabs — inline row in the bottom terminal strip ─── */
 
-/* Flexible, edge-faded row of doc/diagram tabs. Shares the strip's middle space
-   with the stats rail; scrolls horizontally when there are many docs. */
+/* Edge-faded column of doc/diagram tabs. Shares the strip's middle space
+   with the stats rail; scrolls vertically when there are many docs. Icon-only
+   in the narrow vertical strip — the full title lives in the button tooltip. */
 .termStripDocTabs {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 1 auto;
+  min-height: 0;
+  width: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  overflow-x: auto;
+  gap: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: none;
-  padding: 0 4px;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  padding: 4px 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
 }
 .termStripDocTabs::-webkit-scrollbar { display: none; }
 
 .termStripDocTab {
   flex-shrink: 0;
-  max-width: 160px;
+  width: 32px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  height: 22px;
-  padding: 0 9px;
+  padding: 0;
   border: 1px solid var(--term-strip-line, #2c2922);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
@@ -1560,8 +1565,6 @@ html[data-redesign] .mermaidDiagramFallback {
 }
 
 .termStripDocTabLabel {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* Hidden in the narrow vertical strip — the doc title is the button tooltip. */
+  display: none;
 }
