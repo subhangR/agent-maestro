@@ -33,9 +33,9 @@ import { RecordingsListModal } from "../modals/RecordingsListModal";
 import { ReplayModal } from "../modals/ReplayModal";
 import { AgentModalViewer } from "../modals/AgentModalViewer";
 import { useMaestroStore } from "../../stores/useMaestroStore";
-import { SpellLauncher } from "../spells/SpellLauncher";
+import { SpellStudio } from "../spells/studio/SpellStudio";
 import { TeamMemberIntroDialog } from "../maestro/TeamMemberIntroDialog";
-import { SpellbookDrawer } from "../spells/SpellbookDrawer";
+import { SpellbookDrawer } from "../spells/studio/spellbook";
 import { UndoToast } from "../spells/UndoToast";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { normalizeSmartQuotes } from "../../app/utils/string";
@@ -681,8 +681,10 @@ export function AppModals() {
         />
       )}
 
-      {/* Spell launcher (replaces SpellPicker) */}
-      <SpellLauncher />
+      {/* Spell Studio — unified Library/Detail/Cast/Entities + editor overlay
+          (Track UI-A). Bridges the legacy launcher store, so every existing
+          "cast this spell" caller opens the Studio in cast mode. */}
+      <SpellStudio />
 
       {/* Intro dialog for agent/CLI-created team members */}
       <TeamMemberIntroDialog />

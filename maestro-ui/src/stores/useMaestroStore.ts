@@ -598,6 +598,33 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         useActiveSpellsStore.getState().deactivate({ sessionIds, spellId });
         break;
       }
+      case 'spell:loop_reset': {
+        // CONTRACT-ADDENDUM Addition 2 — authoritative loop-counter reset. The
+        // server ships the reconciled ActiveSpell; replace ruleIterations from it.
+        const { sessionId, spellId, activeSpell } = message.data ?? {};
+        if (!sessionId || !spellId) break;
+        useActiveSpellsStore.getState().applyLoopReset({
+          maestroSessionId: sessionId,
+          spellId,
+          ruleIterations: activeSpell?.ruleIterations ?? {},
+        });
+        break;
+      }
+      case 'spell:rule_fired': {
+        // CONTRACT-ADDENDUM Addition 2 — per-session observability feed (S8).
+        const { sessionId, spellId, ruleId, event, action, outcome, timestamp } = message.data ?? {};
+        if (!sessionId || !spellId) break;
+        useActiveSpellsStore.getState().recordRuleFired({
+          maestroSessionId: sessionId,
+          spellId,
+          ruleId: ruleId ?? '',
+          event: event ?? '',
+          action: action ?? '',
+          outcome: outcome === 'error' ? 'error' : 'ok',
+          timestamp: typeof timestamp === 'number' ? timestamp : undefined,
+        });
+        break;
+      }
       case 'task:session_added':
       case 'task:session_removed': {
         if (message.data?.taskId) debouncedFetchTask(message.data.taskId, get().fetchTask);

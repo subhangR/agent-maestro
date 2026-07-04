@@ -38,6 +38,15 @@ import type {
     CreateSpellPayload,
     UpdateSpellPayload,
     ActiveSpell,
+    ResetLoopResult,
+    SpellEntity,
+    SpellEntityType,
+    SpellDefinition,
+    SpellInvocationPayload,
+    SpellInvocationResult,
+    CustomPrompt,
+    CreateCustomPromptPayload,
+    UpdateCustomPromptPayload,
     Ensemble,
     GitCapabilities,
     GitDiffSummary,
@@ -799,6 +808,59 @@ class MaestroClient {
             method: 'POST',
             body: JSON.stringify({ targetSessionIds }),
         });
+    }
+
+    /** Reset loop counters for an active spell (CONTRACT-ADDENDUM Addition 1). */
+    async resetSpellLoop(spellId: string, sessionId: string, ruleId?: string): Promise<ResetLoopResult> {
+        return this.fetch<ResetLoopResult>(`/spells/${spellId}/reset-loop`, {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, ruleId }),
+        });
+    }
+
+    // ============ CASTS / ENTITIES / CUSTOM PROMPTS (Mechanism B) ============
+
+    /** Invocation templates (verbs) available, optionally filtered by entity type. */
+    async listSpellDefinitions(entityType?: SpellEntityType): Promise<SpellDefinition[]> {
+        const query = entityType ? `?entityType=${encodeURIComponent(entityType)}` : '';
+        return this.fetch<SpellDefinition[]>(`/spells/definitions${query}`);
+    }
+
+    /** Entities of a given type that a one-shot cast can be launched from. */
+    async listSpellEntities(type: SpellEntityType, projectId: string): Promise<SpellEntity[]> {
+        return this.fetch<SpellEntity[]>(
+            `/spells/entities/${encodeURIComponent(type)}?projectId=${encodeURIComponent(projectId)}`,
+        );
+    }
+
+    /** Fire a one-shot cast (Mechanism B). No persistence, no ring. */
+    async invokeSpell(payload: SpellInvocationPayload): Promise<SpellInvocationResult> {
+        return this.fetch<SpellInvocationResult>('/spells/invoke', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async listCustomPrompts(): Promise<CustomPrompt[]> {
+        return this.fetch<CustomPrompt[]>('/spells/custom-prompts');
+    }
+
+    async createCustomPrompt(payload: CreateCustomPromptPayload): Promise<CustomPrompt> {
+        return this.fetch<CustomPrompt>('/spells/custom-prompts', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async updateCustomPrompt(id: string, payload: UpdateCustomPromptPayload): Promise<CustomPrompt> {
+        return this.fetch<CustomPrompt>(`/spells/custom-prompts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async deleteCustomPrompt(id: string): Promise<void> {
+        await this.fetch<{ success: boolean }>(`/spells/custom-prompts/${id}`, { method: 'DELETE' });
     }
 
     // ==================== ENSEMBLES (P4) ====================

@@ -268,6 +268,16 @@ export interface SpellDeactivatedPayload {
   timestamp: number;
 }
 
+export interface SpellLoopResetPayload {
+  spellId: string;
+  sessionId: string;
+  /** The specific rule reset, or `null` when ALL rules were reset. */
+  ruleId: string | null;
+  /** The updated active-spell entry (authoritative ruleIterations). */
+  activeSpell: ActiveSpell;
+  timestamp: number;
+}
+
 export interface SpellActivatedEvent {
   type: 'spell:activated';
   data: SpellActivatedPayload;
@@ -489,6 +499,8 @@ export interface TypedEventMap {
     outcome: 'ok' | 'error';
     timestamp: number;
   };
+  // D9/FR-6.6: loop-counter reset broadcast so the UI can drop optimistic state.
+  'spell:loop_reset': SpellLoopResetPayload;
   // Ensemble events
   'ensemble:created': Ensemble;
   'ensemble:updated': Ensemble;

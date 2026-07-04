@@ -1007,6 +1007,47 @@ export class SpellService {
     return { spell, sessionIds: targetSessionIds };
   }
 
+  /**
+   * D8/FR-6.6: zero the loop counter(s) for a spell active on a session.
+   * - `ruleId` given → reset only that rule's iteration count to 0.
+   * - `ruleId` omitted → reset ALL counters (ruleIterations = {}).
+   * Emits `spell:loop_reset` with the authoritative updated active-spell entry.
+   */
+  async resetLoop(spellId: string, sessionId: string, ruleId?: string): Promise<{
+    spell: Spell;
+    sessionId: string;
+    activeSpell: ActiveSpell;
+  }> {
+    const spell = await this.getSpell(spellId);
+
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session) throw new NotFoundError('Session', sessionId);
+
+    const actives: ActiveSpell[] = session.activeSpells ?? [];
+    const current = actives.find(a => a.spellId === spellId);
+    if (!current) {
+      throw new NotFoundError('ActiveSpell', `${spellId} on ${sessionId}`);
+    }
+
+    const nextIterations: Record<string, number> = ruleId
+      ? { ...current.ruleIterations, [ruleId]: 0 }
+      : {};
+    const updatedActive: ActiveSpell = { ...current, ruleIterations: nextIterations };
+    const nextActives = actives.map(a => (a.spellId === spellId ? updatedActive : a));
+
+    await this.sessionRepo.update(sessionId, { activeSpells: nextActives });
+
+    await this.eventBus.emit('spell:loop_reset', {
+      spellId,
+      sessionId,
+      ruleId: ruleId ?? null,
+      activeSpell: updatedActive,
+      timestamp: Date.now(),
+    });
+
+    return { spell, sessionId, activeSpell: updatedActive };
+  }
+
   // --- Custom Prompt CRUD ---
 
   async createCustomPrompt(data: CreateCustomPromptPayload): Promise<CustomPrompt> {

@@ -427,6 +427,35 @@ describe('HookDispatcherService — observability & composition', () => {
   });
 });
 
+// --- All 8 hook events dispatch server-side (hookRoutes → dispatcher) ---
+
+describe('HookDispatcherService — all 8 hook events dispatch', () => {
+  const ALL_EVENTS: SpellHookEvent[] = [
+    'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop',
+    'SubagentStop', 'Notification', 'SessionStart', 'SessionEnd',
+  ];
+
+  it.each(ALL_EVENTS)('dispatches %s without error (no active spells → exit 0)', async (event) => {
+    const session = makeSession([]);
+    const { dispatcher } = makeDispatcher(session, new Map());
+    const result = await dispatcher.dispatch({ sessionId: session.id, event, payload: {} } as any);
+    expect(result.exitCode).toBe(0);
+    expect(result.blocked).toBe(false);
+  });
+
+  it('a feed-context rule fires for each of the 8 events when triggered on that event', async () => {
+    for (const event of ALL_EVENTS) {
+      const session = makeSession([makeActive('s1')]);
+      const rule = makeRule({ trigger: { type: 'hook', hookEvent: event }, action: { type: 'feed-context', prompt: `ctx-${event}` } });
+      const spells = new Map<string, Spell>([['s1', makeSpell('s1', [rule])]]);
+      const { dispatcher } = makeDispatcher(session, spells);
+      const result = await dispatcher.dispatch({ sessionId: session.id, event, payload: {} } as any);
+      expect(result.spells.length).toBe(1);
+      expect(result.stdout).toBe(`ctx-${event}`);
+    }
+  });
+});
+
 // --- Seed-contract: every SPELL_LIBRARY seed passes the real Zod schema (PI-7b) ---
 
 describe('SPELL_LIBRARY seed contract', () => {
