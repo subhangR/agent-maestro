@@ -11,6 +11,8 @@ import { MessagesSection } from "./sections/MessagesSection";
 import { TasksSection } from "./sections/TasksSection";
 import { TeamMembersSection } from "./sections/TeamMembersSection";
 import { SpellsSection } from "./sections/SpellsSection";
+import { DocsSection } from "./sections/DocsSection";
+import { FilesSection } from "./sections/FilesSection";
 import { MembersSection } from "./sections/MembersSection";
 import { SettingsSection } from "./sections/SettingsSection";
 
@@ -39,16 +41,25 @@ export const SpaceWindow: React.FC<Props> = ({ spaceId, inline = false }) => {
 
         let unsub: Unsubscribe | null = null;
         try {
-            unsub = CollabSpaceClient.subscribeToSpace(spaceId, (next) => {
-                if (!next) {
+            unsub = CollabSpaceClient.subscribeToSpace(
+                spaceId,
+                (next) => {
+                    if (!next) {
+                        setMissing(true);
+                        setSpace(null);
+                    } else {
+                        setMissing(false);
+                        setSpace(next);
+                    }
+                    setLoading(false);
+                },
+                () => {
+                    // Permission-denied / network failure: without the space doc
+                    // we can't render anything — treat as missing (fail closed).
+                    setLoading(false);
                     setMissing(true);
-                    setSpace(null);
-                } else {
-                    setMissing(false);
-                    setSpace(next);
-                }
-                setLoading(false);
-            });
+                },
+            );
         } catch {
             setLoading(false);
             setMissing(true);
@@ -102,6 +113,8 @@ export const SpaceWindow: React.FC<Props> = ({ spaceId, inline = false }) => {
                 {spaceActiveSection === "tasks" && <TasksSection space={space} />}
                 {spaceActiveSection === "team" && <TeamMembersSection space={space} />}
                 {spaceActiveSection === "spells" && <SpellsSection space={space} />}
+                {spaceActiveSection === "docs" && <DocsSection space={space} />}
+                {spaceActiveSection === "files" && <FilesSection space={space} />}
                 {spaceActiveSection === "members" && <MembersSection space={space} />}
                 {spaceActiveSection === "settings" && <SettingsSection space={space} />}
             </div>
