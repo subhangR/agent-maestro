@@ -8,20 +8,40 @@ import { NotFoundError, ValidationError } from '../../domain/common/Errors';
 import { atomicWriteFile } from './utils/atomicWrite';
 
 /**
- * Curated SPELL_LIBRARY (v2 — §11.10). Fewer, higher-confidence multi-rule seeds.
- * Merged into findAll/findById at read time; user-created spells live in
+ * Curated SPELL_LIBRARY (v2 — designed in docs/spell-library.md). Multi-rule seeds
+ * merged into findAll/findById at read time; user-created spells live in
  * data/spells/*.json alongside. isDefault: true makes them non-deletable
  * (see SpellService.deleteSpell), mirroring the 'default_' guard pattern.
  *
- * Every run-command rule ships `enabled: false` so a fresh install never fires a
- * command that may not exist; the user opts in after pointing it at a real script.
- * A seed-contract test runs each seed's rules through the real Zod schema.
+ * Safety invariants (enforced by test/spell-library-seeds.test.ts):
+ *  - every seed's rules[] pass the real Zod createSpellSchema;
+ *  - every `run-command` rule ships `enabled: false` (a fresh install never fires a
+ *    command that may not exist — the user wires a real command, then enables it);
+ *  - run-command defaults are self-describing (a harmless `echo` placeholder, or a
+ *    genuinely universal `npx tsc --noEmit`) — never a hardcoded project script;
+ *  - notify-channel is in-app only (no `channel` field — dropped in C3);
+ *  - every rule's action is legal for its hook event per ACTIONS_BY_EVENT.
+ *
+ * NOTE (matcher semantics): for Pre/PostToolUse the dispatcher matches against the
+ * TOOL NAME (payload.tool_name), not the file path — so `Edit|Write` fires on the
+ * Edit/Write tools; you cannot narrow by file extension here.
  */
+
+// Self-describing placeholder for run-command seeds that ship disabled: a harmless
+// `echo` whose args tell the user exactly what to replace it with. Enabling it
+// un-edited just feeds the instruction back — never assumes a project's toolchain.
+const runCommandPlaceholder = (instruction: string) => ({
+  type: 'run-command' as const,
+  command: 'echo',
+  args: [`[maestro spell] ${instruction}`],
+  feedOutput: true,
+});
+
 export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_self_critic',
     name: 'Self-Critic',
-    description: 'Loop a critique-and-refine pass until the work meets the quality bar.',
+    description: 'On each stop, loop back for a critique-and-refine pass against the stated goal — bounded, then stop.',
     icon: '🪞',
     color: 'violet',
     rules: [
@@ -40,7 +60,7 @@ export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_plan_first',
     name: 'Plan-First',
-    description: 'Write the plan, then loop back to execute against it.',
+    description: 'Turn a stop into "write a concrete, checkable plan, then loop back and execute against it".',
     icon: '🗺️',
     color: 'sky',
     rules: [
@@ -50,6 +70,25 @@ export const SPELL_LIBRARY: Spell[] = [
         enabled: true,
         trigger: { type: 'hook', hookEvent: 'Stop' },
         action: { type: 'continue-loop', loopType: 'plan-execute', maxIterations: 2 },
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'spell_focus_keeper',
+    name: 'Focus-Keeper',
+    description: 'Keep the agent working toward completion instead of stopping early — bounded at 5 continuations.',
+    icon: '🎯',
+    color: 'indigo',
+    rules: [
+      {
+        id: 'rule_focus_keeper_stop',
+        label: 'Continue until done',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: { type: 'continue-loop', loopType: 'continue-until-done', maxIterations: 5 },
       },
     ],
     isDefault: true,
@@ -101,9 +140,53 @@ export const SPELL_LIBRARY: Spell[] = [
     updatedAt: 0,
   },
   {
+    id: 'spell_no_secrets',
+    name: 'No-Secrets Guard',
+    description: 'Before an Edit/Write, remind the agent never to commit secrets, keys, tokens, or credentials.',
+    icon: '🔑',
+    color: 'rose',
+    rules: [
+      {
+        id: 'rule_no_secrets_pre',
+        label: 'Secrets reminder before edits',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'PreToolUse', matcher: 'Edit|Write' },
+        action: {
+          type: 'feed-context',
+          prompt: 'Reminder: never write secrets, API keys, tokens, or credentials into source or committed files. Use environment variables or a secrets manager, and keep secrets out of version control.',
+        },
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'spell_conventional_commits',
+    name: 'Conventional Commits',
+    description: 'On stop, nudge a clean Conventional-Commits message — only if a commit is actually being made.',
+    icon: '📝',
+    color: 'emerald',
+    rules: [
+      {
+        id: 'rule_conventional_commits_stop',
+        label: 'Commit-message nudge',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'Stop' },
+        action: {
+          type: 'inject-prompt',
+          prompt: 'If (and only if) you are about to commit, use a Conventional-Commits message: `type(scope): summary` in imperative mood, with a body explaining why (not just what). Do not commit unless the user asked you to.',
+        },
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
     id: 'spell_notify_on_done',
     name: 'Notify-on-Done',
-    description: 'Send a notification when the session stops.',
+    description: 'Show an in-app notification when the session finishes a turn.',
     icon: '🔔',
     color: 'fuchsia',
     rules: [
@@ -120,19 +203,84 @@ export const SPELL_LIBRARY: Spell[] = [
     updatedAt: 0,
   },
   {
+    id: 'spell_session_recap',
+    name: 'Session Recap',
+    description: 'On session end, surface an in-app recap notification; optionally write a recap doc (wire it up first).',
+    icon: '📓',
+    color: 'lime',
+    rules: [
+      {
+        id: 'rule_session_recap_notify',
+        label: 'Recap notification',
+        enabled: true,
+        trigger: { type: 'hook', hookEvent: 'SessionEnd' },
+        action: { type: 'notify-channel', message: 'Session ended — capture a short recap of what changed and what is left.' },
+      },
+      {
+        id: 'rule_session_recap_write',
+        label: 'Write recap doc',
+        // run-command ships disabled — wire it to your own summary command first.
+        enabled: false,
+        trigger: { type: 'hook', hookEvent: 'SessionEnd' },
+        action: runCommandPlaceholder('Configure this rule to write a session recap (e.g. your own summary script), then enable it.'),
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'spell_type_safety',
+    name: 'Type-Safety Sentinel',
+    description: 'After a file edit, run a project-wide `tsc --noEmit` typecheck and feed failures back. TypeScript projects only; enable to use.',
+    icon: '🛡️',
+    color: 'sky',
+    rules: [
+      {
+        id: 'rule_type_safety_post',
+        label: 'Typecheck after edit',
+        // run-command ships disabled — assumes a TS project with tsc resolvable via npx.
+        enabled: false,
+        trigger: { type: 'hook', hookEvent: 'PostToolUse', matcher: 'Edit|Write' },
+        action: { type: 'run-command', command: 'npx', args: ['tsc', '--noEmit'], feedOutput: true },
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
+    id: 'spell_test_after_edit',
+    name: 'Test-After-Edit',
+    description: 'After a file edit, run your test command and feed the output back. Wire it to your test runner, then enable.',
+    icon: '🧪',
+    color: 'emerald',
+    rules: [
+      {
+        id: 'rule_test_after_edit_post',
+        label: 'Test after edit',
+        enabled: false,
+        trigger: { type: 'hook', hookEvent: 'PostToolUse', matcher: 'Edit|Write' },
+        action: runCommandPlaceholder('Replace with your test command (e.g. npm test, pytest, go test ./..., bun test), then enable it.'),
+      },
+    ],
+    isDefault: true,
+    createdAt: 0,
+    updatedAt: 0,
+  },
+  {
     id: 'spell_lint_on_edit',
     name: 'Lint-on-Edit',
-    description: 'Run the linter after each file edit and feed errors back. Point it at your project\'s lint script, then enable it.',
+    description: 'Run your linter after each file edit and feed errors back. Point it at your lint command, then enable it.',
     icon: '✨',
     color: 'lime',
     rules: [
       {
         id: 'rule_lint_on_edit_post',
         label: 'Lint after edit',
-        // run-command seeds ship disabled — the user wires a real command first.
         enabled: false,
         trigger: { type: 'hook', hookEvent: 'PostToolUse', matcher: 'Edit|Write' },
-        action: { type: 'run-command', command: 'npm', args: ['run', 'lint'], feedOutput: true },
+        action: runCommandPlaceholder('Replace with your lint command (e.g. npm run lint), then enable it.'),
       },
     ],
     isDefault: true,
@@ -142,7 +290,7 @@ export const SPELL_LIBRARY: Spell[] = [
   {
     id: 'spell_guardrail_combo',
     name: 'Guardrail Combo',
-    description: 'Multi-rule demo: lint after edits (disabled until wired) plus a notification when the session stops.',
+    description: 'Multi-rule demo: lint after edits (disabled until wired) plus an in-app notification when the session stops.',
     icon: '🧱',
     color: 'indigo',
     rules: [
@@ -151,7 +299,7 @@ export const SPELL_LIBRARY: Spell[] = [
         label: 'Lint after edit',
         enabled: false,
         trigger: { type: 'hook', hookEvent: 'PostToolUse', matcher: 'Edit|Write' },
-        action: { type: 'run-command', command: 'npm', args: ['run', 'lint'], feedOutput: true },
+        action: runCommandPlaceholder('Replace with your lint command (e.g. npm run lint), then enable it.'),
       },
       {
         id: 'rule_guardrail_notify',
@@ -199,6 +347,26 @@ export class FileSystemSpellRepository implements ISpellRepository {
     if (!this.initialized) await this.initialize();
   }
 
+  /**
+   * C3: strip the dropped `channel` field from any persisted notify-channel
+   * action on load, so legacy spell files parse clean against the v2 schema
+   * without a migration file. Idempotent and cheap; runs on every disk read.
+   */
+  private normalizeSpell(spell: Spell): Spell {
+    if (!Array.isArray(spell.rules)) return spell;
+    let changed = false;
+    const rules = spell.rules.map((rule) => {
+      const action = rule.action as any;
+      if (action && action.type === 'notify-channel' && 'channel' in action) {
+        const { channel, ...rest } = action;
+        changed = true;
+        return { ...rule, action: rest };
+      }
+      return rule;
+    });
+    return changed ? { ...spell, rules } : spell;
+  }
+
   private async loadAll(): Promise<void> {
     if (this.cacheLoaded) return;
 
@@ -209,7 +377,7 @@ export class FileSystemSpellRepository implements ISpellRepository {
       for (const file of jsonFiles) {
         try {
           const data = await fs.readFile(path.join(this.spellsDir, file), 'utf-8');
-          const spell = JSON.parse(data) as Spell;
+          const spell = this.normalizeSpell(JSON.parse(data) as Spell);
           this.cache.set(spell.id, spell);
         } catch (err) {
           this.logger.warn(`Failed to load spell file: ${file}`, {
@@ -257,7 +425,7 @@ export class FileSystemSpellRepository implements ISpellRepository {
     try {
       const filePath = path.join(this.spellsDir, `${id}.json`);
       const data = await fs.readFile(filePath, 'utf-8');
-      const spell = JSON.parse(data) as Spell;
+      const spell = this.normalizeSpell(JSON.parse(data) as Spell);
       this.cache.set(spell.id, spell);
       return spell;
     } catch {

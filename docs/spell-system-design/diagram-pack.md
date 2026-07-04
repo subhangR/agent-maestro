@@ -1,3 +1,9 @@
+> ## ⚠️ SUPERSEDED (2026-07-04)
+> These diagrams depict the dropped **`gate` action / 6-action taxonomy** and per-spell
+> single-action / gate fail-mode model. v2 replaced it with the multi-rule engine (5 actions,
+> no gate, per-rule loops, 8 events). Authoritative: `docs/spell-system-redesign.md` §11;
+> current explainer: `docs/spell-system-explainer.md`. Kept for historical context only.
+
 # Spell System Redesign — Design Diagrams
 
 Visual design pack for the spell-system overhaul. Each diagram is an editable Excalidraw board (open the link, then File → Save to keep your own copy).

@@ -67,12 +67,11 @@ FR-7.3 wants authors to test a rule without a live session. Would need
 returns the outcome **without** side effects.
 **Recommendation:** defer to a fast-follow unless you design a prominent test affordance.
 
-### D11 — [backend] Optional: `notify-channel` real routing
-`channel` is threaded through the event as a hint, but end-to-end delivery to a specific
-channel depends on the relay. If the design leans on multi-channel notify, confirm the relay
-honors `channel`.
-**Recommendation:** treat channel as best-effort hint in v1; revisit if the design needs
-guaranteed per-channel routing.
+### D11 — [backend] ~~Optional: `notify-channel` real routing~~ — RESOLVED (2026-07-04): dropped
+**Decision:** the `channel` field and any external relay were **removed** in the hardening
+scope-down. `notify-channel` is **in-app only** (`{ message? }`); `notify:progress` is
+`{ sessionId, spellId, ruleId, message, level? }`. No per-channel routing in v1. See
+`CONTRACT-ADDENDUM.md` and `docs/spell-system-explainer.md` §3.6.
 
 ---
 

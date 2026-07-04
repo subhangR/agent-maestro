@@ -3,6 +3,13 @@
 This freezes the small new backend additions so BE / CLI / UI can build in parallel.
 Everything else in `04-backend-contract.md` is already live and unchanged.
 
+> **⚠️ CORRECTION (2026-07-04) — notify-channel `channel` field dropped.** The hardening
+> scope-down removed the `channel` routing hint and any external relay (telegram/slack) from
+> the v1 action union. `notify-channel` is now **in-app only** — its config is just
+> `{ message? }` — and `notify:progress` is `{ sessionId, spellId, ruleId, message, level? }`
+> (no `channel`). Anywhere the reference docs below mention a `channel` field, a routing hint,
+> or a relay, treat it as **removed**. See `docs/spell-system-explainer.md` §3.6.
+
 ## Addition 1 — Loop-reset endpoint (D8, FR-6.6)
 
 **Route:** `POST /api/spells/:id/reset-loop`
