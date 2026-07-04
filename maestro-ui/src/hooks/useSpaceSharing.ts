@@ -215,9 +215,9 @@ export function buildTeamMemberShareInput(tm: {
 }
 
 /**
- * The new spell model is rule-based (no single `body`). Build a human-readable
- * preview body from the rules so the shared Preview stays useful, and default
- * the target `entityType` to `session`.
+ * Human-readable preview of the rules — stored alongside the lossless
+ * `rules` payload so list previews (and legacy readers) don't have to
+ * re-derive it.
  */
 export function buildSpellBody(spell: Spell): string {
   if (!spell.rules?.length) return spell.description ?? '';
@@ -243,14 +243,27 @@ export function buildSpellBody(spell: Spell): string {
   return lines.join('\n');
 }
 
+/**
+ * Lossless push: the full rules array (label/enabled/trigger/action) plus
+ * color travel with the spell. Local rule ids are intentionally dropped —
+ * they're regenerated on install.
+ */
 export function buildSpellShareInput(spell: Spell): SharedSpellInput {
   return {
     name: spell.name,
     description: spell.description ?? '',
     body: buildSpellBody(spell),
-    entityType: 'session',
+    color: spell.color,
+    rules: (spell.rules ?? []).map((r) => ({
+      ...(r.label ? { label: r.label } : {}),
+      enabled: r.enabled,
+      trigger: r.trigger,
+      action: r.action,
+    })),
     icon: spell.icon ?? null,
     sourceSpellId: spell.id,
+    // Spells are workspace-global (not project-scoped) — no source project.
+    sourceProjectId: null,
   };
 }
 

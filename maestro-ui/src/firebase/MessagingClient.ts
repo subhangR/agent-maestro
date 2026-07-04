@@ -7,7 +7,7 @@ import {
   startAfter,
   getDoc,
   getDocs,
-  addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   serverTimestamp,
@@ -26,9 +26,12 @@ import {
   Channel,
   Message,
   MessageMention,
+  MessageAttachment,
   CreateChannelInput,
   MESSAGES_PAGE_SIZE,
+  MESSAGE_MAX_LENGTH,
 } from './messagingTypes';
+import { asString, asStringOrNull, asNumber, withRetry } from './firestoreUtils';
 
 /** Normalizes an unknown Firestore value into a MessageMention[]. */
 function mentionsFromData(raw: unknown): MessageMention[] {
@@ -36,11 +39,25 @@ function mentionsFromData(raw: unknown): MessageMention[] {
   return raw
     .filter((m): m is Record<string, unknown> => Boolean(m) && typeof m === 'object')
     .map((m) => ({
-      id: String(m.id ?? ''),
-      displayName: String(m.displayName ?? ''),
+      id: typeof m.id === 'string' ? m.id : '',
+      displayName: typeof m.displayName === 'string' ? m.displayName : '',
       kind: m.kind === 'agent' ? 'agent' : 'member',
     }))
     .filter((m) => m.id && m.displayName) as MessageMention[];
+}
+
+/** Normalizes an unknown Firestore value into a MessageAttachment[]. */
+function attachmentsFromData(raw: unknown): MessageAttachment[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a): a is Record<string, unknown> => Boolean(a) && typeof a === 'object')
+    .map((a) => ({
+      fileId: typeof a.fileId === 'string' ? a.fileId : '',
+      name: typeof a.name === 'string' ? a.name : '',
+      mimeType: typeof a.mimeType === 'string' ? a.mimeType : 'application/octet-stream',
+      size: asNumber(a.size),
+    }))
+    .filter((a) => a.fileId && a.name);
 }
 
 const SPACES = 'collabSpaces';
@@ -85,18 +102,20 @@ function messageFromSnap(snap: QueryDocumentSnapshot | DocumentSnapshot): Messag
   const data = snap.data() as DocumentData;
   return {
     id: snap.id,
-    spaceId: data.spaceId,
-    channelId: data.channelId,
-    authorUid: data.authorUid,
-    authorDisplayName: data.authorDisplayName ?? '',
-    authorPhotoUrl: data.authorPhotoUrl ?? null,
-    content: data.content ?? '',
+    spaceId: asString(data.spaceId),
+    channelId: asString(data.channelId),
+    authorUid: asString(data.authorUid),
+    authorDisplayName: asString(data.authorDisplayName),
+    authorPhotoUrl: asStringOrNull(data.authorPhotoUrl),
+    content: asString(data.content),
     createdAt: data.createdAt,
     editedAt: data.editedAt ?? null,
     deletedAt: data.deletedAt ?? null,
-    threadId: data.threadId ?? null,
-    replyCount: typeof data.replyCount === 'number' ? data.replyCount : 0,
+    threadId: asStringOrNull(data.threadId),
+    replyCount: asNumber(data.replyCount),
     mentions: mentionsFromData(data.mentions),
+    attachments: attachmentsFromData(data.attachments),
+    clientMsgId: asStringOrNull(data.clientMsgId),
   };
 }
 
@@ -114,14 +133,23 @@ export const MessagingClient = {
   subscribeToChannels(
     spaceId: string,
     cb: (channels: Channel[]) => void,
+    onError?: (err: Error) => void,
   ): Unsubscribe {
     const q = query(channelsCol(spaceId), orderBy('position', 'asc'));
-    return onSnapshot(q, (snap) => cb(channelsFromQuery(snap)));
+    return onSnapshot(
+      q,
+      (snap) => cb(channelsFromQuery(snap)),
+      (err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[Messaging] channels subscription failed:', err);
+        onError?.(err);
+      },
+    );
   },
 
   async listChannels(spaceId: string): Promise<Channel[]> {
     const q = query(channelsCol(spaceId), orderBy('position', 'asc'));
-    const snap = await getDocs(q);
+    const snap = await withRetry(() => getDocs(q));
     return channelsFromQuery(snap);
   },
 
@@ -132,7 +160,9 @@ export const MessagingClient = {
     opts?: { position?: number; isDefault?: boolean },
   ): Promise<Channel> {
     const now = serverTimestamp();
-    const ref = await addDoc(channelsCol(spaceId), {
+    // Pre-allocated ref → retrying a transient failure can't duplicate the channel.
+    const ref = doc(channelsCol(spaceId));
+    await withRetry(() => setDoc(ref, {
       spaceId,
       name: input.name,
       description: input.description ?? '',
@@ -142,9 +172,11 @@ export const MessagingClient = {
       lastMessageAt: null,
       position: opts?.position ?? Date.now(),
       isDefault: opts?.isDefault ?? false,
-    });
-    const fresh = await getDoc(ref);
-    return channelFromSnap(fresh)!;
+    }));
+    const fresh = await withRetry(() => getDoc(ref));
+    const created = channelFromSnap(fresh);
+    if (!created) throw new Error('Channel was created but could not be read back.');
+    return created;
   },
 
   async updateChannel(
@@ -152,14 +184,14 @@ export const MessagingClient = {
     channelId: string,
     patch: Partial<Pick<Channel, 'name' | 'description' | 'position'>>,
   ): Promise<void> {
-    await updateDoc(channelDoc(spaceId, channelId), {
+    await withRetry(() => updateDoc(channelDoc(spaceId, channelId), {
       ...patch,
       updatedAt: serverTimestamp(),
-    });
+    }));
   },
 
   async deleteChannel(spaceId: string, channelId: string): Promise<void> {
-    await deleteDoc(channelDoc(spaceId, channelId));
+    await withRetry(() => deleteDoc(channelDoc(spaceId, channelId)));
   },
 
   // ─── Messages ───────────────────────────────────────────────────
@@ -172,7 +204,7 @@ export const MessagingClient = {
     spaceId: string,
     channelId: string,
     cb: (messages: Message[], oldestSnap: QueryDocumentSnapshot | null, hasMore: boolean) => void,
-    opts?: { limit?: number },
+    opts?: { limit?: number; onError?: (err: Error) => void },
   ): Unsubscribe {
     const pageSize = opts?.limit ?? MESSAGES_PAGE_SIZE;
     const q = query(
@@ -180,13 +212,21 @@ export const MessagingClient = {
       orderBy('createdAt', 'desc'),
       limit(pageSize),
     );
-    return onSnapshot(q, (snap) => {
-      const docs = snap.docs;
-      const messages = messagesFromQuery(snap).slice().reverse(); // ASC for display
-      const oldest = docs.length > 0 ? docs[docs.length - 1] : null;
-      const hasMore = docs.length === pageSize;
-      cb(messages, oldest, hasMore);
-    });
+    return onSnapshot(
+      q,
+      (snap) => {
+        const docs = snap.docs;
+        const messages = messagesFromQuery(snap).slice().reverse(); // ASC for display
+        const oldest = docs.length > 0 ? docs[docs.length - 1] : null;
+        const hasMore = docs.length === pageSize;
+        cb(messages, oldest, hasMore);
+      },
+      (err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[Messaging] messages subscription failed:', err);
+        opts?.onError?.(err);
+      },
+    );
   },
 
   /**
@@ -205,7 +245,7 @@ export const MessagingClient = {
       startAfter(beforeDoc),
       limit(pageSize),
     );
-    const snap = await getDocs(q);
+    const snap = await withRetry(() => getDocs(q));
     const docs = snap.docs;
     const messages = messagesFromQuery(snap).slice().reverse();
     const oldest = docs.length > 0 ? docs[docs.length - 1] : null;
@@ -219,35 +259,52 @@ export const MessagingClient = {
     channelId: string,
     content: string,
     mentions: MessageMention[] = [],
+    opts?: { clientMsgId?: string; attachments?: MessageAttachment[] },
   ): Promise<Message> {
+    if (!content.trim()) throw new Error('Message is empty.');
+    if (content.length > MESSAGE_MAX_LENGTH) {
+      throw new Error(`Message is too long (${content.length}/${MESSAGE_MAX_LENGTH}).`);
+    }
     const now = serverTimestamp();
-    const batch = writeBatch(getDb());
+    // Pre-allocated ref → retrying a transient commit failure is idempotent.
     const newMsgRef = doc(messagesCol(spaceId, channelId));
-    batch.set(newMsgRef, {
-      spaceId,
-      channelId,
-      authorUid: user.uid,
-      authorDisplayName: user.displayName ?? user.email ?? 'Unknown',
-      authorPhotoUrl: user.photoURL ?? null,
-      content,
-      createdAt: now,
-      editedAt: null,
-      deletedAt: null,
-      threadId: null,
-      replyCount: 0,
-      mentions: mentions.map((m) => ({
-        id: m.id,
-        displayName: m.displayName,
-        kind: m.kind,
-      })),
+    await withRetry(() => {
+      const batch = writeBatch(getDb());
+      batch.set(newMsgRef, {
+        spaceId,
+        channelId,
+        authorUid: user.uid,
+        authorDisplayName: user.displayName ?? user.email ?? 'Unknown',
+        authorPhotoUrl: user.photoURL ?? null,
+        content,
+        createdAt: now,
+        editedAt: null,
+        deletedAt: null,
+        threadId: null,
+        replyCount: 0,
+        mentions: mentions.map((m) => ({
+          id: m.id,
+          displayName: m.displayName,
+          kind: m.kind,
+        })),
+        attachments: (opts?.attachments ?? []).map((a) => ({
+          fileId: a.fileId,
+          name: a.name,
+          mimeType: a.mimeType,
+          size: a.size,
+        })),
+        clientMsgId: opts?.clientMsgId ?? null,
+      });
+      batch.update(channelDoc(spaceId, channelId), {
+        lastMessageAt: now,
+        updatedAt: now,
+      });
+      return batch.commit();
     });
-    batch.update(channelDoc(spaceId, channelId), {
-      lastMessageAt: now,
-      updatedAt: now,
-    });
-    await batch.commit();
-    const fresh = await getDoc(newMsgRef);
-    return messageFromSnap(fresh)!;
+    const fresh = await withRetry(() => getDoc(newMsgRef));
+    const sent = messageFromSnap(fresh);
+    if (!sent) throw new Error('Message was sent but could not be read back.');
+    return sent;
   },
 
   async editMessage(
@@ -256,10 +313,14 @@ export const MessagingClient = {
     messageId: string,
     content: string,
   ): Promise<void> {
-    await updateDoc(messageDoc(spaceId, channelId, messageId), {
+    if (!content.trim()) throw new Error('Message is empty.');
+    if (content.length > MESSAGE_MAX_LENGTH) {
+      throw new Error(`Message is too long (${content.length}/${MESSAGE_MAX_LENGTH}).`);
+    }
+    await withRetry(() => updateDoc(messageDoc(spaceId, channelId, messageId), {
       content,
       editedAt: serverTimestamp(),
-    });
+    }));
   },
 
   /** Soft-delete: marks deletedAt and clears content. */
@@ -268,10 +329,10 @@ export const MessagingClient = {
     channelId: string,
     messageId: string,
   ): Promise<void> {
-    await updateDoc(messageDoc(spaceId, channelId, messageId), {
+    await withRetry(() => updateDoc(messageDoc(spaceId, channelId, messageId), {
       content: '',
       deletedAt: serverTimestamp(),
-    });
+    }));
   },
 
   async hardDeleteMessage(
@@ -279,7 +340,7 @@ export const MessagingClient = {
     channelId: string,
     messageId: string,
   ): Promise<void> {
-    await deleteDoc(messageDoc(spaceId, channelId, messageId));
+    await withRetry(() => deleteDoc(messageDoc(spaceId, channelId, messageId)));
   },
 };
 

@@ -196,11 +196,15 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         <div className="spaceSpellItemTitleWrap">
                                             <span className="spaceSpellItemName">/{sp.name}</span>
                                             <span className="spaceSpellItemTargetWrap">
-                                                {sp.entityType && (
+                                                {sp.rules && sp.rules.length > 0 ? (
+                                                    <span className="spaceSpellTargetPill">
+                                                        {sp.rules.length} rule{sp.rules.length === 1 ? "" : "s"}
+                                                    </span>
+                                                ) : sp.entityType ? (
                                                     <span className="spaceSpellTargetPill">
                                                         {sp.entityType}
                                                     </span>
-                                                )}
+                                                ) : null}
                                             </span>
                                         </div>
                                         <div className="spaceSpellItemMeta">
@@ -220,7 +224,11 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         <p className="spaceSpellItemDesc">{sp.description}</p>
                                     )}
 
-                                    {open && <pre className="spaceSpellItemBody">{sp.body}</pre>}
+                                    {open && (
+                                        <pre className="spaceSpellItemBody">
+                                            {sp.body || sp.description || "No preview available."}
+                                        </pre>
+                                    )}
 
                                     <div className="spaceSpellItemActions">
                                         {installed ? (

@@ -6,6 +6,9 @@ import type {
   MaestroTask,
   TeamMember,
   TaskPriority,
+  Spell,
+  SpellRuleInput,
+  SpellColorSlug,
 } from '../app/types/maestro';
 import { SpaceTask, SpaceTeamMember, SpaceSpell } from './spaceShareTypes';
 import { SpaceTasksClient } from './SpaceTasksClient';
@@ -73,7 +76,7 @@ export async function adoptSpaceTeamMember(
   };
   const created = await maestroClient.createTeamMember(payload);
   try {
-    await SpaceTeamMembersClient.recordAdopt(spaceTm.spaceId, spaceTm.id, user.uid);
+    await SpaceTeamMembersClient.recordAdopt(spaceTm.spaceId, spaceTm.id, user.uid, created.id);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[SpaceAdapters] recordAdopt failed:', err);
@@ -101,8 +104,41 @@ export interface SpellInstallResult {
 }
 
 /**
- * Install a shared spell into the user's *global* custom-prompt library.
- * If a prompt with the same name already exists, the caller decides whether
+ * Reconstructs create/update rule payloads from a shared spell.
+ *
+ * v2 shared spells carry the full rules array (label/enabled/trigger/action —
+ * already validated at the read boundary by SpaceSpellsClient), so the install
+ * is a faithful round-trip; rule ids are regenerated locally by the server.
+ *
+ * Legacy v1 docs (no `rules`) predate the multi-rule model and can only
+ * offer their human-readable `body`/`description` — those install a single
+ * DISABLED inject-prompt rule so nothing fires until the user reviews it.
+ */
+function rulesFromSharedSpell(spaceSpell: SpaceSpell, targetName: string): SpellRuleInput[] {
+  if (spaceSpell.rules && spaceSpell.rules.length > 0) {
+    return spaceSpell.rules.map((r) => ({
+      ...(r.label ? { label: r.label } : {}),
+      enabled: r.enabled,
+      trigger: r.trigger,
+      action: r.action,
+    }));
+  }
+  return [
+    {
+      label: 'Imported from space (legacy shared spell — review before enabling)',
+      enabled: false,
+      trigger: { type: 'hook', hookEvent: 'Stop' },
+      action: {
+        type: 'inject-prompt',
+        prompt: spaceSpell.body || spaceSpell.description || targetName,
+      },
+    },
+  ];
+}
+
+/**
+ * Install a shared spell into the user's *global* spell library.
+ * If a spell with the same name already exists, the caller decides whether
  * to Replace / Rename / Cancel. The default with no `onConflict` is to
  * surface the conflict to the caller via `{ status: 'conflict' }`.
  */
@@ -112,12 +148,11 @@ export async function installSpaceSpell(
   options?: SpellInstallOptions,
 ): Promise<SpellInstallResult> {
   const targetName = options?.nameOverride?.trim() || spaceSpell.name;
-  // NOTE: staging's spell system is rule-based (createSpell/updateSpell/listSpells),
-  // replacing the old content-based custom-prompt API. The shared-spell `body`/`entityType`
-  // fields have no direct home in the new model yet — spell push/pull is deferred, so we
-  // map name/description/icon and install a single disabled inject-prompt rule (below).
-  const existing = await maestroClient.listSpells();
-  const conflict = (existing as any[]).find((p) => p?.name === targetName);
+  const rules = rulesFromSharedSpell(spaceSpell, targetName);
+  const color: SpellColorSlug = spaceSpell.color ?? 'violet';
+
+  const existing: Spell[] = await maestroClient.listSpells();
+  const conflict = existing.find((p) => p?.name === targetName);
 
   if (conflict) {
     const strategy = options?.onConflict;
@@ -132,38 +167,36 @@ export async function installSpaceSpell(
         name: targetName,
         description: spaceSpell.description ?? '',
         icon: spaceSpell.icon ?? undefined,
+        color,
+        rules,
       });
-      try {
-        await SpaceSpellsClient.recordInstall(spaceSpell.spaceId, spaceSpell.id, user.uid);
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.warn('[SpaceAdapters] recordInstall failed:', err);
-      }
+      await recordInstallBestEffort(user, spaceSpell, conflict.id);
       return { status: 'replaced' };
     }
     // strategy === 'rename' but no nameOverride supplied — fall through to install
   }
 
-  await maestroClient.createSpell({
+  const created = await maestroClient.createSpell({
     name: targetName,
     description: spaceSpell.description ?? '',
     icon: spaceSpell.icon ?? undefined,
-    color: 'violet',
-    // Spells are multi-rule now. Shared-spell body/entityType have no home in the
-    // new model yet, so install a single disabled inject-prompt rule as a stub.
-    rules: [
-      {
-        enabled: false,
-        trigger: { type: 'hook', hookEvent: 'Stop' },
-        action: { type: 'inject-prompt', prompt: spaceSpell.description || targetName },
-      },
-    ],
+    color,
+    rules,
   });
+  await recordInstallBestEffort(user, spaceSpell, created?.id);
+  return { status: 'installed' };
+}
+
+/** Best-effort fan-out write: don't fail the install if it errors. */
+async function recordInstallBestEffort(
+  user: User,
+  spaceSpell: SpaceSpell,
+  localSpellId?: string,
+): Promise<void> {
   try {
-    await SpaceSpellsClient.recordInstall(spaceSpell.spaceId, spaceSpell.id, user.uid);
+    await SpaceSpellsClient.recordInstall(spaceSpell.spaceId, spaceSpell.id, user.uid, localSpellId);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[SpaceAdapters] recordInstall failed:', err);
   }
-  return { status: 'installed' };
 }

@@ -38,6 +38,16 @@ export interface Mentionable {
   subtitle?: string | null;
 }
 
+/** A shared-file reference attached to a message (content lives in the
+ * space's `files` subcollection). */
+export interface MessageAttachment {
+  fileId: string;
+  name: string;
+  mimeType: string;
+  /** Raw file size in bytes. */
+  size: number;
+}
+
 export interface Message {
   id: string;
   spaceId: string;
@@ -52,6 +62,12 @@ export interface Message {
   threadId: string | null;
   replyCount: number;
   mentions: MessageMention[];
+  attachments: MessageAttachment[];
+  /**
+   * Client-generated id written with the message; lets the sender reconcile
+   * its optimistic pending entry exactly (not by content fingerprint).
+   */
+  clientMsgId: string | null;
 }
 
 export interface CreateChannelInput {
@@ -60,6 +76,7 @@ export interface CreateChannelInput {
 }
 
 export interface PendingMessage {
+  /** Doubles as the message's `clientMsgId` for exact reconciliation. */
   tempId: string;
   spaceId: string;
   channelId: string;
@@ -71,6 +88,7 @@ export interface PendingMessage {
   status: 'sending' | 'failed';
   error?: string;
   mentions: MessageMention[];
+  attachments?: MessageAttachment[];
 }
 
 export const MESSAGE_MAX_LENGTH = 10000;
