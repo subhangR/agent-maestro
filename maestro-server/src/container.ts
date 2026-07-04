@@ -285,6 +285,16 @@ export async function createContainer(): Promise<Container> {
   const huddleService = new HuddleService(sessionPromptService, sessionService);
   const commandUsageRepo = new FileSystemSessionCommandUsageRepository(config.dataDir, logger);
   const commandUsageService = new CommandUsageService(commandUsageRepo);
+  // Ensemble service is constructed first so SpellService can delegate
+  // `coordinate` casts to it (C1).
+  const ensembleService = new EnsembleService(
+    ensembleRepo,
+    sessionRepo,
+    spellRepo,
+    eventBus,
+    idGenerator,
+    logger,
+  );
   const spellService = new SpellService(
     projectRepo,
     taskRepo,
@@ -295,20 +305,15 @@ export async function createContainer(): Promise<Container> {
     spellRepo,
     eventBus,
     idGenerator,
-  );
-  const ensembleService = new EnsembleService(
-    ensembleRepo,
-    sessionRepo,
-    spellRepo,
-    eventBus,
-    idGenerator,
-    logger,
+    ensembleService,
   );
   const hookDispatcherService = new HookDispatcherService(
     sessionRepo,
     spellRepo,
+    teamMemberRepo,
     eventBus,
     logger,
+    config,
   );
   const ptyHostService = new PtyHostService(sessionService, logger);
 
@@ -418,6 +423,7 @@ export async function createContainer(): Promise<Container> {
     async shutdown() {
       logger.info('Shutting down container...');
       ptyHostService.shutdownAll();
+      hookDispatcherService.shutdown(); // C5: kill any in-flight run-command children
       logDigestService.shutdown();
       (skillLoader as MultiScopeSkillLoader).shutdown();
       sessionRepo.shutdown();

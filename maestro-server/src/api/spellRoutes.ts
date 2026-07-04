@@ -13,6 +13,7 @@ import {
   createSpellSchema,
   updateSpellSchema,
   spellActivationSchema,
+  toggleSpellSchema,
   resetLoopSchema,
   idParamSchema,
 } from './validation';
@@ -193,11 +194,36 @@ export function createSpellRoutes(spellService: SpellService): express.Router {
     }
   });
 
-  // POST /api/spells/:id/activate — body: { targetSessionIds[], invokerSessionId? }
+  // POST /api/spells/:id/activate — body: { targetSessionIds[], invokerSessionId?, castMode?, ensembleName? }
   router.post('/spells/:id/activate', validateParams(idParamSchema), validateBody(spellActivationSchema), async (req: Request, res: Response) => {
     try {
-      const { targetSessionIds, invokerSessionId } = req.body as { targetSessionIds: string[]; invokerSessionId?: string };
-      const result = await spellService.activateSpell(req.params.id as string, targetSessionIds, invokerSessionId ?? null);
+      const { targetSessionIds, invokerSessionId, castMode, ensembleName } = req.body as {
+        targetSessionIds: string[];
+        invokerSessionId?: string;
+        castMode?: 'single' | 'broadcast' | 'coordinate';
+        ensembleName?: string;
+      };
+      const result = await spellService.activateSpell(
+        req.params.id as string,
+        targetSessionIds,
+        invokerSessionId ?? null,
+        { castMode, ensembleName },
+      );
+      res.json(result);
+    } catch (err: any) {
+      res.status(err.statusCode || 500).json({
+        error: true,
+        code: err.code || 'INTERNAL_ERROR',
+        message: err.message || 'Unknown error',
+      });
+    }
+  });
+
+  // POST /api/spells/:id/toggle — body: { sessionId, enabled, ruleId? } (C4)
+  router.post('/spells/:id/toggle', validateParams(idParamSchema), validateBody(toggleSpellSchema), async (req: Request, res: Response) => {
+    try {
+      const { sessionId, enabled, ruleId } = req.body as { sessionId: string; enabled: boolean; ruleId?: string };
+      const result = await spellService.toggleSpell(req.params.id as string, sessionId, enabled, ruleId);
       res.json(result);
     } catch (err: any) {
       res.status(err.statusCode || 500).json({

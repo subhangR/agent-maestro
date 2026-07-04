@@ -610,8 +610,10 @@ const spellActionConfigSchema = z.discriminatedUnion('type', [
   }).strict(),
   z.object({
     type: z.literal('notify-channel'),
-    channel: z.string().max(100).optional(),
+    // C3: `channel` dropped — notify-channel is in-app only now. `level` drives
+    // the toast/activity severity styling.
     message: z.string().max(2_000).optional(),
+    level: z.enum(['info', 'success', 'warn']).optional(),
   }).strict(),
 ]);
 
@@ -665,6 +667,17 @@ export const spellActivationSchema = z.object({
   // route handler already does `invokerSessionId ?? null`, so the schema accepts
   // both `null` and omitted/string to keep the wire contract aligned.
   invokerSessionId: safeId.nullable().optional(),
+  // C1 cast seam. single/broadcast behave identically; coordinate additionally
+  // wires targets into an Ensemble. ensembleName only meaningful with coordinate.
+  castMode: z.enum(['single', 'broadcast', 'coordinate']).optional(),
+  ensembleName: shortString.optional(),
+}).strict();
+
+// C4: enable/disable an active spell (or one of its rules) in place.
+export const toggleSpellSchema = z.object({
+  sessionId: z.string().min(1),
+  enabled: z.boolean(),
+  ruleId: z.string().optional(),
 }).strict();
 
 // D8/FR-6.6: reset loop counter(s) for a spell active on a session.
@@ -681,6 +694,9 @@ export const hookDispatchSchema = z.object({
   // Hook payloads vary by event (tool_name, file_path, message, …). Accept
   // arbitrary JSON; the dispatcher pulls out the fields it cares about.
   payload: z.record(z.string(), z.any()).optional(),
+  // C2: side-effect-free probe. Runs full matching + composition, executes
+  // nothing, and returns a per-rule match report. Bypasses the self-only guard.
+  dryRun: z.boolean().optional(),
 }).strict();
 
 // --- Ensemble (P4) ---
