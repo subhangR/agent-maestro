@@ -53,6 +53,8 @@
 @import './styles-collab-space.css';
 @import './styles-messaging.css';
 @import './styles-space-window.css';
+@import './styles-space-docs.css';
+@import './styles-space-files.css';
 
 /* Self-hosted JetBrains Mono */
 @font-face {

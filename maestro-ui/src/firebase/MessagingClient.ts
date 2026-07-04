@@ -261,7 +261,8 @@ export const MessagingClient = {
     mentions: MessageMention[] = [],
     opts?: { clientMsgId?: string; attachments?: MessageAttachment[] },
   ): Promise<Message> {
-    if (!content.trim()) throw new Error('Message is empty.');
+    const hasAttachments = (opts?.attachments?.length ?? 0) > 0;
+    if (!content.trim() && !hasAttachments) throw new Error('Message is empty.');
     if (content.length > MESSAGE_MAX_LENGTH) {
       throw new Error(`Message is too long (${content.length}/${MESSAGE_MAX_LENGTH}).`);
     }
