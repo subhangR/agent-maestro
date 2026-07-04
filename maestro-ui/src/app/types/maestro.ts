@@ -892,7 +892,8 @@ export type SpellActionConfig =
   | { type: 'feed-context'; prompt: string }
   | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
   | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
-  | { type: 'notify-channel'; channel?: string; message?: string };
+  // notify-channel is in-app only (C3): the `channel` relay field was dropped.
+  | { type: 'notify-channel'; message?: string };
 
 /**
  * Per-event capability matrix (§11.2) — single source of truth shared by the
@@ -976,15 +977,54 @@ export interface UpdateSpellPayload {
   rules?: SpellRuleInput[];
 }
 
+/** Cast mode selected in the launcher, sent to the server (C1). */
+export type SpellCastMode = 'single' | 'broadcast' | 'coordinate';
+
 /** Server cast-spell request shape (matches POST /api/spells/:id/activate). */
 export interface CastSpellInput {
   spellId: string;
   targetSessionIds: string[];
   invokerSessionId?: string | null;
-  /** UI-only: castMode selected in the launcher. */
-  castMode?: 'single' | 'broadcast' | 'coordinate';
-  /** UI-only: ensemble name when castMode = coordinate. */
+  /** Sent to the server; `coordinate` additionally forms an ensemble (C1). */
+  castMode?: SpellCastMode;
+  /** Ensemble name when castMode = coordinate (C1). */
   ensembleName?: string;
+}
+
+/** Response of POST /api/spells/:id/activate (C1 — may carry a new ensembleId). */
+export interface ActivateSpellResult {
+  spell: Spell;
+  sessions: Array<{ sessionId: string; activeSpell: ActiveSpell }>;
+  /** Present when castMode = coordinate created/reused an ensemble. */
+  ensembleId?: string;
+}
+
+/** Severity for an in-app spell notification (C3 notify:progress payload). */
+export type SpellNotifyLevel = 'info' | 'success' | 'warn';
+
+/** `notify:progress` WS payload (C3) — drives the in-app toast + entry. */
+export interface SpellNotifyProgress {
+  sessionId: string;
+  spellId?: string;
+  ruleId?: string;
+  message: string;
+  level?: SpellNotifyLevel;
+}
+
+/** Per-rule dry-run match report row (C2 — POST /api/hooks/dispatch dryRun). */
+export interface HookDispatchMatch {
+  spellId: string;
+  ruleId: string;
+  action: string;
+  wouldExecute: boolean;
+  skipReason?: string;
+}
+
+/** Dry-run dispatch result (C2). Mirrors DispatchResult + the match report. */
+export interface HookDispatchDryRunResult {
+  dryRun: true;
+  matched: HookDispatchMatch[];
+  [key: string]: unknown;
 }
 
 export interface CastResult {
