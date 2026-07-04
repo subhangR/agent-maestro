@@ -3,8 +3,9 @@ import type { MaestroManifest } from '../types/manifest.js';
 
 /**
  * Auto-activate any spells the manifest carries (typically resolved from
- * Task.spellIds at spawn time). Best-effort; failures are logged at debug and
- * never block worker init.
+ * Task.spellIds at spawn time). Best-effort and fail-open: a per-spell failure
+ * is swallowed (logged as a visible warning) and never blocks worker init, and
+ * one spell failing does not stop the others from activating.
  */
 export async function autoActivateManifestSpells(
   manifest: MaestroManifest,
@@ -14,17 +15,22 @@ export async function autoActivateManifestSpells(
   if (!spells || spells.length === 0) return;
 
   const debug = process.env.MAESTRO_DEBUG === 'true';
-  const log = (msg: string) => { if (debug) console.error(msg); };
+  const logDebug = (msg: string) => { if (debug) console.error(msg); };
+  // Failures are surfaced at normal (non-debug) level so a broken spell isn't
+  // silently dropped, while still remaining fail-open.
+  const warn = (msg: string) => { console.error(msg); };
 
-  await Promise.all(spells.map(async (spell) => {
+  // allSettled (not all) so a synchronous non-Error throw inside a mapped task
+  // can never reject the whole batch — activation stays fail-open regardless.
+  await Promise.allSettled(spells.map(async (spell) => {
     try {
       await api.post(`/api/spells/${spell.id}/activate`, {
         targetSessionIds: [sessionId],
       });
-      log(`[spell-auto-activate] activated ${spell.id} (${spell.name}) on ${sessionId}`);
+      logDebug(`[spell-auto-activate] activated ${spell.id} (${spell.name}) on ${sessionId}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      log(`[spell-auto-activate] failed for ${spell.id}: ${message}`);
+      warn(`[spell-auto-activate] WARN failed to activate ${spell.id} (${spell.name}): ${message} — continuing (fail-open)`);
     }
   }));
 }
