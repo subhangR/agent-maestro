@@ -5,6 +5,7 @@ import { CollabSpace } from "../../../firebase/collabSpaceTypes";
 import {
   Channel,
   Mentionable,
+  MessageAttachment,
   MessageMention,
 } from "../../../firebase/messagingTypes";
 import { ChannelList } from "./ChannelList";
@@ -116,9 +117,13 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
     ? messagesLoadingOlderMap[activeChannelId] ?? false
     : false;
 
-  const handleSend = async (content: string, mentions: MessageMention[]) => {
+  const handleSend = async (
+    content: string,
+    mentions: MessageMention[],
+    attachments: MessageAttachment[],
+  ) => {
     if (!user || !activeChannelId) return;
-    await sendMessage(user, space.id, activeChannelId, content, mentions);
+    await sendMessage(user, space.id, activeChannelId, content, mentions, attachments);
   };
 
   const handleEdit = async (messageId: string, content: string) => {
@@ -182,6 +187,8 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
               disabled={!user}
               disabledReason={!user ? "Sign in to post messages." : undefined}
               mentionables={mentionables}
+              spaceId={space.id}
+              user={user}
               onSend={handleSend}
             />
           </>

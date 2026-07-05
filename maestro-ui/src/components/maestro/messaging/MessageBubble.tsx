@@ -2,7 +2,219 @@ import React, { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { format, isToday, isYesterday } from "date-fns";
-import { Message, MessageMention, PendingMessage } from "../../../firebase/messagingTypes";
+import {
+  Message,
+  MessageAttachment,
+  MessageMention,
+  PendingMessage,
+} from "../../../firebase/messagingTypes";
+import { SpaceFilesClient, spaceFileToBlob } from "../../../firebase/SpaceFilesClient";
+import { SpaceFile } from "../../../firebase/spaceShareTypes";
+
+/* ------------------------------------------------------------------ */
+/*  Attachments                                                        */
+/* ------------------------------------------------------------------ */
+
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return "0 B";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function attachmentGlyph(mimeType: string): string {
+  const mt = (mimeType || "").toLowerCase();
+  if (mt.startsWith("image/")) return "🖼";
+  if (mt.startsWith("audio/")) return "🎵";
+  if (mt.startsWith("video/")) return "🎬";
+  if (mt === "application/pdf") return "📕";
+  return "📎";
+}
+
+/**
+ * Small bounded cache of file-doc fetches so re-renders / repeat clicks on
+ * the same attachment don't refetch its (potentially ~800KB) payload.
+ * Failed fetches are evicted immediately so transient errors can be retried.
+ */
+const FILE_CACHE_MAX = 20;
+const fileFetchCache = new Map<string, Promise<SpaceFile | null>>();
+
+function fetchSpaceFile(spaceId: string, fileId: string): Promise<SpaceFile | null> {
+  const key = `${spaceId}/${fileId}`;
+  const hit = fileFetchCache.get(key);
+  if (hit) return hit;
+  const promise = SpaceFilesClient.get(spaceId, fileId).catch((err) => {
+    fileFetchCache.delete(key);
+    throw err;
+  });
+  fileFetchCache.set(key, promise);
+  if (fileFetchCache.size > FILE_CACHE_MAX) {
+    const oldest = fileFetchCache.keys().next().value;
+    if (oldest !== undefined) fileFetchCache.delete(oldest);
+  }
+  return promise;
+}
+
+/**
+ * One attachment on a delivered message. File content is fetched lazily —
+ * on click for downloads, and on first visibility for image previews. If the
+ * underlying file doc was deleted, the chip degrades to a "no longer
+ * available" note instead of a dead button.
+ */
+function AttachmentChip({
+  spaceId,
+  attachment,
+  currentUid,
+}: {
+  spaceId: string;
+  attachment: MessageAttachment;
+  currentUid: string | null;
+}) {
+  const isImage = attachment.mimeType.toLowerCase().startsWith("image/");
+  const [downloading, setDownloading] = useState(false);
+  const [missing, setMissing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Lazy inline preview for images: fetch on first visibility only.
+  useEffect(() => {
+    if (!isImage || !spaceId) return;
+    const el = rootRef.current;
+    if (!el) return;
+    let objectUrl: string | null = null;
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const file = await fetchSpaceFile(spaceId, attachment.fileId);
+        if (cancelled) return;
+        if (!file) {
+          setMissing(true);
+          return;
+        }
+        objectUrl = URL.createObjectURL(spaceFileToBlob(file));
+        setPreviewUrl(objectUrl);
+      } catch {
+        // Preview is best-effort; a download click surfaces the real error.
+      }
+    };
+
+    if (typeof IntersectionObserver === "undefined") {
+      void load();
+      return () => {
+        cancelled = true;
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+      };
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          io.disconnect();
+          void load();
+        }
+      },
+      { rootMargin: "120px" },
+    );
+    io.observe(el);
+    return () => {
+      cancelled = true;
+      io.disconnect();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [isImage, spaceId, attachment.fileId]);
+
+  const handleDownload = async () => {
+    if (downloading || missing || !spaceId) return;
+    setDownloading(true);
+    setError(null);
+    try {
+      const file = await fetchSpaceFile(spaceId, attachment.fileId);
+      if (!file) {
+        setMissing(true);
+        return;
+      }
+      const url = URL.createObjectURL(spaceFileToBlob(file));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name || attachment.name || "download";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      // Give the browser a beat to start the download before revoking.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      if (currentUid) {
+        // Best-effort download tracking — never blocks the download itself.
+        SpaceFilesClient.recordDownload(spaceId, attachment.fileId, currentUid).catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[Messaging] recordDownload failed:", err);
+        });
+      }
+    } catch (e: any) {
+      setError(e?.message ?? "Download failed. Try again.");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (missing) {
+    return (
+      <div
+        ref={rootRef}
+        className="messagingAttachChip messagingAttachChip--missing"
+        role="note"
+        aria-label={`Attachment ${attachment.name} is no longer available`}
+      >
+        <span className="messagingAttachChipIcon" aria-hidden="true">
+          {attachmentGlyph(attachment.mimeType)}
+        </span>
+        <span className="messagingAttachChipName" title={attachment.name}>
+          {attachment.name}
+        </span>
+        <span className="messagingAttachChipGone">file no longer available</span>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={rootRef} className="messagingAttachment">
+      {isImage && previewUrl && (
+        <button
+          type="button"
+          className="messagingAttachPreviewBtn"
+          onClick={() => void handleDownload()}
+          disabled={downloading}
+          aria-label={`Download image ${attachment.name} (${formatBytes(attachment.size)})`}
+        >
+          <img src={previewUrl} alt={attachment.name} className="messagingAttachPreview" />
+        </button>
+      )}
+      <button
+        type="button"
+        className="messagingAttachChip"
+        onClick={() => void handleDownload()}
+        disabled={downloading || !spaceId}
+        aria-busy={downloading}
+        aria-label={`Download attachment ${attachment.name} (${formatBytes(attachment.size)})`}
+      >
+        <span className="messagingAttachChipIcon" aria-hidden="true">
+          {attachmentGlyph(attachment.mimeType)}
+        </span>
+        <span className="messagingAttachChipName" title={attachment.name}>
+          {attachment.name}
+        </span>
+        <span className="messagingAttachChipSize">
+          {downloading ? "downloading…" : formatBytes(attachment.size)}
+        </span>
+      </button>
+      {error && (
+        <span className="messagingAttachError" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -155,9 +367,26 @@ export function MessageBubble({
               <span className="messagingBubblePendingTag">sending…</span>
             )}
           </div>
-          <div className="messagingBubbleContent messagingBubbleContentPlain">
-            {highlightMentions(pending.content, pending.mentions ?? [])}
-          </div>
+          {pending.content && (
+            <div className="messagingBubbleContent messagingBubbleContentPlain">
+              {highlightMentions(pending.content, pending.mentions ?? [])}
+            </div>
+          )}
+          {(pending.attachments?.length ?? 0) > 0 && (
+            <div className="messagingAttachmentList" aria-label="Attachments">
+              {(pending.attachments ?? []).map((a) => (
+                <span key={a.fileId} className="messagingAttachChip messagingAttachChip--static">
+                  <span className="messagingAttachChipIcon" aria-hidden="true">
+                    {attachmentGlyph(a.mimeType)}
+                  </span>
+                  <span className="messagingAttachChipName" title={a.name}>
+                    {a.name}
+                  </span>
+                  <span className="messagingAttachChipSize">{formatBytes(a.size)}</span>
+                </span>
+              ))}
+            </div>
+          )}
           {pending.status === "failed" && (
             <div className="messagingBubbleFailedTag">
               <span>Failed to send{pending.error ? ` — ${pending.error}` : ""}</span>
@@ -315,11 +544,27 @@ export function MessageBubble({
             </div>
           </div>
         ) : (
-          <div className="messagingBubbleContent">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-              {preserveSoftBreaks(message.content)}
-            </ReactMarkdown>
-          </div>
+          <>
+            {message.content && (
+              <div className="messagingBubbleContent">
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                  {preserveSoftBreaks(message.content)}
+                </ReactMarkdown>
+              </div>
+            )}
+            {(message.attachments?.length ?? 0) > 0 && (
+              <div className="messagingAttachmentList" aria-label="Attachments">
+                {message.attachments.map((a) => (
+                  <AttachmentChip
+                    key={a.fileId}
+                    spaceId={message.spaceId}
+                    attachment={a}
+                    currentUid={currentUid}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 

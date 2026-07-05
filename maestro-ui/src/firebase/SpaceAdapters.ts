@@ -3,6 +3,7 @@ import { maestroClient } from '../utils/MaestroClient';
 import type {
   CreateTaskPayload,
   CreateTeamMemberPayload,
+  DocEntry,
   MaestroTask,
   TeamMember,
   TaskPriority,
@@ -10,10 +11,11 @@ import type {
   SpellRuleInput,
   SpellColorSlug,
 } from '../app/types/maestro';
-import { SpaceTask, SpaceTeamMember, SpaceSpell } from './spaceShareTypes';
+import { SpaceTask, SpaceTeamMember, SpaceSpell, SpaceDoc } from './spaceShareTypes';
 import { SpaceTasksClient } from './SpaceTasksClient';
 import { SpaceTeamMembersClient } from './SpaceTeamMembersClient';
 import { SpaceSpellsClient } from './SpaceSpellsClient';
+import { SpaceDocsClient } from './SpaceDocsClient';
 
 /**
  * Materialize a shared space task into the user's active local Maestro
@@ -185,6 +187,32 @@ export async function installSpaceSpell(
   });
   await recordInstallBestEffort(user, spaceSpell, created?.id);
   return { status: 'installed' };
+}
+
+/**
+ * Materialize a shared space doc into a local Maestro session (local docs are
+ * session-scoped — project docs are an aggregation), then record the pull on
+ * the shared doc so the badge updates for everyone.
+ */
+export async function pullSpaceDocToLocal(
+  user: User,
+  spaceDoc: SpaceDoc,
+  sessionId: string,
+): Promise<DocEntry> {
+  const created = await maestroClient.addSessionDoc(
+    sessionId,
+    spaceDoc.title || 'Shared doc',
+    spaceDoc.content ?? '',
+    spaceDoc.kind ?? 'markdown',
+  );
+  // Best-effort fan-out write: don't fail the pull if it errors.
+  try {
+    await SpaceDocsClient.recordPull(spaceDoc.spaceId, spaceDoc.id, user.uid, created.id);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[SpaceAdapters] recordPull (doc) failed:', err);
+  }
+  return created;
 }
 
 /** Best-effort fan-out write: don't fail the install if it errors. */

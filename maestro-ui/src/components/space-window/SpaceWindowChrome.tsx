@@ -24,6 +24,7 @@ export const SpaceWindowChrome: React.FC<Props> = ({ space, onSettings, inline =
                 className="spaceWindowSettings"
                 onClick={onSettings}
                 title="Space settings"
+                aria-label="Space settings"
                 disabled={!onSettings}
             >
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" width="16" height="16">

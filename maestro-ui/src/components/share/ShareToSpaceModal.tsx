@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useFirebaseAuthStore } from "../../stores/useFirebaseAuthStore";
 import { useJoinedSpacesStore } from "../../stores/useJoinedSpacesStore";
+import { useProjectStore } from "../../stores/useProjectStore";
+import { maestroClient } from "../../utils/MaestroClient";
 import { CollabSpace } from "../../firebase/collabSpaceTypes";
 import {
     SpaceShareClient,
@@ -8,13 +10,18 @@ import {
     SharedTeamMemberInput,
     SharedSpellInput,
 } from "../../firebase/SpaceShareClient";
+import { buildDocShareInput, docShareBlockReason } from "../../hooks/useSpaceSharing";
+import type { DocEntry } from "../../app/types/maestro";
+import "../../styles-space-docs.css";
 
-export type ShareKind = "task" | "team-member" | "spell";
+export type ShareKind = "task" | "team-member" | "spell" | "doc";
 
 export type SharePayload =
     | { kind: "task"; data: SharedTaskInput; entityLabel: string }
     | { kind: "team-member"; data: SharedTeamMemberInput; entityLabel: string }
-    | { kind: "spell"; data: SharedSpellInput; entityLabel: string };
+    | { kind: "spell"; data: SharedSpellInput; entityLabel: string }
+    /** Doc to share is picked inside the modal from the active project's docs. */
+    | { kind: "doc"; entityLabel?: string };
 
 type Props = {
     payload: SharePayload;
@@ -37,6 +44,11 @@ const KIND_LABELS: Record<ShareKind, { title: string; verb: string; previewLabel
         verb: "Publish",
         previewLabel: "Spell",
     },
+    doc: {
+        title: "Share doc to a Collab Space",
+        verb: "Share doc",
+        previewLabel: "Doc",
+    },
 };
 
 export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
@@ -44,17 +56,39 @@ export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
     const start = useJoinedSpacesStore((s) => s.start);
     const spaces = useJoinedSpacesStore((s) => s.spaces);
     const loading = useJoinedSpacesStore((s) => s.loading);
+    const activeProjectId = useProjectStore((s) => s.activeProjectId);
 
     const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<{ spaceName: string } | null>(null);
 
+    // Doc picker state — only used when payload.kind === "doc".
+    const [localDocs, setLocalDocs] = useState<DocEntry[] | null>(null);
+    const [docsError, setDocsError] = useState<string | null>(null);
+    const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+
     const meta = KIND_LABELS[payload.kind];
 
     useEffect(() => {
         if (user) start(user.uid);
     }, [user, start]);
+
+    useEffect(() => {
+        if (payload.kind !== "doc") return;
+        let alive = true;
+        if (!activeProjectId) {
+            setLocalDocs([]);
+            return;
+        }
+        maestroClient
+            .getProjectDocs(activeProjectId)
+            .then((entries) => alive && setLocalDocs(entries))
+            .catch((e) => alive && setDocsError(e?.message ?? "Failed to load project docs."));
+        return () => {
+            alive = false;
+        };
+    }, [payload.kind, activeProjectId]);
 
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
@@ -72,6 +106,19 @@ export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
     const selectedSpace: CollabSpace | null =
         sortedSpaces.find((s) => s.id === selectedSpaceId) ?? null;
 
+    const selectedDoc: DocEntry | null =
+        payload.kind === "doc"
+            ? (localDocs ?? []).find((d) => d.id === selectedDocId) ?? null
+            : null;
+
+    const entityLabel =
+        payload.kind === "doc"
+            ? selectedDoc?.title ?? payload.entityLabel ?? "Pick a doc below"
+            : payload.entityLabel;
+
+    const canSubmit =
+        !!selectedSpace && (payload.kind !== "doc" || (!!selectedDoc && !!activeProjectId));
+
     const handleSubmit = async () => {
         if (!user || !selectedSpace || submitting) return;
         setSubmitting(true);
@@ -81,8 +128,19 @@ export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
                 await SpaceShareClient.shareTask(user, selectedSpace.id, payload.data);
             } else if (payload.kind === "team-member") {
                 await SpaceShareClient.shareTeamMember(user, selectedSpace.id, payload.data);
-            } else {
+            } else if (payload.kind === "spell") {
                 await SpaceShareClient.shareSpell(user, selectedSpace.id, payload.data);
+            } else {
+                if (!selectedDoc || !activeProjectId) {
+                    setError("Pick a doc to share first.");
+                    return;
+                }
+                // buildDocShareInput throws a clear error on empty/oversized content.
+                await SpaceShareClient.shareDoc(
+                    user,
+                    selectedSpace.id,
+                    buildDocShareInput(selectedDoc, activeProjectId),
+                );
             }
             setResult({ spaceName: selectedSpace.name });
         } catch (e: any) {
@@ -99,7 +157,7 @@ export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
 
                 <div className="spaceShareEntityPreview">
                     <span className="spaceShareEntityKindLabel">{meta.previewLabel}</span>
-                    <span className="spaceShareEntityName">{payload.entityLabel}</span>
+                    <span className="spaceShareEntityName">{entityLabel}</span>
                 </div>
 
                 {result ? (
@@ -122,6 +180,86 @@ export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
                     </div>
                 ) : (
                     <>
+                        {payload.kind === "doc" && (
+                            <>
+                                <div className="spaceShareSpaceListLabel">Pick a doc</div>
+                                <div className="spaceShareSpaceList spaceShareDocList">
+                                    {!activeProjectId ? (
+                                        <div className="spaceShareEmpty">
+                                            No active local project. Open a project first, then
+                                            share one of its docs.
+                                        </div>
+                                    ) : docsError ? (
+                                        <div className="spaceShareEmpty">{docsError}</div>
+                                    ) : localDocs === null ? (
+                                        <div className="spaceShareEmpty">Loading project docs…</div>
+                                    ) : localDocs.length === 0 ? (
+                                        <div className="spaceShareEmpty">
+                                            This project has no docs yet. Docs written by
+                                            sessions show up here.
+                                        </div>
+                                    ) : (
+                                        localDocs.map((d) => {
+                                            const blocked = docShareBlockReason(d);
+                                            const isSelected = d.id === selectedDocId;
+                                            return (
+                                                <button
+                                                    type="button"
+                                                    key={d.id}
+                                                    className={`spaceShareSpaceRow ${
+                                                        isSelected
+                                                            ? "spaceShareSpaceRow--selected"
+                                                            : ""
+                                                    } ${blocked ? "spaceDocPickerRow--blocked" : ""}`}
+                                                    onClick={() =>
+                                                        !blocked && setSelectedDocId(d.id)
+                                                    }
+                                                    disabled={!!blocked}
+                                                    title={blocked ?? undefined}
+                                                    aria-label={
+                                                        blocked
+                                                            ? `${d.title} (${blocked})`
+                                                            : `Share doc ${d.title}`
+                                                    }
+                                                >
+                                                    <span
+                                                        className="spaceShareSpaceAvatar"
+                                                        aria-hidden="true"
+                                                    >
+                                                        {d.kind === "diagram" ? "◇" : "📄"}
+                                                    </span>
+                                                    <div className="spaceShareSpaceMain">
+                                                        <div className="spaceShareSpaceName">
+                                                            {d.title}
+                                                        </div>
+                                                        <div className="spaceShareSpaceSubtitle">
+                                                            {d.kind === "diagram"
+                                                                ? "Diagram"
+                                                                : "Markdown"}
+                                                            {blocked && (
+                                                                <span className="spaceDocPickerHint">
+                                                                    {" "}
+                                                                    · {blocked}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {isSelected && (
+                                                        <span
+                                                            className="spaceShareSpaceCheck"
+                                                            aria-hidden="true"
+                                                        >
+                                                            ✓
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </>
+                        )}
+
                         <div className="spaceShareSpaceListLabel">Pick a space</div>
 
                         <div className="spaceShareSpaceList">
@@ -197,7 +335,7 @@ export const ShareToSpaceModal: React.FC<Props> = ({ payload, onClose }) => {
                                 type="button"
                                 className="spaceModalPrimaryBtn"
                                 onClick={handleSubmit}
-                                disabled={!selectedSpace || submitting}
+                                disabled={!canSubmit || submitting}
                             >
                                 {submitting ? "Sharing…" : meta.verb}
                             </button>

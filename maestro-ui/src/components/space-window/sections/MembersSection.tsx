@@ -3,6 +3,7 @@ import { Timestamp } from "firebase/firestore";
 import { CollabSpace, CollabSpaceMember } from "../../../firebase/collabSpaceTypes";
 import { CollabSpaceClient } from "../../../firebase/CollabSpaceClient";
 import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
+import { colorForUid } from "../../../hooks/useSpaceSharing";
 import { InviteMemberModal } from "../modals/InviteMemberModal";
 
 type Props = {
@@ -18,13 +19,6 @@ const ROLE_RANK: Record<CollabSpaceMember["role"], number> = {
 function initials(member: CollabSpaceMember): string {
     const source = (member.displayName || member.email || "?").trim();
     return source ? source.charAt(0).toUpperCase() : "?";
-}
-
-function colorForUid(uid: string): string {
-    const palette = ["#7c9eff", "#f06767", "#ffc864", "#66ddaa", "#c084fc", "#22d3ee", "#f472b6", "#fb923c"];
-    let hash = 0;
-    for (let i = 0; i < uid.length; i++) hash = (hash * 31 + uid.charCodeAt(i)) | 0;
-    return palette[Math.abs(hash) % palette.length];
 }
 
 function joinedLabel(joinedAt: CollabSpaceMember["joinedAt"]): string {
@@ -68,26 +62,30 @@ export const MembersSection: React.FC<Props> = ({ space }) => {
     }, [space.members]);
 
     const setRole = async (targetUid: string, role: "admin" | "member") => {
+        // Permission guard at the action, not just the hidden menu.
+        if (!canManage || space.members[targetUid]?.role === "owner") return;
         setOpenMenuFor(null);
         setBusyUid(targetUid);
         setError(null);
         try {
             await CollabSpaceClient.setMemberRole(space.id, targetUid, role);
         } catch (e: any) {
-            setError(e?.message ?? "Couldn't update role.");
+            setError(e?.message ?? "Couldn't update the role. Check your connection and try again.");
         } finally {
             setBusyUid(null);
         }
     };
 
     const removeMember = async (targetUid: string) => {
+        // Permission guard at the action, not just the hidden menu.
+        if (!canManage || space.members[targetUid]?.role === "owner" || targetUid === currentUid) return;
         setOpenMenuFor(null);
         setBusyUid(targetUid);
         setError(null);
         try {
             await CollabSpaceClient.removeMember(space.id, targetUid);
         } catch (e: any) {
-            setError(e?.message ?? "Couldn't remove member.");
+            setError(e?.message ?? "Couldn't remove the member. Check your connection and try again.");
         } finally {
             setBusyUid(null);
         }
@@ -115,7 +113,12 @@ export const MembersSection: React.FC<Props> = ({ space }) => {
                 <InviteMemberModal space={space} onClose={() => setInviteOpen(false)} />
             )}
 
-            {error && <div className="spaceShareError">{error}</div>}
+            {error && (
+                <div className="spaceShareError" role="alert">
+                    <span aria-hidden="true">⚠ </span>
+                    {error}
+                </div>
+            )}
 
             <div className="spaceEntityBody">
                 {members.length === 0 ? (
@@ -181,7 +184,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
 }) => {
     const displayName = member.displayName || member.email || "Unknown";
     return (
-        <div className={`spaceMemberFullRow spaceMemberFullRow--online ${busy ? "spaceMemberFullRow--busy" : ""}`}>
+        <div className={`spaceMemberFullRow ${busy ? "spaceMemberFullRow--busy" : ""}`}>
             <div className="spaceMemberFullAvatarWrap">
                 {member.photoUrl ? (
                     <img className="spaceMemberFullAvatar" src={member.photoUrl} alt="" />
@@ -190,7 +193,6 @@ const MemberRow: React.FC<MemberRowProps> = ({
                         {initials(member)}
                     </div>
                 )}
-                <span className="spaceMemberPresenceDot spaceMemberPresenceDot--online" />
             </div>
             <div className="spaceMemberFullMain">
                 <div className="spaceMemberFullName">
@@ -208,57 +210,53 @@ const MemberRow: React.FC<MemberRowProps> = ({
                     {joinedLabel(member.joinedAt)}
                 </div>
             </div>
-            <div className="spaceMemberFullActions">
-                <button
-                    type="button"
-                    className="spaceEntityGhostBtn"
-                    onClick={onToggleMenu}
-                    aria-haspopup="menu"
-                    aria-expanded={menuOpen}
-                    disabled={busy}
-                >
-                    {busy ? "…" : "···"}
-                </button>
-                {menuOpen && (
-                    <div className="spaceMemberMenu" role="menu" onMouseLeave={onCloseMenu}>
-                        <button type="button" className="spaceMemberMenuItem" disabled>
-                            View profile
-                        </button>
-                        <button type="button" className="spaceMemberMenuItem" disabled>
-                            Send DM
-                        </button>
-                        {canActOnTarget && (
-                            <>
-                                <div className="spaceMemberMenuSep" />
-                                {member.role === "member" ? (
-                                    <button
-                                        type="button"
-                                        className="spaceMemberMenuItem"
-                                        onClick={onMakeAdmin}
-                                    >
-                                        Make admin
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="spaceMemberMenuItem"
-                                        onClick={onMakeMember}
-                                    >
-                                        Make member
-                                    </button>
-                                )}
+            {canActOnTarget && (
+                <div className="spaceMemberFullActions">
+                    <button
+                        type="button"
+                        className="spaceEntityGhostBtn"
+                        onClick={onToggleMenu}
+                        aria-haspopup="menu"
+                        aria-expanded={menuOpen}
+                        aria-label={`Member actions for ${displayName}`}
+                        disabled={busy}
+                    >
+                        {busy ? "…" : "···"}
+                    </button>
+                    {menuOpen && (
+                        <div className="spaceMemberMenu" role="menu" onMouseLeave={onCloseMenu}>
+                            {member.role === "member" ? (
                                 <button
                                     type="button"
-                                    className="spaceMemberMenuItem spaceMemberMenuItem--danger"
-                                    onClick={onRemove}
+                                    className="spaceMemberMenuItem"
+                                    role="menuitem"
+                                    onClick={onMakeAdmin}
                                 >
-                                    Remove from space
+                                    Make admin
                                 </button>
-                            </>
-                        )}
-                    </div>
-                )}
-            </div>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="spaceMemberMenuItem"
+                                    role="menuitem"
+                                    onClick={onMakeMember}
+                                >
+                                    Make member
+                                </button>
+                            )}
+                            <div className="spaceMemberMenuSep" />
+                            <button
+                                type="button"
+                                className="spaceMemberMenuItem spaceMemberMenuItem--danger"
+                                role="menuitem"
+                                onClick={onRemove}
+                            >
+                                Remove from space
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

@@ -51,11 +51,21 @@ export function useProjectCollabSpaces(): {
     const spaces = useMemo(() => {
         if (!canonical || !user) return [];
         const filtered = joinedSpaces.filter((s) => s.githubUrl === canonical);
-        return filtered.slice().sort((a, b) => {
-            const aJoined = (a.members?.[user.uid]?.joinedAt as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0;
-            const bJoined = (b.members?.[user.uid]?.joinedAt as { toMillis?: () => number } | undefined)?.toMillis?.() ?? 0;
-            return bJoined - aJoined;
-        });
+        // Missing/invalid joinedAt Timestamps sort last (never crash on them).
+        const joinedMillis = (s: CollabSpace): number => {
+            const ts = s.members?.[user.uid]?.joinedAt as
+                | { toMillis?: unknown }
+                | null
+                | undefined;
+            if (!ts || typeof ts.toMillis !== "function") return -1;
+            try {
+                const ms = (ts as { toMillis: () => number }).toMillis();
+                return Number.isFinite(ms) ? ms : -1;
+            } catch {
+                return -1;
+            }
+        };
+        return filtered.slice().sort((a, b) => joinedMillis(b) - joinedMillis(a));
     }, [joinedSpaces, canonical, user]);
 
     return { spaces, detectedCanonical: canonical, detecting };

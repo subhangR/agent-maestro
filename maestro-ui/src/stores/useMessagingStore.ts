@@ -5,6 +5,7 @@ import { MessagingClient } from '../firebase/MessagingClient';
 import {
   Channel,
   Message,
+  MessageAttachment,
   MessageMention,
   PendingMessage,
   CreateChannelInput,
@@ -78,6 +79,7 @@ interface MessagingState {
     channelId: ChannelId,
     content: string,
     mentions?: MessageMention[],
+    attachments?: MessageAttachment[],
   ) => Promise<void>;
   retryPending: (user: User, spaceId: SpaceId, channelId: ChannelId, tempId: string) => Promise<void>;
   dismissPending: (channelId: ChannelId, tempId: string) => void;
@@ -318,9 +320,10 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     }
   },
 
-  sendMessage: async (user, spaceId, channelId, content, mentions = []) => {
+  sendMessage: async (user, spaceId, channelId, content, mentions = [], attachments = []) => {
     const trimmed = content.trim();
-    if (!trimmed) return;
+    // Attachment-only messages (no text) are allowed.
+    if (!trimmed && attachments.length === 0) return;
     // Keep only mentions whose token still appears in the final text.
     const activeMentions = mentions.filter((m) => trimmed.includes(`@${m.displayName}`));
     const tempId = nextTempId();
@@ -335,6 +338,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       createdAtMs: Date.now(),
       status: 'sending',
       mentions: activeMentions,
+      attachments,
     };
     set((s) => ({
       pendingByChannel: {
@@ -346,6 +350,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     try {
       const sent = await MessagingClient.sendMessage(user, spaceId, channelId, trimmed, activeMentions, {
         clientMsgId: tempId,
+        attachments,
       });
       notifyAgentMentions(spaceId, channelId, sent.id, activeMentions);
       // The subscription will reconcile and remove the pending entry.
@@ -390,7 +395,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
         channelId,
         item.content,
         item.mentions ?? [],
-        { clientMsgId: item.tempId },
+        { clientMsgId: item.tempId, attachments: item.attachments ?? [] },
       );
       notifyAgentMentions(spaceId, channelId, sent.id, item.mentions ?? []);
     } catch (e: any) {

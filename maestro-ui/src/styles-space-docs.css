@@ -1,4 +1,251 @@
 /*
- * Shared docs surface (Docs tab in the space window).
- * Uses Maestro theme tokens only — complements styles-space-window.css.
+ * Shared docs surface (Docs tab in the space window + doc rows in the
+ * Share-to-Space modal). Uses Maestro theme tokens only — complements
+ * (never overrides) styles-space-window.css / styles-space-sharing.css.
  */
+
+/* ---- Doc list rows ---- */
+.spaceDocItem {
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  border-radius: 10px;
+  background: var(--bg-input, rgba(255, 255, 255, 0.03));
+  overflow: hidden;
+}
+
+.spaceDocItem--expanded {
+  border-color: var(--border-default, rgba(255, 255, 255, 0.14));
+}
+
+.spaceDocItemHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary, #e8ecf3);
+}
+
+.spaceDocItemHeader:hover {
+  background: rgba(var(--theme-primary-rgb, 124, 158, 255), 0.06);
+}
+
+.spaceDocItemHeader:focus-visible {
+  outline: 2px solid var(--theme-primary, #7c9eff);
+  outline-offset: -2px;
+}
+
+.spaceDocItemTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.spaceDocItemTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #e8ecf3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spaceDocItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-muted, #7b8494);
+}
+
+.spaceDocItemAuthor {
+  font-weight: 600;
+}
+
+.spaceDocItemAt {
+  color: var(--text-muted, #7b8494);
+}
+
+/* ---- Kind badge ---- */
+.spaceDocKindBadge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  color: var(--text-secondary, #9aa4b2);
+  background: var(--bg-primary, rgba(0, 0, 0, 0.2));
+}
+
+.spaceDocKindBadge--diagram {
+  color: var(--theme-primary, #7c9eff);
+  border-color: rgba(var(--theme-primary-rgb, 124, 158, 255), 0.4);
+  background: rgba(var(--theme-primary-rgb, 124, 158, 255), 0.08);
+}
+
+/* ---- Expanded detail + content preview ---- */
+.spaceDocItemDetail {
+  padding: 0 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.spaceDocPreviewWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.spaceDocPreview {
+  margin: 0;
+  padding: 10px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-primary, rgba(0, 0, 0, 0.25));
+  color: var(--text-secondary, #9aa4b2);
+  font-family: var(--style-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.spaceDocPreview:focus-visible {
+  outline: 2px solid var(--theme-primary, #7c9eff);
+  outline-offset: -2px;
+}
+
+.spaceDocPreviewTruncated {
+  font-size: 10px;
+  color: var(--text-muted, #7b8494);
+  font-style: italic;
+}
+
+.spaceDocPreviewEmpty {
+  padding: 10px;
+  font-size: 11px;
+  color: var(--text-muted, #7b8494);
+  font-style: italic;
+}
+
+.spaceDocItemDetailMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-secondary, #9aa4b2);
+}
+
+/* ---- Row actions ---- */
+.spaceDocItemActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+/* ---- Pull-target (session) picker in the pull modal ---- */
+.spaceDocPullTargetList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+  margin-bottom: 10px;
+}
+
+.spaceDocPullTargetRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-input, rgba(255, 255, 255, 0.03));
+  color: var(--text-primary, #e8ecf3);
+  cursor: pointer;
+  text-align: left;
+}
+
+.spaceDocPullTargetRow:hover {
+  border-color: var(--border-default, rgba(255, 255, 255, 0.14));
+}
+
+.spaceDocPullTargetRow:focus-visible {
+  outline: 2px solid var(--theme-primary, #7c9eff);
+  outline-offset: -2px;
+}
+
+.spaceDocPullTargetRow--selected {
+  border-color: rgba(var(--theme-primary-rgb, 124, 158, 255), 0.55);
+  background: rgba(var(--theme-primary-rgb, 124, 158, 255), 0.08);
+}
+
+.spaceDocPullTargetName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spaceDocPullTargetMeta {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--text-muted, #7b8494);
+}
+
+.spaceDocPullTargetCheck {
+  flex: 0 0 auto;
+  color: var(--theme-primary, #7c9eff);
+  font-weight: 700;
+}
+
+/* ---- Blocked (empty / oversized) doc rows in pickers ---- */
+.spaceDocPickerRow--blocked {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.spaceDocPickerHint {
+  color: var(--text-muted, #7b8494);
+  font-style: italic;
+}
+
+/* ---- Edit-title input in the edit modal ---- */
+.spaceDocEditTitleInput {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* ---- Destructive confirm button ---- */
+.spaceDocDeleteConfirmBtn {
+  border-color: rgba(240, 103, 103, 0.5);
+  background: rgba(240, 103, 103, 0.16);
+  color: var(--text-primary, #e8ecf3);
+}
+
+.spaceDocDeleteConfirmBtn:hover {
+  background: rgba(240, 103, 103, 0.26);
+}
+
+/* ---- Doc picker inside the Share-to-Space modal ---- */
+.spaceShareDocList {
+  margin-bottom: 12px;
+}

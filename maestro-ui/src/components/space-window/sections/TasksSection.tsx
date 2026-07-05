@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { CollabSpace } from "../../../firebase/collabSpaceTypes";
 import { EmptySectionState } from "../shared/EmptySectionState";
 import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
@@ -21,6 +21,7 @@ import {
     buildTaskShareInput,
     SPACE_STATUS_LABELS,
 } from "../../../hooks/useSpaceSharing";
+import { useModalA11y } from "../shared/useModalA11y";
 import "../../../styles-space-sharing.css";
 
 type StatusFilter = "all" | SpaceTaskStatus;
@@ -48,7 +49,19 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
     const [deleting, setDeleting] = useState<Set<string>>(new Set());
     const [rowError, setRowError] = useState<Record<string, string>>({});
 
+    // Error dismissal is per-error: a new error re-shows the banner.
     useEffect(() => setErrorDismissed(false), [error]);
+
+    // Per-space optimistic overlays must not leak into another space.
+    useEffect(() => {
+        setPulling(new Set());
+        setOptimisticPulled(new Set());
+        setDeleting(new Set());
+        setRowError({});
+        setExpandedId(null);
+        setEditTask(null);
+        setErrorDismissed(false);
+    }, [space.id]);
 
     const filtered = useMemo(
         () =>
@@ -89,7 +102,10 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
             await pullSpaceTaskToLocal(user, t, activeProjectId);
             setOptimisticPulled((p) => new Set(p).add(t.id));
         } catch (e: any) {
-            setRowError((p) => ({ ...p, [t.id]: e?.message ?? "Pull failed. Try again." }));
+            setRowError((p) => ({
+                ...p,
+                [t.id]: e?.message ?? "Couldn't pull. Check your connection and try again.",
+            }));
         } finally {
             setPulling((p) => {
                 const n = new Set(p);
@@ -100,11 +116,16 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
     };
 
     const handleDelete = async (t: SpaceTask) => {
+        // Permission guard at the action, not just the hidden button.
+        if (!canManageEntity(space, user?.uid, t.createdBy)) return;
         setDeleting((p) => new Set(p).add(t.id));
         try {
             await SpaceTasksClient.delete(space.id, t.id);
         } catch (e: any) {
-            setRowError((p) => ({ ...p, [t.id]: e?.message ?? "Delete failed." }));
+            setRowError((p) => ({
+                ...p,
+                [t.id]: e?.message ?? "Couldn't delete. Check your connection and try again.",
+            }));
             setDeleting((p) => {
                 const n = new Set(p);
                 n.delete(t.id);
@@ -127,12 +148,14 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                         type="text"
                         className="spaceEntitySearchInput"
                         placeholder="Search tasks…"
+                        aria-label="Search tasks"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                     <select
                         className="spaceEntityFilter"
                         value={statusFilter}
+                        aria-label="Filter by status"
                         onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
                     >
                         <option value="all">All statuses</option>
@@ -157,6 +180,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
 
             {showError && (
                 <div className="spaceSharingError" role="alert">
+                    <span className="spaceSharingErrorIcon" aria-hidden="true">⚠</span>
                     <span className="spaceSharingErrorMsg">{error}</span>
                     <button type="button" className="spaceSharingErrorRetry" onClick={retry}>
                         Retry
@@ -164,7 +188,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                     <button
                         type="button"
                         className="spaceSharingErrorDismiss"
-                        aria-label="Dismiss"
+                        aria-label="Dismiss error"
                         onClick={() => setErrorDismissed(true)}
                     >
                         ×
@@ -283,7 +307,9 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                                 <button
                                                     type="button"
                                                     className="spaceEntityGhostBtn"
-                                                    onClick={() => setEditTask(t)}
+                                                    onClick={() => {
+                                                        if (canManage) setEditTask(t);
+                                                    }}
                                                 >
                                                     Edit
                                                 </button>
@@ -298,7 +324,10 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                         )}
                                     </div>
                                     {rowError[t.id] && (
-                                        <div className="spaceSharingRowError">{rowError[t.id]}</div>
+                                        <div className="spaceSharingRowError" role="alert">
+                                            <span aria-hidden="true">⚠ </span>
+                                            {rowError[t.id]}
+                                        </div>
                                     )}
                                 </article>
                             );
@@ -314,7 +343,9 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                     onClose={() => setPushOpen(false)}
                 />
             )}
-            {editTask && (
+            {/* Render-level permission guard: the modal cannot open (or stay open)
+                for users who lost edit rights, regardless of how it was triggered. */}
+            {editTask && canManageEntity(space, user?.uid, editTask.createdBy) && (
                 <EditTaskModal
                     space={space}
                     task={editTask}
@@ -330,6 +361,8 @@ function PriorityDot({ priority }: { priority: SpaceTaskPriority }) {
         <span
             className={`spaceTaskPriorityDot spaceTaskPriorityDot--${priority}`}
             title={`Priority: ${priority}`}
+            role="img"
+            aria-label={`Priority: ${priority}`}
         />
     );
 }
@@ -368,6 +401,8 @@ function PushTaskModal({
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onClose);
 
     useEffect(() => {
         let alive = true;
@@ -381,17 +416,17 @@ function PushTaskModal({
                 if (!alive) return;
                 setLocalTasks(tasks.filter((t) => t.status !== "archived"));
             })
-            .catch((e) => alive && setLoadError(e?.message ?? "Failed to load local tasks."));
+            .catch(
+                (e) =>
+                    alive &&
+                    setLoadError(
+                        e?.message ?? "Couldn't load local tasks. Check the server and try again.",
+                    ),
+            );
         return () => {
             alive = false;
         };
     }, [projectId]);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onClose]);
 
     const toggle = (id: string) => {
         setSelectedIds((prev) => {
@@ -413,7 +448,7 @@ function PushTaskModal({
             }
             onClose();
         } catch (e: any) {
-            setSubmitError(e?.message ?? "Push failed. Try again.");
+            setSubmitError(e?.message ?? "Couldn't push. Check your connection and try again.");
             setSubmitting(false);
         }
     };
@@ -421,12 +456,15 @@ function PushTaskModal({
     return (
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
+                ref={modalRef}
                 className="spaceModal"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
             >
-                <div className="spaceModalTitle">Push tasks to space</div>
+                <div className="spaceModalTitle" id={titleId}>Push tasks to space</div>
                 <p className="spaceModalBody">
                     Pick tasks from <strong>{projectName}</strong> to share with everyone in this
                     space.
@@ -473,7 +511,12 @@ function PushTaskModal({
                     </div>
                 )}
 
-                {submitError && <div className="spaceShareError">{submitError}</div>}
+                {submitError && (
+                    <div className="spaceShareError" role="alert">
+                        <span aria-hidden="true">⚠ </span>
+                        {submitError}
+                    </div>
+                )}
 
                 <div className="spaceModalActions">
                     <button
@@ -515,12 +558,8 @@ function EditTaskModal({
     const [priority, setPriority] = useState<SpaceTaskPriority>(task.priority);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onClose]);
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onClose);
 
     const handleSave = async () => {
         if (!title.trim()) return;
@@ -535,7 +574,7 @@ function EditTaskModal({
             });
             onClose();
         } catch (e: any) {
-            setSaveError(e?.message ?? "Save failed. Try again.");
+            setSaveError(e?.message ?? "Couldn't save. Check your connection and try again.");
             setSaving(false);
         }
     };
@@ -543,18 +582,22 @@ function EditTaskModal({
     return (
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
+                ref={modalRef}
                 className="spaceModal"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
             >
-                <div className="spaceModalTitle">Edit shared task</div>
+                <div className="spaceModalTitle" id={titleId}>Edit shared task</div>
                 <input
                     type="text"
                     className="spaceEntitySearchInput"
                     style={{ width: "100%", marginBottom: 10 }}
                     value={title}
                     placeholder="Title"
+                    aria-label="Task title"
                     onChange={(e) => setTitle(e.target.value)}
                 />
                 <textarea
@@ -562,12 +605,14 @@ function EditTaskModal({
                     style={{ width: "100%", minHeight: 96, marginBottom: 10, resize: "vertical" }}
                     value={description}
                     placeholder="Description"
+                    aria-label="Task description"
                     onChange={(e) => setDescription(e.target.value)}
                 />
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <select
                         className="spaceEntityFilter"
                         value={status}
+                        aria-label="Status"
                         onChange={(e) => setStatus(e.target.value as SpaceTaskStatus)}
                     >
                         <option value="todo">Todo</option>
@@ -580,6 +625,7 @@ function EditTaskModal({
                     <select
                         className="spaceEntityFilter"
                         value={priority}
+                        aria-label="Priority"
                         onChange={(e) => setPriority(e.target.value as SpaceTaskPriority)}
                     >
                         <option value="high">High</option>
@@ -588,7 +634,12 @@ function EditTaskModal({
                     </select>
                 </div>
 
-                {saveError && <div className="spaceShareError">{saveError}</div>}
+                {saveError && (
+                    <div className="spaceShareError" role="alert">
+                        <span aria-hidden="true">⚠ </span>
+                        {saveError}
+                    </div>
+                )}
 
                 <div className="spaceModalActions">
                     <button

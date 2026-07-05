@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { CollabSpace } from "../../../firebase/collabSpaceTypes";
 import { EmptySectionState } from "../shared/EmptySectionState";
 import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
@@ -16,6 +16,7 @@ import {
     formatRelative,
     buildTeamMemberShareInput,
 } from "../../../hooks/useSpaceSharing";
+import { useModalA11y } from "../shared/useModalA11y";
 import "../../../styles-space-sharing.css";
 
 type Props = {
@@ -44,7 +45,18 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
     const [deleting, setDeleting] = useState<Set<string>>(new Set());
     const [rowError, setRowError] = useState<Record<string, string>>({});
 
+    // Error dismissal is per-error: a new error re-shows the banner.
     useEffect(() => setErrorDismissed(false), [error]);
+
+    // Per-space optimistic overlays must not leak into another space.
+    useEffect(() => {
+        setAdopting(new Set());
+        setOptimisticAdopted(new Set());
+        setDeleting(new Set());
+        setRowError({});
+        setExpandedId(null);
+        setErrorDismissed(false);
+    }, [space.id]);
 
     const filtered = useMemo(
         () =>
@@ -82,7 +94,10 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
             await adoptSpaceTeamMember(user, m, activeProjectId);
             setOptimisticAdopted((p) => new Set(p).add(m.id));
         } catch (e: any) {
-            setRowError((p) => ({ ...p, [m.id]: e?.message ?? "Adopt failed. Try again." }));
+            setRowError((p) => ({
+                ...p,
+                [m.id]: e?.message ?? "Couldn't adopt. Check your connection and try again.",
+            }));
         } finally {
             setAdopting((p) => {
                 const n = new Set(p);
@@ -93,11 +108,16 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
     };
 
     const handleDelete = async (m: SpaceTeamMember) => {
+        // Permission guard at the action, not just the hidden button.
+        if (!canManageEntity(space, user?.uid, m.createdBy)) return;
         setDeleting((p) => new Set(p).add(m.id));
         try {
             await SpaceTeamMembersClient.delete(space.id, m.id);
         } catch (e: any) {
-            setRowError((p) => ({ ...p, [m.id]: e?.message ?? "Delete failed." }));
+            setRowError((p) => ({
+                ...p,
+                [m.id]: e?.message ?? "Couldn't delete. Check your connection and try again.",
+            }));
             setDeleting((p) => {
                 const n = new Set(p);
                 n.delete(m.id);
@@ -120,6 +140,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                         type="text"
                         className="spaceEntitySearchInput"
                         placeholder="Search agents…"
+                        aria-label="Search agents"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -137,6 +158,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
 
             {showError && (
                 <div className="spaceSharingError" role="alert">
+                    <span className="spaceSharingErrorIcon" aria-hidden="true">⚠</span>
                     <span className="spaceSharingErrorMsg">{error}</span>
                     <button type="button" className="spaceSharingErrorRetry" onClick={retry}>
                         Retry
@@ -144,7 +166,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                     <button
                         type="button"
                         className="spaceSharingErrorDismiss"
-                        aria-label="Dismiss"
+                        aria-label="Dismiss error"
                         onClick={() => setErrorDismissed(true)}
                     >
                         ×
@@ -291,7 +313,10 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                                         )}
                                     </div>
                                     {rowError[m.id] && (
-                                        <div className="spaceSharingRowError">{rowError[m.id]}</div>
+                                        <div className="spaceSharingRowError" role="alert">
+                                            <span aria-hidden="true">⚠ </span>
+                                            {rowError[m.id]}
+                                        </div>
                                     )}
                                 </article>
                             );
@@ -326,6 +351,8 @@ function PublishTeamMemberModal({
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onClose);
 
     useEffect(() => {
         let alive = true;
@@ -336,17 +363,18 @@ function PublishTeamMemberModal({
         maestroClient
             .getTeamMembers(projectId)
             .then((tms) => alive && setLocalTeam(tms.filter((t) => t.status !== "archived")))
-            .catch((e) => alive && setLoadError(e?.message ?? "Failed to load team members."));
+            .catch(
+                (e) =>
+                    alive &&
+                    setLoadError(
+                        e?.message ??
+                            "Couldn't load team members. Check the server and try again.",
+                    ),
+            );
         return () => {
             alive = false;
         };
     }, [projectId]);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onClose]);
 
     const handlePublish = async () => {
         if (!user || !selectedId || !localTeam) return;
@@ -358,7 +386,7 @@ function PublishTeamMemberModal({
             await SpaceShareClient.shareTeamMember(user, space.id, buildTeamMemberShareInput(tm));
             onClose();
         } catch (e: any) {
-            setSubmitError(e?.message ?? "Publish failed. Try again.");
+            setSubmitError(e?.message ?? "Couldn't publish. Check your connection and try again.");
             setSubmitting(false);
         }
     };
@@ -366,12 +394,15 @@ function PublishTeamMemberModal({
     return (
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
+                ref={modalRef}
                 className="spaceModal"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
             >
-                <div className="spaceModalTitle">Publish team member</div>
+                <div className="spaceModalTitle" id={titleId}>Publish team member</div>
                 <p className="spaceModalBody">
                     Pick a team member from your active project. Its identity prompt and command
                     permissions will be visible to everyone in this space.
@@ -423,7 +454,12 @@ function PublishTeamMemberModal({
                 )}
 
                 <p className="spaceModalHint">Be sure the identity prompt has no secrets.</p>
-                {submitError && <div className="spaceShareError">{submitError}</div>}
+                {submitError && (
+                    <div className="spaceShareError" role="alert">
+                        <span aria-hidden="true">⚠ </span>
+                        {submitError}
+                    </div>
+                )}
 
                 <div className="spaceModalActions">
                     <button
