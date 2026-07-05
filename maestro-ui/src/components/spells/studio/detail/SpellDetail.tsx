@@ -1,10 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { useSpellLibraryStore } from '../../../../stores/useSpellLibraryStore';
 import { useActiveSpellsStore } from '../../../../stores/useActiveSpellsStore';
+import { useMaestroStore } from '../../../../stores/useMaestroStore';
+import { maestroClient } from '../../../../utils/MaestroClient';
 import {
-  triggerSummary, actionSummary, isRiskySpell, HOOK_EVENT_DESCRIPTIONS, LOOP_TYPE_LABELS,
+  triggerSummary, actionSummary, isRiskySpell, syntheticHookPayload,
+  HOOK_EVENT_DESCRIPTIONS, LOOP_TYPE_LABELS,
 } from '../../../../utils/spellSummary';
-import type { Spell, SpellRule } from '../../../../app/types/maestro';
+import type { Spell, SpellRule, HookDispatchMatch } from '../../../../app/types/maestro';
 import {
   spellColorVars, IconBack, IconCast, IconEdit, IconCopy, IconTrash, IconWarn, StudioState,
 } from '../studioShared';
@@ -23,6 +26,7 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
   const spell = useSpellLibraryStore((s) => s.spells.find((x) => x.id === spellId));
   const deleteSpell = useSpellLibraryStore((s) => s.deleteSpell);
   const byMaestroSessionId = useActiveSpellsStore((s) => s.byMaestroSessionId);
+  const sessionsMap = useMaestroStore((s) => s.sessions);
 
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,6 +39,19 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
     }
     return n;
   }, [byMaestroSessionId, spellId]);
+
+  // C2 — pick the dry-run target: prefer a session this spell is active on
+  // (the dispatcher only matches ACTIVE spells), else any live session so the
+  // report can still say "would not fire" honestly.
+  const testTarget = useMemo(() => {
+    for (const [sid, list] of Object.entries(byMaestroSessionId)) {
+      if (list.some((a) => a.spellId === spellId)) return { sessionId: sid, spellActive: true };
+    }
+    const live = Object.values(sessionsMap).find(
+      (s) => s.status !== 'completed' && s.status !== 'stopped' && s.status !== 'failed',
+    );
+    return live ? { sessionId: live.id, spellActive: false } : null;
+  }, [byMaestroSessionId, sessionsMap, spellId]);
 
   if (!spell) {
     return (
@@ -131,7 +148,9 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
 
         <div className="spst-scroll">
           <div className="spst-rules">
-            {spell.rules.map((rule, i) => <RuleView key={rule.id || i} rule={rule} index={i} />)}
+            {spell.rules.map((rule, i) => (
+              <RuleView key={rule.id || i} rule={rule} index={i} spellId={spell.id} testTarget={testTarget} />
+            ))}
           </div>
         </div>
       </div>
@@ -139,8 +158,42 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
   );
 }
 
-function RuleView({ rule, index }: { rule: SpellRule; index: number }) {
+interface TestTarget { sessionId: string; spellActive: boolean }
+
+function RuleView({ rule, index, spellId, testTarget }: {
+  rule: SpellRule;
+  index: number;
+  spellId: string;
+  testTarget: TestTarget | null;
+}) {
   const configRows = describeConfig(rule);
+  const [testing, setTesting] = useState(false);
+  const [report, setReport] = useState<{ mine: HookDispatchMatch | null; others: number } | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  const canTestFire = rule.trigger.type === 'hook' && Boolean(testTarget);
+
+  const handleTestFire = async () => {
+    if (rule.trigger.type !== 'hook' || !testTarget) return;
+    setTesting(true); setTestError(null); setReport(null);
+    try {
+      // Dry-run is side-effect-free (C2): full matching, zero execution.
+      const result = await maestroClient.dispatchHookDryRun({
+        sessionId: testTarget.sessionId,
+        event: rule.trigger.hookEvent,
+        payload: syntheticHookPayload(rule.trigger),
+      });
+      const matched = Array.isArray(result?.matched) ? result.matched : [];
+      const mine = matched.find((m) => m.spellId === spellId && m.ruleId === rule.id) ?? null;
+      const others = matched.filter((m) => !(m.spellId === spellId && m.ruleId === rule.id)).length;
+      setReport({ mine, others });
+    } catch (e: any) {
+      setTestError(e?.message ?? 'Test fire failed');
+    } finally {
+      setTesting(false);
+    }
+  };
+
   return (
     <div className={`spst-rule ${rule.enabled ? '' : 'spst-rule--disabled'}`}>
       <div className="spst-rule__head">
@@ -152,6 +205,17 @@ function RuleView({ rule, index }: { rule: SpellRule; index: number }) {
         <span className={`spst-badge ${rule.enabled ? 'spst-badge--live' : ''}`}>
           {rule.enabled ? 'Enabled' : 'Disabled'}
         </span>
+        <button
+          className="spst-btn spst-btn--ghost spst-rule__testfire-btn"
+          type="button"
+          disabled={!canTestFire || testing}
+          title={canTestFire
+            ? 'Dry-run this rule against a live session — nothing executes'
+            : 'Needs a live session to probe (spawn one first)'}
+          onClick={handleTestFire}
+        >
+          {testing ? 'Testing…' : 'Test fire'}
+        </button>
       </div>
       {configRows.length > 0 && (
         <div className="spst-rule__config">
@@ -161,6 +225,33 @@ function RuleView({ rule, index }: { rule: SpellRule; index: number }) {
               <span>{v}</span>
             </div>
           ))}
+        </div>
+      )}
+      {(report || testError) && (
+        <div className="spst-rule__testfire" aria-live="polite">
+          {testError ? (
+            <span className="spst-rule__testfire-line spst-rule__testfire-line--warn">⚠ {testError}</span>
+          ) : report?.mine ? (
+            report.mine.wouldExecute ? (
+              <span className="spst-rule__testfire-line spst-rule__testfire-line--ok">
+                ✓ Would fire → {report.mine.action}
+              </span>
+            ) : (
+              <span className="spst-rule__testfire-line spst-rule__testfire-line--warn">
+                ◦ Matched but skipped{report.mine.skipReason ? ` — ${report.mine.skipReason}` : ''}
+              </span>
+            )
+          ) : (
+            <span className="spst-rule__testfire-line">
+              ✕ Would not fire on the probed session
+              {testTarget && !testTarget.spellActive ? ' — cast this spell on a session first for a true test' : ''}
+            </span>
+          )}
+          {report && report.others > 0 && (
+            <span className="spst-rule__testfire-line spst-rule__testfire-line--meta">
+              {report.others} other rule{report.others === 1 ? '' : 's'} would also fire on this event.
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -194,7 +285,7 @@ function describeConfig(rule: SpellRule): Array<[string, string]> {
       rows.push(['max iterations', String(a.maxIterations ?? '∞')]);
       break;
     case 'notify-channel':
-      rows.push(['channel', a.channel || 'default (best-effort)']);
+      rows.push(['notification', 'in-app (toast + history)']);
       if (a.message) rows.push(['message', a.message]);
       break;
   }

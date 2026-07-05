@@ -30,6 +30,8 @@ import { WS_URL } from '../utils/serverConfig';
 import { playEventSound, soundManager } from '../services/soundManager';
 import { usePromptAnimationStore, selectPromptSurface, type PromptSurface } from './usePromptAnimationStore';
 import { useActiveSpellsStore } from './useActiveSpellsStore';
+import { useEnsembleStore } from './useEnsembleStore';
+import { useSpellNotificationsStore } from './useSpellNotificationsStore';
 import { useTeamMemberIntroStore } from './useTeamMemberIntroStore';
 import { useSpellCastPulseStore } from '../utils/useSpellCastPulse';
 import { buildTeamGroups } from '../utils/teamGrouping';
@@ -598,6 +600,34 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         useActiveSpellsStore.getState().deactivate({ sessionIds, spellId });
         break;
       }
+      case 'spell:toggled': {
+        // C4 — enable/disable flipped in place server-side; reconcile the
+        // authoritative ActiveSpell (enabled + preserved ruleIterations).
+        const { sessionId, spellId, activeSpell } = message.data ?? {};
+        if (!sessionId || !spellId) break;
+        useActiveSpellsStore.getState().applyToggle({
+          maestroSessionId: sessionId,
+          spellId,
+          enabled: activeSpell?.enabled ?? Boolean(message.data?.enabled),
+          ruleIterations: activeSpell?.ruleIterations,
+        });
+        break;
+      }
+      case 'ensemble:created':
+      case 'ensemble:updated': {
+        // C1 — a coordinate cast (or CLI/another client) created or changed an
+        // ensemble; route it into useEnsembleStore so the ensemble UI surfaces it.
+        const ens = message.data?.ensemble ?? message.data;
+        if (ens?.id) useEnsembleStore.getState().upsert(ens);
+        break;
+      }
+      case 'ensemble:disbanded':
+      case 'ensemble:deleted': {
+        const ens = message.data?.ensemble ?? message.data;
+        const ensembleId = ens?.id ?? message.data?.ensembleId;
+        if (ensembleId) useEnsembleStore.getState().remove(ensembleId);
+        break;
+      }
       case 'spell:loop_reset': {
         // CONTRACT-ADDENDUM Addition 2 — authoritative loop-counter reset. The
         // server ships the reconciled ActiveSpell; replace ruleIterations from it.
@@ -647,10 +677,30 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'notify:task_blocked':
       case 'notify:task_session_completed':
       case 'notify:task_session_failed':
+      case 'notify:progress': {
+        // C3 — real in-app delivery for notify-channel rules: a visible toast
+        // plus a persistent history entry (SpellNotificationToasts host), in
+        // addition to the session-instrument sound below.
+        const { sessionId, spellId, ruleId, message: text, level } = message.data ?? {};
+        if (text) {
+          useSpellNotificationsStore.getState().notify({
+            sessionId,
+            spellId,
+            ruleId,
+            message: text,
+            level: level === 'success' || level === 'warn' ? level : 'info',
+          });
+        }
+        if (sessionId) {
+          soundManager.playSessionInstrumentSound(message.event as any, sessionId).catch(() => { /* best-effort sound */ });
+        } else {
+          playEventSound(message.event as any);
+        }
+        break;
+      }
       case 'notify:session_completed':
       case 'notify:session_failed':
-      case 'notify:needs_input':
-      case 'notify:progress': {
+      case 'notify:needs_input': {
         // Use the associated session's randomly-assigned instrument when available
         const sessionId = message.data?.sessionId;
         if (sessionId) {
