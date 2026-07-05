@@ -74,9 +74,10 @@ function actionFromData(v: unknown): SpellActionConfig | null {
       };
     }
     case 'notify-channel': {
+      // In-app only — the `channel` relay field was dropped from the local
+      // model; a legacy shared rule's channel is intentionally not carried.
       return {
         type: 'notify-channel',
-        ...(typeof raw.channel === 'string' && raw.channel ? { channel: raw.channel } : {}),
         ...(typeof raw.message === 'string' && raw.message ? { message: raw.message } : {}),
       };
     }

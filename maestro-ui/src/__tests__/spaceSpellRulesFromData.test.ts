@@ -90,7 +90,8 @@ describe('spaceSpellRulesFromData', () => {
       // Non-string args are filtered out, not rejected.
       { type: 'run-command', command: 'bun test', args: ['--watch', '--silent'], cwd: '/tmp', feedOutput: true },
       { type: 'continue-loop', loopType: 'critic-refine', maxIterations: 5 },
-      { type: 'notify-channel', channel: 'ops', message: 'done' },
+      // Legacy `channel` field is dropped — notify-channel is in-app only now.
+      { type: 'notify-channel', message: 'done' },
     ]);
   });
 

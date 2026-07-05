@@ -167,7 +167,7 @@ describe('buildSpellBody', () => {
           id: 'r3',
           enabled: true,
           trigger: { type: 'schedule', intervalMs: 1000 },
-          action: { type: 'notify-channel', channel: 'ops' },
+          action: { type: 'notify-channel', message: 'build done' },
         },
         {
           id: 'r4',
@@ -186,7 +186,7 @@ describe('buildSpellBody', () => {
     expect(buildSpellBody(spell).split('\n')).toEqual([
       '• Lint gate — on PreToolUse (Write) → inject-prompt: Check lint first',
       '• on Stop → run-command: bun test (disabled)',
-      '• on schedule → notify-channel: ops',
+      '• on schedule → notify-channel (in-app): build done',
       '• on SubagentStop → continue-loop: plan-execute',
       '• on SessionStart → feed-context: Context here',
     ]);
