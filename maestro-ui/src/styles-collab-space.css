@@ -31,7 +31,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 10px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
 }
 
 .collabSpaceUserEmail,
@@ -62,13 +62,13 @@
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   font-weight: 600;
 }
 
 .collabSpaceSectionEmpty {
   font-size: 12px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   font-style: italic;
   padding: 8px 0;
 }
@@ -121,7 +121,7 @@
 
 .collabSpaceRowMeta {
   font-size: 11px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   margin-top: 4px;
 }
 
@@ -239,7 +239,7 @@ textarea.collabSpaceInput {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
 }
 
 .collabSpaceVisRow {
@@ -266,9 +266,9 @@ textarea.collabSpaceInput {
 
 .collabSpaceError {
   font-size: 12px;
-  color: #ff8080;
-  background: rgba(255, 80, 80, 0.1);
-  border: 1px solid rgba(255, 80, 80, 0.3);
+  color: var(--space-error-fg, #ff8080);
+  background: var(--space-error-bg, rgba(255, 80, 80, 0.1));
+  border: 1px solid var(--space-error-border, rgba(255, 80, 80, 0.3));
   border-radius: 4px;
   padding: 8px 10px;
   cursor: pointer;
@@ -345,7 +345,7 @@ textarea.collabSpaceInput {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   font-size: 11px;
   text-transform: uppercase;
   margin: 4px 0;
@@ -400,7 +400,7 @@ textarea.collabSpaceInput {
 }
 
 .collabSpaceRowChevron {
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   font-size: 18px;
   padding: 0 6px;
 }
@@ -457,11 +457,11 @@ textarea.collabSpaceInput {
 
 .collabSpaceDetailMeta {
   font-size: 11px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
 }
 
 .collabSpaceMetaSep {
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
 }
 
 /* Tab bar inside detail */
@@ -570,7 +570,7 @@ textarea.collabSpaceInput {
 
 .collabSpaceMemberEmail {
   font-size: 11px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   margin-top: 2px;
 }
 
@@ -603,7 +603,7 @@ textarea.collabSpaceInput {
 
 .collabSpacePlaceholderText {
   font-size: 12px;
-  color: var(--text-muted, #666);
+  color: var(--text-muted, #8a93a3);
   line-height: 1.5;
   max-width: 320px;
   margin: 0 auto;

@@ -26,7 +26,7 @@ export function CollabSpacePanel({ projectId, workingDir, projectName }: CollabS
     return <NotConfiguredState />;
   }
   if (!initialized) {
-    return <LoadingState message="Loading..." />;
+    return <LoadingState message="Loading…" />;
   }
   if (!user) {
     return <SignInView />;
@@ -63,6 +63,7 @@ function SignedInView({
   const mineByRepo = useCollabSpaceStore((s) => s.mineByRepo);
   const publicByRepo = useCollabSpaceStore((s) => s.publicByRepo);
   const listLoading = useCollabSpaceStore((s) => s.listLoading);
+  const listError = useCollabSpaceStore((s) => s.listError);
 
   const [showCreate, setShowCreate] = useState(false);
   const [editingRemote, setEditingRemote] = useState(false);
@@ -85,6 +86,7 @@ function SignedInView({
   const mySpaces = detectedRemote ? mineByRepo[detectedRemote.canonical] ?? [] : [];
   const publicSpaces = detectedRemote ? publicByRepo[detectedRemote.canonical] ?? [] : [];
   const loading = detectedRemote ? listLoading[detectedRemote.canonical] : false;
+  const spacesError = detectedRemote ? listError[detectedRemote.canonical] : null;
 
   const publicNotMine = useMemo(() => {
     const mineIds = new Set(mySpaces.map((s) => s.id));
@@ -112,10 +114,10 @@ function SignedInView({
             <>
               <span className="collabSpaceRepoValue">
                 {detectionLoading
-                  ? "detecting..."
+                  ? "detecting…"
                   : detectedRemote
                   ? detectedRemote.canonical
-                  : "no git remote found"}
+                  : "no remote detected"}
               </span>
               <button
                 type="button"
@@ -176,8 +178,14 @@ function SignedInView({
             </button>
           </div>
 
+          {spacesError && (
+            <div className="collabSpaceError" role="alert">
+              {spacesError}
+            </div>
+          )}
+
           {loading && mySpaces.length === 0 && publicSpaces.length === 0 ? (
-            <LoadingState message="Loading spaces..." />
+            <LoadingState message="Loading spaces…" />
           ) : (
             <>
               <Section title="Your Spaces" empty="You haven't joined any spaces for this repo yet.">
@@ -261,8 +269,12 @@ function SpaceRow({
       onClick={handleOpen}
       role="button"
       tabIndex={0}
+      aria-label={`Open space ${space.name}`}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") handleOpen();
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleOpen();
+        }
       }}
     >
       <div className="collabSpaceRowMain">
@@ -286,10 +298,10 @@ function SpaceRow({
           disabled={joining}
           onClick={handleJoin}
         >
-          {joining ? "..." : "Join"}
+          {joining ? "…" : "Join"}
         </button>
       ) : (
-        <span className="collabSpaceRowChevron">›</span>
+        <span className="collabSpaceRowChevron" aria-hidden="true">›</span>
       )}
     </div>
   );
@@ -336,7 +348,7 @@ function CreateSpaceModal({
   return (
     <div className="collabSpaceModalOverlay" onClick={onClose}>
       <div className="collabSpaceModal" onClick={(e) => e.stopPropagation()}>
-        <div className="collabSpaceModalTitle">Create Space</div>
+        <div className="collabSpaceModalTitle">Create a Space</div>
         <form onSubmit={submit} className="collabSpaceForm">
           <label className="collabSpaceField">
             <span className="collabSpaceFieldLabel">Name</span>
@@ -401,7 +413,7 @@ function CreateSpaceModal({
               className="collabSpaceButton collabSpaceButtonPrimary"
               disabled={creating || !name.trim()}
             >
-              {creating ? "Creating..." : "Create"}
+              {creating ? "Creating…" : "Create"}
             </button>
           </div>
         </form>
@@ -447,7 +459,7 @@ function SignInView() {
           disabled={loading}
           onClick={() => void signInGoogle()}
         >
-          {loading ? "..." : "Continue with Google"}
+          {loading ? "…" : "Continue with Google"}
         </button>
 
         <div className="collabSpaceDivider">
@@ -477,7 +489,7 @@ function SignInView() {
             className="collabSpaceButton collabSpaceButtonPrimary"
             disabled={loading || !email || !password}
           >
-            {loading ? "..." : mode === "signin" ? "Sign in" : "Create account"}
+            {loading ? "…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>
         </form>
 

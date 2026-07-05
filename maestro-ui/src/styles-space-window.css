@@ -1,4 +1,24 @@
 /* ------------------------------------------------------------------ */
+/*  Collab shared tokens (single source of truth for the 3 collab CSS   */
+/*  files: styles-space-window / styles-space-sharing / styles-collab-  */
+/*  space). Used via the var(--token, fallback) pattern so any host     */
+/*  theme can override, while fallbacks preserve the current look.      */
+/* ------------------------------------------------------------------ */
+
+:root {
+  /* Error banner treatment (salmon-red family shared across surfaces) */
+  --space-error-fg: #f4a3a3;
+  --space-error-border: rgba(240, 103, 103, 0.35);
+  --space-error-bg: rgba(240, 103, 103, 0.1);
+  /* Space chrome / tab strip / composer surface */
+  --space-chrome-bg: #0a0c12;
+  /* Optimistic/pending in-flight outline (accent-blue family) */
+  --space-pending-border: rgba(124, 158, 255, 0.25);
+  /* Text that sits on a colored avatar disc */
+  --space-avatar-fg: #fff;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Reusable circle-letter Space avatar                                 */
 /* ------------------------------------------------------------------ */
 
@@ -7,7 +27,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  color: #fff;
+  color: var(--space-avatar-fg, #fff);
   font-weight: 700;
   font-family: var(--style-font-ui);
   line-height: 1;
@@ -99,7 +119,7 @@
   gap: 16px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  background: #0a0c12;
+  background: var(--space-chrome-bg, #0a0c12);
   flex-shrink: 0;
   height: 48px;
 }
@@ -191,7 +211,7 @@
   align-items: stretch;
   gap: 0;
   padding: 0 12px;
-  background: #0a0c12;
+  background: var(--space-chrome-bg, #0a0c12);
   border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   flex-shrink: 0;
   height: 38px;
@@ -320,7 +340,7 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-  color: #fff;
+  color: var(--space-avatar-fg, #fff);
   font-weight: 700;
   font-size: 13px;
   display: inline-flex;
@@ -407,7 +427,7 @@
   padding: 10px 24px 14px;
   border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
   flex-shrink: 0;
-  background: #0a0c12;
+  background: var(--space-chrome-bg, #0a0c12);
   max-width: 920px;
   width: 100%;
   margin: 0 auto;
@@ -858,7 +878,7 @@
   height: 30px;
   border-radius: 6px;
   background: linear-gradient(135deg, #4a5dff, #c084fc);
-  color: #fff;
+  color: var(--space-avatar-fg, #fff);
   font-weight: 700;
   font-size: 13px;
   display: inline-flex;
@@ -1160,34 +1180,12 @@ img.spaceMemberFullAvatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  color: #fff;
+  color: var(--space-avatar-fg, #fff);
   font-weight: 700;
   font-size: 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-
-.spaceMemberPresenceDot {
-  position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  border: 2px solid var(--bg-primary, #0c0e14);
-}
-
-.spaceMemberPresenceDot--online {
-  background: #66ddaa;
-}
-
-.spaceMemberPresenceDot--idle {
-  background: #ffc864;
-}
-
-.spaceMemberPresenceDot--offline {
-  background: #6e7785;
 }
 
 .spaceMemberFullMain {
@@ -1910,9 +1908,9 @@ img.spaceMemberFullAvatar {
 
 .spaceShareError {
   font-size: 12px;
-  color: #f06767;
-  background: rgba(240, 103, 103, 0.08);
-  border: 1px solid rgba(240, 103, 103, 0.3);
+  color: var(--space-error-fg, #f4a3a3);
+  background: var(--space-error-bg, rgba(240, 103, 103, 0.1));
+  border: 1px solid var(--space-error-border, rgba(240, 103, 103, 0.35));
   border-radius: 4px;
   padding: 8px 10px;
   margin-bottom: 8px;

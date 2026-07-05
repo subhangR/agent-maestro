@@ -79,9 +79,9 @@
   margin: 6px 0 10px;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(240, 103, 103, 0.35);
-  background: rgba(240, 103, 103, 0.1);
-  color: #f4a3a3;
+  border: 1px solid var(--space-error-border, rgba(240, 103, 103, 0.35));
+  background: var(--space-error-bg, rgba(240, 103, 103, 0.1));
+  color: var(--space-error-fg, #f4a3a3);
   font-size: 12px;
 }
 
@@ -94,22 +94,22 @@
   flex: 0 0 auto;
   padding: 4px 10px;
   border-radius: 6px;
-  border: 1px solid rgba(240, 103, 103, 0.45);
+  border: 1px solid var(--space-error-border, rgba(240, 103, 103, 0.45));
   background: transparent;
-  color: #f4a3a3;
+  color: var(--space-error-fg, #f4a3a3);
   font-size: 12px;
   cursor: pointer;
 }
 
 .spaceSharingErrorRetry:hover {
-  background: rgba(240, 103, 103, 0.16);
+  background: var(--space-error-bg, rgba(240, 103, 103, 0.16));
 }
 
 .spaceSharingErrorDismiss {
   flex: 0 0 auto;
   background: transparent;
   border: none;
-  color: #f4a3a3;
+  color: var(--space-error-fg, #f4a3a3);
   font-size: 15px;
   line-height: 1;
   cursor: pointer;
@@ -143,7 +143,7 @@
 .spaceTaskItem--pending,
 .spaceTeamItem--pending,
 .spaceSpellItem--pending {
-  outline: 1px solid rgba(124, 158, 255, 0.25);
+  outline: 1px solid var(--space-pending-border, rgba(124, 158, 255, 0.25));
   outline-offset: -1px;
 }
 
@@ -151,7 +151,7 @@
 .spaceSharingRowError {
   margin-top: 6px;
   font-size: 11px;
-  color: #f4a3a3;
+  color: var(--space-error-fg, #f4a3a3);
 }
 
 /* ---- Empty picker / permission notes in modals ---- */
