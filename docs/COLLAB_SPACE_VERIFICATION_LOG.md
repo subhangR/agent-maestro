@@ -45,21 +45,28 @@ were all fixed in commit `90c6077`. Remaining accepted note: on sign-out,
 section-level listeners detach via natural React unmount a beat after the
 store teardown — a brief cosmetic window, no leak.
 
-## Rules & indexes deploy (§0.4)
+## Rules & indexes deploy (§0.4) — ✅ DEPLOYED & VERIFIED LIVE
 
-- `firebase deploy --only firestore --project maestro-5f3fc`
-- Status: **pending account access** — the machine's Firebase CLI session
-  (`subhang.rocklee@gmail.com`) receives HTTP 403 for `maestro-5f3fc`; the
-  deploy requires `firebase login:add` with the project owner account, then
-  rerunning the command above and confirming the console shows the new
-  ruleset. Tracked as the single open checklist item on the PR.
+- `firebase deploy --only firestore --project maestro-5f3fc --force`
+  (account `penrosecoder@gmail.com`, 2026-07-05): rules compiled and
+  **released**; indexes reconciled — added the missing
+  `(githubUrl, memberIds CONTAINS, createdAt DESC)` composite that the
+  mine-for-repo queries require, and removed a stale
+  `(memberIds CONTAINS, createdAt DESC)` composite no current query uses
+  (the joined-spaces subscription deliberately avoids `orderBy`).
+- **Live post-deploy probe** (`maestro-ui/scripts/verify-deployed-rules.mjs`,
+  run against the real project with a scratch email/password user, self-
+  cleaning): **11/11 checks passed** —
+  signed-out read denied · valid space create allowed · spoofed `ownerId`
+  denied · task push allowed · own pull fan-out allowed · cross-uid fan-out
+  denied · oversized update denied · owner self-leave denied · cleanup
+  (task, space, scratch user) all succeeded.
 
-## Manual end-to-end pass
+## Manual end-to-end pass (UI layer)
 
-Blocked on the same account access as the deploy (sign-in requires the owner's
-Google/email credentials; the collab Firebase project has no test users).
-The data-layer behavior is fully covered by the emulator suite above; the
-UI flows to exercise once signed in:
+The deployed data layer is live-verified above; the emulator suite covers the
+full security model. The remaining signed-in UI walkthrough (needs the owner's
+own account in the running app):
 
 1. Sign in (Google or email) → Collab tab lists repo spaces.
 2. Create a space → default `#general` exists; send/edit/soft-delete messages.
