@@ -28,11 +28,16 @@ interface CollabSpaceState {
   setManualRemote: (projectId: string, raw: string) => ParsedGitRemote | null;
   subscribeForRepo: (githubUrl: string, uid: string) => void;
   unsubscribeForRepo: (githubUrl: string) => void;
+  /** Tears down every live repo subscription and resets lists (sign-out path). */
+  unsubscribeAll: () => void;
   createSpace: (user: User, input: CreateCollabSpaceInput) => Promise<CollabSpace>;
   joinSpace: (user: User, spaceId: string) => Promise<void>;
   leaveSpace: (user: User, spaceId: string) => Promise<void>;
   clearActionError: () => void;
 }
+
+/** Guards against out-of-order detectRemote resolutions per project. */
+const detectionNonces: Record<string, number> = {};
 
 export const useCollabSpaceStore = create<CollabSpaceState>((set, get) => ({
   detectedRemoteByProject: {},
@@ -47,15 +52,21 @@ export const useCollabSpaceStore = create<CollabSpaceState>((set, get) => ({
   actionError: null,
 
   detectRemote: async (projectId, workingDir) => {
+    const nonce = (detectionNonces[projectId] ?? 0) + 1;
+    detectionNonces[projectId] = nonce;
     set((s) => ({ detectionLoading: { ...s.detectionLoading, [projectId]: true } }));
     try {
       const result = await detectGitRemote(workingDir);
+      // A newer detection superseded this one — drop the stale result.
+      if (detectionNonces[projectId] !== nonce) return result;
       set((s) => ({
         detectedRemoteByProject: { ...s.detectedRemoteByProject, [projectId]: result },
       }));
       return result;
     } finally {
-      set((s) => ({ detectionLoading: { ...s.detectionLoading, [projectId]: false } }));
+      if (detectionNonces[projectId] === nonce) {
+        set((s) => ({ detectionLoading: { ...s.detectionLoading, [projectId]: false } }));
+      }
     }
   },
 
@@ -80,11 +91,21 @@ export const useCollabSpaceStore = create<CollabSpaceState>((set, get) => ({
         set((s) => ({
           mineByRepo: { ...s.mineByRepo, [githubUrl]: spaces },
           listLoading: { ...s.listLoading, [githubUrl]: false },
+          listError: { ...s.listError, [githubUrl]: null },
         })),
       onPublic: (spaces) =>
         set((s) => ({
           publicByRepo: { ...s.publicByRepo, [githubUrl]: spaces },
           listLoading: { ...s.listLoading, [githubUrl]: false },
+          listError: { ...s.listError, [githubUrl]: null },
+        })),
+      onError: (err) =>
+        set((s) => ({
+          listLoading: { ...s.listLoading, [githubUrl]: false },
+          listError: {
+            ...s.listError,
+            [githubUrl]: err?.message ?? 'Failed to load spaces. Check your connection.',
+          },
         })),
     });
 
@@ -98,6 +119,20 @@ export const useCollabSpaceStore = create<CollabSpaceState>((set, get) => ({
       const next = { ...s.subscriptions };
       delete next[githubUrl];
       return { subscriptions: next };
+    });
+  },
+
+  unsubscribeAll: () => {
+    Object.values(get().subscriptions).forEach((unsub) => unsub());
+    set({
+      subscriptions: {},
+      mineByRepo: {},
+      publicByRepo: {},
+      listLoading: {},
+      listError: {},
+      creating: false,
+      joining: false,
+      actionError: null,
     });
   },
 

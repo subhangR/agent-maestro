@@ -1,114 +1,70 @@
+import { DocumentData } from 'firebase/firestore';
+import { SpaceTask, SpaceTaskStatus, SpaceTaskPriority } from './spaceShareTypes';
+import { createSpaceResourceClient } from './spaceResourceClient';
 import {
-  collection,
-  doc,
-  query,
-  orderBy,
-  getDocs,
-  updateDoc,
-  deleteDoc,
-  serverTimestamp,
-  arrayUnion,
-  onSnapshot,
-  Unsubscribe,
-  QuerySnapshot,
-  QueryDocumentSnapshot,
-  DocumentData,
-} from 'firebase/firestore';
-import { getDb } from './firestore';
-import { SpaceTask } from './spaceShareTypes';
+  asString,
+  asStringOrNull,
+  asStringArray,
+  asStringRecord,
+  asNumber,
+  asEnum,
+} from './firestoreUtils';
 
-const SPACES = 'collabSpaces';
-const TASKS = 'tasks';
+const TASK_STATUSES: readonly SpaceTaskStatus[] = [
+  'todo', 'in_progress', 'in_review', 'completed', 'cancelled', 'blocked',
+];
+const TASK_PRIORITIES: readonly SpaceTaskPriority[] = ['high', 'medium', 'low'];
 
-function tasksCol(spaceId: string) {
-  return collection(getDb(), SPACES, spaceId, TASKS);
-}
-
-function taskDoc(spaceId: string, taskId: string) {
-  return doc(getDb(), SPACES, spaceId, TASKS, taskId);
-}
-
-function fromSnap(snap: QueryDocumentSnapshot): SpaceTask {
-  const d = snap.data() as DocumentData;
+function fromData(id: string, d: DocumentData): SpaceTask {
   return {
-    id: snap.id,
-    spaceId: d.spaceId,
-    title: d.title ?? '',
-    description: d.description ?? '',
-    status: d.status,
-    priority: d.priority,
-    assigneeUids: d.assigneeUids ?? [],
-    parentTaskId: d.parentTaskId ?? null,
-    childrenIds: d.childrenIds ?? [],
-    position: typeof d.position === 'number' ? d.position : 0,
-    sourceTaskId: d.sourceTaskId ?? null,
-    sourceProjectId: d.sourceProjectId ?? null,
-    sourceUserId: d.sourceUserId ?? null,
-    linkedLocalIdsByUid: d.linkedLocalIdsByUid ?? {},
-    pulledByUids: d.pulledByUids ?? [],
-    createdBy: d.createdBy,
+    id,
+    spaceId: asString(d.spaceId),
+    title: asString(d.title),
+    description: asString(d.description),
+    status: asEnum(d.status, TASK_STATUSES, 'todo'),
+    priority: asEnum(d.priority, TASK_PRIORITIES, 'medium'),
+    assigneeUids: asStringArray(d.assigneeUids),
+    parentTaskId: asStringOrNull(d.parentTaskId),
+    childrenIds: asStringArray(d.childrenIds),
+    position: asNumber(d.position),
+    sourceTaskId: asStringOrNull(d.sourceTaskId),
+    sourceProjectId: asStringOrNull(d.sourceProjectId),
+    sourceUserId: asStringOrNull(d.sourceUserId),
+    linkedLocalIdsByUid: asStringRecord(d.linkedLocalIdsByUid),
+    pulledByUids: asStringArray(d.pulledByUids),
+    createdBy: asString(d.createdBy),
     createdAt: d.createdAt,
     updatedAt: d.updatedAt,
   };
 }
 
-function fromQuery(snap: QuerySnapshot): SpaceTask[] {
-  return snap.docs.map((d) => fromSnap(d));
-}
+const client = createSpaceResourceClient<SpaceTask>({
+  label: 'SpaceTasks',
+  segment: 'tasks',
+  fromData,
+  fanOut: { uidsField: 'pulledByUids', linkedField: 'linkedLocalIdsByUid' },
+});
 
 export const SpaceTasksClient = {
-  subscribe(
-    spaceId: string,
-    cb: (tasks: SpaceTask[]) => void,
-    onError?: (err: Error) => void,
-  ): Unsubscribe {
-    const q = query(tasksCol(spaceId), orderBy('createdAt', 'desc'));
-    return onSnapshot(
-      q,
-      (snap) => cb(fromQuery(snap)),
-      (err) => {
-        // eslint-disable-next-line no-console
-        console.warn('[SpaceTasks] subscribe failed:', err);
-        onError?.(err);
-      },
-    );
-  },
-
-  async list(spaceId: string): Promise<SpaceTask[]> {
-    const q = query(tasksCol(spaceId), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    return fromQuery(snap);
-  },
+  subscribe: client.subscribe,
+  list: client.list,
 
   async update(
     spaceId: string,
     taskId: string,
     patch: Partial<Pick<SpaceTask, 'title' | 'description' | 'status' | 'priority' | 'assigneeUids'>>,
   ): Promise<void> {
-    await updateDoc(taskDoc(spaceId, taskId), {
-      ...patch,
-      updatedAt: serverTimestamp(),
-    });
+    await client.update(spaceId, taskId, patch);
   },
 
-  async delete(spaceId: string, taskId: string): Promise<void> {
-    await deleteDoc(taskDoc(spaceId, taskId));
-  },
+  delete: client.delete,
 
   /**
    * Records that `uid` has materialized this shared task into local task
-   * `localTaskId`. Bumps the fan-out fields the rules whitelist for non-creators.
+   * `localTaskId`. Fan-out fields are the only fields non-creator members
+   * may write (enforced by rules, pinned to the caller's own uid).
    */
-  async recordPull(
-    spaceId: string,
-    taskId: string,
-    uid: string,
-    localTaskId: string,
-  ): Promise<void> {
-    await updateDoc(taskDoc(spaceId, taskId), {
-      [`linkedLocalIdsByUid.${uid}`]: localTaskId,
-      pulledByUids: arrayUnion(uid),
-      updatedAt: serverTimestamp(),
-    });
+  async recordPull(spaceId: string, taskId: string, uid: string, localTaskId: string): Promise<void> {
+    await client.recordFanOut(spaceId, taskId, uid, localTaskId);
   },
 };

@@ -1,9 +1,14 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { User } from "firebase/auth";
 import {
   MESSAGE_MAX_LENGTH,
   Mentionable,
+  MessageAttachment,
   MessageMention,
 } from "../../../firebase/messagingTypes";
+import { SpaceShareClient } from "../../../firebase/SpaceShareClient";
+import { encodeFileToBase64 } from "../../../firebase/SpaceFilesClient";
+import { SPACE_FILE_MAX_RAW_BYTES } from "../../../firebase/spaceShareTypes";
 
 type Props = {
   channelId: string;
@@ -12,10 +17,26 @@ type Props = {
   disabledReason?: string;
   /** Members + agents that can be @mentioned in this space. */
   mentionables?: Mentionable[];
-  onSend: (content: string, mentions: MessageMention[]) => Promise<void>;
+  /** Space the channel belongs to — required for file attachments. */
+  spaceId?: string;
+  /** Signed-in user — required for file attachments. */
+  user?: User | null;
+  onSend: (
+    content: string,
+    mentions: MessageMention[],
+    attachments: MessageAttachment[],
+  ) => Promise<void>;
 };
 
 const MENTION_MAX_QUERY = 30;
+const MAX_ATTACHMENTS_PER_MESSAGE = 5;
+const MAX_ATTACHMENT_KB = Math.floor(SPACE_FILE_MAX_RAW_BYTES / 1024);
+
+function formatKb(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(bytes < 10 * 1024 ? 1 : 0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 /**
  * Finds an in-progress @mention immediately before the caret. The `@` must sit
@@ -40,25 +61,40 @@ export function MessageComposer({
   disabled,
   disabledReason,
   mentionables = [],
+  spaceId,
+  user,
   onSend,
 }: Props) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Mentions the user has explicitly picked; reconciled against text on send.
   const [picked, setPicked] = useState<MessageMention[]>([]);
+
+  // Attachments are staged LOCALLY (the picked File objects) and only uploaded
+  // when the message is actually sent — abandoning a draft (channel switch,
+  // close) must never leave orphaned file docs in the space.
+  const [staged, setStaged] = useState<{ id: string; file: File }[]>([]);
+  const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
 
   // @mention autocomplete state
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const mentionStartRef = useRef<number>(-1);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Reset draft when switching channels
+  const canAttach = Boolean(spaceId && user);
+
+  // Reset draft when switching channels. Staged attachments are local File
+  // objects only — nothing has been uploaded yet, so dropping them is free.
   useEffect(() => {
     setValue("");
     setPicked([]);
     setMentionQuery(null);
+    setStaged([]);
+    setAttachError(null);
   }, [channelId]);
 
   // Auto-grow textarea
@@ -86,7 +122,12 @@ export function MessageComposer({
 
   const trimmed = value.trim();
   const tooLong = value.length > MESSAGE_MAX_LENGTH;
-  const canSend = !disabled && !sending && trimmed.length > 0 && !tooLong;
+  const canSend =
+    !disabled &&
+    !sending &&
+    !attaching &&
+    (trimmed.length > 0 || staged.length > 0) &&
+    !tooLong;
 
   const refreshMentionState = (text: string, caret: number) => {
     const found = findMentionQuery(text, caret);
@@ -132,16 +173,93 @@ export function MessageComposer({
     });
   };
 
+  // ─── Attachments ──────────────────────────────────────────────────
+
+  const openFilePicker = () => {
+    setAttachError(null);
+    fileInputRef.current?.click();
+  };
+
+  const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file || !spaceId || !user) return;
+    if (staged.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
+      setAttachError(`A message can carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.`);
+      return;
+    }
+    if (file.size === 0) {
+      setAttachError(`"${file.name}" is empty — there's nothing to attach.`);
+      return;
+    }
+    if (file.size > SPACE_FILE_MAX_RAW_BYTES) {
+      setAttachError(
+        `"${file.name}" is ${formatKb(file.size)} — attachments must be ${MAX_ATTACHMENT_KB} KB or smaller.`,
+      );
+      return;
+    }
+    setAttachError(null);
+    setStaged((prev) => [
+      ...prev,
+      { id: `staged_${Date.now()}_${prev.length}`, file },
+    ]);
+    ref.current?.focus();
+  };
+
+  const removeAttachment = (id: string) => {
+    // Purely local — nothing has been uploaded yet.
+    setStaged((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  // ─── Send ─────────────────────────────────────────────────────────
+
   const send = async () => {
     if (!canSend) return;
     const content = trimmed;
     const mentions = picked.filter((m) => content.includes(`@${m.displayName}`));
+    const toUpload = staged;
+
+    // Upload staged attachments now (tagged as chat attachments so they don't
+    // surface in the Files tab). If any upload fails, keep the whole draft so
+    // nothing is lost and no half-referenced message goes out.
+    let outgoing: MessageAttachment[] = [];
+    if (toUpload.length > 0 && spaceId && user) {
+      setAttaching(true);
+      setAttachError(null);
+      try {
+        for (const s of toUpload) {
+          const data = await encodeFileToBase64(s.file);
+          const fileId = await SpaceShareClient.shareFile(user, spaceId, {
+            name: s.file.name,
+            mimeType: s.file.type || "application/octet-stream",
+            size: s.file.size,
+            data,
+            caption: null,
+            origin: "chat-attachment",
+          });
+          outgoing.push({
+            fileId,
+            name: s.file.name,
+            mimeType: s.file.type || "application/octet-stream",
+            size: s.file.size,
+          });
+        }
+      } catch (err: any) {
+        setAttachError(err?.message ?? "Failed to upload an attachment. Try again.");
+        setAttaching(false);
+        return;
+      }
+      setAttaching(false);
+    }
+
     setSending(true);
     setValue("");
     setPicked([]);
     setMentionQuery(null);
+    setStaged([]);
+    setAttachError(null);
     try {
-      await onSend(content, mentions);
+      await onSend(content, mentions, outgoing);
     } finally {
       setSending(false);
       ref.current?.focus();
@@ -185,22 +303,6 @@ export function MessageComposer({
     refreshMentionState(el.value, el.selectionStart ?? el.value.length);
   };
 
-  const openMentionPicker = () => {
-    const el = ref.current;
-    if (!el) return;
-    const caret = el.selectionStart ?? value.length;
-    const needsSpace = caret > 0 && !/\s/.test(value[caret - 1]);
-    const insert = `${needsSpace ? " " : ""}@`;
-    const next = value.slice(0, caret) + insert + value.slice(caret);
-    setValue(next);
-    const nextCaret = caret + insert.length;
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(nextCaret, nextCaret);
-      refreshMentionState(next, nextCaret);
-    });
-  };
-
   if (disabled) {
     return (
       <div className="messagingComposer">
@@ -216,40 +318,61 @@ export function MessageComposer({
       <div className="messagingComposerToolbar">
         <button
           type="button"
-          className="messagingComposerIconBtn"
-          title="Attach file (coming soon)"
-          aria-label="Attach file"
-          disabled
+          className={`messagingComposerIconBtn ${attaching ? "messagingComposerIconBtn--busy" : ""}`}
+          title={
+            canAttach
+              ? `Attach file (max ${MAX_ATTACHMENT_KB} KB)`
+              : "Sign in to attach files"
+          }
+          aria-label={attaching ? "Uploading attachment" : "Attach file"}
+          aria-busy={attaching}
+          onClick={openFilePicker}
+          disabled={!canAttach || attaching || sending}
         >
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M11 7.5l-4 4a2 2 0 1 1-2.8-2.8l5-5a3.2 3.2 0 0 1 4.5 4.5l-5.5 5.5a4.6 4.6 0 0 1-6.5-6.5l5-5" strokeLinecap="round" />
-          </svg>
+          {attaching ? (
+            <span className="messagingAttachSpinner" aria-hidden="true" />
+          ) : (
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path d="M11 7.5l-4 4a2 2 0 1 1-2.8-2.8l5-5a3.2 3.2 0 0 1 4.5 4.5l-5.5 5.5a4.6 4.6 0 0 1-6.5-6.5l5-5" strokeLinecap="round" />
+            </svg>
+          )}
         </button>
-        <button
-          type="button"
-          className="messagingComposerIconBtn"
-          title="Mention someone"
-          aria-label="Mention someone"
-          onClick={openMentionPicker}
-          disabled={mentionables.length === 0}
-        >
-          <span style={{ fontSize: 13, fontWeight: 700 }}>@</span>
-        </button>
-        <button
-          type="button"
-          className="messagingComposerIconBtn"
-          title="Emoji (coming soon)"
-          aria-label="Emoji"
-          disabled
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="8" cy="8" r="6" />
-            <circle cx="6" cy="7" r="0.6" fill="currentColor" />
-            <circle cx="10" cy="7" r="0.6" fill="currentColor" />
-            <path d="M5.5 10c.7 1 1.5 1.5 2.5 1.5s1.8-.5 2.5-1.5" strokeLinecap="round" />
-          </svg>
-        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="messagingAttachInput"
+          onChange={(e) => void handleFilePicked(e)}
+          aria-label="Choose a file to attach"
+          tabIndex={-1}
+        />
       </div>
+
+      {(staged.length > 0 || attachError) && (
+        <div className="messagingComposerAttachments">
+          {staged.map((s) => (
+            <span key={s.id} className="messagingAttachChip messagingAttachChip--pending">
+              <span className="messagingAttachChipName" title={s.file.name}>
+                {s.file.name}
+              </span>
+              <span className="messagingAttachChipSize">{formatKb(s.file.size)}</span>
+              <button
+                type="button"
+                className="messagingAttachChipRemove"
+                aria-label={`Remove attachment ${s.file.name}`}
+                onClick={() => removeAttachment(s.id)}
+                disabled={sending || attaching}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {attachError && (
+            <span className="messagingAttachError" role="alert">
+              {attachError}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="messagingComposerRow">
         {popupOpen && (
@@ -307,7 +430,9 @@ export function MessageComposer({
       <div className="messagingComposerHint">
         {tooLong
           ? `Message too long (${value.length}/${MESSAGE_MAX_LENGTH})`
-          : "Enter to send · Shift+Enter for newline"}
+          : attaching
+            ? "Uploading attachments…"
+            : "Enter to send · Shift+Enter for newline"}
       </div>
     </div>
   );

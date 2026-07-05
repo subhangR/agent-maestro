@@ -1,15 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Timestamp } from 'firebase/firestore';
 import { CollabSpace } from '../firebase/collabSpaceTypes';
-import { SpaceTask, SpaceTeamMember, SpaceSpell } from '../firebase/spaceShareTypes';
+import {
+  SpaceTask,
+  SpaceTeamMember,
+  SpaceSpell,
+  SpaceDoc,
+  SPACE_DOC_MAX_CONTENT_CHARS,
+} from '../firebase/spaceShareTypes';
 import { SpaceTasksClient } from '../firebase/SpaceTasksClient';
 import { SpaceTeamMembersClient } from '../firebase/SpaceTeamMembersClient';
 import { SpaceSpellsClient } from '../firebase/SpaceSpellsClient';
-import type { MaestroTask, Spell, TaskStatus } from '../app/types/maestro';
+import { SpaceDocsClient } from '../firebase/SpaceDocsClient';
+import type { DocEntry, MaestroTask, Spell, TaskStatus } from '../app/types/maestro';
 import type {
   SharedTaskInput,
   SharedTeamMemberInput,
   SharedSpellInput,
+  SharedDocInput,
 } from '../firebase/SpaceShareClient';
 import type { SpaceTaskStatus } from '../firebase/spaceShareTypes';
 
@@ -80,6 +88,10 @@ export function useSpaceTeamMembers(spaceId: string | null): SharedListState<Spa
 
 export function useSpaceSpells(spaceId: string | null): SharedListState<SpaceSpell> {
   return useSharedList<SpaceSpell>(spaceId, SpaceSpellsClient.subscribe);
+}
+
+export function useSpaceDocs(spaceId: string | null): SharedListState<SpaceDoc> {
+  return useSharedList<SpaceDoc>(spaceId, SpaceDocsClient.subscribe);
 }
 
 /* ------------------------------------------------------------------ */
@@ -215,9 +227,9 @@ export function buildTeamMemberShareInput(tm: {
 }
 
 /**
- * The new spell model is rule-based (no single `body`). Build a human-readable
- * preview body from the rules so the shared Preview stays useful, and default
- * the target `entityType` to `session`.
+ * Human-readable preview of the rules — stored alongside the lossless
+ * `rules` payload so list previews (and legacy readers) don't have to
+ * re-derive it.
  */
 export function buildSpellBody(spell: Spell): string {
   if (!spell.rules?.length) return spell.description ?? '';
@@ -243,15 +255,68 @@ export function buildSpellBody(spell: Spell): string {
   return lines.join('\n');
 }
 
+/**
+ * Lossless push: the full rules array (label/enabled/trigger/action) plus
+ * color travel with the spell. Local rule ids are intentionally dropped —
+ * they're regenerated on install.
+ */
 export function buildSpellShareInput(spell: Spell): SharedSpellInput {
   return {
     name: spell.name,
     description: spell.description ?? '',
     body: buildSpellBody(spell),
-    entityType: 'session',
+    color: spell.color,
+    rules: (spell.rules ?? []).map((r) => ({
+      ...(r.label ? { label: r.label } : {}),
+      enabled: r.enabled,
+      trigger: r.trigger,
+      action: r.action,
+    })),
     icon: spell.icon ?? null,
     sourceSpellId: spell.id,
+    // Spells are workspace-global (not project-scoped) — no source project.
+    sourceProjectId: null,
   };
+}
+
+/**
+ * Build the share payload for a local doc. Local docs are session-scoped but
+ * shared with project provenance (`projectId` is the aggregation the doc was
+ * listed from). Throws a clear, user-facing error when the doc has no content
+ * or exceeds the Firestore-safe content cap — callers surface `err.message`.
+ */
+export function buildDocShareInput(doc: DocEntry, projectId: string): SharedDocInput {
+  const content = doc.content ?? '';
+  if (!content.trim()) {
+    throw new Error(`"${doc.title}" is empty — there is no content to share.`);
+  }
+  if (content.length > SPACE_DOC_MAX_CONTENT_CHARS) {
+    throw new Error(
+      `"${doc.title}" is too large to share (${content.length.toLocaleString()} characters; ` +
+      `max ${SPACE_DOC_MAX_CONTENT_CHARS.toLocaleString()}).`,
+    );
+  }
+  return {
+    title: doc.title,
+    kind: doc.kind ?? 'markdown',
+    content,
+    sourceDocId: doc.id,
+    sourceProjectId: projectId,
+  };
+}
+
+/**
+ * Why a local doc can't be shared right now, or `null` when it can.
+ * Used by pickers to disable rows with an inline hint instead of failing
+ * at push time.
+ */
+export function docShareBlockReason(doc: DocEntry): string | null {
+  const content = doc.content ?? '';
+  if (!content.trim()) return 'Empty — nothing to share';
+  if (content.length > SPACE_DOC_MAX_CONTENT_CHARS) {
+    return `Too large (${content.length.toLocaleString()} chars; max ${SPACE_DOC_MAX_CONTENT_CHARS.toLocaleString()})`;
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

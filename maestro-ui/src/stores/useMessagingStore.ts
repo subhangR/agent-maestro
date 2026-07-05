@@ -2,9 +2,11 @@ import { create } from 'zustand';
 import { User } from 'firebase/auth';
 import { QueryDocumentSnapshot, Unsubscribe } from 'firebase/firestore';
 import { MessagingClient } from '../firebase/MessagingClient';
+import { SpaceFilesClient } from '../firebase/SpaceFilesClient';
 import {
   Channel,
   Message,
+  MessageAttachment,
   MessageMention,
   PendingMessage,
   CreateChannelInput,
@@ -78,6 +80,7 @@ interface MessagingState {
     channelId: ChannelId,
     content: string,
     mentions?: MessageMention[],
+    attachments?: MessageAttachment[],
   ) => Promise<void>;
   retryPending: (user: User, spaceId: SpaceId, channelId: ChannelId, tempId: string) => Promise<void>;
   dismissPending: (channelId: ChannelId, tempId: string) => void;
@@ -87,12 +90,17 @@ interface MessagingState {
 
   createChannel: (user: User, spaceId: SpaceId, input: CreateChannelInput) => Promise<Channel>;
   clearChannelActionError: () => void;
+
+  /** Tears down every live subscription and resets state (sign-out path). */
+  unsubscribeAll: () => void;
 }
 
-let tempIdCounter = 0;
+/** Collision-proof pending id; doubles as the message's `clientMsgId`. */
 function nextTempId() {
-  tempIdCounter += 1;
-  return `pending_${Date.now()}_${tempIdCounter}`;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `pending_${crypto.randomUUID()}`;
+  }
+  return `pending_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export const useMessagingStore = create<MessagingState>((set, get) => ({
@@ -123,13 +131,26 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       channelsLoading: { ...s.channelsLoading, [spaceId]: true },
       channelsError: { ...s.channelsError, [spaceId]: null },
     }));
-    const unsub = MessagingClient.subscribeToChannels(spaceId, (channels) => {
-      set((s) => ({
-        channelsBySpace: { ...s.channelsBySpace, [spaceId]: channels },
-        channelsLoading: { ...s.channelsLoading, [spaceId]: false },
-      }));
-      get().ensureDefaultChannelSelected(spaceId);
-    });
+    const unsub = MessagingClient.subscribeToChannels(
+      spaceId,
+      (channels) => {
+        set((s) => ({
+          channelsBySpace: { ...s.channelsBySpace, [spaceId]: channels },
+          channelsLoading: { ...s.channelsLoading, [spaceId]: false },
+          channelsError: { ...s.channelsError, [spaceId]: null },
+        }));
+        get().ensureDefaultChannelSelected(spaceId);
+      },
+      (err) => {
+        set((s) => ({
+          channelsLoading: { ...s.channelsLoading, [spaceId]: false },
+          channelsError: {
+            ...s.channelsError,
+            [spaceId]: err?.message ?? 'Failed to load channels.',
+          },
+        }));
+      },
+    );
     set((s) => ({ channelSubs: { ...s.channelSubs, [spaceId]: unsub } }));
   },
 
@@ -182,13 +203,21 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       channelId,
       (liveMessages, oldest, hasMoreFromLive) => {
         set((s) => {
-          // Reconcile pending: drop any pending whose content was just confirmed by author.
+          // Reconcile pending: a confirmed message carries the exact
+          // clientMsgId the optimistic entry was created with. Fall back to
+          // an author+content fingerprint only for legacy messages without one.
+          const incomingClientIds = new Set(
+            liveMessages.map((m) => m.clientMsgId).filter(Boolean),
+          );
           const incomingFingerprints = new Set(
-            liveMessages.map((m) => `${m.authorUid}::${m.content}`),
+            liveMessages
+              .filter((m) => !m.clientMsgId)
+              .map((m) => `${m.authorUid}::${m.content}`),
           );
           const currentPending = s.pendingByChannel[channelId] ?? [];
           const remainingPending = currentPending.filter((p) => {
             if (p.status !== 'sending') return true;
+            if (incomingClientIds.has(p.tempId)) return false;
             return !incomingFingerprints.has(`${p.authorUid}::${p.content}`);
           });
 
@@ -225,7 +254,18 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
           };
         });
       },
-      { limit: MESSAGES_PAGE_SIZE },
+      {
+        limit: MESSAGES_PAGE_SIZE,
+        onError: (err) => {
+          set((s) => ({
+            messagesLoading: { ...s.messagesLoading, [channelId]: false },
+            messagesError: {
+              ...s.messagesError,
+              [channelId]: err?.message ?? 'Live messages stopped. Check your connection.',
+            },
+          }));
+        },
+      },
     );
     set((s) => ({ messageSubs: { ...s.messageSubs, [channelId]: unsub } }));
   },
@@ -281,9 +321,10 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     }
   },
 
-  sendMessage: async (user, spaceId, channelId, content, mentions = []) => {
+  sendMessage: async (user, spaceId, channelId, content, mentions = [], attachments = []) => {
     const trimmed = content.trim();
-    if (!trimmed) return;
+    // Attachment-only messages (no text) are allowed.
+    if (!trimmed && attachments.length === 0) return;
     // Keep only mentions whose token still appears in the final text.
     const activeMentions = mentions.filter((m) => trimmed.includes(`@${m.displayName}`));
     const tempId = nextTempId();
@@ -298,6 +339,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       createdAtMs: Date.now(),
       status: 'sending',
       mentions: activeMentions,
+      attachments,
     };
     set((s) => ({
       pendingByChannel: {
@@ -307,7 +349,10 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       sending: { ...s.sending, [channelId]: true },
     }));
     try {
-      const sent = await MessagingClient.sendMessage(user, spaceId, channelId, trimmed, activeMentions);
+      const sent = await MessagingClient.sendMessage(user, spaceId, channelId, trimmed, activeMentions, {
+        clientMsgId: tempId,
+        attachments,
+      });
       notifyAgentMentions(spaceId, channelId, sent.id, activeMentions);
       // The subscription will reconcile and remove the pending entry.
     } catch (e: any) {
@@ -351,6 +396,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
         channelId,
         item.content,
         item.mentions ?? [],
+        { clientMsgId: item.tempId, attachments: item.attachments ?? [] },
       );
       notifyAgentMentions(spaceId, channelId, sent.id, item.mentions ?? []);
     } catch (e: any) {
@@ -386,7 +432,17 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   },
 
   softDeleteMessage: async (spaceId, channelId, messageId) => {
+    // Capture attachment refs before the delete clears them.
+    const message = (get().messagesByChannel[channelId] ?? []).find((m) => m.id === messageId);
     await MessagingClient.softDeleteMessage(spaceId, channelId, messageId);
+    // Garbage-collect the chat-attachment file docs this message owned.
+    // Best-effort: the message is already gone either way.
+    for (const a of message?.attachments ?? []) {
+      SpaceFilesClient.delete(spaceId, a.fileId).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[messaging] failed to clean up attachment file:', err);
+      });
+    }
   },
 
   createChannel: async (user, spaceId, input) => {
@@ -407,4 +463,28 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   },
 
   clearChannelActionError: () => set({ channelActionError: null }),
+
+  unsubscribeAll: () => {
+    const { channelSubs, messageSubs } = get();
+    Object.values(channelSubs).forEach((unsub) => unsub());
+    Object.values(messageSubs).forEach((unsub) => unsub());
+    set({
+      channelsBySpace: {},
+      channelsLoading: {},
+      channelsError: {},
+      activeChannelBySpace: {},
+      channelSubs: {},
+      messagesByChannel: {},
+      messagesLoading: {},
+      messagesError: {},
+      messagesHasMore: {},
+      messagesOldestCursor: {},
+      messagesLoadingOlder: {},
+      pendingByChannel: {},
+      messageSubs: {},
+      sending: {},
+      creatingChannel: false,
+      channelActionError: null,
+    });
+  },
 }));

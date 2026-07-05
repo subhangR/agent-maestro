@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CollabSpace, CollabSpaceMember } from "../../../firebase/collabSpaceTypes";
 import { CollabSpaceClient } from "../../../firebase/CollabSpaceClient";
 import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
+import { useModalA11y } from "../shared/useModalA11y";
 
 type Props = {
     space: CollabSpace;
@@ -17,6 +18,8 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
 
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
+    const [justSaved, setJustSaved] = useState(false);
+    const savedTimer = useRef<number | null>(null);
 
     const [confirm, setConfirm] = useState<null | "leave" | "delete">(null);
     const [dangerBusy, setDangerBusy] = useState(false);
@@ -58,10 +61,19 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
         setSaveError(null);
     };
 
+    // Clear the pending "Saved" timer on unmount.
+    useEffect(() => {
+        return () => {
+            if (savedTimer.current !== null) window.clearTimeout(savedTimer.current);
+        };
+    }, []);
+
     const save = async () => {
-        if (!dirty || saving) return;
+        // Permission guard at the action, not just disabled inputs.
+        if (!canManage || !dirty || saving) return;
         setSaving(true);
         setSaveError(null);
+        setJustSaved(false);
         try {
             await CollabSpaceClient.update(space.id, {
                 name: name.trim() || space.name,
@@ -70,8 +82,13 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
             });
             // The live subscription pushes the updated space back down as a prop,
             // which recomputes `dirty` to false. No manual reset needed.
+            setJustSaved(true);
+            if (savedTimer.current !== null) window.clearTimeout(savedTimer.current);
+            savedTimer.current = window.setTimeout(() => setJustSaved(false), 2000);
         } catch (e: any) {
-            setSaveError(e?.message ?? "Couldn't save changes.");
+            setSaveError(
+                e?.message ?? "Couldn't save changes. Check your connection and try again.",
+            );
         } finally {
             setSaving(false);
         }
@@ -85,21 +102,26 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
             await CollabSpaceClient.leave(user, space.id);
             // The space subscription re-renders SpaceWindow into its not-member state.
         } catch (e: any) {
-            setDangerError(e?.message ?? "Couldn't leave the space.");
+            setDangerError(
+                e?.message ?? "Couldn't leave the space. Check your connection and try again.",
+            );
             setDangerBusy(false);
             setConfirm(null);
         }
     };
 
     const doDelete = async () => {
-        if (dangerBusy) return;
+        // Permission guard at the action: only the owner may delete.
+        if (!isOwner || dangerBusy) return;
         setDangerBusy(true);
         setDangerError(null);
         try {
             await CollabSpaceClient.delete(space.id);
             // The space subscription re-renders SpaceWindow into its missing state.
         } catch (e: any) {
-            setDangerError(e?.message ?? "Couldn't delete the space.");
+            setDangerError(
+                e?.message ?? "Couldn't delete the space. Check your connection and try again.",
+            );
             setDangerBusy(false);
             setConfirm(null);
         }
@@ -184,7 +206,12 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                         </div>
                     </div>
 
-                    {saveError && <div className="spaceShareError">{saveError}</div>}
+                    {saveError && (
+                        <div className="spaceShareError" role="alert">
+                            <span aria-hidden="true">⚠ </span>
+                            {saveError}
+                        </div>
+                    )}
 
                     {canManage && (
                         <div className="spaceSettingsActions">
@@ -204,6 +231,11 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                             >
                                 Discard
                             </button>
+                            {justSaved && !dirty && (
+                                <span className="spaceSettingsSavedNote" role="status">
+                                    ✓ Saved
+                                </span>
+                            )}
                         </div>
                     )}
                 </div>
@@ -211,19 +243,23 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                 <div className="spaceSettingsGroup">
                     <div className="spaceSettingsGroupTitle">Invite</div>
                     <div className="spaceSettingsField">
-                        <label className="spaceSettingsLabel">Invite link</label>
+                        <span className="spaceSettingsLabel" id="space-invite-link-label">
+                            Invite link
+                        </span>
                         <div className="spaceSettingsInviteRow">
                             <input
                                 readOnly
                                 type="text"
                                 className="spaceSettingsInput spaceSettingsInputMono"
                                 value={inviteLink}
+                                aria-labelledby="space-invite-link-label"
                                 onFocus={(e) => e.currentTarget.select()}
                             />
                             <button
                                 type="button"
                                 className="spaceEntityPrimaryBtn"
                                 onClick={copyLink}
+                                aria-live="polite"
                             >
                                 {linkCopied ? "Copied" : "Copy"}
                             </button>
@@ -242,9 +278,11 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                             />
                         ))}
                     </div>
-                    <button type="button" className="spaceEntityGhostBtn" disabled title="Coming soon">
-                        + Add admin
-                    </button>
+                    {canManage && (
+                        <div className="spaceSettingsHint">
+                            Promote a member to admin from the Members tab.
+                        </div>
+                    )}
                 </div>
 
                 <div className="spaceSettingsGroup spaceSettingsGroup--danger">
@@ -252,7 +290,12 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                         Danger zone
                     </div>
 
-                    {dangerError && <div className="spaceShareError">{dangerError}</div>}
+                    {dangerError && (
+                        <div className="spaceShareError" role="alert">
+                            <span aria-hidden="true">⚠ </span>
+                            {dangerError}
+                        </div>
+                    )}
 
                     <div className="spaceSettingsDangerRow">
                         <div className="spaceSettingsDangerCopy">
@@ -290,7 +333,9 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                 </div>
             </div>
 
-            {confirm && (
+            {/* Render-level permission guard: the delete confirm can never open
+                for non-owners, regardless of how it was triggered. */}
+            {confirm && (confirm === "leave" || isOwner) && (
                 <ConfirmDangerModal
                     kind={confirm}
                     spaceName={space.name}
@@ -320,10 +365,20 @@ const ConfirmDangerModal: React.FC<{
     onConfirm: () => void;
 }> = ({ kind, spaceName, busy, onCancel, onConfirm }) => {
     const isDelete = kind === "delete";
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onCancel);
     return (
-        <div className="spaceModalOverlay" onClick={onCancel} role="dialog" aria-modal="true">
-            <div className="spaceModal" onClick={(e) => e.stopPropagation()}>
-                <div className="spaceModalTitle">
+        <div className="spaceModalOverlay" onClick={onCancel}>
+            <div
+                ref={modalRef}
+                className="spaceModal"
+                onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
+            >
+                <div className="spaceModalTitle" id={titleId}>
                     {isDelete ? `Delete ${spaceName}?` : `Leave ${spaceName}?`}
                 </div>
                 <p className="spaceModalBody">

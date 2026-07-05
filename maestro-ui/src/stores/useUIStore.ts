@@ -79,9 +79,9 @@ function readClampedFromStorage(key: string, min: number, max: number, fallback:
 
 export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | null;
 
-export type SpaceSection = 'messages' | 'tasks' | 'team' | 'spells' | 'members' | 'settings';
+export type SpaceSection = 'messages' | 'tasks' | 'team' | 'spells' | 'docs' | 'files' | 'members' | 'settings';
 
-const SPACE_SECTION_VALUES: SpaceSection[] = ['messages', 'tasks', 'team', 'spells', 'members', 'settings'];
+const SPACE_SECTION_VALUES: SpaceSection[] = ['messages', 'tasks', 'team', 'spells', 'docs', 'files', 'members', 'settings'];
 
 function readSpaceSection(spaceId: string | null): SpaceSection {
   if (!spaceId) return 'messages';

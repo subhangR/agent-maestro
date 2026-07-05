@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useState } from "react";
 import { CollabSpace } from "../../../firebase/collabSpaceTypes";
 import { EmptySectionState } from "../shared/EmptySectionState";
 import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
@@ -15,6 +15,7 @@ import {
     formatRelative,
     buildSpellShareInput,
 } from "../../../hooks/useSpaceSharing";
+import { useModalA11y } from "../shared/useModalA11y";
 import "../../../styles-space-sharing.css";
 
 type Props = {
@@ -42,7 +43,20 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
     const [rowError, setRowError] = useState<Record<string, string>>({});
     const [conflict, setConflict] = useState<ConflictState | null>(null);
 
+    // Error dismissal is per-error: a new error re-shows the banner.
     useEffect(() => setErrorDismissed(false), [error]);
+
+    // Per-space optimistic overlays must not leak into another space.
+    useEffect(() => {
+        setInstalling(new Set());
+        setOptimisticInstalled(new Set());
+        setDeleting(new Set());
+        setRowError({});
+        setPreviewId(null);
+        setEditSpell(null);
+        setConflict(null);
+        setErrorDismissed(false);
+    }, [space.id]);
 
     const filtered = useMemo(
         () =>
@@ -88,7 +102,10 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
             const result = await installSpaceSpell(user, sp, options);
             applyResult(sp, result);
         } catch (e: any) {
-            setRowError((p) => ({ ...p, [sp.id]: e?.message ?? "Install failed. Try again." }));
+            setRowError((p) => ({
+                ...p,
+                [sp.id]: e?.message ?? "Couldn't install. Check your connection and try again.",
+            }));
         } finally {
             setInstalling((p) => {
                 const n = new Set(p);
@@ -99,11 +116,16 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
     };
 
     const handleDelete = async (sp: SpaceSpell) => {
+        // Permission guard at the action, not just the hidden button.
+        if (!canManageEntity(space, user?.uid, sp.createdBy)) return;
         setDeleting((p) => new Set(p).add(sp.id));
         try {
             await SpaceSpellsClient.delete(space.id, sp.id);
         } catch (e: any) {
-            setRowError((p) => ({ ...p, [sp.id]: e?.message ?? "Delete failed." }));
+            setRowError((p) => ({
+                ...p,
+                [sp.id]: e?.message ?? "Couldn't delete. Check your connection and try again.",
+            }));
             setDeleting((p) => {
                 const n = new Set(p);
                 n.delete(sp.id);
@@ -126,6 +148,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                         type="text"
                         className="spaceEntitySearchInput"
                         placeholder="Search spells…"
+                        aria-label="Search spells"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -143,6 +166,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
 
             {showError && (
                 <div className="spaceSharingError" role="alert">
+                    <span className="spaceSharingErrorIcon" aria-hidden="true">⚠</span>
                     <span className="spaceSharingErrorMsg">{error}</span>
                     <button type="button" className="spaceSharingErrorRetry" onClick={retry}>
                         Retry
@@ -150,7 +174,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                     <button
                         type="button"
                         className="spaceSharingErrorDismiss"
-                        aria-label="Dismiss"
+                        aria-label="Dismiss error"
                         onClick={() => setErrorDismissed(true)}
                     >
                         ×
@@ -196,11 +220,15 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         <div className="spaceSpellItemTitleWrap">
                                             <span className="spaceSpellItemName">/{sp.name}</span>
                                             <span className="spaceSpellItemTargetWrap">
-                                                {sp.entityType && (
+                                                {sp.rules && sp.rules.length > 0 ? (
+                                                    <span className="spaceSpellTargetPill">
+                                                        {sp.rules.length} rule{sp.rules.length === 1 ? "" : "s"}
+                                                    </span>
+                                                ) : sp.entityType ? (
                                                     <span className="spaceSpellTargetPill">
                                                         {sp.entityType}
                                                     </span>
-                                                )}
+                                                ) : null}
                                             </span>
                                         </div>
                                         <div className="spaceSpellItemMeta">
@@ -220,7 +248,11 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         <p className="spaceSpellItemDesc">{sp.description}</p>
                                     )}
 
-                                    {open && <pre className="spaceSpellItemBody">{sp.body}</pre>}
+                                    {open && (
+                                        <pre className="spaceSpellItemBody">
+                                            {sp.body || sp.description || "No preview available."}
+                                        </pre>
+                                    )}
 
                                     <div className="spaceSpellItemActions">
                                         {installed ? (
@@ -261,7 +293,9 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                                 <button
                                                     type="button"
                                                     className="spaceEntityGhostBtn"
-                                                    onClick={() => setEditSpell(sp)}
+                                                    onClick={() => {
+                                                        if (canManage) setEditSpell(sp);
+                                                    }}
                                                 >
                                                     Edit
                                                 </button>
@@ -276,7 +310,10 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         )}
                                     </div>
                                     {rowError[sp.id] && (
-                                        <div className="spaceSharingRowError">{rowError[sp.id]}</div>
+                                        <div className="spaceSharingRowError" role="alert">
+                                            <span aria-hidden="true">⚠ </span>
+                                            {rowError[sp.id]}
+                                        </div>
                                     )}
                                 </article>
                             );
@@ -288,7 +325,9 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
             {publishOpen && user && (
                 <PublishSpellModal space={space} onClose={() => setPublishOpen(false)} />
             )}
-            {editSpell && (
+            {/* Render-level permission guard: the modal cannot open (or stay open)
+                for users who lost edit rights, regardless of how it was triggered. */}
+            {editSpell && canManageEntity(space, user?.uid, editSpell.createdBy) && (
                 <EditSpellModal
                     space={space}
                     spell={editSpell}
@@ -328,23 +367,25 @@ function PublishSpellModal({
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onClose);
 
     useEffect(() => {
         let alive = true;
         maestroClient
             .listSpells()
             .then((s) => alive && setLocalSpells(s))
-            .catch((e) => alive && setLoadError(e?.message ?? "Failed to load spells."));
+            .catch(
+                (e) =>
+                    alive &&
+                    setLoadError(
+                        e?.message ?? "Couldn't load spells. Check the server and try again.",
+                    ),
+            );
         return () => {
             alive = false;
         };
     }, []);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onClose]);
 
     const handlePublish = async () => {
         if (!user || !selectedId || !localSpells) return;
@@ -356,7 +397,7 @@ function PublishSpellModal({
             await SpaceShareClient.shareSpell(user, space.id, buildSpellShareInput(spell));
             onClose();
         } catch (e: any) {
-            setSubmitError(e?.message ?? "Publish failed. Try again.");
+            setSubmitError(e?.message ?? "Couldn't publish. Check your connection and try again.");
             setSubmitting(false);
         }
     };
@@ -364,12 +405,15 @@ function PublishSpellModal({
     return (
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
+                ref={modalRef}
                 className="spaceModal"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
             >
-                <div className="spaceModalTitle">Publish spell</div>
+                <div className="spaceModalTitle" id={titleId}>Publish spell</div>
                 <p className="spaceModalBody">
                     Pick a spell from your library to share with everyone in this space.
                 </p>
@@ -412,7 +456,12 @@ function PublishSpellModal({
                     </div>
                 )}
 
-                {submitError && <div className="spaceShareError">{submitError}</div>}
+                {submitError && (
+                    <div className="spaceShareError" role="alert">
+                        <span aria-hidden="true">⚠ </span>
+                        {submitError}
+                    </div>
+                )}
 
                 <div className="spaceModalActions">
                     <button
@@ -450,12 +499,8 @@ function EditSpellModal({
     const [description, setDescription] = useState(spell.description);
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onClose]);
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onClose);
 
     const handleSave = async () => {
         if (!name.trim()) return;
@@ -468,7 +513,7 @@ function EditSpellModal({
             });
             onClose();
         } catch (e: any) {
-            setSaveError(e?.message ?? "Save failed. Try again.");
+            setSaveError(e?.message ?? "Couldn't save. Check your connection and try again.");
             setSaving(false);
         }
     };
@@ -476,18 +521,23 @@ function EditSpellModal({
     return (
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
+                ref={modalRef}
                 className="spaceModal"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
             >
-                <div className="spaceModalTitle">Edit shared spell</div>
+                <div className="spaceModalTitle" id={titleId}>Edit shared spell</div>
                 <input
                     type="text"
                     className="spaceEntitySearchInput"
                     style={{ width: "100%", marginBottom: 10 }}
                     value={name}
                     placeholder="Spell name"
+                    aria-label="Spell name"
+                    maxLength={120}
                     onChange={(e) => setName(e.target.value)}
                 />
                 <textarea
@@ -495,9 +545,16 @@ function EditSpellModal({
                     style={{ width: "100%", minHeight: 80, marginBottom: 10, resize: "vertical" }}
                     value={description}
                     placeholder="Description"
+                    aria-label="Spell description"
+                    maxLength={2000}
                     onChange={(e) => setDescription(e.target.value)}
                 />
-                {saveError && <div className="spaceShareError">{saveError}</div>}
+                {saveError && (
+                    <div className="spaceShareError" role="alert">
+                        <span aria-hidden="true">⚠ </span>
+                        {saveError}
+                    </div>
+                )}
                 <div className="spaceModalActions">
                     <button
                         type="button"
@@ -534,22 +591,21 @@ function SpellConflictModal({
 }) {
     const [renameValue, setRenameValue] = useState(`${conflictingName}-2`);
     const [renaming, setRenaming] = useState(false);
-
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [onCancel]);
+    const titleId = useId();
+    const modalRef = useModalA11y<HTMLDivElement>(onCancel);
 
     return (
         <div className="spaceModalOverlay" onClick={onCancel}>
             <div
+                ref={modalRef}
                 className="spaceModal"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={titleId}
+                tabIndex={-1}
             >
-                <div className="spaceModalTitle">Spell already exists</div>
+                <div className="spaceModalTitle" id={titleId}>Spell already exists</div>
                 <p className="spaceModalBody">
                     A spell named <strong>/{conflictingName}</strong> is already in your library.
                     Replace it, install under a new name, or cancel.
@@ -563,6 +619,7 @@ function SpellConflictModal({
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         placeholder="New spell name"
+                        aria-label="New spell name"
                     />
                 )}
 

@@ -54,6 +54,26 @@ const TABS: Tab[] = [
         ),
     },
     {
+        id: "docs",
+        label: "Docs",
+        icon: (
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M4 1.5h5.5L13 5v9a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 3 14V3A1.5 1.5 0 0 1 4 1.5z" strokeLinejoin="round" />
+                <path d="M9.5 1.5V5H13" strokeLinejoin="round" />
+                <path d="M5.5 8.5h5M5.5 11h5" strokeLinecap="round" />
+            </svg>
+        ),
+    },
+    {
+        id: "files",
+        label: "Files",
+        icon: (
+            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M14 8.5l-5.2 5.2a3.4 3.4 0 0 1-4.8-4.8l5.6-5.6a2.3 2.3 0 0 1 3.2 3.2l-5.5 5.5a1.1 1.1 0 0 1-1.6-1.6L10.5 5.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        ),
+    },
+    {
         id: "members",
         label: "Members",
         icon: (
@@ -80,7 +100,7 @@ export const SpaceTopTabs: React.FC<Props> = ({ spaceId }) => {
     const setActive = useUIStore((s) => s.setSpaceActiveSection);
 
     return (
-        <nav className="spaceTopTabs" role="tablist">
+        <nav className="spaceTopTabs" role="tablist" aria-label="Space sections">
             {TABS.map((t) => {
                 const isActive = active === t.id;
                 return (
@@ -92,7 +112,7 @@ export const SpaceTopTabs: React.FC<Props> = ({ spaceId }) => {
                         className={`spaceTopTab ${isActive ? "spaceTopTab--active" : ""}`}
                         onClick={() => setActive(t.id, spaceId)}
                     >
-                        <span className="spaceTopTabIcon">{t.icon}</span>
+                        <span className="spaceTopTabIcon" aria-hidden="true">{t.icon}</span>
                         <span className="spaceTopTabLabel">{t.label}</span>
                     </button>
                 );
