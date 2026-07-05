@@ -7,7 +7,7 @@ import {
   MessageMention,
 } from "../../../firebase/messagingTypes";
 import { SpaceShareClient } from "../../../firebase/SpaceShareClient";
-import { SpaceFilesClient, encodeFileToBase64 } from "../../../firebase/SpaceFilesClient";
+import { encodeFileToBase64 } from "../../../firebase/SpaceFilesClient";
 import { SPACE_FILE_MAX_RAW_BYTES } from "../../../firebase/spaceShareTypes";
 
 type Props = {
@@ -73,9 +73,10 @@ export function MessageComposer({
   // Mentions the user has explicitly picked; reconciled against text on send.
   const [picked, setPicked] = useState<MessageMention[]>([]);
 
-  // Attachments already uploaded to the space's files collection, waiting to
-  // ride along with the next send. Removable until the message goes out.
-  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  // Attachments are staged LOCALLY (the picked File objects) and only uploaded
+  // when the message is actually sent — abandoning a draft (channel switch,
+  // close) must never leave orphaned file docs in the space.
+  const [staged, setStaged] = useState<{ id: string; file: File }[]>([]);
   const [attaching, setAttaching] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
 
@@ -86,12 +87,13 @@ export function MessageComposer({
 
   const canAttach = Boolean(spaceId && user);
 
-  // Reset draft when switching channels
+  // Reset draft when switching channels. Staged attachments are local File
+  // objects only — nothing has been uploaded yet, so dropping them is free.
   useEffect(() => {
     setValue("");
     setPicked([]);
     setMentionQuery(null);
-    setAttachments([]);
+    setStaged([]);
     setAttachError(null);
   }, [channelId]);
 
@@ -124,7 +126,7 @@ export function MessageComposer({
     !disabled &&
     !sending &&
     !attaching &&
-    (trimmed.length > 0 || attachments.length > 0) &&
+    (trimmed.length > 0 || staged.length > 0) &&
     !tooLong;
 
   const refreshMentionState = (text: string, caret: number) => {
@@ -178,12 +180,16 @@ export function MessageComposer({
     fileInputRef.current?.click();
   };
 
-  const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-picking the same file
     if (!file || !spaceId || !user) return;
-    if (attachments.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
+    if (staged.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
       setAttachError(`A message can carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.`);
+      return;
+    }
+    if (file.size === 0) {
+      setAttachError(`"${file.name}" is empty — there's nothing to attach.`);
       return;
     }
     if (file.size > SPACE_FILE_MAX_RAW_BYTES) {
@@ -192,47 +198,17 @@ export function MessageComposer({
       );
       return;
     }
-    setAttaching(true);
     setAttachError(null);
-    try {
-      const data = await encodeFileToBase64(file);
-      // The file is shared into the space's files collection; the message
-      // only carries a lightweight reference to it.
-      const fileId = await SpaceShareClient.shareFile(user, spaceId, {
-        name: file.name,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-        data,
-        caption: null,
-      });
-      setAttachments((prev) => [
-        ...prev,
-        {
-          fileId,
-          name: file.name,
-          mimeType: file.type || "application/octet-stream",
-          size: file.size,
-        },
-      ]);
-    } catch (err: any) {
-      setAttachError(err?.message ?? "Failed to attach the file. Try again.");
-    } finally {
-      setAttaching(false);
-      ref.current?.focus();
-    }
+    setStaged((prev) => [
+      ...prev,
+      { id: `staged_${Date.now()}_${prev.length}`, file },
+    ]);
+    ref.current?.focus();
   };
 
-  const removeAttachment = (fileId: string) => {
-    setAttachments((prev) => prev.filter((a) => a.fileId !== fileId));
-    // The file doc was pre-uploaded for this message only — clean it up so it
-    // doesn't linger in the space's Files tab. Best-effort: the chip is gone
-    // either way, and the uploader can still delete it from Files manually.
-    if (spaceId) {
-      SpaceFilesClient.delete(spaceId, fileId).catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[Messaging] failed to clean up removed attachment:", err);
-      });
-    }
+  const removeAttachment = (id: string) => {
+    // Purely local — nothing has been uploaded yet.
+    setStaged((prev) => prev.filter((s) => s.id !== id));
   };
 
   // ─── Send ─────────────────────────────────────────────────────────
@@ -241,12 +217,46 @@ export function MessageComposer({
     if (!canSend) return;
     const content = trimmed;
     const mentions = picked.filter((m) => content.includes(`@${m.displayName}`));
-    const outgoing = attachments;
+    const toUpload = staged;
+
+    // Upload staged attachments now (tagged as chat attachments so they don't
+    // surface in the Files tab). If any upload fails, keep the whole draft so
+    // nothing is lost and no half-referenced message goes out.
+    let outgoing: MessageAttachment[] = [];
+    if (toUpload.length > 0 && spaceId && user) {
+      setAttaching(true);
+      setAttachError(null);
+      try {
+        for (const s of toUpload) {
+          const data = await encodeFileToBase64(s.file);
+          const fileId = await SpaceShareClient.shareFile(user, spaceId, {
+            name: s.file.name,
+            mimeType: s.file.type || "application/octet-stream",
+            size: s.file.size,
+            data,
+            caption: null,
+            origin: "chat-attachment",
+          });
+          outgoing.push({
+            fileId,
+            name: s.file.name,
+            mimeType: s.file.type || "application/octet-stream",
+            size: s.file.size,
+          });
+        }
+      } catch (err: any) {
+        setAttachError(err?.message ?? "Failed to upload an attachment. Try again.");
+        setAttaching(false);
+        return;
+      }
+      setAttaching(false);
+    }
+
     setSending(true);
     setValue("");
     setPicked([]);
     setMentionQuery(null);
-    setAttachments([]);
+    setStaged([]);
     setAttachError(null);
     try {
       await onSend(content, mentions, outgoing);
@@ -337,20 +347,20 @@ export function MessageComposer({
         />
       </div>
 
-      {(attachments.length > 0 || attachError) && (
+      {(staged.length > 0 || attachError) && (
         <div className="messagingComposerAttachments">
-          {attachments.map((a) => (
-            <span key={a.fileId} className="messagingAttachChip messagingAttachChip--pending">
-              <span className="messagingAttachChipName" title={a.name}>
-                {a.name}
+          {staged.map((s) => (
+            <span key={s.id} className="messagingAttachChip messagingAttachChip--pending">
+              <span className="messagingAttachChipName" title={s.file.name}>
+                {s.file.name}
               </span>
-              <span className="messagingAttachChipSize">{formatKb(a.size)}</span>
+              <span className="messagingAttachChipSize">{formatKb(s.file.size)}</span>
               <button
                 type="button"
                 className="messagingAttachChipRemove"
-                aria-label={`Remove attachment ${a.name}`}
-                onClick={() => removeAttachment(a.fileId)}
-                disabled={sending}
+                aria-label={`Remove attachment ${s.file.name}`}
+                onClick={() => removeAttachment(s.id)}
+                disabled={sending || attaching}
               >
                 ×
               </button>
@@ -421,7 +431,7 @@ export function MessageComposer({
         {tooLong
           ? `Message too long (${value.length}/${MESSAGE_MAX_LENGTH})`
           : attaching
-            ? "Uploading attachment…"
+            ? "Uploading attachments…"
             : "Enter to send · Shift+Enter for newline"}
       </div>
     </div>

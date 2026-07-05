@@ -166,6 +166,10 @@ export const SPACE_FILE_MAX_RAW_BYTES = 600 * 1024;
 /** ceil(600KiB / 3) * 4 — the base64 expansion of the raw cap. */
 export const SPACE_FILE_MAX_DATA_CHARS = 819_200;
 
+/** Where a shared file came from. `chat-attachment` files ride along with a
+ * message and are hidden from the Files tab. Absent on legacy docs = files-tab. */
+export type SpaceFileOrigin = 'files-tab' | 'chat-attachment';
+
 export interface SpaceFile {
   id: string;
   spaceId: string;
@@ -176,6 +180,7 @@ export interface SpaceFile {
   /** Base64-encoded file content. */
   data: string;
   caption: string | null;
+  origin: SpaceFileOrigin;
 
   // Provenance
   sourceUserId: string | null;

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { User } from 'firebase/auth';
 import { QueryDocumentSnapshot, Unsubscribe } from 'firebase/firestore';
 import { MessagingClient } from '../firebase/MessagingClient';
+import { SpaceFilesClient } from '../firebase/SpaceFilesClient';
 import {
   Channel,
   Message,
@@ -431,7 +432,17 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   },
 
   softDeleteMessage: async (spaceId, channelId, messageId) => {
+    // Capture attachment refs before the delete clears them.
+    const message = (get().messagesByChannel[channelId] ?? []).find((m) => m.id === messageId);
     await MessagingClient.softDeleteMessage(spaceId, channelId, messageId);
+    // Garbage-collect the chat-attachment file docs this message owned.
+    // Best-effort: the message is already gone either way.
+    for (const a of message?.attachments ?? []) {
+      SpaceFilesClient.delete(spaceId, a.fileId).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[messaging] failed to clean up attachment file:', err);
+      });
+    }
   },
 
   createChannel: async (user, spaceId, input) => {

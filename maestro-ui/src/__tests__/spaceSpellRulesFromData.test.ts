@@ -44,11 +44,27 @@ describe('spaceSpellRulesFromData', () => {
     ]);
   });
 
-  it('round-trips a schedule trigger with cron and intervalMs', () => {
+  it('drops schedule triggers (server rejects them at install — Phase 2)', () => {
     const out = spaceSpellRulesFromData([
       rule({ trigger: { type: 'schedule', cron: '0 * * * *', intervalMs: 60000 } }),
     ]);
-    expect(out?.[0].trigger).toEqual({ type: 'schedule', cron: '0 * * * *', intervalMs: 60000 });
+    expect(out).toBeUndefined();
+  });
+
+  it('drops rules whose action is not allowed for the hook event (server matrix)', () => {
+    // SessionEnd only allows run-command / notify-channel.
+    const out = spaceSpellRulesFromData([
+      rule({
+        trigger: { type: 'hook', hookEvent: 'SessionEnd' },
+        action: { type: 'inject-prompt', prompt: 'nope' },
+      }),
+      rule({
+        trigger: { type: 'hook', hookEvent: 'SessionEnd' },
+        action: { type: 'run-command', command: 'echo ok' },
+      }),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out?.[0].action.type).toBe('run-command');
   });
 
   it('round-trips all five action types', () => {

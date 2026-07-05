@@ -537,6 +537,7 @@ function EditSpellModal({
                     value={name}
                     placeholder="Spell name"
                     aria-label="Spell name"
+                    maxLength={120}
                     onChange={(e) => setName(e.target.value)}
                 />
                 <textarea
@@ -545,6 +546,7 @@ function EditSpellModal({
                     value={description}
                     placeholder="Description"
                     aria-label="Spell description"
+                    maxLength={2000}
                     onChange={(e) => setDescription(e.target.value)}
                 />
                 {saveError && (

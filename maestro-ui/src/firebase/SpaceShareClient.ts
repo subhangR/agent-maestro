@@ -12,6 +12,7 @@ import {
   SpaceTaskStatus,
   SpaceSpellRule,
   SpaceDocKind,
+  SpaceFileOrigin,
   SPACE_SPELL_SCHEMA_VERSION,
   SPACE_DOC_MAX_CONTENT_CHARS,
   SPACE_FILE_MAX_RAW_BYTES,
@@ -84,6 +85,8 @@ export interface SharedFileInput {
   /** Base64-encoded content. */
   data: string;
   caption: string | null;
+  /** Defaults to 'files-tab'; chat attachments are hidden from the Files tab. */
+  origin?: SpaceFileOrigin;
 }
 
 export const SpaceShareClient = {
@@ -227,6 +230,7 @@ export const SpaceShareClient = {
       size: input.size,
       data: input.data,
       caption: input.caption,
+      origin: input.origin ?? 'files-tab',
       sourceUserId: user.uid,
       downloadedByUids: [],
       createdBy: user.uid,

@@ -324,7 +324,7 @@ export const MessagingClient = {
     }));
   },
 
-  /** Soft-delete: marks deletedAt and clears content. */
+  /** Soft-delete: marks deletedAt, clears content and attachment refs. */
   async softDeleteMessage(
     spaceId: string,
     channelId: string,
@@ -332,6 +332,7 @@ export const MessagingClient = {
   ): Promise<void> {
     await withRetry(() => updateDoc(messageDoc(spaceId, channelId, messageId), {
       content: '',
+      attachments: [],
       deletedAt: serverTimestamp(),
     }));
   },

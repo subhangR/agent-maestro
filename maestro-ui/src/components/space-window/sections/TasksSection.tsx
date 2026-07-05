@@ -598,6 +598,7 @@ function EditTaskModal({
                     value={title}
                     placeholder="Title"
                     aria-label="Task title"
+                    maxLength={200}
                     onChange={(e) => setTitle(e.target.value)}
                 />
                 <textarea
@@ -606,6 +607,7 @@ function EditTaskModal({
                     value={description}
                     placeholder="Description"
                     aria-label="Task description"
+                    maxLength={20000}
                     onChange={(e) => setDescription(e.target.value)}
                 />
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>

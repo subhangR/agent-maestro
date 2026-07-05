@@ -14,8 +14,20 @@ import { useCollabSpaceStore } from '../stores/useCollabSpaceStore';
 import { useMessagingStore } from '../stores/useMessagingStore';
 import { useJoinedSpacesStore } from '../stores/useJoinedSpacesStore';
 
+/**
+ * UI modules with identity-scoped module state (e.g. the attachment payload
+ * cache) register a reset here — this layer must not import components.
+ */
+const extraTeardowns = new Set<() => void>();
+
+export function registerCollabTeardown(fn: () => void): () => void {
+  extraTeardowns.add(fn);
+  return () => extraTeardowns.delete(fn);
+}
+
 export function teardownCollabSubscriptions(): void {
   useJoinedSpacesStore.getState().stop();
   useCollabSpaceStore.getState().unsubscribeAll();
   useMessagingStore.getState().unsubscribeAll();
+  extraTeardowns.forEach((fn) => fn());
 }

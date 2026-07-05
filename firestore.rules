@@ -215,12 +215,15 @@ service cloud.firestore {
             && (request.resource.data.content.size() > 0
                 || request.resource.data.get('attachments', []).size() > 0);
 
-          // Author can edit their own content (or soft-delete via deletedAt).
+          // Author can edit their own content (or soft-delete via deletedAt,
+          // which also clears the attachment refs).
           allow update: if isSignedIn()
             && request.auth.uid == resource.data.authorUid
-            && affectedOnly(['content', 'editedAt', 'deletedAt'])
+            && affectedOnly(['content', 'editedAt', 'deletedAt', 'attachments'])
             && request.resource.data.content is string
-            && request.resource.data.content.size() <= 10000;
+            && request.resource.data.content.size() <= 10000
+            && request.resource.data.get('attachments', []) is list
+            && request.resource.data.get('attachments', []).size() <= 10;
 
           // Author or space owner can hard-delete (rare; soft-delete preferred).
           allow delete: if isSignedIn()

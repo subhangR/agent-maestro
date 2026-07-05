@@ -742,6 +742,7 @@ function EditDocModal({
                     value={title}
                     placeholder="Title"
                     aria-label="Doc title"
+                    maxLength={200}
                     onChange={(e) => setTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSave()}
                 />

@@ -10,6 +10,7 @@ import {
 } from "../../../firebase/messagingTypes";
 import { SpaceFilesClient, spaceFileToBlob } from "../../../firebase/SpaceFilesClient";
 import { SpaceFile } from "../../../firebase/spaceShareTypes";
+import { registerCollabTeardown } from "../../../firebase/collabTeardown";
 
 /* ------------------------------------------------------------------ */
 /*  Attachments                                                        */
@@ -38,6 +39,10 @@ function attachmentGlyph(mimeType: string): string {
  */
 const FILE_CACHE_MAX = 20;
 const fileFetchCache = new Map<string, Promise<SpaceFile | null>>();
+
+// On sign-out / account switch, drop cached payloads so a previous identity's
+// file contents don't linger in memory.
+registerCollabTeardown(() => fileFetchCache.clear());
 
 function fetchSpaceFile(spaceId: string, fileId: string): Promise<SpaceFile | null> {
   const key = `${spaceId}/${fileId}`;

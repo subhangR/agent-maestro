@@ -5,6 +5,7 @@ import type {
   SpellColorSlug,
   SpellHookEvent,
 } from '../app/types/maestro';
+import { ACTIONS_BY_EVENT } from '../app/types/maestro';
 import { SpaceSpell, SpaceSpellRule } from './spaceShareTypes';
 import { createSpaceResourceClient } from './spaceResourceClient';
 import {
@@ -38,13 +39,9 @@ function triggerFromData(v: unknown): SpellTrigger | null {
       ...(typeof raw.matcher === 'string' && raw.matcher ? { matcher: raw.matcher } : {}),
     };
   }
-  if (raw.type === 'schedule') {
-    return {
-      type: 'schedule',
-      ...(typeof raw.cron === 'string' && raw.cron ? { cron: raw.cron } : {}),
-      ...(typeof raw.intervalMs === 'number' ? { intervalMs: raw.intervalMs } : {}),
-    };
-  }
+  // 'schedule' triggers are Phase-2: the server rejects them at createSpell,
+  // so accepting them here would make installs fail wholesale. Dropped until
+  // the local spell system supports them.
   return null;
 }
 
@@ -102,6 +99,11 @@ export function spaceSpellRulesFromData(v: unknown): SpaceSpellRule[] | undefine
     const trigger = triggerFromData(raw.trigger);
     const action = actionFromData(raw.action);
     if (!trigger || !action) continue;
+    // Mirror the server's per-event capability matrix — a rule the server
+    // would 400 on at install time must not survive the read boundary.
+    if (trigger.type === 'hook' && !ACTIONS_BY_EVENT[trigger.hookEvent]?.includes(action.type)) {
+      continue;
+    }
     rules.push({
       ...(typeof raw.label === 'string' && raw.label ? { label: raw.label } : {}),
       enabled: asBoolean(raw.enabled),

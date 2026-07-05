@@ -1,6 +1,6 @@
 import { DocumentData, doc, getDoc } from 'firebase/firestore';
 import { getDb } from './firestore';
-import { SpaceFile } from './spaceShareTypes';
+import { SpaceFile, SpaceFileOrigin } from './spaceShareTypes';
 import { createSpaceResourceClient } from './spaceResourceClient';
 import {
   asString,
@@ -29,6 +29,8 @@ function fromData(id: string, d: DocumentData): SpaceFile {
     size: asNumber(d.size),
     data: asString(d.data),
     caption: asStringOrNull(d.caption),
+    // Legacy docs predate the origin tag and were always files-tab uploads.
+    origin: (d.origin === 'chat-attachment' ? 'chat-attachment' : 'files-tab') as SpaceFileOrigin,
     sourceUserId: asStringOrNull(d.sourceUserId),
     downloadedByUids: asStringArray(d.downloadedByUids),
     createdBy: asString(d.createdBy),

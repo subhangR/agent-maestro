@@ -132,6 +132,10 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
         // Allow re-picking the same file later.
         e.target.value = "";
         if (!file) return;
+        if (file.size === 0) {
+            setUploadError(`"${file.name}" is empty — there's nothing to share.`);
+            return;
+        }
         if (file.size > SPACE_FILE_MAX_RAW_BYTES) {
             setUploadError(
                 `"${file.name}" is ${formatBytes(file.size)} — files shared to a space must be ${MAX_FILE_KB} KB or smaller.`,
@@ -222,7 +226,9 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
         }
     };
 
-    const visible = files.filter((f) => !deleting.has(f.id));
+    // Chat attachments live in the same collection but belong to their
+    // message — only intentionally-shared files surface here.
+    const visible = files.filter((f) => !deleting.has(f.id) && f.origin !== "chat-attachment");
     const showError = error && !errorDismissed;
 
     return (
@@ -230,7 +236,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
             <header className="spaceEntityHeader">
                 <div className="spaceEntityHeaderLeft">
                     <span className="spaceEntityTitle">Shared Files</span>
-                    <span className="spaceEntityCount">{files.length}</span>
+                    <span className="spaceEntityCount">{visible.length}</span>
                 </div>
                 <div className="spaceEntityHeaderRight">
                     <span className="spaceFileLimitNote">Max {MAX_FILE_KB} KB per file</span>
