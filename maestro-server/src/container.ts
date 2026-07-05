@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, readdirSync, readFileSync, unlinkSync } from 'fs';
+import { existsSync, writeFileSync, readdirSync, readFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Config } from './infrastructure/config';
 import { ConsoleLogger } from './infrastructure/common/ConsoleLogger';
@@ -117,7 +117,7 @@ async function migrateTeamMemberTasks(taskRepo: ITaskRepository, logger: ILogger
  * To run manually (e.g. on a box that already has the sentinel), delete
  * `<dataDir>/.migrated-spell-redesign-v2` and restart the server.
  */
-function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
+export function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
   try {
     const sentinelPath = join(dataDir, '.migrated-spell-redesign-v2');
     if (existsSync(sentinelPath)) {
@@ -125,6 +125,11 @@ function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
       return;
     }
     logger.info('Running spell clean-break migration (v2)...');
+
+    // This migration runs BEFORE the repos initialize (which is what creates the
+    // data dir), so on a brand-new DATA_DIR the sentinel write below would ENOENT.
+    // Ensure the data dir exists first.
+    mkdirSync(dataDir, { recursive: true });
 
     // (a) Delete old-shape spell files (anything without a rules[] array).
     let deletedSpells = 0;
