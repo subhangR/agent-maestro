@@ -7,12 +7,22 @@ import {
   CustomPrompt,
   CreateCustomPromptPayload,
   UpdateCustomPromptPayload,
+  Spell,
+  SpellRule,
+  SpellRuleInput,
+  CreateSpellPayload,
+  UpdateSpellPayload,
+  ActiveSpell,
+  SpellCastMode,
+  Ensemble,
 } from '../../types';
+import { EnsembleService } from './EnsembleService';
 import { IProjectRepository } from '../../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { ISessionRepository } from '../../domain/repositories/ISessionRepository';
 import { ITeamMemberRepository } from '../../domain/repositories/ITeamMemberRepository';
 import { ICustomPromptRepository } from '../../domain/repositories/ICustomPromptRepository';
+import { ISpellRepository } from '../../domain/repositories/ISpellRepository';
 import { ISkillLoader } from '../../domain/services/ISkillLoader';
 import { IEventBus } from '../../domain/events/IEventBus';
 import { IIdGenerator } from '../../domain/common/IIdGenerator';
@@ -421,9 +431,31 @@ export class SpellService {
     private teamMemberRepo: ITeamMemberRepository,
     private skillLoader: ISkillLoader,
     private customPromptRepo: ICustomPromptRepository,
+    private spellRepo: ISpellRepository,
     private eventBus: IEventBus,
     private idGenerator: IIdGenerator,
+    /**
+     * Optional so existing test call sites that don't exercise coordinate casts
+     * can keep constructing SpellService with the original 9 args. `coordinate`
+     * casts throw a clear ValidationError when it's absent.
+     */
+    private ensembleService?: EnsembleService,
   ) {}
+
+  // --- Per-session activation serialization (P0-4) ---
+  // activateSpell / toggle do a read-modify-write on Session.activeSpells.
+  // Concurrent casts on the SAME session could otherwise interleave and drop an
+  // update. We serialize per-session with a promise chain (a lightweight mutex).
+  private sessionLocks = new Map<string, Promise<unknown>>();
+
+  private withSessionLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
+    const prev = this.sessionLocks.get(sessionId) ?? Promise.resolve();
+    // Run fn after the previous holder settles (success OR failure).
+    const run = prev.then(fn, fn);
+    // The stored lock swallows errors so one failed op doesn't poison the chain.
+    this.sessionLocks.set(sessionId, run.then(() => {}, () => {}));
+    return run;
+  }
 
   // --- Spell Definitions ---
 
@@ -750,43 +782,417 @@ export class SpellService {
   // --- Spell Invocation ---
 
   async invoke(payload: SpellInvocationPayload): Promise<SpellInvocationResult> {
-    // 1. Validate target session exists (status check removed — prompt delivery
-    //    via WebSocket naturally succeeds/fails based on terminal liveness)
-    const session = await this.sessionRepo.findById(payload.targetSessionId);
-    if (!session) throw new NotFoundError('Session', payload.targetSessionId);
+    // 1. Resolve targets: explicit list takes precedence; legacy single-id is
+    //    promoted into a one-element list so the fan-out path is unified.
+    const targets = this.resolveInvocationTargets(payload);
+    if (targets.length === 0) {
+      throw new ValidationError('targetSessionId or targetSessionIds is required');
+    }
 
-    // 2. Resolve entity
+    // 2. Resolve entity ONCE — entity data is identical across all targets.
     const entityData = await this.resolveEntity(payload.entityType, payload.entityId, payload.projectId);
 
-    // 3. Find spell definition
-    const spellDef = this.getSpellDefinition(payload.entityType, payload.spellName);
-    if (!spellDef) throw new NotFoundError('Spell', `${payload.entityType}:${payload.spellName}`);
+    // 3. Find spell definition — default to 'send' (the universal pass-through)
+    //    when CLI sends null or omits spellName.
+    const spellName = payload.spellName || 'send';
+    const spellDef = this.getSpellDefinition(payload.entityType, spellName);
+    if (!spellDef) throw new NotFoundError('Spell', `${payload.entityType}:${spellName}`);
 
-    // 4. Interpolate template
+    // 4. Interpolate template (one prompt for all targets).
     const prompt = this.interpolateTemplate(spellDef.promptTemplate, entityData);
 
-    // 5. Emit prompt to target session
-    await this.eventBus.emit('session:prompt_send', {
-      sessionId: payload.targetSessionId,
-      content: prompt,
-      mode: 'send' as const,
-      senderSessionId: null,
+    // 5. Fan out — validate each target session exists and deliver via the
+    //    SINGLE session:prompt_send path. senderSessionId is stamped to the
+    //    invoker so the receiving session can attribute the prompt.
+    //    (Frozen in DESIGN_BRIEF "invoke contract" — removes the double-inject bug.)
+    const now = Date.now();
+    const senderSessionId = payload.invokerSessionId ?? null;
+    const senderProjectId = await this.resolveSenderProjectId(senderSessionId);
+
+    for (const targetSessionId of targets) {
+      const session = await this.sessionRepo.findById(targetSessionId);
+      if (!session) throw new NotFoundError('Session', targetSessionId);
+
+      await this.eventBus.emit('session:prompt_send', {
+        sessionId: targetSessionId,
+        content: prompt,
+        mode: 'send' as const,
+        senderSessionId,
+        senderProjectId,
+        targetProjectId: session.projectId ?? null,
+        timestamp: now,
+      });
+    }
+
+    // 6. Emit spell:invoked once per target purely for UI feedback (toast/ring
+    //    pulse, never PTY). UI keys results by targetSessionId so multiple
+    //    rings can light up simultaneously.
+    const primaryTargetId = targets[0];
+    let primaryResult: SpellInvocationResult | null = null;
+    for (const targetSessionId of targets) {
+      const result: SpellInvocationResult = {
+        success: true,
+        prompt,
+        entityType: payload.entityType,
+        entityId: payload.entityId,
+        spellName,
+        targetSessionId,
+        timestamp: now,
+      };
+      await this.eventBus.emit('spell:invoked', result);
+      if (targetSessionId === primaryTargetId) primaryResult = result;
+    }
+
+    return primaryResult!;
+  }
+
+  private resolveInvocationTargets(payload: SpellInvocationPayload): string[] {
+    const out: string[] = [];
+    if (payload.targetSessionId) out.push(payload.targetSessionId);
+    if (payload.targetSessionIds) {
+      for (const id of payload.targetSessionIds) {
+        if (id && !out.includes(id)) out.push(id);
+      }
+    }
+    return out;
+  }
+
+  private async resolveSenderProjectId(senderSessionId: string | null): Promise<string | null> {
+    if (!senderSessionId) return null;
+    const sender = await this.sessionRepo.findById(senderSessionId).catch(() => null);
+    return sender?.projectId ?? null;
+  }
+
+  // --- Spell CRUD (P1 foundation) ---
+
+  async listSpells(): Promise<Spell[]> {
+    return this.spellRepo.findAll();
+  }
+
+  async getSpell(id: string): Promise<Spell> {
+    const spell = await this.spellRepo.findById(id);
+    if (!spell) throw new NotFoundError('Spell', id);
+    return spell;
+  }
+
+  /** Assign a stable id to any rule that arrives without one (create/update). */
+  private materializeRules(rules: SpellRuleInput[]): SpellRule[] {
+    return rules.map(rule => ({
+      ...rule,
+      id: rule.id || this.idGenerator.generate('rule'),
+    }));
+  }
+
+  async createSpell(data: CreateSpellPayload): Promise<Spell> {
+    const now = Date.now();
+    const spell: Spell = {
+      id: this.idGenerator.generate('spell'),
+      name: data.name,
+      description: data.description,
+      icon: data.icon,
+      color: data.color,
+      rules: this.materializeRules(data.rules ?? []),
+      isDefault: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return this.spellRepo.create(spell);
+  }
+
+  async updateSpell(id: string, data: UpdateSpellPayload): Promise<Spell> {
+    // Assign ids to any new rules before persisting.
+    const { rules, ...rest } = data;
+    const patch: Partial<Spell> = { ...rest };
+    if (rules) {
+      patch.rules = this.materializeRules(rules);
+    }
+    const updated = await this.spellRepo.update(id, patch);
+
+    // F6: GC orphaned ruleIterations on every session where this spell is active —
+    // rule ids that no longer exist would otherwise leak stale loop counters.
+    if (data.rules) {
+      await this.reconcileRuleIterations(id, updated.rules);
+    }
+    return updated;
+  }
+
+  /** Drop ruleIterations keys for rule ids that no longer exist on the spell (F6). */
+  private async reconcileRuleIterations(spellId: string, rules: SpellRule[]): Promise<void> {
+    const validIds = new Set(rules.map(r => r.id));
+    let sessions: any[];
+    try {
+      sessions = await this.sessionRepo.findAll();
+    } catch {
+      return;
+    }
+    for (const session of sessions) {
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      let sessionChanged = false;
+      const nextActives = actives.map(a => {
+        if (a.spellId !== spellId || !a.ruleIterations) return a;
+        const kept: Record<string, number> = {};
+        let activeChanged = false;
+        for (const [ruleId, count] of Object.entries(a.ruleIterations)) {
+          if (validIds.has(ruleId)) kept[ruleId] = count;
+          else activeChanged = true;
+        }
+        if (!activeChanged) return a;
+        sessionChanged = true;
+        return { ...a, ruleIterations: kept };
+      });
+      if (sessionChanged) {
+        await this.sessionRepo.update(session.id, { activeSpells: nextActives });
+      }
+    }
+  }
+
+  async deleteSpell(id: string): Promise<void> {
+    // Repo enforces the isDefault / SEED_IDS guard.
+    await this.spellRepo.delete(id);
+    // P1-4: cascade-clean any lingering activeSpells entries for the now-deleted
+    // spell so sessions don't carry orphaned spellIds (dispatcher skips them, but
+    // the stale state confuses the UI and ensemble accounting).
+    await this.cleanupDeletedSpellFromSessions(id);
+  }
+
+  private async cleanupDeletedSpellFromSessions(spellId: string): Promise<void> {
+    let sessions;
+    try {
+      sessions = await this.sessionRepo.findAll();
+    } catch {
+      return;
+    }
+    for (const session of sessions) {
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      if (!actives.some(a => a.spellId === spellId)) continue;
+      await this.withSessionLock(session.id, async () => {
+        // Re-read under the lock so we don't clobber a concurrent activation.
+        const fresh = await this.sessionRepo.findById(session.id);
+        if (!fresh) return;
+        const freshActives = fresh.activeSpells ?? [];
+        if (!freshActives.some(a => a.spellId === spellId)) return;
+        await this.sessionRepo.update(session.id, {
+          activeSpells: freshActives.filter(a => a.spellId !== spellId),
+        });
+      }).catch(() => { /* best-effort cleanup; never fail the delete */ });
+    }
+  }
+
+  /**
+   * C4: flip an active spell's enablement IN PLACE, preserving ruleIterations.
+   * - `ruleId` given → toggle that rule's runtime enablement (ActiveSpell.ruleEnabled).
+   * - `ruleId` omitted → toggle the whole ActiveSpell.enabled.
+   * Emits `spell:toggled` with the authoritative updated entry. Serialized per
+   * session so it can't race a concurrent activation.
+   */
+  async toggleSpell(spellId: string, sessionId: string, enabled: boolean, ruleId?: string): Promise<{
+    spell: Spell;
+    sessionId: string;
+    activeSpell: ActiveSpell;
+  }> {
+    const spell = await this.getSpell(spellId);
+    const updatedActive = await this.withSessionLock(sessionId, async () => {
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) throw new NotFoundError('Session', sessionId);
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      const current = actives.find(a => a.spellId === spellId);
+      if (!current) throw new NotFoundError('ActiveSpell', `${spellId} on ${sessionId}`);
+
+      const next: ActiveSpell = ruleId
+        ? { ...current, ruleEnabled: { ...(current.ruleEnabled ?? {}), [ruleId]: enabled } }
+        : { ...current, enabled };
+      const nextActives = actives.map(a => (a.spellId === spellId ? next : a));
+      await this.sessionRepo.update(sessionId, { activeSpells: nextActives });
+      return next;
+    });
+
+    await this.eventBus.emit('spell:toggled', {
+      spellId,
+      sessionId,
+      ruleId: ruleId ?? null,
+      enabled,
+      activeSpell: updatedActive,
       timestamp: Date.now(),
     });
 
-    // 6. Emit spell:invoked for UI feedback
-    const result: SpellInvocationResult = {
-      success: true,
-      prompt,
-      entityType: payload.entityType,
-      entityId: payload.entityId,
-      spellName: payload.spellName,
-      targetSessionId: payload.targetSessionId,
-      timestamp: Date.now(),
-    };
-    await this.eventBus.emit('spell:invoked', result);
+    return { spell, sessionId, activeSpell: updatedActive };
+  }
 
-    return result;
+  // --- Spell Activation (P1 foundation) ---
+  // Wires Session.activeSpells; the dispatcher (P2) consults this state at hook time.
+
+  async activateSpell(
+    spellId: string,
+    targetSessionIds: string[],
+    castBy: string | null,
+    opts?: { castMode?: SpellCastMode; ensembleName?: string },
+  ): Promise<{
+    spell: Spell;
+    sessions: { sessionId: string; activeSpell: ActiveSpell }[];
+    ensembleId?: string;
+  }> {
+    const spell = await this.getSpell(spellId);
+    if (targetSessionIds.length === 0) {
+      throw new ValidationError('targetSessionIds must not be empty');
+    }
+    const castMode: SpellCastMode = opts?.castMode ?? 'broadcast';
+
+    const now = Date.now();
+    const validRuleIds = new Set((spell.rules ?? []).map(r => r.id));
+
+    // Attach (or idempotently re-cast) the spell on one session. Serialized per
+    // session so concurrent casts can't drop each other's write (P0-4). Preserves
+    // loop counters for rule ids that still exist (F8). `ensembleId` is stamped
+    // when this is a coordinate cast so UI rings share a color.
+    const attach = (sessionId: string, ensembleId?: string) =>
+      this.withSessionLock(sessionId, async () => {
+        const session = await this.sessionRepo.findById(sessionId);
+        if (!session) throw new NotFoundError('Session', sessionId);
+        const existing = session.activeSpells ?? [];
+        const prior = existing.find(a => a.spellId === spellId);
+        const filtered = existing.filter(a => a.spellId !== spellId);
+        const ruleIterations: Record<string, number> = {};
+        for (const [ruleId, count] of Object.entries(prior?.ruleIterations ?? {})) {
+          if (validRuleIds.has(ruleId)) ruleIterations[ruleId] = count;
+        }
+        const activeSpell: ActiveSpell = {
+          spellId: spell.id,
+          color: spell.color,
+          enabled: true,
+          ruleIterations,
+          ...(ensembleId ? { ensembleId } : {}),
+          castAt: now,
+          castBy,
+        };
+        await this.sessionRepo.update(sessionId, { activeSpells: [...filtered, activeSpell] });
+        return activeSpell;
+      });
+
+    let ensembleId: string | undefined;
+    if (castMode === 'coordinate') {
+      // Create/reuse the ensemble FIRST so we know its id, then attach with it
+      // stamped in a single serialized write per session (no duplicate entries).
+      const ensemble = await this.ensureEnsemble(spell, opts?.ensembleName, targetSessionIds, castBy);
+      ensembleId = ensemble.id;
+    }
+
+    const sessions: { sessionId: string; activeSpell: ActiveSpell }[] = [];
+    for (const sessionId of targetSessionIds) {
+      const activeSpell = await attach(sessionId, ensembleId);
+      sessions.push({ sessionId, activeSpell });
+    }
+
+    await this.eventBus.emit('spell:activated', {
+      spellId: spell.id,
+      sessionIds: targetSessionIds,
+      activeSpell: sessions[0].activeSpell,
+      timestamp: now,
+    });
+
+    return { spell, sessions, ensembleId };
+  }
+
+  /**
+   * C1: find a live ensemble by exact name + spellId, or create one via the
+   * EnsembleService with the target sessions as members. Reuse adds any new
+   * members. The subsequent per-session attach in activateSpell reconciles each
+   * session to exactly one activeSpell entry (ensembleId stamped, counters kept).
+   */
+  private async ensureEnsemble(
+    spell: Spell,
+    ensembleName: string | undefined,
+    sessionIds: string[],
+    castBy: string | null,
+  ): Promise<Ensemble> {
+    if (!this.ensembleService) {
+      throw new ValidationError('coordinate cast requires the ensemble service');
+    }
+    const name = ensembleName?.trim() || spell.name;
+    const all = await this.ensembleService.list();
+    const existing = all.find(e => !e.disbandedAt && e.name === name && e.spellId === spell.id);
+    if (existing) {
+      for (const sid of sessionIds) {
+        if (!existing.memberSessionIds.includes(sid)) {
+          await this.ensembleService.addMember(existing.id, sid, castBy);
+        }
+      }
+      return this.ensembleService.get(existing.id);
+    }
+    return this.ensembleService.create({
+      name,
+      color: spell.color,
+      objective: `Coordinate via spell "${spell.name}"`,
+      memberSessionIds: sessionIds,
+      spellId: spell.id,
+      createdBy: castBy,
+    });
+  }
+
+  async deactivateSpell(spellId: string, targetSessionIds: string[]): Promise<{
+    spell: Spell;
+    sessionIds: string[];
+  }> {
+    const spell = await this.getSpell(spellId);
+    if (targetSessionIds.length === 0) {
+      throw new ValidationError('targetSessionIds must not be empty');
+    }
+
+    for (const sessionId of targetSessionIds) {
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) throw new NotFoundError('Session', sessionId);
+      const nextActive = (session.activeSpells ?? []).filter(a => a.spellId !== spellId);
+      await this.sessionRepo.update(sessionId, { activeSpells: nextActive });
+    }
+
+    const now = Date.now();
+    await this.eventBus.emit('spell:deactivated', {
+      spellId: spell.id,
+      sessionIds: targetSessionIds,
+      timestamp: now,
+    });
+
+    return { spell, sessionIds: targetSessionIds };
+  }
+
+  /**
+   * D8/FR-6.6: zero the loop counter(s) for a spell active on a session.
+   * - `ruleId` given → reset only that rule's iteration count to 0.
+   * - `ruleId` omitted → reset ALL counters (ruleIterations = {}).
+   * Emits `spell:loop_reset` with the authoritative updated active-spell entry.
+   */
+  async resetLoop(spellId: string, sessionId: string, ruleId?: string): Promise<{
+    spell: Spell;
+    sessionId: string;
+    activeSpell: ActiveSpell;
+  }> {
+    const spell = await this.getSpell(spellId);
+
+    const session = await this.sessionRepo.findById(sessionId);
+    if (!session) throw new NotFoundError('Session', sessionId);
+
+    const actives: ActiveSpell[] = session.activeSpells ?? [];
+    const current = actives.find(a => a.spellId === spellId);
+    if (!current) {
+      throw new NotFoundError('ActiveSpell', `${spellId} on ${sessionId}`);
+    }
+
+    const nextIterations: Record<string, number> = ruleId
+      ? { ...current.ruleIterations, [ruleId]: 0 }
+      : {};
+    const updatedActive: ActiveSpell = { ...current, ruleIterations: nextIterations };
+    const nextActives = actives.map(a => (a.spellId === spellId ? updatedActive : a));
+
+    await this.sessionRepo.update(sessionId, { activeSpells: nextActives });
+
+    await this.eventBus.emit('spell:loop_reset', {
+      spellId,
+      sessionId,
+      ruleId: ruleId ?? null,
+      activeSpell: updatedActive,
+      timestamp: Date.now(),
+    });
+
+    return { spell, sessionId, activeSpell: updatedActive };
   }
 
   // --- Custom Prompt CRUD ---

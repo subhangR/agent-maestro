@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Spacing" name="Spacing Scale" subtitle="4px base grid — dense but breathable" viewport="700x250" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 24px 26px; }
+  .stack { display: flex; flex-direction: column; gap: 9px; }
+  .line { display: flex; align-items: center; gap: 14px; }
+  .meta { font-family: var(--pn-mono); font-size: 10px; color: var(--pn-ink-3); width: 92px; flex-shrink: 0; }
+  .bar { height: 14px; background: var(--pn-brand-soft); border-left: 2px solid var(--pn-brand); }
+</style>
+</head>
+<body>
+  <div class="stack">
+    <div class="line"><span class="meta">1 · 4px</span><div class="bar" style="width:4px;"></div></div>
+    <div class="line"><span class="meta">2 · 8px</span><div class="bar" style="width:8px;"></div></div>
+    <div class="line"><span class="meta">3 · 12px</span><div class="bar" style="width:12px;"></div></div>
+    <div class="line"><span class="meta">4 · 16px</span><div class="bar" style="width:16px;"></div></div>
+    <div class="line"><span class="meta">6 · 24px</span><div class="bar" style="width:24px;"></div></div>
+    <div class="line"><span class="meta">8 · 32px</span><div class="bar" style="width:32px;"></div></div>
+    <div class="line"><span class="meta">12 · 48px</span><div class="bar" style="width:48px;"></div></div>
+    <div class="line"><span class="meta">16 · 64px</span><div class="bar" style="width:64px;"></div></div>
+  </div>
+</body>
+</html>

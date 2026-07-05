@@ -14,6 +14,7 @@ import {
   WRONG_MODE_ORCHESTRATOR_HINT,
 } from '../prompts/index.js';
 import { displayInitUI } from '../ui/init-display.js';
+import { autoActivateManifestSpells } from '../services/spell-auto-activator.js';
 
 /**
  * OrchestratorInitCommand - Initialize an orchestrator session from a manifest
@@ -170,6 +171,9 @@ export class OrchestratorInitCommand {
 
       // Step 6: Auto-update session status to working
       await this.autoUpdateSessionStatus(manifest, sessionId);
+
+      // Step 6b: Auto-activate any task-assigned spells carried in the manifest.
+      await autoActivateManifestSpells(manifest, sessionId);
 
       // Step 7: Spawn agent
       const spawnResult = await this.spawner.spawn(manifest, sessionId, {

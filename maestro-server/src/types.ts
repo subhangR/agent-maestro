@@ -484,6 +484,9 @@ export interface Task {
 
   // Client-generated idempotency key for deduplicating draft auto-creates
   clientRequestId?: string;
+
+  // P1: Spells to auto-activate when sessions are spawned on this task
+  spellIds?: string[];
 }
 
 export interface Session {
@@ -527,6 +530,9 @@ export interface Session {
   teamSessionId?: string | null;   // Shared ID linking coordinator + workers (= coordinator's session ID)
   teamId?: string | null;          // Optional saved Team reference
   isMasterSession?: boolean;       // Derived from project.isMaster at spawn time
+
+  // P1: Spells currently active on this session (foundation for trigger/loop/gate behavior)
+  activeSpells: ActiveSpell[];
 }
 
 // Supporting types
@@ -590,6 +596,190 @@ export interface SessionEvent {
 }
 
 // Spell types
+
+/**
+ * Fixed palette of spell ring colors. The hex value is the source of truth used
+ * to render concentric border rings on list tiles, the spaces rail, and terminal
+ * panels. Slugs are stable identifiers persisted on the Spell entity.
+ */
+export const SPELL_COLORS = [
+  { slug: 'amber',   hex: '#f59e0b' },
+  { slug: 'rose',    hex: '#f43f5e' },
+  { slug: 'violet',  hex: '#8b5cf6' },
+  { slug: 'sky',     hex: '#0ea5e9' },
+  { slug: 'emerald', hex: '#10b981' },
+  { slug: 'fuchsia', hex: '#d946ef' },
+  { slug: 'lime',    hex: '#84cc16' },
+  { slug: 'cyan',    hex: '#06b6d4' },
+  { slug: 'indigo',  hex: '#6366f1' },
+] as const;
+export type SpellColorSlug = typeof SPELL_COLORS[number]['slug'];
+
+/**
+ * Frozen action taxonomy (v2 — §11.1). `gate` is dropped; the dispatcher no
+ * longer blocks tool calls. The behavioral config for each action lives in the
+ * discriminated `SpellActionConfig` union below.
+ */
+export type SpellActionType =
+  | 'inject-prompt'
+  | 'feed-context'
+  | 'run-command'
+  | 'continue-loop'
+  | 'notify-channel';
+
+export type SpellLoopType =
+  | 'single-shot'
+  | 'continue-until-done'
+  | 'plan-execute'
+  | 'critic-refine';
+
+/**
+ * Severity of an in-app `notify-channel` notification (C3 scope-down). The
+ * former free-text `channel` routing hint was dropped — notify-channel is now
+ * an honest in-app-only surface, so all that remains is the display severity.
+ */
+export type SpellNotifyLevel = 'info' | 'success' | 'warn';
+
+/**
+ * How a spell is cast across its target sessions (C1). `single`/`broadcast`
+ * behave identically server-side (attach to each target); `coordinate`
+ * additionally wires the targets into an Ensemble.
+ */
+export type SpellCastMode = 'single' | 'broadcast' | 'coordinate';
+
+/**
+ * Hook event a rule's trigger fires on. v2 expands the list to 8 (adds
+ * SubagentStop + SessionEnd — these have REAL hook wiring, §11.6).
+ */
+export type SpellHookEvent =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'UserPromptSubmit'
+  | 'Stop'
+  | 'SubagentStop'
+  | 'Notification'
+  | 'SessionStart'
+  | 'SessionEnd';
+
+/**
+ * Trigger (discriminated union on `type`). `schedule` is schema-ready but
+ * REJECTED at save in v1 (§11.4) — the engine ships in a later phase.
+ */
+export type SpellTrigger =
+  | { type: 'hook'; hookEvent: SpellHookEvent; matcher?: string }
+  | { type: 'schedule'; cron?: string; intervalMs?: number };
+
+/**
+ * Action + its config, modelled as a discriminated union on `type` (PI-1) so
+ * the dispatcher switch and editor config panel narrow exhaustively — no
+ * `(spell as any)` field access. run-command exposes NO `timeoutMs` and runs
+ * async fire-and-forget (§11.5).
+ */
+export type SpellActionConfig =
+  | { type: 'inject-prompt'; prompt: string }
+  | { type: 'feed-context'; prompt: string }
+  | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
+  | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
+  | { type: 'notify-channel'; message?: string; level?: SpellNotifyLevel };
+
+/**
+ * A single { trigger → action } binding within a spell. A spell holds 1..20
+ * rules; each is independently enabled/disabled and matched at dispatch time.
+ */
+export interface SpellRule {
+  id: string;              // idGenerator('rule'); stable
+  label?: string;          // optional human handle; drives summary line + reset UX (PI-3)
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+/**
+ * Per-event capability matrix (§11.2) — single source of truth shared by the
+ * Zod schema and the editor action dropdown. An action not listed for an event
+ * is unselectable in the UI and rejected by the schema. `continue-loop` only
+ * means anything on Stop/SubagentStop; SessionEnd is terminal (no further turn
+ * to inject/feed/loop into).
+ */
+export const ACTIONS_BY_EVENT: Record<SpellHookEvent, SpellActionType[]> = {
+  PreToolUse:       ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  PostToolUse:      ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  UserPromptSubmit: ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  Stop:             ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  SubagentStop:     ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  Notification:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionStart:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionEnd:       ['run-command', 'notify-channel'],
+};
+
+/**
+ * First-class Spell entity (v2 — multi-rule). Persisted as data/spells/<id>.json
+ * and merged with the curated SPELL_LIBRARY seeds at read time. `isDefault: true`
+ * spells are non-deletable (see FileSystemSpellRepository).
+ */
+export interface Spell {
+  id: string;
+  name: string;
+  /** Human summary only — NO longer the injected body (that lives on each rule's action). */
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  rules: SpellRule[];
+  /** True for curated library entries; false (or omitted) for user-created. */
+  isDefault?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Per-session activation state for a Spell. Lives on Session.activeSpells.
+ * `color` is denormalized so UI rings can render without a second lookup. The
+ * dispatcher re-reads the spell's rules at fire time, so no trigger fields are
+ * denormalized here — only per-rule loop counters.
+ */
+export interface ActiveSpell {
+  spellId: string;
+  color: SpellColorSlug;
+  enabled: boolean;
+  /** ruleId → iteration count (continue-loop is per-rule now). */
+  ruleIterations: Record<string, number>;
+  /**
+   * C4: per-rule RUNTIME enablement override on this session. A ruleId mapped to
+   * `false` is skipped by the dispatcher even though the spell definition's
+   * `rule.enabled` is true. Absent / `true` → the definition's enablement wins.
+   */
+  ruleEnabled?: Record<string, boolean>;
+  ensembleId?: string;
+  castAt: number;
+  /** Session ID that cast it, or `null` for UI-cast. */
+  castBy: string | null;
+}
+
+/** Rule as accepted on create/update — server assigns `id` where missing. */
+export interface SpellRuleInput {
+  id?: string;
+  label?: string;
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+export interface CreateSpellPayload {
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  rules: SpellRuleInput[];
+}
+
+export interface UpdateSpellPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  color?: SpellColorSlug;
+  rules?: SpellRuleInput[];
+}
+
 export type SpellEntityType = 'maestro' | 'skill' | 'team-member' | 'task' | 'doc' | 'session' | 'custom-prompt';
 
 export interface SpellDefinition {
@@ -614,9 +804,17 @@ export interface SpellEntity {
 export interface SpellInvocationPayload {
   entityType: SpellEntityType;
   entityId: string;
-  spellName: string;
-  targetSessionId: string;
+  /** Defaults to 'send' when omitted or null. */
+  spellName?: string | null;
+  /** Single target. Either this or `targetSessionIds[0]` must resolve to a session. */
+  targetSessionId?: string;
+  /** Forward-compat multi-target list (Phase 2 fan-out). */
+  targetSessionIds?: string[];
+  /** Session that initiated the invoke (null = UI). */
+  invokerSessionId?: string;
   projectId: string;
+  /** Forward-compat per-spell args from CLI --args. */
+  args?: Record<string, any>;
 }
 
 export interface SpellInvocationResult {
@@ -627,6 +825,130 @@ export interface SpellInvocationResult {
   spellName: string;
   targetSessionId: string;
   timestamp: number;
+}
+
+// --- P2: Hook Dispatch protocol (v2 — multi-rule, no gate) ---
+//
+// The CLI binds every hook event once to `maestro hook dispatch <EVENT>`, which
+// POSTs to /api/hooks/dispatch and translates DispatchResult into:
+//   - exit 0 + stdout for inject-prompt / feed-context
+//   - exit 2 + stderr "reason" for continue-loop(continue:true) on Stop/SubagentStop
+//   - exit 0 + side effects for run-command (async, fire-and-forget) / notify-channel
+//
+// Composition (when multiple rules across multiple active spells fire on one event):
+//   - feed-context stdout is concatenated in (activeSpell × rule) order (join('\n\n'))
+//   - continue-loop signals compose by "any continue wins" on Stop/SubagentStop
+//   - run-command / notify-channel actions all execute (side effects accumulate)
+//
+// There is NO block path — `gate` was dropped, so composeResult never emits
+// exit 2 for a block. On any internal rule error the rule is skipped (fail-open)
+// and the error is surfaced for logging; other rules continue.
+//
+// The contract is intentionally small so the CLI can stay dumb: receive a
+// DispatchResult, fold it into exit code + stdout/stderr.
+export interface HookDispatchPayload {
+  sessionId: string;
+  event: SpellHookEvent;
+  /** Arbitrary structured payload forwarded from the Claude hook environment. */
+  payload?: Record<string, any>;
+  /** C2: side-effect-free probe — match + compose, execute nothing. */
+  dryRun?: boolean;
+}
+
+/** Per-rule outcome status surfaced on spell:rule_fired (C5 adds blocked/skipped). */
+export type HookRuleOutcomeStatus = 'ok' | 'error' | 'blocked' | 'skipped';
+
+export interface HookDispatchSpellOutcome {
+  spellId: string;
+  /** The rule that produced this outcome. */
+  ruleId?: string;
+  action: SpellActionType;
+  /** When set, the rule contributed feed-context text. */
+  stdout?: string;
+  /** When set, a continue-loop rule wants to continue (Stop/SubagentStop only). */
+  continue?: boolean;
+  reason?: string;
+  /** Internal error swallowed by fail-open handling, surfaced for logging. */
+  error?: string;
+  /**
+   * Resolved status for observability (C5). Defaults to 'error' when `error` is
+   * set, else 'ok'. 'blocked' = permission-gated; 'skipped' = concurrency cap.
+   */
+  status?: HookRuleOutcomeStatus;
+}
+
+/** C2: per-rule dry-run match report entry. */
+export interface DispatchMatchReport {
+  spellId: string;
+  ruleId?: string;
+  action: SpellActionType;
+  /** Whether this rule's action WOULD run on a live dispatch. */
+  wouldExecute: boolean;
+  /** Why it would NOT run (permission gate, disabled rule, etc.). */
+  skipReason?: string;
+}
+
+export interface DispatchResult {
+  /** Process exit code the CLI should use: 0 = allow, 2 = continue-loop. */
+  exitCode: 0 | 2;
+  /** Concatenated stdout payloads from feed-context actions. */
+  stdout: string;
+  /** Composed reason — loop continue reason. */
+  reason?: string;
+  /** Always false in v2 (gate dropped); retained for CLI wire compatibility. */
+  blocked: boolean;
+  /** True when the result represents a loop continue signal (Stop/SubagentStop). */
+  continued: boolean;
+  /** Per-rule breakdown, for logging and CLI debug. */
+  spells: HookDispatchSpellOutcome[];
+  timestamp: number;
+  /** C2: true when this result came from a dry-run probe (nothing executed). */
+  dryRun?: boolean;
+  /** C2: per-rule match report — only populated on dry-run. */
+  matched?: DispatchMatchReport[];
+}
+
+// --- P4: Ensemble — persisted multi-session coordination unit ---
+export interface Ensemble {
+  id: string;
+  name: string;
+  /** SpellColorSlug so ensemble rings share the spell palette. */
+  color: SpellColorSlug;
+  /** Shared goal communicated to every member at activation. */
+  objective: string;
+  memberSessionIds: string[];
+  leaderSessionId?: string | null;
+  /** The "coordinate" spell that wires members together (default: spell_coordinate). */
+  spellId: string;
+  /** Session ID that created it, or `null` for UI-created. */
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+  disbandedAt?: number | null;
+}
+
+export interface CreateEnsemblePayload {
+  name: string;
+  color: SpellColorSlug;
+  objective: string;
+  memberSessionIds: string[];
+  leaderSessionId?: string | null;
+  spellId: string;
+  createdBy?: string | null;
+}
+
+export interface UpdateEnsemblePayload {
+  name?: string;
+  color?: SpellColorSlug;
+  objective?: string;
+  leaderSessionId?: string | null;
+}
+
+export interface EnsembleMessagePayload {
+  /** Free-form message broadcast to every member session as a prompt. */
+  content: string;
+  /** Session that initiated the message (null = UI). */
+  senderSessionId?: string | null;
 }
 
 export interface CustomPrompt {
@@ -677,6 +999,7 @@ export interface CreateTaskPayload {
   useWorktree?: boolean;
   dueDate?: string;
   clientRequestId?: string;
+  spellIds?: string[];
 }
 
 export type UpdateSource = 'user' | 'session';
@@ -701,6 +1024,7 @@ export interface UpdateTaskPayload {
   dangerousMode?: boolean;
   useWorktree?: boolean;
   images?: TaskImage[];
+  spellIds?: string[];
   // NOTE: timeline removed - use session timeline via /sessions/:id/timeline
   // Update source tracking
   updateSource?: UpdateSource;  // Who is making the update
@@ -745,6 +1069,7 @@ export interface UpdateSessionPayload {
   metadata?: Record<string, any>;  // Merged into session.metadata (shallow merge)
   humanCompletedAt?: number | null;  // Human-driven completion timestamp (null to reopen)
   archivedAt?: number | null;  // Archive timestamp (null to unarchive)
+  activeSpells?: ActiveSpell[]; // P1: replace the session's active spell list
 }
 
 /** Payload emitted on session:mode_changed event */

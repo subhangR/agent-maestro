@@ -94,6 +94,7 @@ async function buildApp(dataDir: string, cliPath: string) {
     eventBus: container.eventBus,
     config,
     ptyHostService,
+    spellRepo: {} as any,
   });
 
   const app = express();

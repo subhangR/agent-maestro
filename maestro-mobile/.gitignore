@@ -1,0 +1,20 @@
+# Standalone Expo app — own node_modules / lockfile (not in the bun workspace)
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native (CNG — generated, never committed)
+/ios
+/android
+
+# Metro / debug
+*.log
+.metro-health-check*
+
+# macOS
+.DS_Store
+
+# Env
+.env*.local

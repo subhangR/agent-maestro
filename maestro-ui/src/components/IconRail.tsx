@@ -19,8 +19,8 @@ const railItems: { section: Exclude<IconRailSection, null>; label: string; icon:
     { section: "lists", label: "Lists", icon: "inbox" },
     { section: "graphs", label: "Graphs", icon: "graph" },
     { section: "files", label: "Files", icon: "folder" },
+    { section: "collab", label: "Collab Space", icon: "globe" },
 ];
-
 function getBadge(section: string, props: IconRailProps): number | null {
     switch (section) {
         case "tasks":

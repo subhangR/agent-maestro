@@ -1,0 +1,14 @@
+/* ==========================================================================
+   MAESTRO — DESIGN SYSTEM ROOT STYLESHEET  ·  "ATELIER"
+   The single entry point for consumers. Link this one file and you get the
+   full token foundation (paper/ink, brass, status, type, spacing, radii,
+   shadow, motion — all --pn-*) plus the semantic .t-* type classes.
+
+       <link rel="stylesheet" href="styles.css">
+
+   Light by default; add data-theme="dark" to <html> for the warm-graphite
+   variant. Component styles (panel-redesign/theme.css, mobile-app/mobile.css)
+   are scoped under .pn-* / .m-* and linked separately by each surface, so they
+   never leak app-shell rules into a plain consumer page.
+   ========================================================================== */
+@import url('colors_and_type.css');

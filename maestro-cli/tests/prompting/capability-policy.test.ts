@@ -58,19 +58,13 @@ describe('capability-policy', () => {
     expect(result.allowedCommands).not.toContain('task:create');
   });
 
-  it('does not enable mode-incompatible commands via overrides', () => {
-    const manifest = buildManifest({
-      teamMemberCommandPermissions: {
-        commands: {
-          'team:create': true,
-        },
-      },
-    });
+  it('lets any session (incl. worker) execute team/project/task-status commands by default', () => {
+    const result = resolveCapabilitySet(buildManifest({ mode: 'worker' }));
 
-    const result = resolveCapabilitySet(manifest);
-
-    // team:create is coordinator-only; a worker override cannot escalate to it.
-    expect(result.allowedCommands).not.toContain('team:create');
+    // No mode-level execution gates: workers can run coordination commands too.
+    expect(result.allowedCommands).toContain('team:create');
+    expect(result.allowedCommands).toContain('project:create');
+    expect(result.allowedCommands).toContain('task:complete');
   });
 
   it('lets any session (incl. worker) execute spawn/coordination commands by default', () => {
@@ -152,15 +146,13 @@ describe('capability-policy', () => {
     expect(coordinatedCoordinator.capabilities.canPromptOtherSessions).toBe(true);
   });
 
-  it('keeps spawn/coordination hidden from worker prompt while executable', () => {
+  it('advertises spawn to every mode (no coordinator gate)', () => {
     const worker = resolveCapabilitySet(buildManifest({ mode: 'worker' }));
     const coordinator = resolveCapabilitySet(buildManifest({ mode: 'coordinator' }));
 
-    // Executable for worker, but not advertised in its capability summary.
     expect(worker.allowedCommands).toContain('session:spawn');
-    expect(worker.capabilities.canSpawnSessions).toBe(false);
+    expect(worker.capabilities.canSpawnSessions).toBe(true);
 
-    // Coordinator both has it and is told about it.
     expect(coordinator.allowedCommands).toContain('session:spawn');
     expect(coordinator.capabilities.canSpawnSessions).toBe(true);
   });

@@ -524,6 +524,9 @@ export interface MaestroTask {
   // Due date for the task (ISO date string "YYYY-MM-DD" or null)
   dueDate?: string | null;
 
+  // Spells attached to this task — baked into manifest at spawn (P1+).
+  spellIds?: string[];
+
   // Docs attached to this task
   docs?: DocEntry[];
 
@@ -586,6 +589,9 @@ export interface MaestroSession {
   teamSessionId?: string;   // Shared ID linking coordinator + workers (= coordinator's session ID)
   teamId?: string;           // Optional saved Team reference
   parentSessionId?: string;
+
+  // Spell system — active spells on this session (P1+).
+  activeSpells?: ActiveSpell[];
 }
 
 // Payloads
@@ -844,39 +850,309 @@ export interface TaskListOrdering {
   updatedAt: number;
 }
 
-// ─── Spell Types ───
+// ─── Spell Types (redesign v2 — multi-rule; mirrors maestro-server §11.1) ───
 
-export type SpellEntityType = 'maestro' | 'skill' | 'team-member' | 'task' | 'doc' | 'session' | 'custom-prompt';
+/** Frozen palette — must mirror SPELL_COLORS in maestro-server/src/types.ts. */
+export type SpellColorSlug =
+  | 'amber' | 'rose' | 'violet' | 'sky' | 'emerald'
+  | 'fuchsia' | 'lime' | 'cyan' | 'indigo';
 
-export interface SpellDefinition {
-  name: string;
-  label: string;
-  description?: string;
+/** v1 action taxonomy (no `gate`). */
+export type SpellActionType =
+  | 'inject-prompt'
+  | 'feed-context'
+  | 'run-command'
+  | 'continue-loop'
+  | 'notify-channel';
+
+export type SpellLoopType =
+  | 'single-shot'
+  | 'continue-until-done'
+  | 'plan-execute'
+  | 'critic-refine';
+
+/** 8 Claude Code hook events (was 6 — SubagentStop + SessionEnd added). */
+export type SpellHookEvent =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'UserPromptSubmit'
+  | 'Stop'
+  | 'SubagentStop'
+  | 'Notification'
+  | 'SessionStart'
+  | 'SessionEnd';
+
+/** Discriminated on `type`. `schedule` is Phase-2 (rejected at save in v1). */
+export type SpellTrigger =
+  | { type: 'hook'; hookEvent: SpellHookEvent; matcher?: string }
+  | { type: 'schedule'; cron?: string; intervalMs?: number };
+
+/** Discriminated on `type` — exhaustive narrowing in dispatcher + editor. */
+export type SpellActionConfig =
+  | { type: 'inject-prompt'; prompt: string }
+  | { type: 'feed-context'; prompt: string }
+  | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
+  | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
+  // notify-channel is in-app only (C3): the `channel` relay field was dropped.
+  | { type: 'notify-channel'; message?: string };
+
+/**
+ * Per-event capability matrix (§11.2) — single source of truth shared by the
+ * editor action dropdown (and mirrored by the server Zod schema). An action not
+ * listed for an event is unselectable in the UI and rejected server-side.
+ */
+export const ACTIONS_BY_EVENT: Record<SpellHookEvent, SpellActionType[]> = {
+  PreToolUse:       ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  PostToolUse:      ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  UserPromptSubmit: ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  Stop:             ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  SubagentStop:     ['inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel'],
+  Notification:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionStart:     ['inject-prompt', 'feed-context', 'run-command', 'notify-channel'],
+  SessionEnd:       ['run-command', 'notify-channel'],
+};
+
+/** Library category used by SpellLauncher nav. */
+export type SpellCategory =
+  | 'featured'
+  | 'execute'
+  | 'plan'
+  | 'gate'
+  | 'notify'
+  | 'custom'
+  | 'skills';
+
+export interface SpellRule {
+  id: string;                     // idGenerator('rule'); stable per-rule
+  label?: string;                 // optional human handle — drives summary line
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
 }
 
+/** Rule shape accepted by create/update payloads (server assigns id if absent). */
+export interface SpellRuleInput {
+  id?: string;
+  label?: string;
+  enabled: boolean;
+  trigger: SpellTrigger;
+  action: SpellActionConfig;
+}
+
+export interface Spell {
+  id: string;
+  name: string;
+  description: string;            // human summary only (NOT the injected body)
+  icon?: string;
+  color: SpellColorSlug;
+  rules: SpellRule[];             // 1..20
+  isDefault?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** Per-session activation state for a Spell. Mirrors Session.activeSpells. */
+export interface ActiveSpell {
+  spellId: string;
+  color: SpellColorSlug;
+  enabled: boolean;
+  ruleIterations: Record<string, number>;  // ruleId → iteration (loops are per-rule)
+  ensembleId?: string;
+  castAt: number;
+  castBy: string | null;
+}
+
+export interface CreateSpellPayload {
+  name: string;
+  description: string;
+  icon?: string;
+  color: SpellColorSlug;
+  rules: SpellRuleInput[];
+}
+
+export interface UpdateSpellPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  color?: SpellColorSlug;
+  rules?: SpellRuleInput[];
+}
+
+/** Cast mode selected in the launcher, sent to the server (C1). */
+export type SpellCastMode = 'single' | 'broadcast' | 'coordinate';
+
+/** Server cast-spell request shape (matches POST /api/spells/:id/activate). */
+export interface CastSpellInput {
+  spellId: string;
+  targetSessionIds: string[];
+  invokerSessionId?: string | null;
+  /** Sent to the server; `coordinate` additionally forms an ensemble (C1). */
+  castMode?: SpellCastMode;
+  /** Ensemble name when castMode = coordinate (C1). */
+  ensembleName?: string;
+}
+
+/** Response of POST /api/spells/:id/activate (C1 — may carry a new ensembleId). */
+export interface ActivateSpellResult {
+  spell: Spell;
+  sessions: Array<{ sessionId: string; activeSpell: ActiveSpell }>;
+  /** Present when castMode = coordinate created/reused an ensemble. */
+  ensembleId?: string;
+}
+
+/** Severity for an in-app spell notification (C3 notify:progress payload). */
+export type SpellNotifyLevel = 'info' | 'success' | 'warn';
+
+/** `notify:progress` WS payload (C3) — drives the in-app toast + entry. */
+export interface SpellNotifyProgress {
+  sessionId: string;
+  spellId?: string;
+  ruleId?: string;
+  message: string;
+  level?: SpellNotifyLevel;
+}
+
+/** Per-rule dry-run match report row (C2 — POST /api/hooks/dispatch dryRun). */
+export interface HookDispatchMatch {
+  spellId: string;
+  ruleId: string;
+  action: string;
+  wouldExecute: boolean;
+  skipReason?: string;
+}
+
+/** Dry-run dispatch result (C2). Mirrors DispatchResult + the match report. */
+export interface HookDispatchDryRunResult {
+  dryRun: true;
+  matched: HookDispatchMatch[];
+  [key: string]: unknown;
+}
+
+export interface CastResult {
+  spellId: string;
+  activeSpells: ActiveSpell[];
+  sessionIds: string[];
+}
+
+/** Ensemble entity — multi-session coordination unit (P4). */
+export interface Ensemble {
+  id: string;
+  name: string;
+  color: SpellColorSlug;
+  objective: string;
+  memberSessionIds: string[];
+  leaderSessionId?: string | null;
+  spellId: string;
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+  disbandedAt?: number | null;
+}
+
+// ─── Mechanism B — Casts / Entities / Custom Prompts (mirrors server §types) ───
+
+/** Entity kinds a one-shot cast can be launched from. */
+export type SpellEntityType =
+  | 'maestro'
+  | 'skill'
+  | 'team-member'
+  | 'task'
+  | 'doc'
+  | 'session'
+  | 'custom-prompt';
+
+/** A castable verb/template available for an entity type (GET /spells/definitions). */
+export interface SpellDefinition {
+  name: string;
+  entityType: SpellEntityType;
+  label: string;
+  description: string;
+  icon?: string;
+  promptTemplate: string;
+}
+
+/** A concrete entity that can be cast from (GET /spells/entities/:type). */
 export interface SpellEntity {
   id: string;
   type: SpellEntityType;
-  label: string;
+  name: string;
+  description?: string;
   icon?: string;
-  spells: SpellDefinition[];
+  availableSpells: string[];
   metadata?: Record<string, any>;
 }
 
-export interface SpellInvocation {
+/** POST /spells/invoke — one-shot cast (Mechanism B, no persistence/ring). */
+export interface SpellInvocationPayload {
+  entityType: SpellEntityType;
+  entityId: string;
+  /** Defaults to 'send' when omitted or null. */
+  spellName?: string | null;
+  targetSessionId?: string;
+  targetSessionIds?: string[];
+  invokerSessionId?: string | null;
+  projectId: string;
+  args?: Record<string, any>;
+}
+
+export interface SpellInvocationResult {
+  success: boolean;
+  prompt: string;
   entityType: SpellEntityType;
   entityId: string;
   spellName: string;
   targetSessionId: string;
-  projectId: string;
+  timestamp: number;
 }
 
-export interface SpellInvokedEvent {
-  sessionId: string;
+/** Reusable one-shot prompt snippet (custom-prompt CRUD). */
+export interface CustomPrompt {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
   content: string;
-  entityType: SpellEntityType;
-  entityId: string;
-  spellName: string;
+  tags?: string[];
+  entityType?: SpellEntityType;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateCustomPromptPayload {
+  name: string;
+  description?: string;
+  icon?: string;
+  content: string;
+  tags?: string[];
+  entityType?: SpellEntityType;
+}
+
+export interface UpdateCustomPromptPayload {
+  name?: string;
+  description?: string;
+  icon?: string;
+  content?: string;
+  tags?: string[];
+  entityType?: SpellEntityType;
+}
+
+/** Response of POST /spells/:id/reset-loop (CONTRACT-ADDENDUM Addition 1). */
+export interface ResetLoopResult {
+  spell: Spell;
+  sessionId: string;
+  activeSpell: ActiveSpell;
+}
+
+/** Minimal Skill type (P6, partial — UI manages local list for now). */
+export interface Skill {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string;
+  scope: 'project' | 'global';
+  body?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 // ─── Git Types ───

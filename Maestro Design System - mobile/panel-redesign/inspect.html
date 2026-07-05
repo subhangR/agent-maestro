@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>inspect</title>
+<link rel="stylesheet" href="theme.css" />
+<style>
+  html,body{margin:0;background:#efece4;}
+  #stage{display:flex;gap:28px;padding:28px;align-items:flex-start;width:max-content;}
+  .frame{width:360px;height:840px;flex:0 0 auto;box-shadow:0 6px 30px rgba(40,34,24,.12);border-radius:12px;overflow:hidden;border:1px solid #d8d3c6;}
+  .cap{font-family:'JetBrains Mono',monospace;font-size:11px;color:#5b564c;margin-bottom:8px;}
+  .col{display:flex;flex-direction:column;}
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="kit.jsx"></script>
+<script type="text/babel" src="left-panels.jsx"></script>
+<script type="text/babel" src="right-panels.jsx"></script>
+<script type="text/babel">
+const items = [
+  ['A · Ledger', 'LedgerLeft'], ['B · Stack', 'StackLeft'], ['C · Console', 'ConsoleLeft'],
+  ['A · Roster', 'RosterRight'], ['B · Cards', 'CardsRight'], ['C · Now playing', 'NowPlayingRight'],
+];
+function Inspect(){
+  return items.map(([cap,comp])=>{
+    const C = window[comp];
+    return <div className="col" key={comp}><div className="cap">{cap}</div><div className="frame"><C/></div></div>;
+  });
+}
+ReactDOM.createRoot(document.getElementById('stage')).render(<Inspect/>);
+</script>
+</body>
+</html>

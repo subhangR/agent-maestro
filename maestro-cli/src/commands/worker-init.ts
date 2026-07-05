@@ -19,6 +19,7 @@ import {
   WRONG_MODE_WORKER_HINT,
 } from '../prompts/index.js';
 import { displayInitUI } from '../ui/init-display.js';
+import { autoActivateManifestSpells } from '../services/spell-auto-activator.js';
 
 /**
  * WorkerInitCommand - Initialize a worker session from a manifest
@@ -179,6 +180,10 @@ export class WorkerInitCommand {
 
       // Register session with server
       await this.autoUpdateSessionStatus(manifest, sessionId);
+
+      // Auto-activate task-assigned spells so the dispatcher (hook events) sees
+      // them live from the first PreToolUse / Stop / etc. fire.
+      await autoActivateManifestSpells(manifest, sessionId);
 
       // Spawn agent
       const spawnResult = await this.spawner.spawn(manifest, sessionId, {

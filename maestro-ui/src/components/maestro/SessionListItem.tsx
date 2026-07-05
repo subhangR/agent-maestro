@@ -17,7 +17,13 @@ import type { SessionLifecycleTab } from "../../utils/sessionLifecycle";
 import { willOpenStatsOnClick } from "../../utils/sessionClickRouting";
 import { copyToClipboard } from "../../utils/domUtils";
 import { isDiagramDoc } from "../../utils/docHelpers";
+import { useSessionDocs } from "../../hooks/useSessionDocs";
 import { Icon, Glyph, AgentTile, type AgentKind } from "./redesign/kit";
+import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../../utils/spellRings";
+import { useEnsembleStore } from "../../stores/useEnsembleStore";
+import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
+import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
+import { useSpellbookStore } from "../../stores/useSpellbookStore";
 
 const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
   spawning: "Spawning",
@@ -147,6 +153,15 @@ export const SessionListItem = React.memo(function SessionListItem({
   );
 
   const docs: DocEntry[] = session.docs ?? [];
+  // The session entity over the websocket carries doc metadata only (no file
+  // content), so opening a diagram from the raw list renders an empty board.
+  // Hydrate content once the meta panel is expanded — mirrors how the task tile
+  // opens docs via getTaskDocs — and keep this session's own doc set/order.
+  const hydratedDocs = useSessionDocs(session, isMetaExpanded);
+  const openableDocs = useMemo(() => {
+    const byId = new Map(hydratedDocs.map((d) => [d.id, d]));
+    return docs.map((d) => byId.get(d.id) ?? d);
+  }, [docs, hydratedDocs]);
   const mode = session.mode;
 
   // Model badge: prefer the per-spawn launch model (what actually launched) over
@@ -235,10 +250,31 @@ export const SessionListItem = React.memo(function SessionListItem({
     ? formatDuration(session.startedAt, session.completedAt)
     : formatTimeAgo(session.lastActivity);
 
+  // Concentric spell rings — feeds the .spell-ring utility on the tile root.
+  // See docs/spell-system-design/UI_SPEC.md §7.
+  const activeSpells = useActiveSpellsForSession(session.id);
+  // Subscribe to the ensemble store so ring re-renders when ensemble color changes.
+  const ensembles = useEnsembleStore((s) => s.ensembles);
+  const ringSpecs = useMemo<RingSpec[]>(
+    () => buildRingSpecsFromActive(activeSpells),
+    [activeSpells, ensembles],
+  );
+  const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
+  const ringHasRings = ringAttrs['data-spell-rings'] > 0;
+  const justCast = useSpellCastPulse(session.id);
+  const ringClass = ringHasRings ? (justCast ? ' spell-ring spell-ring--just-cast' : ' spell-ring') : '';
+  const ringOverflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+  const ringAriaLabel = spellRingAriaLabel(`Session ${title}`, activeSpells);
+
   return (
     <div
-      className={`pn-st${needsInput ? " pn-st--needsInput" : ""}${isSelected ? " pn-st--selected" : ""}${isArchived ? " pn-st--archived" : ""}${isOutOfTab ? " pn-st--outOfTab" : ""}`}
+      className={`pn-st${needsInput ? " pn-st--needsInput" : ""}${isSelected ? " pn-st--selected" : ""}${isArchived ? " pn-st--archived" : ""}${isOutOfTab ? " pn-st--outOfTab" : ""}${ringClass}`}
       onClick={() => onSelect(session, link)}
+      style={ringAttrs.style}
+      data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
+      data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
+      data-spell-ring-overflow={ringOverflow || undefined}
+      aria-label={ringAriaLabel || undefined}
     >
       <div className="pn-st__main">
         {/* Sub-session disclosure arrow + child count */}
@@ -565,7 +601,7 @@ export const SessionListItem = React.memo(function SessionListItem({
             <div className="pn-st__metasec">
               <span className="pn-st__metalabel">Docs</span>
               <div className="pn-st__metacontent">
-                {docs.map((doc) => {
+                {openableDocs.map((doc) => {
                   const isDiagram = isDiagramDoc(doc);
                   const ext = doc.filePath.split(".").pop()?.toLowerCase() || "";
                   const isMarkdown = ["md", "mdx", "markdown"].includes(ext);
@@ -607,6 +643,20 @@ export const SessionListItem = React.memo(function SessionListItem({
             </div>
           </div>
         </div>
+      )}
+
+      {ringOverflow > 0 && (
+        <button
+          type="button"
+          className="spell-ring__overflow"
+          aria-label={`Show ${ringOverflow} more spells`}
+          onClick={(e) => {
+            e.stopPropagation();
+            useSpellbookStore.getState().openSpellbook({ scrollToSessionId: session.id });
+          }}
+        >
+          +{ringOverflow}
+        </button>
       )}
     </div>
   );

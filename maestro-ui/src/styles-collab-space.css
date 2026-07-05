@@ -1,0 +1,610 @@
+/* Collab Space Panel */
+
+.collabSpacePanel {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+.collabSpaceHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.collabSpaceUser,
+.collabSpaceRepo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary, #888);
+  flex-wrap: wrap;
+}
+
+.collabSpaceUserLabel,
+.collabSpaceRepoLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+  color: var(--text-muted, #8a93a3);
+}
+
+.collabSpaceUserEmail,
+.collabSpaceRepoValue {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-primary, #ddd);
+}
+
+.collabSpaceRepoEdit {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  align-items: center;
+}
+
+.collabSpaceActionRow {
+  display: flex;
+  gap: 8px;
+}
+
+.collabSpaceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.collabSpaceSectionTitle {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #8a93a3);
+  font-weight: 600;
+}
+
+.collabSpaceSectionEmpty {
+  font-size: 12px;
+  color: var(--text-muted, #8a93a3);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+.collabSpaceList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collabSpaceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.collabSpaceRow:hover {
+  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.05));
+  border-color: var(--border-default, rgba(255, 255, 255, 0.12));
+}
+
+.collabSpaceRowMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.collabSpaceRowName {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary, #ddd);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collabSpaceRowDescription {
+  font-size: 12px;
+  color: var(--text-secondary, #999);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collabSpaceRowMeta {
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+  margin-top: 4px;
+}
+
+.collabSpaceVisBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  background: var(--bg-overlay, rgba(255, 200, 100, 0.15));
+  color: var(--accent, #ffc864);
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+/* Buttons */
+
+.collabSpaceButton {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
+  color: var(--text-primary, #ddd);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+  white-space: nowrap;
+}
+
+.collabSpaceButton:hover:not(:disabled) {
+  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.2));
+}
+
+.collabSpaceButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.collabSpaceButtonPrimary {
+  background: var(--accent, #66ddaa);
+  color: var(--bg-primary, #111);
+  border-color: var(--accent, #66ddaa);
+  font-weight: 600;
+}
+
+.collabSpaceButtonPrimary:hover:not(:disabled) {
+  background: var(--accent-hover, #88eebb);
+  border-color: var(--accent-hover, #88eebb);
+}
+
+.collabSpaceTextButton {
+  background: transparent;
+  border: none;
+  color: var(--accent, #66ddaa);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px 6px;
+  text-decoration: underline;
+}
+
+.collabSpaceTextButton:hover {
+  color: var(--accent-hover, #88eebb);
+}
+
+/* Inputs */
+
+.collabSpaceInput {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg-input, rgba(0, 0, 0, 0.2));
+  color: var(--text-primary, #ddd);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.collabSpaceInput:focus {
+  outline: none;
+  border-color: var(--accent, #66ddaa);
+}
+
+.collabSpaceInput:disabled {
+  opacity: 0.6;
+}
+
+.collabSpaceInput[type="email"],
+.collabSpaceInput[type="password"] {
+  width: 100%;
+}
+
+textarea.collabSpaceInput {
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Forms */
+
+.collabSpaceForm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.collabSpaceField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collabSpaceFieldLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #8a93a3);
+}
+
+.collabSpaceVisRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary, #aaa);
+}
+
+.collabSpaceVisOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.collabSpaceFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.collabSpaceError {
+  font-size: 12px;
+  color: var(--space-error-fg, #ff8080);
+  background: var(--space-error-bg, rgba(255, 80, 80, 0.1));
+  border: 1px solid var(--space-error-border, rgba(255, 80, 80, 0.3));
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+/* Modal */
+
+.collabSpaceModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.collabSpaceModal {
+  background: var(--bg-primary, #1a1a1a);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  padding: 20px;
+  width: 90%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.collabSpaceModalTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #ddd);
+}
+
+/* Sign-in view */
+
+.collabSpaceSignInContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.collabSpaceSignInCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 320px;
+}
+
+.collabSpaceSignInTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #ddd);
+  text-align: center;
+}
+
+.collabSpaceSignInSubtitle {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.collabSpaceGoogleButton {
+  width: 100%;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.collabSpaceDivider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted, #8a93a3);
+  font-size: 11px;
+  text-transform: uppercase;
+  margin: 4px 0;
+}
+
+.collabSpaceDivider::before,
+.collabSpaceDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.collabSpaceSignInToggle {
+  align-self: center;
+}
+
+/* Empty / not configured state */
+
+.collabSpaceEmptyState {
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.collabSpaceEmptyTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #ddd);
+}
+
+.collabSpaceEmptyText {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  line-height: 1.5;
+}
+
+.collabSpaceEmptyText code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Row clickable + chevron */
+
+.collabSpaceRowClickable {
+  cursor: pointer;
+}
+
+.collabSpaceRowChevron {
+  color: var(--text-muted, #8a93a3);
+  font-size: 18px;
+  padding: 0 6px;
+}
+
+/* Space Detail */
+
+.collabSpaceDetail {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.collabSpaceDetailHeader {
+  display: flex;
+  align-items: center;
+}
+
+.collabSpaceDetailTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.collabSpaceDetailTitleMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.collabSpaceDetailName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #ddd);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collabSpaceDetailRepo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  margin-top: 2px;
+}
+
+.collabSpaceDetailDescription {
+  font-size: 13px;
+  color: var(--text-secondary, #aaa);
+  line-height: 1.5;
+}
+
+.collabSpaceDetailMeta {
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+}
+
+.collabSpaceMetaSep {
+  color: var(--text-muted, #8a93a3);
+}
+
+/* Tab bar inside detail */
+
+.collabSpaceTabBar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  margin-top: 4px;
+}
+
+.collabSpaceTabButton {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+}
+
+.collabSpaceTabButton:hover {
+  color: var(--text-primary, #ddd);
+}
+
+.collabSpaceTabButtonActive {
+  color: var(--text-primary, #ddd);
+  border-bottom-color: var(--accent, #66ddaa);
+}
+
+.collabSpaceTabCount {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.collabSpaceTabContent {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* When the messages tab mounts MessagingView, the tab content acts as the
+   flex container and gives the messaging UI a height to fill. The parent
+   .collabSpaceDetail also disables its own scroll so the timeline scrolls
+   internally rather than the whole panel. */
+.collabSpaceDetail:has(.messagingRoot) {
+  overflow: hidden;
+}
+
+/* Members list */
+
+.collabSpaceMembersList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collabSpaceMemberRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  border-radius: 6px;
+}
+
+.collabSpaceAvatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.collabSpaceAvatarFallback {
+  background: var(--accent, #66ddaa);
+  color: var(--bg-primary, #111);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.collabSpaceMemberMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.collabSpaceMemberName {
+  font-size: 13px;
+  color: var(--text-primary, #ddd);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collabSpaceMemberEmail {
+  font-size: 11px;
+  color: var(--text-muted, #8a93a3);
+  margin-top: 2px;
+}
+
+.collabSpaceOwnerBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  background: rgba(102, 221, 170, 0.15);
+  color: var(--accent, #66ddaa);
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+/* Placeholder content for messages / tasks tabs */
+
+.collabSpacePlaceholder {
+  padding: 24px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.collabSpacePlaceholderTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #aaa);
+}
+
+.collabSpacePlaceholderText {
+  font-size: 12px;
+  color: var(--text-muted, #8a93a3);
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0 auto;
+}

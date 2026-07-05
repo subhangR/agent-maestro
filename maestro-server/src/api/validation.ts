@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Request, Response, NextFunction } from 'express';
+import { ACTIONS_BY_EVENT } from '../types';
 
 // --- Reusable patterns ---
 
@@ -149,6 +150,7 @@ export const createTaskSchema = z.object({
   useWorktree: z.boolean().optional(),
   dueDate: z.string().optional(),
   clientRequestId: z.string().max(200).optional(),
+  spellIds: z.array(safeId).optional(),
 }).strict();
 
 export const updateTaskSchema = z.object({
@@ -171,6 +173,7 @@ export const updateTaskSchema = z.object({
   memberOverrides: z.record(safeId, memberLaunchOverrideSchema).optional(),
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
+  spellIds: z.array(safeId).optional(),
   dueDate: z.string().nullable().optional(),
 }).strict();
 
@@ -486,9 +489,16 @@ const spellEntityTypeSchema = z.enum([
 export const invokeSpellSchema = z.object({
   entityType: spellEntityTypeSchema,
   entityId: safeId,
-  spellName: z.string().min(1).max(100),
-  targetSessionId: safeId,
+  // CLI may send `null` to mean "default spell"; server treats that as 'send'.
+  spellName: z.string().min(1).max(100).nullable().optional(),
+  // Either targetSessionId (single) or targetSessionIds[] (multi, P2 forward-compat).
+  targetSessionId: safeId.optional(),
+  targetSessionIds: z.array(safeId).optional(),
+  // Match spellActivationSchema: clients may send `null` to mean "no invoker".
+  invokerSessionId: safeId.nullable().optional(),
   projectId: safeId,
+  // Loose passthrough for future per-spell args (CLI --args JSON).
+  args: z.record(z.string(), z.any()).optional(),
 }).strict();
 
 export const listSpellEntitiesQuerySchema = z.object({
@@ -515,6 +525,223 @@ export const updateCustomPromptSchema = z.object({
   content: longString.optional(),
   tags: z.array(z.string().max(50)).max(10).optional(),
   entityType: spellEntityTypeSchema.optional(),
+}).strict();
+
+// --- Spell entity (v2 — multi-rule, discriminated unions) ---
+
+const spellColorSchema = z.enum([
+  'amber', 'rose', 'violet', 'sky', 'emerald', 'fuchsia', 'lime', 'cyan', 'indigo',
+]);
+const spellActionTypeSchema = z.enum([
+  'inject-prompt', 'feed-context', 'run-command', 'continue-loop', 'notify-channel',
+]);
+const spellLoopTypeSchema = z.enum([
+  'single-shot', 'continue-until-done', 'plan-execute', 'critic-refine',
+]);
+const spellHookEventSchema = z.enum([
+  'PreToolUse', 'PostToolUse', 'UserPromptSubmit', 'Stop',
+  'SubagentStop', 'Notification', 'SessionStart', 'SessionEnd',
+]);
+/**
+ * Reject regular-expression patterns prone to catastrophic backtracking.
+ * The spell matcher runs `new RegExp(matcher).test(target)` on the hot hook
+ * dispatch path; a pathological pattern (e.g. `(a+)+$`) would stall the
+ * single-threaded Node event loop. Heuristic detection without an extra dep:
+ *   1. pattern must compile as a valid RegExp
+ *   2. reject nested quantifiers around groups: `(...+)+`, `(...*)*`, `(...+)*`, etc.
+ *   3. reject quantifier on a disjunction-with-overlap: `(a|a)+`, `(a|ab)+`
+ *   4. cap stars-of-stars constructs like `(a*)+`
+ * Patterns failing these checks are rare in practice; legitimate matchers
+ * (`Bash`, `Edit|Write`, `^src/.*\\.ts$`) all pass.
+ */
+function isSafeRegex(pattern: string): boolean {
+  try {
+    // eslint-disable-next-line no-new
+    new RegExp(pattern);
+  } catch {
+    return false;
+  }
+  // Nested quantifiers on a group: (X+)+ / (X*)* / (X+)* / (X*)+
+  if (/\([^()]*[+*]\)[+*?]/.test(pattern)) return false;
+  // Nested quantifier separated by a quantifier-friendly token, e.g. (a+){2,}
+  if (/\([^()]*[+*]\)\{\d+,?\d*\}/.test(pattern)) return false;
+  // Alternation where one branch is a prefix of another, quantified: (a|ab)+
+  const altMatch = pattern.match(/\(([^()|]+)\|([^()|]+)\)[+*]/);
+  if (altMatch) {
+    const [, left, right] = altMatch;
+    if (left === right || left.startsWith(right) || right.startsWith(left)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Trigger — discriminated union on `type`. `schedule` is schema-ready but a
+// rule that carries one is REJECTED at save in v1 (see spellRuleSchema below).
+const spellHookTriggerSchema = z.object({
+  type: z.literal('hook'),
+  hookEvent: spellHookEventSchema,
+  matcher: z
+    .string()
+    .max(500)
+    .refine(isSafeRegex, {
+      message: 'matcher must be a valid, non-backtracking regular expression',
+    })
+    .optional(),
+}).strict();
+
+const spellScheduleTriggerSchema = z.object({
+  type: z.literal('schedule'),
+  cron: z.string().max(200).optional(),
+  intervalMs: z.number().int().positive().max(2_147_483_647).optional(),
+}).strict();
+
+const spellTriggerSchema = z.discriminatedUnion('type', [
+  spellHookTriggerSchema,
+  spellScheduleTriggerSchema,
+]);
+
+// Action config — discriminated union on `type` (PI-1). Each variant carries
+// and requires only its own fields; run-command exposes no timeoutMs (async).
+const spellActionConfigSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('inject-prompt'),
+    prompt: z.string().min(1).max(10_000),
+  }).strict(),
+  z.object({
+    type: z.literal('feed-context'),
+    prompt: z.string().min(1).max(10_000),
+  }).strict(),
+  z.object({
+    type: z.literal('run-command'),
+    command: z.string().min(1).max(1_000),
+    args: z.array(z.string().max(2_000)).max(50).optional(),
+    cwd: z.string().max(1_000).optional(),
+    feedOutput: z.boolean().optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('continue-loop'),
+    loopType: spellLoopTypeSchema.optional(),
+    maxIterations: z.number().int().min(1).max(100).optional(),
+  }).strict(),
+  z.object({
+    type: z.literal('notify-channel'),
+    // C3: `channel` dropped — notify-channel is in-app only now. `level` drives
+    // the toast/activity severity styling.
+    message: z.string().max(2_000).optional(),
+    level: z.enum(['info', 'success', 'warn']).optional(),
+  }).strict(),
+]);
+
+// A single { trigger → action } rule. Cross-field checks (§11.4):
+//   1. reject `schedule` triggers in v1 (no engine yet — no dead config accrues)
+//   2. action.type must be allowed for the hook event (ACTIONS_BY_EVENT matrix)
+const spellRuleSchema = z.object({
+  id: safeId.optional(),
+  label: z.string().max(100).optional(),
+  enabled: z.boolean(),
+  trigger: spellTriggerSchema,
+  action: spellActionConfigSchema,
+}).strict().superRefine((rule, ctx) => {
+  if (rule.trigger.type === 'schedule') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['trigger', 'type'],
+      message: 'Scheduled triggers are not available yet',
+    });
+    return;
+  }
+  const allowed = ACTIONS_BY_EVENT[rule.trigger.hookEvent] ?? [];
+  if (!allowed.includes(rule.action.type)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['action', 'type'],
+      message: `Action "${rule.action.type}" is not allowed for hook event "${rule.trigger.hookEvent}"`,
+    });
+  }
+});
+
+export const createSpellSchema = z.object({
+  name: shortString,
+  description: z.string().max(1000),
+  icon: z.string().max(10).optional(),
+  color: spellColorSchema,
+  rules: z.array(spellRuleSchema).min(1).max(20),
+}).strict();
+
+export const updateSpellSchema = z.object({
+  name: shortString.optional(),
+  description: z.string().max(1000).optional(),
+  icon: z.string().max(10).optional(),
+  color: spellColorSchema.optional(),
+  rules: z.array(spellRuleSchema).min(1).max(20).optional(),
+}).strict();
+
+export const spellActivationSchema = z.object({
+  targetSessionIds: z.array(safeId).min(1),
+  // UI always sends `invokerSessionId: null` for UI-cast (no invoker session). The
+  // route handler already does `invokerSessionId ?? null`, so the schema accepts
+  // both `null` and omitted/string to keep the wire contract aligned.
+  invokerSessionId: safeId.nullable().optional(),
+  // C1 cast seam. single/broadcast behave identically; coordinate additionally
+  // wires targets into an Ensemble. ensembleName only meaningful with coordinate.
+  castMode: z.enum(['single', 'broadcast', 'coordinate']).optional(),
+  ensembleName: shortString.optional(),
+}).strict();
+
+// C4: enable/disable an active spell (or one of its rules) in place.
+export const toggleSpellSchema = z.object({
+  sessionId: z.string().min(1),
+  enabled: z.boolean(),
+  ruleId: z.string().optional(),
+}).strict();
+
+// D8/FR-6.6: reset loop counter(s) for a spell active on a session.
+export const resetLoopSchema = z.object({
+  sessionId: z.string().min(1),
+  ruleId: z.string().optional(),
+}).strict();
+
+// --- Hook dispatch (P2) ---
+
+export const hookDispatchSchema = z.object({
+  sessionId: safeId,
+  event: spellHookEventSchema,
+  // Hook payloads vary by event (tool_name, file_path, message, …). Accept
+  // arbitrary JSON; the dispatcher pulls out the fields it cares about.
+  payload: z.record(z.string(), z.any()).optional(),
+  // C2: side-effect-free probe. Runs full matching + composition, executes
+  // nothing, and returns a per-rule match report. Bypasses the self-only guard.
+  dryRun: z.boolean().optional(),
+}).strict();
+
+// --- Ensemble (P4) ---
+
+export const createEnsembleSchema = z.object({
+  name: shortString,
+  color: spellColorSchema,
+  objective: z.string().min(1).max(2000),
+  memberSessionIds: z.array(safeId).min(1),
+  leaderSessionId: safeId.nullable().optional(),
+  spellId: safeId,
+  createdBy: safeId.nullable().optional(),
+}).strict();
+
+export const updateEnsembleSchema = z.object({
+  name: shortString.optional(),
+  color: spellColorSchema.optional(),
+  objective: z.string().min(1).max(2000).optional(),
+  leaderSessionId: safeId.nullable().optional(),
+}).strict();
+
+export const ensembleMemberSchema = z.object({
+  sessionId: safeId,
+  castBy: safeId.nullable().optional(),
+}).strict();
+
+export const ensembleMessageSchema = z.object({
+  content: z.string().min(1).max(50000),
+  senderSessionId: safeId.nullable().optional(),
 }).strict();
 
 // --- Alexa / Voice schemas ---

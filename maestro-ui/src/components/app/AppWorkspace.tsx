@@ -20,15 +20,82 @@ import { IS_TAURI } from "../../platform";
 import { TerminalStrip } from "../session-log/TerminalStrip";
 import { ModeChip } from "../maestro/ModeChip";
 import { isCoordinatorRole } from "../../utils/coordinatorRole";
-import { isWhiteboardId, isFileId } from "../../app/types/space";
+import { isWhiteboardId, isFileId, isCollabId, collabActiveIdToFirestoreId } from "../../app/types/space";
 import type { WhiteboardSpace, FileSpace } from "../../app/types/space";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { useMobilePanelStore } from "../../stores/useMobilePanelStore";
 const LazyExcalidrawBoard = React.lazy(() => import("../ExcalidrawBoard").then(m => ({ default: m.ExcalidrawBoard })));
+const LazySpaceWindow = React.lazy(() => import("../space-window/SpaceWindow").then(m => ({ default: m.SpaceWindow })));
 
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
 import { SessionStatsView } from "../maestro/SessionStatsView";
+import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../../utils/spellRings";
+import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
+import { useSpellbookStore } from "../../stores/useSpellbookStore";
+import { useEnsembleStore } from "../../stores/useEnsembleStore";
+import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
+
+/**
+ * Wraps a .terminalContainer so it can render concentric spell rings for the
+ * underlying maestro session. Composes additively with `coordinator-glow`
+ * (UI_SPEC §7) and mounts the +N overflow pill when applicable.
+ */
+function TerminalRingContainer({
+  maestroSessionId,
+  className,
+  dataTerminalId,
+  children,
+}: {
+  maestroSessionId: string | null | undefined;
+  className: string;
+  dataTerminalId: string;
+  children: React.ReactNode;
+}) {
+  const activeSpells = useActiveSpellsForSession(maestroSessionId ?? null);
+  // Subscribe to ensembles so the outermost ring color tracks ensemble updates.
+  const ensembles = useEnsembleStore((s) => s.ensembles);
+  const ringSpecs = useMemo<RingSpec[]>(
+    () => buildRingSpecsFromActive(activeSpells),
+    [activeSpells, ensembles],
+  );
+  const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
+  const hasRings = ringAttrs['data-spell-rings'] > 0;
+  const overflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+  const justCast = useSpellCastPulse(maestroSessionId ?? null);
+  const finalClassName = hasRings
+    ? `${className} spell-ring${justCast ? ' spell-ring--just-cast' : ''}`
+    : className;
+  const ringAriaLabel = spellRingAriaLabel(`Session terminal`, activeSpells);
+  return (
+    <div
+      className={finalClassName}
+      data-terminal-id={dataTerminalId}
+      style={ringAttrs.style}
+      data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
+      data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
+      data-spell-ring-overflow={overflow || undefined}
+      aria-label={ringAriaLabel || undefined}
+    >
+      {children}
+      {overflow > 0 && (
+        <button
+          type="button"
+          className="spell-ring__overflow"
+          aria-label={`Show ${overflow} more spells`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (maestroSessionId) {
+              useSpellbookStore.getState().openSpellbook({ scrollToSessionId: maestroSessionId });
+            }
+          }}
+        >
+          +{overflow}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export interface AppWorkspaceProps {
   registry: MutableRefObject<TerminalRegistry>;
@@ -98,8 +165,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   // yield. This is reversible — clicking any tab calls setActiveId, which clears
   // inspectedSessionId (see useSessionStore.setActiveId).
   const hasInspectedSession = Boolean(inspectedMaestroSession);
+  const isActiveCollab = activeId ? isCollabId(activeId) : false;
+  const activeCollabSpaceId = isActiveCollab && activeId ? collabActiveIdToFirestoreId(activeId) : null;
   const isActiveSession =
-    hasInspectedSession || (!isActiveWhiteboard && !isActiveFile);
+    hasInspectedSession || (!isActiveWhiteboard && !isActiveFile && !isActiveCollab);
 
   const activeLogAgentTool = (() => {
     if (!active?.maestroSessionId) return active?.effectId ?? null;
@@ -313,6 +382,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
       )}
 
 
+      {/* Inline collab space — Firebase-backed collaboration room */}
+      {isActiveCollab && activeCollabSpaceId && (
+        <ErrorBoundary name="CollabSpace">
+          <Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading space…</div>}>
+            <LazySpaceWindow key={activeCollabSpaceId} spaceId={activeCollabSpaceId} inline />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+
       {/* Inline file space — full-width code editor */}
       {!hasInspectedSession && isActiveFile && activeSpace?.type === "file" && (
         <ErrorBoundary name="FileEditor">
@@ -377,12 +455,13 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             toggling stats ↔ terminal never unmounts and re-creates every live PTY.
             That remount was the long freeze on every stats → terminal switch. */}
         {inspectedMaestroSession && (
-          <div
+          <TerminalRingContainer
+            maestroSessionId={inspectedMaestroSession.id}
             className={`terminalContainer ${activeIsCoordinator ? "coordinator-glow" : ""}`}
-            data-terminal-id={`maestro:${inspectedMaestroSession.id}`}
+            dataTerminalId={`maestro:${inspectedMaestroSession.id}`}
           >
             <SessionStatsView session={inspectedMaestroSession} />
-          </div>
+          </TerminalRingContainer>
         )}
         {/* Hero shows when no terminal is actually visible: no sessions, or
             activeId is stale/null. Suppressed while inspecting a stats view. */}
@@ -424,9 +503,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
               // map stays mounted underneath without painting over the stats view.
               const visible = s.id === activeId && !inspectedMaestroSession;
               return (
-                <div
+                <TerminalRingContainer
                   key={s.id}
-                  data-terminal-id={s.id}
+                  maestroSessionId={s.maestroSessionId ?? null}
+                  dataTerminalId={s.id}
                   className={`terminalContainer ${visible ? "" : "terminalHidden"} ${visible && activeIsCoordinator ? "coordinator-glow" : ""}`}
                 >
                   {inactiveMaestroSession ? (
@@ -444,7 +524,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                       pendingData={pendingData}
                     />
                   )}
-                </div>
+                </TerminalRingContainer>
               );
             })}
 

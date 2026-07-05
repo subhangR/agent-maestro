@@ -516,6 +516,9 @@ class SoundManager {
   // Team member instrument registry — maps teamMemberId → InstrumentType
   private teamMemberInstruments: Map<string, InstrumentType> = new Map();
 
+  // Per-session random instrument — maps sessionId → InstrumentType (assigned at session start)
+  private sessionInstruments: Map<string, InstrumentType> = new Map();
+
   // Debounce map to prevent sound spam
   private lastPlayedTime: Map<string, number> = new Map();
   private debounceMs = 150;
@@ -753,6 +756,47 @@ class SoundManager {
    */
   public getTeamMemberInstrument(id: string): InstrumentType | undefined {
     return this.teamMemberInstruments.get(id);
+  }
+
+  // ── Per-Session Random Instrument ──
+  //
+  // Each session is assigned one random instrument when it starts. All of that
+  // session's sounds share this single "voice", taking precedence over both the
+  // team member ensemble and the project/global instrument.
+
+  /**
+   * Get the random instrument for a session, assigning one on first access.
+   */
+  public getOrAssignSessionInstrument(sessionId: string): InstrumentType {
+    const existing = this.sessionInstruments.get(sessionId);
+    if (existing) return existing;
+    const pool: InstrumentType[] = ['piano', 'guitar', 'violin', 'trumpet', 'drums'];
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    this.sessionInstruments.set(sessionId, chosen);
+    return chosen;
+  }
+
+  public getSessionInstrument(sessionId: string): InstrumentType | undefined {
+    return this.sessionInstruments.get(sessionId);
+  }
+
+  public clearSessionInstrument(sessionId: string): void {
+    this.sessionInstruments.delete(sessionId);
+  }
+
+  /**
+   * Play a session event using the session's randomly-assigned instrument.
+   */
+  public async playSessionInstrumentSound(eventType: EventSoundType, sessionId: string): Promise<void> {
+    if (!this.config.enabled) return;
+    if (this.shouldDebounce(eventType)) return;
+
+    const category = EVENT_SOUND_MAP[eventType];
+    if (!category || !this.isCategoryEffectivelyEnabled(category)) return;
+
+    const instrument = this.getOrAssignSessionInstrument(sessionId);
+    const notes = this.getNotesForCategory(category, instrument);
+    if (notes.length) await this.playNotes(notes, instrument);
   }
 
   // ── Sound Playback ──

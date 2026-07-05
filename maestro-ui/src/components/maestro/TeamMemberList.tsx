@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { TeamMember, AgentTool } from "../../app/types/maestro";
 import { AGENT_TOOL_LABELS, normalizeModelId } from "../../app/constants/agentTools";
 import { AgentLogo } from "./AgentChip";
 import { Icon } from "./redesign/kit";
 import { useMaestroStore } from "../../stores/useMaestroStore";
+import { ShareToSpaceModal } from "../share/ShareToSpaceModal";
 
 type TeamMemberListProps = {
     teamMembers: TeamMember[];
@@ -71,6 +73,7 @@ function TeamMemberRow({
     setLoadingAction: (v: string | null) => void;
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const isLoading = (action: string) => loadingAction === `${action}:${member.id}`;
 
@@ -231,6 +234,20 @@ function TeamMemberRow({
 
                         {!isArchived && (
                             <button type="button"
+                                className="terminalShareBtn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowShareModal(true);
+                                }}
+                                title="Share this team member to a Collab Space"
+                            >
+                                <span className="terminalShareBtn__icon" aria-hidden="true">↗</span>
+                                <span className="terminalShareBtn__label">Share</span>
+                            </button>
+                        )}
+
+                        {!isArchived && (
+                            <button type="button"
                                 className="pn-btn pn-btn--ghost"
                                 style={{ height: 28 }}
                                 onClick={handleArchive}
@@ -262,6 +279,29 @@ function TeamMemberRow({
                         )}
                     </div>
                 </div>
+            )}
+            {showShareModal && createPortal(
+                <ShareToSpaceModal
+                    payload={{
+                        kind: "team-member",
+                        entityLabel: member.name,
+                        data: {
+                            name: member.name,
+                            role: member.role,
+                            identity: member.identity,
+                            avatar: member.avatar ?? null,
+                            model: member.model ?? null,
+                            agentTool: member.agentTool ?? null,
+                            mode: member.mode ?? null,
+                            skillIds: member.skillIds ?? [],
+                            commandPermissions: member.commandPermissions ?? {},
+                            sourceTeamMemberId: member.id,
+                            sourceProjectId: member.projectId,
+                        },
+                    }}
+                    onClose={() => setShowShareModal(false)}
+                />,
+                document.body
             )}
         </div>
     );

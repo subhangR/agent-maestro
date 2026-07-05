@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Brand" name="Iconography" subtitle="Lucide stroke icons mapped to product nouns" viewport="700x210" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<script src="https://unpkg.com/lucide@0.456.0/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); padding: 22px 24px; }
+  .grid { display:grid; grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .cell { display:flex; flex-direction: column; align-items:center; gap: 7px; padding: 11px 4px; background: var(--pn-card); border: 1px solid var(--pn-line); border-radius: var(--pn-r-sm); }
+  .cell svg { width: 20px; height: 20px; stroke-width: 1.75; color: var(--pn-ink-2); }
+  .cell.on svg { color: var(--pn-brand); }
+  .cap { font-family: var(--pn-mono); font-size: 8.5px; color: var(--pn-ink-4); letter-spacing: 0.02em; }
+  .note { display:block; margin-top: 14px; }
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="cell on"><i data-lucide="list-checks"></i><span class="cap">tasks</span></div>
+    <div class="cell"><i data-lucide="users"></i><span class="cap">members</span></div>
+    <div class="cell"><i data-lucide="git-merge"></i><span class="cap">teams</span></div>
+    <div class="cell"><i data-lucide="sparkles"></i><span class="cap">skills</span></div>
+    <div class="cell"><i data-lucide="folder-tree"></i><span class="cap">files</span></div>
+    <div class="cell"><i data-lucide="terminal"></i><span class="cap">terminal</span></div>
+    <div class="cell"><i data-lucide="pen-tool"></i><span class="cap">board</span></div>
+    <div class="cell"><i data-lucide="play"></i><span class="cap">run</span></div>
+    <div class="cell"><i data-lucide="git-branch"></i><span class="cap">worktree</span></div>
+    <div class="cell"><i data-lucide="circle-dot"></i><span class="cap">status</span></div>
+    <div class="cell"><i data-lucide="layout-grid"></i><span class="cap">board</span></div>
+    <div class="cell"><i data-lucide="settings-2"></i><span class="cap">settings</span></div>
+    <div class="cell"><i data-lucide="command"></i><span class="cap">palette</span></div>
+    <div class="cell"><i data-lucide="bot"></i><span class="cap">agent</span></div>
+    <div class="cell"><i data-lucide="square-pen"></i><span class="cap">doc</span></div>
+    <div class="cell"><i data-lucide="plus"></i><span class="cap">new</span></div>
+  </div>
+  <span class="note t-eyebrow">Lucide · 1.75 stroke · inherits color · brass when active</span>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

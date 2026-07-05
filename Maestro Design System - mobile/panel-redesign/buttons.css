@@ -1,0 +1,86 @@
+/* ==========================================================================
+   MAESTRO · RUN + COORDINATE BUTTONS
+   The two ways to start work. Run = a single worker executes (green / go).
+   Coordinate = an orchestrator spawns a team (brass / conductor).
+   Stylish but simple: a hairline button, an accent icon-chip that fills on
+   hover, the play nudges / the spawn-dots fan out. Load on top of theme.css.
+   ========================================================================== */
+
+.pn-run2 {
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 42px; padding: 0 16px 0 7px;
+  background: var(--pn-card); color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2); border-radius: var(--pn-r-md);
+  font-family: var(--pn-ui); font-size: 13.5px; font-weight: 600; letter-spacing: -0.005em;
+  cursor: pointer; position: relative; white-space: nowrap;
+  transition: border-color 180ms cubic-bezier(0.2,0.8,0.2,1), box-shadow 180ms, transform 120ms, background 180ms;
+}
+.pn-run2:hover { box-shadow: var(--pn-sh-md); transform: translateY(-1px); }
+.pn-run2:active { transform: translateY(0); box-shadow: var(--pn-sh-sm); }
+
+/* accent icon chip */
+.pn-run2__chip {
+  width: 28px; height: 28px; flex: 0 0 auto; border-radius: 8px;
+  display: grid; place-items: center; position: relative; overflow: hidden;
+  transition: background 200ms, color 200ms, box-shadow 200ms;
+}
+.pn-run2__chip svg { width: 16px; height: 16px; position: relative; z-index: 1; }
+.pn-run2__label { display: inline-flex; align-items: baseline; gap: 7px; }
+.pn-run2__sub { font-family: var(--pn-mono); font-size: 10px; font-weight: 600; color: var(--pn-ink-4); letter-spacing: 0.02em; }
+.pn-run2__kbd { font-family: var(--pn-mono); font-size: 10px; font-weight: 600; color: var(--pn-ink-4); border: 1px solid var(--pn-line-2); border-radius: 4px; padding: 0 4px; line-height: 15px; margin-left: 2px; }
+
+/* ---- RUN (green / go) ---- */
+.pn-run2--run .pn-run2__chip { background: var(--pn-run-soft); color: var(--pn-run); }
+.pn-run2--run .pn-run2__chip svg { transition: transform 200ms cubic-bezier(0.2,0.8,0.2,1); }
+.pn-run2--run:hover { border-color: var(--pn-run); }
+.pn-run2--run:hover .pn-run2__chip { background: var(--pn-run); color: #fff; box-shadow: 0 2px 8px rgba(62,142,90,0.36); }
+.pn-run2--run:hover .pn-run2__chip svg { transform: translateX(2px); }
+
+/* ---- COORDINATE (brass / conductor) ---- */
+.pn-run2--coord .pn-run2__chip { background: var(--pn-brand-soft); color: var(--pn-brand); }
+.pn-run2--coord:hover { border-color: var(--pn-brand); }
+.pn-run2--coord:hover .pn-run2__chip { background: var(--pn-brand); color: #fff; box-shadow: 0 2px 8px rgba(178,106,43,0.36); }
+/* spawn dots fan out on hover */
+.pn-spawn__node { transition: transform 240ms cubic-bezier(0.2,0.9,0.2,1), opacity 200ms; transform-origin: 4px 8px; }
+.pn-run2--coord:hover .pn-spawn__n1 { transform: translateY(-3.4px); }
+.pn-run2--coord:hover .pn-spawn__n3 { transform: translateY(3.4px); }
+.pn-run2--coord:hover .pn-spawn__line { stroke-dashoffset: 0; }
+.pn-spawn__line { stroke-dasharray: 7; stroke-dashoffset: 0; transition: stroke-dashoffset 240ms; }
+
+/* ---- solid (primary) variant ---- */
+.pn-run2--solid { color: #fff; border-color: transparent; padding-left: 14px; }
+.pn-run2--solid .pn-run2__chip { width: auto; height: auto; background: transparent !important; box-shadow: none !important; }
+.pn-run2--run.pn-run2--solid { background: var(--pn-run); }
+.pn-run2--run.pn-run2--solid .pn-run2__chip { color: #fff; }
+.pn-run2--run.pn-run2--solid:hover { background: var(--pn-run); border-color: transparent; filter: brightness(1.05); }
+.pn-run2--coord.pn-run2--solid { background: var(--pn-brand); }
+.pn-run2--coord.pn-run2--solid .pn-run2__chip { color: #fff; }
+.pn-run2--coord.pn-run2--solid:hover { background: var(--pn-brand); border-color: transparent; filter: brightness(1.05); }
+.pn-run2--solid .pn-run2__sub, .pn-run2--solid .pn-run2__kbd { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.28); }
+
+/* ---- compact (in-row) variant ---- */
+.pn-run2--sm { height: 30px; padding: 0 11px 0 5px; font-size: 12px; gap: 7px; border-radius: var(--pn-r-sm); }
+.pn-run2--sm .pn-run2__chip { width: 22px; height: 22px; border-radius: 6px; }
+.pn-run2--sm .pn-run2__chip svg { width: 13px; height: 13px; }
+
+/* ---- split run (avatar + caret), mirrors SplitPlayButton ---- */
+.pn-split { display: inline-flex; align-items: stretch; height: 42px; border-radius: var(--pn-r-md); border: 1px solid var(--pn-line-2); background: var(--pn-card); overflow: hidden; transition: border-color 180ms, box-shadow 180ms; }
+.pn-split:hover { border-color: var(--pn-run); box-shadow: var(--pn-sh-md); }
+.pn-split__play { display: inline-flex; align-items: center; gap: 9px; padding: 0 14px 0 7px; background: transparent; border: none; cursor: pointer; font-family: var(--pn-ui); font-size: 13.5px; font-weight: 600; color: var(--pn-ink); white-space: nowrap; }
+.pn-split__av { width: 28px; height: 28px; flex: 0 0 auto; border-radius: 8px; display: grid; place-items: center; font-size: 15px; background: var(--pn-active); }
+.pn-split__div { width: 1px; align-self: stretch; background: var(--pn-line-2); margin: 6px 0; }
+.pn-split__caret { width: 34px; display: grid; place-items: center; background: transparent; border: none; cursor: pointer; color: var(--pn-ink-3); transition: background 140ms, color 140ms; }
+.pn-split__caret:hover { background: var(--pn-hover); color: var(--pn-ink); }
+.pn-split__caret svg { width: 14px; height: 14px; }
+
+/* showcase scaffold */
+.pn-b2-stage { min-height: 100vh; background: var(--pn-paper); padding: 40px; font-family: var(--pn-ui); color: var(--pn-ink); }
+.pn-b2-h { font-family: var(--pn-serif); font-size: 27px; font-weight: 500; letter-spacing: -0.01em; margin: 0 0 4px; }
+.pn-b2-sub { color: var(--pn-ink-2); font-size: 14px; margin: 0 0 30px; max-width: 660px; line-height: 1.5; }
+.pn-b2-cap { font-family: var(--pn-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pn-ink-3); margin: 30px 0 12px; }
+.pn-b2-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.pn-b2-note { font-size: 12.5px; color: var(--pn-ink-3); margin-top: 9px; }
+.pn-b2-ctx { background: var(--pn-surface); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); padding: 14px 16px; display: flex; align-items: center; gap: 12px; max-width: 520px; }
+.pn-b2-ctx__t { flex: 1; }
+.pn-b2-ctx__title { font-size: 13.5px; font-weight: 600; }
+.pn-b2-ctx__sub { font-size: 12px; color: var(--pn-ink-3); margin-top: 2px; }

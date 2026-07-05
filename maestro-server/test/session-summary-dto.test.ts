@@ -56,6 +56,7 @@ async function buildApp(dataDir: string) {
     eventBus: container.eventBus,
     config,
     ptyHostService,
+    spellRepo: {} as any,
   });
 
   const app = express();

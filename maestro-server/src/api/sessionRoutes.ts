@@ -22,6 +22,7 @@ import { AppError } from '../domain/common/Errors';
 import { SessionStatus, AgentTool, AgentMode, TeamMember, TeamMemberSnapshot, MemberLaunchOverride, LaunchConfig, isCoordinatorMode, normalizeMode, normalizeModelId } from '../types';
 import { ITeamMemberRepository } from '../domain/repositories/ITeamMemberRepository';
 import { IModelProfileRepository } from '../domain/repositories/IModelProfileRepository';
+import { ISpellRepository } from '../domain/repositories/ISpellRepository';
 import { SessionFilter } from '../domain/repositories/ISessionRepository';
 import { handleRouteError } from './middleware/errorHandler';
 import {
@@ -496,6 +497,7 @@ interface SessionRouteDependencies {
   taskRepo: ITaskRepository;
   teamMemberRepo: ITeamMemberRepository;
   modelProfileRepo: IModelProfileRepository;
+  spellRepo: ISpellRepository;
   eventBus: IEventBus;
   config: Config;
   ptyHostService: PtyHostService;
@@ -505,7 +507,7 @@ interface SessionRouteDependencies {
  * Create session routes using the SessionService.
  */
 export function createSessionRoutes(deps: SessionRouteDependencies) {
-  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config, ptyHostService } = deps;
+  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, spellRepo, eventBus, config, ptyHostService } = deps;
   const gitService = new GitService();
   const router = express.Router();
 
@@ -1448,9 +1450,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
   // Spawn session (complex endpoint - uses CLI for manifest generation)
   router.post('/sessions/spawn', validateBody(spawnSessionSchema), async (req: Request, res: Response) => {
     try {
-      // SPAWN GATE: when a session spawns another session, the sender must be a
-      // coordinator-role session. UI-initiated spawns (spawnSource === 'ui') are
-      // user-driven and have no sender session, so they bypass this gate.
+      // Any session may spawn another session — there is no coordinator-role
+      // gate. For session-initiated spawns we still resolve the sender so the
+      // child can be wired to its parent (parentSessionId/projectId fallback).
       const senderSessionId = req.headers['x-session-id'] as string | undefined;
       const isSessionSpawn = req.body?.spawnSource === 'session';
       let senderSession: any = null;
@@ -1471,16 +1473,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             error: true,
             code: 'sender_session_not_found',
             message: `Sender session ${senderSessionId} not found`,
-          });
-        }
-
-        const senderMode: AgentMode = (senderSession.metadata?.mode as AgentMode) || 'worker';
-        const senderRole = isCoordinatorMode(senderMode) ? 'coordinator' : 'worker';
-        if (senderRole !== 'coordinator') {
-          return res.status(403).json({
-            error: true,
-            code: 'spawn_requires_coordinator',
-            message: 'Spawning requires coordinator mode. Run `maestro coordinator enable` first.',
           });
         }
       } else if (senderSessionId) {
@@ -2078,6 +2070,60 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         });
         manifestPath = result.manifestPath;
         manifest = result.manifest;
+
+        // P5: Populate manifest.spells from Task.spellIds so the CLI's
+        // spell-auto-activator (worker-init / orchestrator-init) can fire each
+        // task-attached spell at session start. The CLI's manifest generator
+        // doesn't know about spells; the server owns Spell + Task state, so we
+        // resolve here and patch the on-disk manifest.
+        try {
+          const uniqueSpellIds: string[] = [];
+          const seen = new Set<string>();
+          for (const task of verifiedTasks) {
+            const ids = (task as any)?.spellIds as string[] | undefined;
+            if (!Array.isArray(ids)) continue;
+            for (const id of ids) {
+              if (typeof id === 'string' && id && !seen.has(id)) {
+                seen.add(id);
+                uniqueSpellIds.push(id);
+              }
+            }
+          }
+          if (uniqueSpellIds.length > 0) {
+            // The CLI auto-activator only needs id + display fields; it activates
+            // by id and the server re-reads the full rules at dispatch time.
+            const resolvedSpells: Array<{
+              id: string;
+              name: string;
+              description?: string;
+              icon?: string;
+              color?: string;
+            }> = [];
+            for (const id of uniqueSpellIds) {
+              try {
+                const spell = await spellRepo.findById(id);
+                if (!spell) continue;
+                resolvedSpells.push({
+                  id: spell.id,
+                  name: spell.name,
+                  description: spell.description,
+                  icon: spell.icon,
+                  color: spell.color,
+                });
+              } catch {
+                // Missing/broken spell: skip silently so spawn isn't blocked.
+              }
+            }
+            if (resolvedSpells.length > 0) {
+              manifest.spells = resolvedSpells;
+              await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+            }
+          }
+        } catch (spellInjectErr: unknown) {
+          // Non-fatal: a broken spell-injection step must not block spawn.
+          const msg = spellInjectErr instanceof Error ? spellInjectErr.message : String(spellInjectErr);
+          console.warn('[spawn] Failed to inject spells into manifest:', msg);
+        }
 
       } catch (manifestError: unknown) {
         const msg = manifestError instanceof Error ? manifestError.message : 'Unknown error';

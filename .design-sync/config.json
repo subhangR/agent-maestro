@@ -1,0 +1,18 @@
+{
+  "projectId": "2346606b-866b-406f-b412-fcdc7baf69c6",
+  "shape": "package",
+  "pkg": "maestro-mobile-ds",
+  "globalName": "MaestroMobile",
+  "buildCmd": "cd maestro-mobile/claude-design && npm run build",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": "dist/index.css",
+  "extraFonts": ["fonts.css"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "PhoneFrame": { "cardMode": "single", "viewport": "440x900" },
+    "Divider": { "cardMode": "column" },
+    "Input": { "cardMode": "column" },
+    "SessionCard": { "cardMode": "column" }
+  }
+}

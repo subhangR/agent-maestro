@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Search & Inputs" subtitle="Search field, text input, filter chips — hairline borders" viewport="700x250" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<script src="https://unpkg.com/lucide@0.456.0/dist/umd/lucide.min.js"></script>
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 24px 26px; color: var(--pn-ink); }
+  .lbl { font-family: var(--pn-mono); font-size: 9.5px; color: var(--pn-ink-4); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 8px; }
+  .lbl + * + .lbl, .field + .lbl { margin-top: 16px; }
+  .field { display: flex; align-items: center; gap: 8px; padding: 8px 11px; background: var(--pn-card); border: 1px solid var(--pn-line); border-radius: var(--pn-r-sm); }
+  .field svg { width: 15px; height: 15px; color: var(--pn-ink-4); }
+  .field input { flex: 1; border: none; outline: none; background: transparent; font-family: var(--pn-ui); font-size: 13px; color: var(--pn-ink); }
+  .field input::placeholder { color: var(--pn-ink-4); }
+  .field--focus { border-color: var(--pn-brand); box-shadow: 0 0 0 3px var(--pn-brand-soft); }
+  .filters { display: flex; gap: 7px; flex-wrap: wrap; }
+  .filter { font-size: 11.5px; font-weight: 500; color: var(--pn-ink-3); border: 1px solid var(--pn-line); border-radius: var(--pn-r-pill); padding: 4px 11px; }
+  .filter--active { color: var(--pn-ink); border-color: var(--pn-ink); background: var(--pn-active); }
+</style>
+</head>
+<body>
+  <p class="lbl">Search</p>
+  <div class="field"><i data-lucide="search"></i><input placeholder="Search tasks" value=""></div>
+  <p class="lbl">Text input · focused</p>
+  <div class="field field--focus"><input value="Build the auth system"></div>
+  <p class="lbl">Filter chips</p>
+  <div class="filters">
+    <span class="filter filter--active">All</span>
+    <span class="filter">High</span>
+    <span class="filter">Mine</span>
+    <span class="filter">Running</span>
+  </div>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
