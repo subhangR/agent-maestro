@@ -211,6 +211,20 @@ export function normalizeMode(mode: string, hasCoordinator?: boolean): AgentMode
   return mode as AgentMode;
 }
 
+// Retired model IDs mapped to active replacements. Currently empty — Claude
+// Fable 5 is a live model again. Keep this map (and normalizeModelId) for
+// future retirements. Keep in sync with maestro-cli (types/manifest.ts) and
+// maestro-ui (constants/agentTools.ts).
+export const LEGACY_MODEL_ALIASES: Record<string, string> = {};
+
+/** Normalize a (possibly retired) model id to its active replacement. */
+export function normalizeModelId(model: string): string;
+export function normalizeModelId(model: string | undefined): string | undefined;
+export function normalizeModelId(model: string | undefined): string | undefined {
+  if (!model) return model;
+  return LEGACY_MODEL_ALIASES[model] ?? model;
+}
+
 // Per-member launch override for team launch configuration
 export interface MemberLaunchOverride {
   launchConfig?: LaunchConfig;

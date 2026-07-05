@@ -19,7 +19,7 @@ type TaskModalFooterProps = {
     useWorktree: boolean;
     onUseWorktreeChange: (value: boolean) => void;
     onClose: () => void;
-    onSave: () => void;
+    onSave: () => Promise<void>;
     onSubmit: (startImmediately: boolean) => void;
     onWorkOn?: () => void;
     showLaunchConfig: boolean;
@@ -234,7 +234,8 @@ export function TaskModalFooter({
                         <button
                             type="button"
                             className="pn-btn pn-btn--primary"
-                            onClick={() => {
+                            onClick={async () => {
+                                await onSave();
                                 onWorkOn?.();
                                 onClose();
                             }}

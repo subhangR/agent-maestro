@@ -8,6 +8,7 @@ import {
   MaestroTask,
 } from "../../app/types/maestro";
 import { getWorktreeInfo } from "./WorktreeBadge";
+import { getModelDisplayLabel } from "../../app/constants/agentTools";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useUIStore } from "../../stores/useUIStore";
 import { useSessionStore } from "../../stores/useSessionStore";
@@ -162,6 +163,13 @@ export const SessionListItem = React.memo(function SessionListItem({
     return docs.map((d) => byId.get(d.id) ?? d);
   }, [docs, hydratedDocs]);
   const mode = session.mode;
+
+  // Model badge: prefer the per-spawn launch model (what actually launched) over
+  // the team member's stored default, then render a friendly label. The GET
+  // /sessions summary omits per-spawn metadata, so fall through:
+  // session.model -> launchConfig.model -> teamMemberSnapshot.model.
+  const resolvedModelId = session.model ?? session.launchConfig?.model ?? session.teamMemberSnapshot?.model;
+  const modelLabel = resolvedModelId ? getModelDisplayLabel(resolvedModelId) : null;
 
   // Rich hover tooltip: session identity + every linked task's full details.
   const detailsTooltip = useMemo(() => {
@@ -472,13 +480,13 @@ export const SessionListItem = React.memo(function SessionListItem({
         </div>
       </div>
 
-      {((showBadges && (mode || session.model)) || showElapsed) && (
+      {((showBadges && (mode || modelLabel)) || showElapsed) && (
         <div className="pn-st__inforow">
           {showBadges && mode && (
             <span className="pn-st__infobadge">{MODE_LABELS[mode]}</span>
           )}
-          {showBadges && session.model && (
-            <span className="pn-st__infobadge pn-st__infobadge--model">{session.model.toUpperCase()}</span>
+          {showBadges && modelLabel && (
+            <span className="pn-st__infobadge pn-st__infobadge--model">{modelLabel}</span>
           )}
           {showElapsed && (
             <span
@@ -551,8 +559,8 @@ export const SessionListItem = React.memo(function SessionListItem({
                 document.body,
               )}
 
-              {session.model && (
-                <span className="pn-badge pn-badge--model">{session.model.toUpperCase()}</span>
+              {modelLabel && (
+                <span className="pn-badge pn-badge--model">{modelLabel}</span>
               )}
               {session.strategy && <span className="pn-badge">{session.strategy}</span>}
               {(() => {

@@ -41,7 +41,7 @@ import { useAgentShortcutStore } from './useAgentShortcutStore';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useSecureStorageStore } from './useSecureStorageStore';
 import { useMaestroStore } from './useMaestroStore';
-import { IS_TAURI } from '../platform';
+import { IS_TAURI, platform } from '../platform';
 
 /**
  * Initialise the application. Replaces the old useAppInit hook.
@@ -211,10 +211,18 @@ export function initApp(
     }
 
     // ──── HOME DIRECTORY ────
+    // Desktop resolves it natively; web asks the server (list_directories(null)
+    // returns the home dir as its path) so the picker/placeholder/Home button work.
     let resolvedHome: string | null = null;
     if (IS_TAURI) {
       try {
         resolvedHome = await homeDir();
+      } catch {
+        resolvedHome = null;
+      }
+    } else {
+      try {
+        resolvedHome = (await platform.fs.listDirectories(null)).path;
       } catch {
         resolvedHome = null;
       }

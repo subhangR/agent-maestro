@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { IS_TAURI } from "../platform";
+import { IS_TAURI, platform } from "../platform";
 import React from "react";
 import { shortenPathSmart } from "../pathDisplay";
 import { Icon } from "./Icon";
@@ -270,13 +270,6 @@ export function FileExplorerPanel({
           error: null,
         },
       }));
-      if (!IS_TAURI) {
-        setDirStateByPath((prev) => ({
-          ...prev,
-          [dirPath]: { entries: [], loading: false, error: null },
-        }));
-        return;
-      }
       try {
         if (provider === "ssh" && !sshTargetValue) {
           throw new Error("Missing SSH target.");
@@ -284,7 +277,7 @@ export function FileExplorerPanel({
         const entries =
           provider === "ssh"
             ? await invoke<FsEntry[]>("ssh_list_fs_entries", { target: sshTargetValue, root, path: dirPath })
-            : await invoke<FsEntry[]>("list_fs_entries", { root, path: dirPath });
+            : await platform.fs.listEntries(root, dirPath);
         setDirStateByPath((prev) => ({
           ...prev,
           [dirPath]: { entries, loading: false, error: null },
@@ -546,10 +539,6 @@ export function FileExplorerPanel({
         return;
       }
 
-      if (!IS_TAURI) {
-        setRenameError("Rename is not available in browser mode.");
-        return;
-      }
       setRenameBusy(true);
       setRenameError(null);
       try {
@@ -560,7 +549,7 @@ export function FileExplorerPanel({
         const toPath =
           provider === "ssh"
             ? await invoke<string>("ssh_rename_fs_entry", { target: sshTargetValue, root, path: fromPath, newName: name })
-            : await invoke<string>("rename_fs_entry", { root, path: fromPath, newName: name });
+            : await platform.fs.renameEntry(root, fromPath, name);
         if (entry.isDir) remapDirectoryPrefix(fromPath, toPath);
         void loadDirectory(dirname(fromPath));
         onPathRenamed?.(fromPath, toPath);
@@ -578,10 +567,6 @@ export function FileExplorerPanel({
   const confirmDelete = React.useCallback(async () => {
     const target = deleteTarget;
     if (!target) return;
-    if (!IS_TAURI) {
-      setDeleteError("Delete is not available in browser mode.");
-      return;
-    }
     setDeleteBusy(true);
     setDeleteError(null);
     try {
@@ -590,7 +575,7 @@ export function FileExplorerPanel({
       }
       await (provider === "ssh"
         ? invoke("ssh_delete_fs_entry", { target: sshTargetValue, root, path: target.path })
-        : invoke("delete_fs_entry", { root, path: target.path }));
+        : platform.fs.deleteEntry(root, target.path));
       if (target.isDir) removeDirectoryPrefix(target.path);
       void loadDirectory(dirname(target.path));
       onPathDeleted?.(target.path);
@@ -952,26 +937,6 @@ export function FileExplorerPanel({
 
   if (!isOpen) return null;
 
-  if (!IS_TAURI) {
-    return (
-      <aside className="fileExplorerPanel" aria-label="Files">
-        <div className="pn-vhd">
-          <PnIcon name="folder" size={16} style={{ color: "var(--pn-ink-3)", flex: "0 0 auto" }} />
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div className="pn-vhd__title">Files</div>
-          </div>
-          <span className="pn-head-spacer" />
-          <button type="button" className="pn-ib" onClick={onClose} title="Close">
-            <PnIcon name="x" />
-          </button>
-        </div>
-        <div className="empty" style={{ padding: 16, opacity: 0.6 }}>
-          File explorer is not available in browser mode.
-        </div>
-      </aside>
-    );
-  }
-
   const menuX = contextMenu
     ? Math.min(contextMenu.x, Math.max(8, window.innerWidth - 268))
     : 0;
@@ -1171,21 +1136,25 @@ export function FileExplorerPanel({
             Copy full path
           </button>
           {provider === "local" ? (
-            <>
-              <button
-                type="button"
-                className="sidebarActionMenuItem"
-                role="menuitem"
-                onClick={() => {
-                  const folder = contextMenu.entry.isDir ? contextMenu.entry.path : dirname(contextMenu.entry.path);
-                  void invoke("open_path_in_file_manager", { path: folder }).catch(() => { /* best-effort OS open */ });
-                  setContextMenu(null);
-                }}
-              >
-                Open folder in Finder
-              </button>
-              <div className="fileContextMenuSep" role="separator" />
-            </>
+            // "Open in Finder" opens the file manager on the host where the app
+            // runs — only meaningful in the desktop shell, not a remote browser.
+            IS_TAURI ? (
+              <>
+                <button
+                  type="button"
+                  className="sidebarActionMenuItem"
+                  role="menuitem"
+                  onClick={() => {
+                    const folder = contextMenu.entry.isDir ? contextMenu.entry.path : dirname(contextMenu.entry.path);
+                    void invoke("open_path_in_file_manager", { path: folder }).catch(() => { /* best-effort OS open */ });
+                    setContextMenu(null);
+                  }}
+                >
+                  Open folder in Finder
+                </button>
+                <div className="fileContextMenuSep" role="separator" />
+              </>
+            ) : null
           ) : (
             <>
               <button

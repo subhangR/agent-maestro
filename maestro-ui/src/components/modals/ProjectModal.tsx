@@ -105,41 +105,37 @@ export function ProjectModal({
                 onChange={(e) => onChangeBasePath(e.target.value)}
                 placeholder={basePathPlaceholder}
               />
-              {IS_TAURI && (
-                <>
-                  <div className="themedPathActions">
-                    <button
-                      type="button"
-                      className="themedBtn"
-                      onClick={onUseCurrentTab}
-                      disabled={!canUseCurrentTab}
-                    >
-                      Use current tab
-                    </button>
-                    <button type="button" className="themedBtn" onClick={onUseHome} disabled={!canUseHome}>
-                      Home
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    className="themedBrowseToggle"
-                    onClick={() => setBrowserExpanded((v) => !v)}
-                  >
-                    <span className={`themedBrowseToggleArrow${browserExpanded ? " themedBrowseToggleArrow--open" : ""}`}>
-                      &#9654;
-                    </span>
-                    Browse
-                  </button>
-                  {browserExpanded && (
-                    <InlineFolderBrowser
-                      listing={browserListing}
-                      loading={browserLoading}
-                      error={browserError}
-                      onNavigate={onBrowserNavigate}
-                      onSelect={onBrowserSelect}
-                    />
-                  )}
-                </>
+              <div className="themedPathActions">
+                <button
+                  type="button"
+                  className="themedBtn"
+                  onClick={onUseCurrentTab}
+                  disabled={!canUseCurrentTab}
+                >
+                  Use current tab
+                </button>
+                <button type="button" className="themedBtn" onClick={onUseHome} disabled={!canUseHome}>
+                  Home
+                </button>
+              </div>
+              <button
+                type="button"
+                className="themedBrowseToggle"
+                onClick={() => setBrowserExpanded((v) => !v)}
+              >
+                <span className={`themedBrowseToggleArrow${browserExpanded ? " themedBrowseToggleArrow--open" : ""}`}>
+                  &#9654;
+                </span>
+                Browse
+              </button>
+              {browserExpanded && (
+                <InlineFolderBrowser
+                  listing={browserListing}
+                  loading={browserLoading}
+                  error={browserError}
+                  onNavigate={onBrowserNavigate}
+                  onSelect={onBrowserSelect}
+                />
               )}
               <div className="themedFormHint">
                 {IS_TAURI

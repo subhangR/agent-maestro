@@ -830,11 +830,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       set((st) => ({ sessions: [...st.sessions, s], activeId: s.id }));
       const commandLine = (preset.command ?? '').trim();
       if (commandLine) {
-        void invoke('write_to_session', {
-          id: s.id,
-          data: `${commandLine}\r`,
-          source: 'ui',
-        }).catch((err) => reportError(`Failed to start ${preset.title}`, err));
+        void platform.terminal.write(s.id, `${commandLine}\r`, 'ui').catch((err) =>
+          reportError(`Failed to start ${preset.title}`, err),
+        );
       }
     } catch (err) {
       reportError(`Failed to start ${preset.title}`, err);
@@ -859,18 +857,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       projects.find((p: MaestroProjectLike) => p.id === activeProjectId) ?? null;
     const { environments } = useEnvironmentStore.getState();
     const { ensureAutoAssets } = useAssetStore.getState();
-    const { reportError, setError } = useUIStore.getState();
+    const { reportError, showNotice, homeDir } = useUIStore.getState();
 
     const name = newName.trim() || undefined;
     try {
       const launchCommand = newCommand.trim() || null;
       const desiredCwd =
-        newCwd.trim() || activeProject?.basePath || homeDirRef?.current || '';
-      const validatedCwd = await invoke<string | null>('validate_directory', {
-        path: desiredCwd,
-      }).catch(() => null);
+        newCwd.trim() || activeProject?.basePath || homeDir || '';
+      const validatedCwd = await platform.fs.validateDirectory(desiredCwd).catch(() => null);
       if (!validatedCwd) {
-        setError('Working directory must be an existing folder.');
+        showNotice('Working directory must be an existing folder.');
         return;
       }
       await ensureAutoAssets(validatedCwd, activeProjectId);
@@ -935,9 +931,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     try {
       const desiredCwd = activeProject?.basePath ?? homeDirRef?.current ?? '';
-      const validatedCwd = await invoke<string | null>('validate_directory', {
-        path: desiredCwd,
-      }).catch(() => null);
+      const validatedCwd = await platform.fs.validateDirectory(desiredCwd).catch(() => null);
       if (!validatedCwd) {
         ssh.setSshError('Working directory must be an existing folder.');
         return;
@@ -961,17 +955,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       if (ssh.sshPersistent) {
         void (async () => {
           try {
-            await invoke('write_to_session', {
-              id: s.id,
-              data: command,
-              source: 'system',
-            });
+            await platform.terminal.write(s.id, command, 'system');
             await sleep(30);
-            await invoke('write_to_session', {
-              id: s.id,
-              data: '\r',
-              source: 'system',
-            });
+            await platform.terminal.write(s.id, '\r', 'system');
           } catch (err) {
             reportError('Failed to start SSH inside persistent session', err);
           }
@@ -1034,9 +1020,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const active = sessions.find((s) => s.id === activeId) ?? null;
 
     if (provider === 'local') {
-      const validatedCwd = await invoke<string | null>('validate_directory', {
-        path: desiredPath,
-      }).catch(() => null);
+      const validatedCwd = await platform.fs.validateDirectory(desiredPath).catch(() => null);
       if (!validatedCwd) {
         showNotice('Working directory must be an existing folder.');
         return;
@@ -1066,10 +1050,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
     const localDesiredCwd =
       activeProject?.basePath ?? homeDirRef?.current ?? '';
-    const localValidatedCwd = await invoke<string | null>(
-      'validate_directory',
-      { path: localDesiredCwd },
-    ).catch(() => null);
+    const localValidatedCwd = await platform.fs.validateDirectory(localDesiredCwd).catch(() => null);
     if (localValidatedCwd) {
       await ensureAutoAssets(localValidatedCwd, activeProjectId);
     }
@@ -1113,11 +1094,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if (mode === 'paste') {
       try {
         registryRef?.current.get(sessionId)?.term.focus();
-        await invoke('write_to_session', {
-          id: sessionId,
-          data: prompt.content,
-          source: 'user',
-        });
+        await platform.terminal.write(sessionId, prompt.content, 'user');
       } catch (err) {
         reportError('Failed to send prompt', err);
       }
@@ -1126,18 +1103,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const text = prompt.content.replace(/[\r\n]+$/, '');
     try {
       registryRef?.current.get(sessionId)?.term.focus();
-      if (text)
-        await invoke('write_to_session', {
-          id: sessionId,
-          data: text,
-          source: 'user',
-        });
+      if (text) await platform.terminal.write(sessionId, text, 'user');
       if (text) await sleep(30);
-      await invoke('write_to_session', {
-        id: sessionId,
-        data: '\r',
-        source: 'user',
-      });
+      await platform.terminal.write(sessionId, '\r', 'user');
     } catch (err) {
       reportError('Failed to send prompt', err);
     }
@@ -1279,21 +1247,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       const newlineMatch = chunk.match(/[\r\n]+$/);
       const trailing = newlineMatch?.[0] ?? '';
       const body = trailing ? chunk.slice(0, -trailing.length) : chunk;
-      if (body)
-        await invoke('write_to_session', {
-          id: targetId,
-          data: body,
-          source: 'system',
-        });
+      if (body) await platform.terminal.write(targetId, body, 'system');
       if (trailing) {
         if (body) await sleep(30);
         const enterCount = trailing.replace(/[^\r\n]/g, '').length;
         for (let i = 0; i < enterCount; i++) {
-          await invoke('write_to_session', {
-            id: targetId,
-            data: '\r',
-            source: 'system',
-          });
+          await platform.terminal.write(targetId, '\r', 'system');
           if (i < enterCount - 1) await sleep(10);
         }
       }

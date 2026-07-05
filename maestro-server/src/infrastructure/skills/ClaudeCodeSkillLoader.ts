@@ -180,9 +180,31 @@ export class ClaudeCodeSkillLoader implements ISkillLoader {
 
     try {
       const entries = await fs.readdir(this.skillsDir, { withFileTypes: true });
-      const skillDirs = entries
-        .filter(e => e.isDirectory() && !e.name.startsWith('.'))
-        .map(e => e.name);
+
+      // `withFileTypes` Dirents report `isDirectory() === false` for a
+      // symlink-to-directory (e.g. `~/.claude/skills/frontend-design ->
+      // ~/.agents/skills/frontend-design`). Only `isDirectory()` was checked
+      // here, so symlinked skill dirs were silently dropped. Accept entries
+      // that are real directories OR symlinks whose resolved target is a
+      // directory (stat follows symlinks; broken symlinks are skipped).
+      const skillDirs: string[] = [];
+      for (const e of entries) {
+        if (e.name.startsWith('.')) continue;
+        if (e.isDirectory()) {
+          skillDirs.push(e.name);
+          continue;
+        }
+        if (e.isSymbolicLink()) {
+          try {
+            const stat = await fs.stat(path.join(this.skillsDir, e.name));
+            if (stat.isDirectory()) {
+              skillDirs.push(e.name);
+            }
+          } catch {
+            // Dangling symlink - skip
+          }
+        }
+      }
 
       // Filter to only directories with SKILL.md
       const validSkills: string[] = [];

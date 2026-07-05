@@ -24,6 +24,8 @@ export type ClaudeModel =
   | 'claude-opus-4-8[1m]'
   | 'claude-opus-4-7'
   | 'claude-opus-4-7[1m]'
+  | 'claude-sonnet-5'
+  | 'claude-sonnet-5[1m]'
   | 'claude-sonnet-4-6'
   | 'claude-haiku-4-5'
   | 'claude-opus-4-6';
@@ -41,8 +43,6 @@ export type GeminiModel = 'gemini-3-pro-preview' | 'gemini-2.5-pro';
 // Hermes models
 export type HermesModel =
   | 'hermes-default'
-  | 'anthropic:claude-fable-5'
-  | 'anthropic/claude-fable-5'
   | 'anthropic:claude-opus-4-8'
   | 'nous:anthropic/claude-opus-4.8'
   | 'openrouter:anthropic/claude-opus-4.8'
@@ -576,6 +576,7 @@ export interface MaestroSession {
   spawnedBy?: string;
   manifestPath?: string;
   model?: ModelType;
+  launchConfig?: LaunchConfig;  // Per-spawn launch override (model/effort/access) surfaced on the session summary DTO
   docs?: DocEntry[];
   teamMemberId?: string;
   teamMemberSnapshot?: TeamMemberSnapshot;

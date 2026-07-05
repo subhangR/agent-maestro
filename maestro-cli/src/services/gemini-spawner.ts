@@ -53,6 +53,8 @@ export class GeminiSpawner {
     switch (model) {
       case 'claude-fable-5':
       case 'claude-fable-5[1m]':
+      case 'claude-sonnet-5':
+      case 'claude-sonnet-5[1m]':
       case 'claude-opus-4-8[1m]':
       case 'claude-opus-4-8':
       case 'claude-opus-4-7[1m]':

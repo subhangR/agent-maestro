@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
-import { IS_TAURI } from '../platform/detect';
+import { platform } from '../platform';
 import { MaestroProject } from '../app/types/maestro';
 import { EnvironmentConfig } from '../app/types/app';
 import { defaultProjectState, envVarsForProjectId } from '../app/utils/env';
@@ -153,21 +152,12 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       const { ensureAutoAssets } = useAssetStore.getState();
 
       const desiredBasePath = projectBasePath.trim() || homeDir || '';
-      let validatedBasePath: string | null;
-      if (IS_TAURI) {
-        validatedBasePath = await invoke<string | null>('validate_directory', {
-          path: desiredBasePath,
-        }).catch(() => null);
-        if (!validatedBasePath) {
-          setError('Project base path must be an existing directory.');
-          return;
-        }
-      } else {
-        if (!desiredBasePath || !desiredBasePath.startsWith('/')) {
-          setError('Project base path must be an absolute server path (starting with /).');
-          return;
-        }
-        validatedBasePath = desiredBasePath;
+      // Validate the base path on the host filesystem (creating it if missing).
+      // Desktop → native Tauri command; web → server REST. Same call, both hosts.
+      const validatedBasePath = await platform.fs.validateDirectory(desiredBasePath).catch(() => null);
+      if (!validatedBasePath) {
+        setError('Project base path must be an existing directory.');
+        return;
       }
 
       const environmentId =

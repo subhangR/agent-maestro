@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { WebSocketServer } from 'ws';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
+import { homedir } from 'os';
 import { createContainer, Container } from './container';
 import { createProjectRoutes } from './api/projectRoutes';
 import { createTaskRoutes } from './api/taskRoutes';
@@ -25,6 +26,7 @@ import { createEnsembleRoutes } from './api/ensembleRoutes';
 import { createAlexaRoutes } from './api/alexaRoutes';
 import { createGitRoutes } from './api/gitRoutes';
 import { createAgentLogRoutes } from './api/agentLogRoutes';
+import { createFsRoutes } from './api/fsRoutes';
 import { WebSocketBridge } from './infrastructure/websocket/WebSocketBridge';
 import { PtyWebSocketServer } from './infrastructure/websocket/PtyWebSocketServer';
 import { errorHandler } from './api/middleware/errorHandler';
@@ -199,6 +201,25 @@ async function startServer() {
   // Agent session-log routes — let the browser web-ui read claude/codex logs
   // (the Tauri shell uses Rust invoke commands; the browser has none).
   app.use('/api', createAgentLogRoutes());
+
+  // Filesystem routes — folder picker (Browse) + File Explorer/editor for the
+  // browser web-ui, mirroring the Tauri Rust fs commands the browser lacks.
+  // The allowlist is derived from server-side state (never the client): the
+  // user's home dir plus every registered project's working dir and its parent
+  // (so you can still browse to a sibling location for a new project). Every fs
+  // request is confined to these roots, so a client cannot read/write/enumerate
+  // arbitrary host paths through these endpoints.
+  app.use('/api', createFsRoutes(async () => {
+    const roots = new Set<string>([homedir()]);
+    for (const project of await projectService.listProjects()) {
+      const dir = project.workingDir?.trim();
+      if (dir) {
+        roots.add(dir);
+        roots.add(dirname(dir));
+      }
+    }
+    return [...roots];
+  }));
 
   // Browser SPA static serve — mounted AFTER all API/WS/PTY routes.
   // Serves maestro-ui/dist so a browser can access the full app from the server origin.

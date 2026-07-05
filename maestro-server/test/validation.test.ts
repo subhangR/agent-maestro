@@ -1,4 +1,4 @@
-import { spawnSessionSchema } from '../src/api/validation';
+import { spawnSessionSchema, createTaskSchema, updateTaskSchema } from '../src/api/validation';
 
 /**
  * Regression tests for the spawn wire-contract.
@@ -62,6 +62,64 @@ describe('spawnSessionSchema — backward & forward compatibility', () => {
 
   it('still rejects unknown keys at the top level of the spawn body', () => {
     const result = spawnSessionSchema.safeParse({ ...base, bogusTopLevelKey: true });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ─── Task schema teammate-assignment & dueDate contract ───────────────────────
+
+describe('createTaskSchema — teammate assignment and dueDate fields', () => {
+  const baseCreate = { projectId: 'proj_1' };
+
+  it('accepts teamMemberId', () => {
+    const result = createTaskSchema.safeParse({ ...baseCreate, teamMemberId: 'tm_1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts teamMemberIds array', () => {
+    const result = createTaskSchema.safeParse({ ...baseCreate, teamMemberIds: ['tm_1', 'tm_2'] });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts dueDate string', () => {
+    const result = createTaskSchema.safeParse({ ...baseCreate, dueDate: '2025-12-31' });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects unknown keys (strict schema)', () => {
+    const result = createTaskSchema.safeParse({ ...baseCreate, unknownKey: 'x' });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('updateTaskSchema — teammate assignment and dueDate fields', () => {
+  it('accepts teamMemberId', () => {
+    const result = updateTaskSchema.safeParse({ teamMemberId: 'tm_1' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts teamMemberIds array', () => {
+    const result = updateTaskSchema.safeParse({ teamMemberIds: ['tm_1', 'tm_2'] });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts dueDate string', () => {
+    const result = updateTaskSchema.safeParse({ dueDate: '2025-12-31' });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts null dueDate (clearing)', () => {
+    const result = updateTaskSchema.safeParse({ dueDate: null });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts clearing teamMemberIds to empty array', () => {
+    const result = updateTaskSchema.safeParse({ teamMemberIds: [] });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects unknown keys (strict schema)', () => {
+    const result = updateTaskSchema.safeParse({ unknownKey: 'x' });
     expect(result.success).toBe(false);
   });
 });

@@ -99,15 +99,48 @@ export class MultiScopeSkillLoader implements ISkillLoader {
   }
 
   /**
+   * Deterministic tie-break when two directories in the SAME scope config
+   * (i.e. the same single directory listing, such as `~/.claude/skills/`)
+   * both declare the same `manifest.name` (e.g. `_gstack-command/` and
+   * `gstack/` both declaring `name: gstack`). Without this, the loader would
+   * emit two entries sharing one id, corrupting id-keyed UI (e.g. the
+   * slash-command palette).
+   *
+   * Rule (documented, not order-dependent):
+   *   1. The directory whose name exactly equals the skill's manifest name
+   *      wins (`gstack/` beats `_gstack-command/`).
+   *   2. Otherwise, compare directory names lexicographically after
+   *      stripping a leading underscore, and the smaller one wins.
+   *
+   * Returns the winning directory name.
+   */
+  private pickPreferredDir(dirNameA: string, dirNameB: string, skillName: string): string {
+    if (dirNameA === skillName) return dirNameA;
+    if (dirNameB === skillName) return dirNameB;
+    const stripLeadingUnderscore = (n: string) => n.replace(/^_+/, '');
+    return stripLeadingUnderscore(dirNameA) <= stripLeadingUnderscore(dirNameB) ? dirNameA : dirNameB;
+  }
+
+  /**
    * Load all skills with scope/source metadata.
    * Project skills override global skills with the same name.
    */
   async loadAllWithScope(projectPath?: string): Promise<SkillWithMeta[]> {
     const scopes = this.buildScopes(projectPath);
-    // Map from skill name to SkillWithMeta. Later entries (project) override earlier (global).
-    const skillMap = new Map<string, SkillWithMeta>();
+    // Map from the skill's canonical id (manifest.name - the id emitted to the
+    // API/UI, see skillRoutes.ts) to its winning entry. Keying by manifest.name
+    // (rather than directory name) is what guarantees the output never contains
+    // two entries with the same emitted id.
+    //
+    // Precedence across scopes follows `scopes` order (global/claude ->
+    // global/agents -> project/claude -> project/agents): a later scope always
+    // overrides an earlier one. A collision between two directories within the
+    // SAME scope (e.g. two dirs inside `~/.claude/skills/`) is resolved via
+    // pickPreferredDir() instead of directory-listing order.
+    const skillMap = new Map<string, { dirName: string; scopeIndex: number; skill: SkillWithMeta }>();
 
-    for (const scopeConfig of scopes) {
+    for (let scopeIndex = 0; scopeIndex < scopes.length; scopeIndex++) {
+      const scopeConfig = scopes[scopeIndex];
       if (!(await this.dirExists(scopeConfig.dir))) {
         continue;
       }
@@ -115,8 +148,8 @@ export class MultiScopeSkillLoader implements ISkillLoader {
       const loader = this.getLoader(scopeConfig.dir);
       const names = await loader.listAvailable();
 
-      for (const name of names) {
-        const skill = await loader.load(name);
+      for (const dirName of names) {
+        const skill = await loader.load(dirName);
         if (!skill) continue;
 
         const skillWithMeta: SkillWithMeta = {
@@ -125,16 +158,31 @@ export class MultiScopeSkillLoader implements ISkillLoader {
           meta: {
             scope: scopeConfig.scope,
             source: scopeConfig.source,
-            path: path.join(scopeConfig.dir, name),
+            path: path.join(scopeConfig.dir, dirName),
           },
         };
 
-        // Project-level skills override global; within same scope, later source overrides earlier
-        skillMap.set(name, skillWithMeta);
+        const skillName = skillWithMeta.manifest.name;
+        const existing = skillMap.get(skillName);
+
+        if (!existing || existing.scopeIndex !== scopeIndex) {
+          // No prior entry, or the prior entry came from an earlier
+          // (lower-precedence) scope - this scope's entry wins outright.
+          skillMap.set(skillName, { dirName, scopeIndex, skill: skillWithMeta });
+          continue;
+        }
+
+        // Same-scope collision: resolve deterministically instead of
+        // letting directory-listing order silently decide the winner.
+        const preferredDir = this.pickPreferredDir(dirName, existing.dirName, skillName);
+        if (preferredDir === dirName) {
+          skillMap.set(skillName, { dirName, scopeIndex, skill: skillWithMeta });
+        }
+        // else keep the existing (already-preferred) entry
       }
     }
 
-    return Array.from(skillMap.values());
+    return Array.from(skillMap.values()).map(entry => entry.skill);
   }
 
   // ---- ISkillLoader interface (delegates to global loaders) ----

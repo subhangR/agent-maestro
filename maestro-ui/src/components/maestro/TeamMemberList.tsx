@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { TeamMember, AgentTool } from "../../app/types/maestro";
-import { AGENT_TOOL_LABELS } from "../../app/constants/agentTools";
+import { AGENT_TOOL_LABELS, normalizeModelId } from "../../app/constants/agentTools";
 import { AgentLogo } from "./AgentChip";
 import { Icon } from "./redesign/kit";
 import { useMaestroStore } from "../../stores/useMaestroStore";
@@ -19,13 +19,16 @@ type TeamMemberListProps = {
 
 function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
     if (!model) return "";
+    const normalized = normalizeModelId(model) ?? model;
     const modelLabels: Record<string, string> = {
         haiku: "Haiku",
         sonnet: "Sonnet",
         "sonnet[1m]": "Sonnet [1M]",
         opus: "Opus",
         "claude-fable-5": "Fable 5",
-        "claude-fable-5[1m]": "Fable 5 [1M]",
+        "claude-fable-5[1m]": "Fable 5 1M",
+        "claude-sonnet-5": "Sonnet 5",
+        "claude-sonnet-5[1m]": "Sonnet 5 1M",
         "claude-opus-4-8": "Opus 4.8",
         "claude-opus-4-8[1m]": "Opus 4.8 [1M]",
         "claude-opus-4-7": "Opus 4.7",
@@ -36,8 +39,6 @@ function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
         "gpt-5.3-codex": "5.3-codex",
         "gpt-5.2-codex": "5.2-codex",
         "hermes-default": "Hermes default",
-        "anthropic:claude-fable-5": "Claude Fable 5",
-        "anthropic/claude-fable-5": "Claude Fable 5",
         "anthropic:claude-opus-4-8": "Claude Opus 4.8",
         "nous:anthropic/claude-opus-4.8": "Claude Opus 4.8",
         "openrouter:anthropic/claude-opus-4.8": "Claude Opus 4.8",
@@ -47,7 +48,7 @@ function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
         "openai/gpt-5.4": "Codex OAuth GPT 5.4",
         "gpt-5.3-codex-spark": "Codex OAuth GPT 5.3 Codex Spark",
     };
-    return modelLabels[model] || model;
+    return modelLabels[normalized] || normalized;
 }
 
 function TeamMemberRow({

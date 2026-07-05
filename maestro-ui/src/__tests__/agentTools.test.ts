@@ -10,6 +10,8 @@ import {
   getReasoningOptionsForProvider,
   MODEL_POWER,
   MODELS_BY_AGENT_TOOL,
+  normalizeModelId,
+  pickTopMember,
   sanitizeLaunchConfig,
   supportsLaunchSpeed,
 } from '../app/constants/agentTools';
@@ -215,14 +217,33 @@ describe('agent tool UI constants', () => {
     expect(getModelDisplayLabel('gpt-5.2-codex')).toBe('Codex 5.2');
   });
 
-  it('offers Claude Fable 5 as the top Claude model while keeping Opus 4.8 the default', () => {
+  it('offers live Claude Fable 5 and Sonnet 5 and tops the Claude list with Fable 5', () => {
     const claudeValues = MODELS_BY_AGENT_TOOL['claude-code'].map((model) => model.value);
-    expect(claudeValues).toEqual(expect.arrayContaining(['claude-fable-5', 'claude-fable-5[1m]']));
+    expect(claudeValues).toContain('claude-fable-5');
+    expect(claudeValues).toContain('claude-sonnet-5');
     expect(claudeValues[0]).toBe('claude-fable-5');
-    expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
+    expect(MODEL_POWER['claude-fable-5']).toBe(6.0);
+    expect(MODEL_POWER['claude-fable-5[1m]']).toBe(6.1);
+  });
+
+  it('passes live Fable 5 and Sonnet 5 model ids through normalizeModelId unchanged', () => {
+    // Both are live models again — no alias remapping.
+    expect(normalizeModelId('claude-fable-5')).toBe('claude-fable-5');
+    expect(normalizeModelId('claude-sonnet-5')).toBe('claude-sonnet-5');
+    // Non-aliased ids pass through unchanged.
+    expect(normalizeModelId('claude-opus-4-8')).toBe('claude-opus-4-8');
+    expect(normalizeModelId(undefined)).toBeUndefined();
+  });
+
+  it('labels, launches, and ranks live Fable 5 and Sonnet 5 as themselves', () => {
     expect(getModelDisplayLabel('claude-fable-5')).toBe('Fable 5');
-    expect(getModelDisplayLabel('claude-fable-5[1m]')).toBe('Fable 5 1M');
-    expect(MODEL_POWER['claude-fable-5']).toBeGreaterThan(MODEL_POWER['claude-opus-4-8']);
-    expect(MODEL_POWER['claude-fable-5[1m]']).toBeGreaterThan(MODEL_POWER['claude-fable-5']);
+    expect(getModelDisplayLabel('claude-sonnet-5')).toBe('Sonnet 5');
+    expect(sanitizeLaunchConfig({ provider: 'claude', model: 'claude-fable-5' })).toEqual({
+      provider: 'claude',
+      model: 'claude-fable-5',
+    });
+    // Fable 5 (6.0) outranks Opus 4.8 (5.8).
+    const members = [{ model: 'claude-fable-5' }, { model: 'claude-opus-4-8' }];
+    expect(pickTopMember(members)?.model).toBe('claude-fable-5');
   });
 });

@@ -148,6 +148,7 @@ export const createTaskSchema = z.object({
   memberOverrides: z.record(safeId, memberLaunchOverrideSchema).optional(),
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
+  dueDate: z.string().optional(),
   clientRequestId: z.string().max(200).optional(),
   spellIds: z.array(safeId).optional(),
 }).strict();
@@ -173,6 +174,7 @@ export const updateTaskSchema = z.object({
   dangerousMode: z.boolean().optional(),
   useWorktree: z.boolean().optional(),
   spellIds: z.array(safeId).optional(),
+  dueDate: z.string().nullable().optional(),
 }).strict();
 
 const docKindSchema = z.enum(['markdown', 'diagram']);
@@ -447,6 +449,20 @@ export const spawnSessionSchema = z.object({
   // wrong width makes the agent (Ink TUI) author its first frames at 80 cols,
   // which then desync against the wider xterm grid (overlapping glyphs) until a
   // manual resize. Optional: legacy/desktop callers omit it and fall back to 80x24.
+  cols: ptyDimensionSchema.optional(),
+  rows: ptyDimensionSchema.optional(),
+}).strict();
+
+// Web mode only: the browser asks the server to spawn a PTY it can then attach
+// to over /pty?sessionId=<id>. Plain terminals have no spawn step otherwise, so
+// the WS finds no live PTY, closes 1011, and the terminal dies instantly. This
+// endpoint lets the client request the PTY first. sessionId is the id it will
+// attach with; everything else is optional (empty command => interactive shell).
+export const ptySpawnSchema = z.object({
+  sessionId: z.string().min(1).max(200),
+  command: z.string().nullable().optional(),
+  cwd: z.string().nullable().optional(),
+  env: z.record(z.string(), z.string().max(5000)).optional(),
   cols: ptyDimensionSchema.optional(),
   rows: ptyDimensionSchema.optional(),
 }).strict();

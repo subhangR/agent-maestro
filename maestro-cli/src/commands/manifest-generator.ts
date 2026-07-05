@@ -9,7 +9,7 @@ import type {
   AgentMode,
   LaunchConfig,
 } from '../types/manifest.js';
-import { normalizeMode, isCoordinatorMode } from '../types/manifest.js';
+import { normalizeMode, normalizeModelId, isCoordinatorMode } from '../types/manifest.js';
 import { DEFAULT_ACCEPTANCE_CRITERIA, MODE_VALIDATION_ERROR, AGENT_TOOL_VALIDATION_PREFIX } from '../prompts/index.js';
 import { validateManifest } from '../schemas/manifest-schema.js';
 import { storage } from '../storage.js';
@@ -587,9 +587,11 @@ export class ManifestGeneratorCLICommand {
           if (teamMember.permissionMode) {
             manifest.session.permissionMode = teamMember.permissionMode;
           }
-          // Override model with team member's model (if not explicitly set by launch settings)
+          // Override model with team member's model (if not explicitly set by launch settings).
+          // Coerce any retired model id to its active replacement via LEGACY_MODEL_ALIASES
+          // (currently empty / a no-op — retained for future retirements).
           if (teamMember.model && !hasExplicitModel) {
-            manifest.session.model = teamMember.model;
+            manifest.session.model = normalizeModelId(teamMember.model);
           }
         } catch {
           // ignore team member load error
@@ -610,6 +612,8 @@ export class ManifestGeneratorCLICommand {
           'gpt-5.3-codex': 4.2,
           'opus': 4,
           'gpt-5.2-codex': 3.8,
+          'claude-sonnet-5[1m]': 3.6,
+          'claude-sonnet-5': 3.4,
           'sonnet[1m]': 3,
           'gpt-5.1-codex-max': 2.8,
           'sonnet': 2.5,
@@ -634,6 +638,9 @@ export class ManifestGeneratorCLICommand {
           try {
             const tmRaw: any = await api.get(`/api/team-members/${memberId}?projectId=${options.projectId}`);
             const tm = applyMemberOverride(tmRaw, memberOverrides[memberId]);
+            // Coerce any retired model id via LEGACY_MODEL_ALIASES (currently empty / a
+            // no-op) so ranking and the collapsed model agree with what the spawner launches.
+            if (tm.model) tm.model = normalizeModelId(tm.model);
             profiles.push({
               id: tm.id,
               name: tm.name,

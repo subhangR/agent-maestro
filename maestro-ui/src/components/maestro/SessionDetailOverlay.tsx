@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom";
 import { useUIStore } from "../../stores/useUIStore";
 import { useMaestroStore } from "../../stores/useMaestroStore";
+import { getModelDisplayLabel } from "../../app/constants/agentTools";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { MaestroSessionStatus } from "../../app/types/maestro";
 import { SessionTimeline } from "./SessionTimeline";
@@ -119,6 +120,11 @@ export function SessionDetailOverlay() {
   const handleClose = () => setOverlay(null);
 
   const statusKind = session?.needsInput?.active ? "needsInput" : session?.status;
+  // Model badge: prefer the per-spawn launch model over the stored default, then render
+  // a friendly label. Enriched session carries metadata/launchConfig; fall through
+  // model -> launchConfig.model -> metadata.model -> teamMemberSnapshot.model.
+  const resolvedModelId = session?.model ?? session?.launchConfig?.model ?? session?.metadata?.model ?? session?.teamMemberSnapshot?.model;
+  const modelLabel = resolvedModelId ? getModelDisplayLabel(resolvedModelId) : null;
 
   return createPortal(
     <div
@@ -204,8 +210,8 @@ export function SessionDetailOverlay() {
                   needsInput={session.needsInput?.active}
                 />
                 <StrategyBadge strategy={session.strategy} orchestratorStrategy={session.orchestratorStrategy} />
-                {session.model && (
-                  <span className="pn-badge pn-badge--model">{session.model.toUpperCase()}</span>
+                {modelLabel && (
+                  <span className="pn-badge pn-badge--model">{modelLabel}</span>
                 )}
                 {session.mode && (
                   <span className="pn-badge">{session.mode.toUpperCase()}</span>

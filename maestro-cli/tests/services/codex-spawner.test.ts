@@ -59,6 +59,17 @@ describe('CodexSpawner', () => {
     expect(args[args.indexOf('--model') + 1]).toBe(expectedModel);
   });
 
+  it.each([
+    ['claude-fable-5', 'gpt-5.5'],
+    ['claude-fable-5[1m]', 'gpt-5.5'],
+    ['claude-sonnet-5', 'gpt-5.4'],
+    ['claude-sonnet-5[1m]', 'gpt-5.4'],
+  ])('maps Claude model %s to Codex model %s', (claudeModel, expectedModel) => {
+    const args = new CodexSpawner().buildCodexArgs(createManifest(claudeModel));
+
+    expect(args[args.indexOf('--model') + 1]).toBe(expectedModel);
+  });
+
   it.each(officialCodexModels.flatMap((model) => codexReasoningEfforts.map((effort) => [model, effort])))(
     'passes supported reasoning effort for official model %s at %s',
     (model, effort) => {

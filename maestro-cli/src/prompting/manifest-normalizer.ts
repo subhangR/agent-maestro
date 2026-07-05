@@ -8,6 +8,7 @@ import type {
 import {
   isCoordinatedMode,
   normalizeMode,
+  normalizeModelId,
   requiresSingleSelfIdentity,
 } from '../types/manifest.js';
 
@@ -102,6 +103,32 @@ function resolveSelfIds(manifest: MaestroManifest): Set<string> {
   }
 
   return selfIds;
+}
+
+/**
+ * Coerce any retired model ids to their active replacements across every place
+ * a model string can live in the manifest, so the spawner never receives one.
+ * This is the single gate every spawn passes through (manifest-reader →
+ * normalizeManifest → spawner), mirroring how legacy modes are normalized.
+ */
+function normalizeManifestModels(manifest: MaestroManifest): void {
+  if (manifest.session) {
+    if (manifest.session.model) {
+      manifest.session.model = normalizeModelId(manifest.session.model);
+    }
+    if (manifest.session.launchConfig?.model) {
+      manifest.session.launchConfig.model = normalizeModelId(manifest.session.launchConfig.model);
+    }
+  }
+  if (manifest.launchConfig?.model) {
+    manifest.launchConfig.model = normalizeModelId(manifest.launchConfig.model);
+  }
+  for (const profile of manifest.teamMemberProfiles || []) {
+    if (profile.model) profile.model = normalizeModelId(profile.model);
+  }
+  for (const member of manifest.availableTeamMembers || []) {
+    if (member.model) member.model = normalizeModelId(member.model);
+  }
 }
 
 function normalizeMemberModes(
@@ -204,6 +231,8 @@ export function normalizeManifest(
       'Deprecated workflow fields detected (teamMemberWorkflowTemplateId/customWorkflow). They are ignored by prompt composition.',
     );
   }
+
+  normalizeManifestModels(normalized);
 
   return {
     manifest: normalized,

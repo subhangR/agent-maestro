@@ -1,6 +1,6 @@
 import "../monaco/monacoEnv";
 import { invoke } from "@tauri-apps/api/core";
-import { IS_TAURI } from "../platform";
+import { platform } from "../platform";
 import Editor, { loader } from "@monaco-editor/react";
 import * as bundledMonaco from "monaco-editor";
 import React from "react";
@@ -166,25 +166,24 @@ export function CodeEditorPanel({
 
   const readTextFile = React.useCallback(
     async (path: string): Promise<string> => {
-      if (!IS_TAURI) throw new Error("File read is not available in browser mode.");
       if (provider === "ssh") {
         if (!sshTargetValue) throw new Error("Missing SSH target.");
         return await invoke<string>("ssh_read_text_file", { target: sshTargetValue, root: rootDir, path });
       }
-      return await invoke<string>("read_text_file", { root: rootDir, path });
+      // Desktop → native Tauri command; web → server REST. Same call, both hosts.
+      return await platform.fs.readTextFile(rootDir, path);
     },
     [provider, rootDir, sshTargetValue],
   );
 
   const writeTextFile = React.useCallback(
     async (path: string, content: string): Promise<void> => {
-      if (!IS_TAURI) throw new Error("File write is not available in browser mode.");
       if (provider === "ssh") {
         if (!sshTargetValue) throw new Error("Missing SSH target.");
         await invoke("ssh_write_text_file", { target: sshTargetValue, root: rootDir, path, content });
         return;
       }
-      await invoke("write_text_file", { root: rootDir, path, content });
+      await platform.fs.writeTextFile(rootDir, path, content);
     },
     [provider, rootDir, sshTargetValue],
   );

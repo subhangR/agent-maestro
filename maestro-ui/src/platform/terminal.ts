@@ -54,7 +54,7 @@ export const tauriTerminal: TerminalTransport = {
 };
 
 // ── webTerminal: per-session WebSocket transport to /pty ──────────────────
-import { PTY_WS_URL } from '../utils/serverConfig';
+import { API_BASE_URL, PTY_WS_URL } from '../utils/serverConfig';
 
 const _sockets = new Map<string, WebSocket>();
 const _pendingSends = new Map<string, Array<string | Uint8Array>>();
@@ -161,15 +161,37 @@ function _sendFrame(id: string, frame: string | Uint8Array): void {
 }
 
 export const webTerminal: TerminalTransport = {
-  createSession(opts: CreateSessionOpts): Promise<TerminalSessionInfo> {
+  async createSession(opts: CreateSessionOpts): Promise<TerminalSessionInfo> {
     const id = opts.maestroSessionId ?? opts.persistId;
+    // Plain terminals (no maestroSessionId) have no server-side PTY yet — the
+    // server only spawns one for maestro sessions during session spawn. Ask the
+    // server to spawn a PTY BEFORE attaching the socket; otherwise the attach
+    // races a non-existent PTY and the server closes it with 1011, which the
+    // client reads as an instant exit. A failed spawn must NOT block the attach,
+    // so we degrade gracefully and still connect.
+    if (!opts.maestroSessionId) {
+      try {
+        await fetch(`${API_BASE_URL}/pty/spawn`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: id,
+            command: opts.command ?? null,
+            cwd: opts.cwd ?? null,
+            env: opts.envVars ?? undefined,
+          }),
+        });
+      } catch (err) {
+        console.warn(`[webTerminal] failed to spawn server PTY for ${id}; attaching anyway`, err);
+      }
+    }
     _ensureSocket(id);
-    return Promise.resolve({
+    return {
       id,
       name: opts.name ?? '',
       command: opts.command ?? '',
       cwd: opts.cwd ?? null,
-    });
+    };
   },
 
   write(id: string, data: string, _source?: string): Promise<void> {

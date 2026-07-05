@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
-import { IS_TAURI } from '../platform';
+import { platform } from '../platform';
 import { DirectoryListing } from '../app/types/app-state';
 import { formatError } from '../utils/formatters';
 
@@ -36,13 +35,10 @@ export const usePathPickerStore = create<PathPickerState>((set, get) => ({
   setPathPickerLoading: (loading) => set({ pathPickerLoading: loading }),
   setPathPickerError: (error) => set({ pathPickerError: error }),
   loadPathPicker: async (path) => {
-    if (!IS_TAURI) {
-      set({ pathPickerError: 'Path picker is not available in browser mode.', pathPickerLoading: false });
-      return;
-    }
     set({ pathPickerLoading: true, pathPickerError: null });
     try {
-      const listing = await invoke<DirectoryListing>('list_directories', { path });
+      // Desktop → native Tauri command; web → server REST. Same shape, both hosts.
+      const listing = await platform.fs.listDirectories(path);
       set({ pathPickerListing: listing, pathPickerInput: listing.path });
     } catch (err) {
       set({ pathPickerError: formatError(err) });

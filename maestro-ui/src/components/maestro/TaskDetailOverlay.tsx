@@ -67,12 +67,15 @@ export function TaskDetailOverlay() {
     };
 
     const handleWorkOn = async () => {
+        // Read from store.getState() at call time so we always use the task
+        // that was just saved by the Run button's flush, not the render-time closure.
+        const latestTask = useMaestroStore.getState().tasks[overlay!.taskId] ?? task;
         await createMaestroSession({
-            task,
+            task: latestTask,
             project,
             mode: "worker",
             strategy: "simple",
-            ...(task.memberOverrides ? { memberOverrides: task.memberOverrides } : {}),
+            ...(latestTask.memberOverrides ? { memberOverrides: latestTask.memberOverrides } : {}),
         });
     };
 

@@ -140,7 +140,7 @@ const WS_URL = rawWsUrl
 // Used for MAESTRO_API_URL env var passed to CLI workers
 const SERVER_URL = deriveServerUrl(API_BASE_URL);
 
-// PTY WebSocket endpoint — ws://host/pty — sessionId is appended as ?id=<id> by the transport.
+// PTY WebSocket endpoint — ws://host/pty — sessionId is appended as ?sessionId=<id> by the transport.
 // Overridable via VITE_PTY_WS_URL; otherwise derived from WS_URL with /pty suffix.
 const PTY_WS_URL = rawPtyWsUrl
   ? normalizeWsUrl(rawPtyWsUrl, API_BASE_URL)

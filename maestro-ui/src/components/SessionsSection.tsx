@@ -628,7 +628,7 @@ const SessionNodeRenderer = React.memo(function SessionNodeRenderer({
         session={node}
         depth={depth}
         teamColor={teamColor}
-        childCount={node.children.length}
+        childCount={visibleChildren.length}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => onToggleCollapse(node.id)}
         link={link}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MaestroManifest } from '../../src/types/manifest.js';
 import { normalizeManifest } from '../../src/prompting/manifest-normalizer.js';
+import { normalizeModelId } from '../../src/types/manifest.js';
 
 function buildManifest(overrides: Partial<MaestroManifest> = {}): MaestroManifest {
   return {
@@ -61,6 +62,43 @@ describe('manifest-normalizer', () => {
     expect(result.manifest.teamMemberProfiles).toBeDefined();
     expect(result.manifest.teamMemberProfiles?.[0].id).toBe('tm-1');
     expect(result.manifest.teamMemberProfiles?.[0].identity).toBe('Build backend APIs');
+  });
+
+  it('leaves live Fable 5 / Sonnet 5 model ids unchanged everywhere the spawner reads them', () => {
+    const manifest = buildManifest({
+      session: { model: 'claude-fable-5', permissionMode: 'acceptEdits' },
+      launchConfig: { provider: 'claude', model: 'claude-fable-5[1m]' },
+      teamMemberProfiles: [
+        {
+          id: 'tm-2',
+          name: 'Bob',
+          avatar: 'B',
+          identity: 'Write tests',
+          model: 'claude-sonnet-5',
+        },
+      ],
+    } as Partial<MaestroManifest>);
+
+    const result = normalizeManifest(manifest);
+
+    expect(result.manifest.session.model).toBe('claude-fable-5');
+    expect(result.manifest.launchConfig?.model).toBe('claude-fable-5[1m]');
+    expect(result.manifest.teamMemberProfiles?.[0].model).toBe('claude-sonnet-5');
+  });
+
+  it('leaves a live model id on session.launchConfig unchanged (the field the spawner launches)', () => {
+    const manifest = buildManifest({
+      session: {
+        model: 'claude-sonnet-5',
+        permissionMode: 'acceptEdits',
+        launchConfig: { provider: 'claude', model: 'claude-fable-5[1m]' },
+      },
+    } as Partial<MaestroManifest>);
+
+    const result = normalizeManifest(manifest);
+
+    expect(result.manifest.session.launchConfig?.model).toBe('claude-fable-5[1m]');
+    expect(result.manifest.session.model).toBe('claude-sonnet-5');
   });
 
   it('flags deprecated workflow fields as warnings', () => {
@@ -164,5 +202,18 @@ describe('manifest-normalizer', () => {
     // raised so a coordinated session is never stripped of its ability to run.
     expect(result.errors).toEqual([]);
     expect(result.warnings.some((message) => message.includes('has no coordinatorSessionId; proceeding without it'))).toBe(true);
+  });
+});
+
+describe('normalizeModelId identity (LEGACY_MODEL_ALIASES is empty — no live model is coerced)', () => {
+  it.each([
+    'claude-fable-5',
+    'claude-fable-5[1m]',
+    'claude-sonnet-5',
+    'claude-sonnet-5[1m]',
+    'anthropic:claude-fable-5',
+    'anthropic/claude-fable-5',
+  ])('returns %s unchanged (pass-through to the spawner --model flag)', (id) => {
+    expect(normalizeModelId(id)).toBe(id);
   });
 });
