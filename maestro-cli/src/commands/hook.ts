@@ -26,6 +26,27 @@ interface DispatchResult {
   continued: boolean;
   spells?: unknown[];
   timestamp?: number;
+  // Present only on dry-run responses (see MatchedRule / renderDryRunReport).
+  dryRun?: boolean;
+  matched?: MatchedRule[];
+}
+
+// Per-rule match report entry returned by a dry-run dispatch. Mirrors the
+// server-side dry-run contract (C2 in the architecture review).
+interface MatchedRule {
+  spellId: string;
+  ruleId: string;
+  action: string;
+  wouldExecute: boolean;
+  skipReason?: string;
+}
+
+// What the CLI does with a dispatch result: exit code plus the exact bytes to
+// write. Kept as data (not side effects) so folding logic is unit-testable.
+export interface HookOutcome {
+  exitCode: 0 | 2;
+  stdout?: string;
+  stderr?: string;
 }
 
 const HOOK_REQUEST_TIMEOUT_MS = 4_000;
@@ -52,11 +73,12 @@ function debug(msg: string): void {
   }
 }
 
-async function postDispatch(
+export async function postDispatch(
   serverUrl: string,
   sessionId: string,
   event: HookEvent,
   payload: Record<string, unknown> | undefined,
+  dryRun = false,
 ): Promise<DispatchResult | null> {
   const base = serverUrl.replace(/\/$/, '');
   const url = `${base}/api/hooks/dispatch`;
@@ -67,6 +89,8 @@ async function postDispatch(
   try {
     const body: Record<string, unknown> = { sessionId, event };
     if (payload !== undefined) body.payload = payload;
+    // Only present on dry-run so the live wire request is byte-for-byte unchanged.
+    if (dryRun) body.dryRun = true;
 
     const response = await fetch(url, {
       method: 'POST',
@@ -91,23 +115,104 @@ async function postDispatch(
   }
 }
 
-function applyResult(result: DispatchResult): never {
-  // Print stdout first so feed-context / inject-prompt is delivered to Claude
-  // even when the dispatcher also signals a continue-loop.
+/**
+ * Fold a live (non-dry-run) DispatchResult into an exit code + the exact bytes
+ * to write. stdout (feed-context / inject-prompt) is delivered even when the
+ * dispatcher also signals a continue-loop, so Claude sees it first.
+ */
+export function foldResult(result: DispatchResult): HookOutcome {
+  const outcome: HookOutcome = { exitCode: result.exitCode === 2 ? 2 : 0 };
+
   if (result.stdout && result.stdout.length > 0) {
-    process.stdout.write(result.stdout);
+    outcome.stdout = result.stdout;
   }
 
-  if (result.exitCode === 2) {
-    // gate (blocked) and continue-loop (continued) both exit 2; the reason
-    // goes on stderr so Claude surfaces it.
-    if (result.reason) {
-      process.stderr.write(result.reason);
-      if (!result.reason.endsWith('\n')) process.stderr.write('\n');
-    }
-    process.exit(2);
+  if (result.exitCode === 2 && result.reason) {
+    // Only continue-loop (continued) exits 2, on Stop/SubagentStop; the reason
+    // goes on stderr so Claude surfaces it. (The v1 gate/block path was dropped.)
+    outcome.stderr = result.reason.endsWith('\n') ? result.reason : `${result.reason}\n`;
   }
-  process.exit(0);
+
+  return outcome;
+}
+
+/**
+ * Render a dry-run match report to stdout text — one line per matched rule
+ * (spell id, rule id, action type, and whether it would execute or why it was
+ * skipped). Side-effect-free; a dry run always exits 0.
+ */
+export function renderDryRunReport(result: DispatchResult): string {
+  const matched = result.matched ?? [];
+  if (matched.length === 0) {
+    return '[dry-run] no rules matched\n';
+  }
+
+  const lines = [`[dry-run] ${matched.length} rule(s) matched`];
+  for (const m of matched) {
+    const verdict = m.wouldExecute
+      ? 'would execute'
+      : `skipped${m.skipReason ? `: ${m.skipReason}` : ''}`;
+    lines.push(`  spell ${m.spellId}  rule ${m.ruleId}  ${m.action}  → ${verdict}`);
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+/**
+ * Full dispatch flow as a pure-ish function: resolves the outcome (exit code +
+ * bytes) instead of touching process.exit, so the whole path — graceful
+ * degrades, live folding, and the dry-run report — is unit-testable.
+ */
+export async function runHookDispatch(opts: {
+  event: string;
+  sessionId?: string;
+  serverUrl?: string;
+  stdinRaw: string;
+  dryRun: boolean;
+}): Promise<HookOutcome> {
+  const normalized = opts.event as HookEvent;
+  if (!HOOK_EVENTS.includes(normalized)) {
+    debug(`unknown event "${opts.event}"; exiting 0`);
+    return { exitCode: 0 };
+  }
+
+  // Graceful degrade: without sessionId or server, nothing to dispatch.
+  if (!opts.sessionId) {
+    debug('MAESTRO_SESSION_ID not set; exiting 0');
+    return { exitCode: 0 };
+  }
+  if (!opts.serverUrl) {
+    debug('MAESTRO_SERVER_URL not set; exiting 0');
+    return { exitCode: 0 };
+  }
+
+  let payload: Record<string, unknown> | undefined;
+  if (opts.stdinRaw.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(opts.stdinRaw);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        payload = parsed as Record<string, unknown>;
+      } else {
+        payload = { raw: parsed };
+      }
+    } catch {
+      payload = { raw: opts.stdinRaw };
+    }
+  }
+
+  const result = await postDispatch(opts.serverUrl, opts.sessionId, normalized, payload, opts.dryRun);
+
+  if (!result) {
+    // Server unreachable / non-2xx / timeout: fail open, exit 0.
+    return { exitCode: 0 };
+  }
+
+  if (opts.dryRun) {
+    // Dry run never executes anything and never signals continue-loop: print
+    // the match report and always exit 0.
+    return { exitCode: 0, stdout: renderDryRunReport(result) };
+  }
+
+  return foldResult(result);
 }
 
 export function registerHookCommands(program: Command): void {
@@ -116,50 +221,23 @@ export function registerHookCommands(program: Command): void {
   hook
     .command('dispatch <event>')
     .description('Dispatch a Claude hook event to the Maestro server')
-    .action(async (event: string) => {
-      const normalized = event as HookEvent;
-      if (!HOOK_EVENTS.includes(normalized)) {
-        debug(`unknown event "${event}"; exiting 0`);
-        process.exit(0);
-      }
-
-      const sessionId = config.sessionId;
-      const serverUrl = process.env.MAESTRO_SERVER_URL || process.env.MAESTRO_API_URL;
-
+    .option('--dry-run', 'Report which spell rules would fire without executing anything (always exits 0)')
+    .action(async (event: string, options: { dryRun?: boolean }) => {
       // Drain stdin first so we don't leave the pipe dangling on bail.
       const stdinRaw = await readStdin();
 
-      // Graceful degrade: without sessionId or server, nothing to dispatch.
-      if (!sessionId) {
-        debug('MAESTRO_SESSION_ID not set; exiting 0');
-        process.exit(0);
-      }
-      if (!serverUrl) {
-        debug('MAESTRO_SERVER_URL not set; exiting 0');
-        process.exit(0);
-      }
+      const outcome = await runHookDispatch({
+        event,
+        sessionId: config.sessionId,
+        serverUrl: process.env.MAESTRO_SERVER_URL || process.env.MAESTRO_API_URL,
+        stdinRaw,
+        dryRun: Boolean(options.dryRun),
+      });
 
-      let payload: Record<string, unknown> | undefined;
-      if (stdinRaw.trim().length > 0) {
-        try {
-          const parsed = JSON.parse(stdinRaw);
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            payload = parsed as Record<string, unknown>;
-          } else {
-            payload = { raw: parsed };
-          }
-        } catch {
-          payload = { raw: stdinRaw };
-        }
-      }
-
-      const result = await postDispatch(serverUrl, sessionId, normalized, payload);
-
-      if (!result) {
-        // Server unreachable / non-2xx: fail open, exit 0.
-        process.exit(0);
-      }
-
-      applyResult(result);
+      // Print stdout first so feed-context / inject-prompt is delivered to Claude
+      // even when the dispatcher also signals a continue-loop.
+      if (outcome.stdout) process.stdout.write(outcome.stdout);
+      if (outcome.stderr) process.stderr.write(outcome.stderr);
+      process.exit(outcome.exitCode);
     });
 }

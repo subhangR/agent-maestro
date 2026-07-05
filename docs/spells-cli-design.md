@@ -1,3 +1,10 @@
+> ## ⚠️ SUPERSEDED (2026-07-04)
+> This document describes the **legacy spell-invocation model** (CLI casting of quick-action
+> prompts). It does **not** describe the current spell system. The v2 multi-rule,
+> hook-triggered spell system is authoritative in **`docs/spell-system-redesign.md` §11** and
+> explained in **`docs/spell-system-explainer.md`** (CLI hook shim + `maestro spell` surface).
+> Kept for historical context only.
+
 # Spells Feature — CLI-Side Design
 
 ## 1. Overview

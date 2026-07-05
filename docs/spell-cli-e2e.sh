@@ -7,8 +7,9 @@
 #
 # What it proves (maps to the CONTRACT-ADDENDUM "CLI REST usage" surface):
 #   1. create a multi-rule spell from a JSON file      (POST /api/spells)
-#        rule A (F1): PostToolUse /Edit|Write/ → run-command (sleep >4s, feedOutput:true)
-#        rule B     : Stop → notify-channel
+#        rule A (F1): PostToolUse /Edit|Write/ → run-command node (>4s, feedOutput:true)
+#        rule B (C5): PostToolUse /Edit|Write/ → run-command sh   (gate-blocked: denylist)
+#        rule C     : Stop → notify-channel
 #   2. show it (rules expanded)                         (GET  /api/spells/:id)
 #   3. edit it                                          (PUT  /api/spells/:id)
 #   4. activate it on a session                         (POST /api/spells/:id/activate)
@@ -16,6 +17,7 @@
 #   6. fire PostToolUse + Stop hooks from the CLI       (maestro hook dispatch <EVENT>)
 #   7. assert each rule fired                           (WS spell:rule_fired outcomes)
 #   8. assert the >4s run-command output was delivered  (WS session:prompt_send, F1)
+#      + assert the sh run-command was gate-blocked      (WS spell:rule_fired outcome=blocked, C5)
 #   9. one-shot cast                                    (POST /api/spells/invoke)
 #  10. list active                                      (GET  /api/sessions/:id)
 #  11. reset-loop (best-effort)                         (POST /api/spells/:id/reset-loop)
@@ -154,7 +156,13 @@ cat > "$SPELL_FILE" <<JSON
       "label": "lint-on-edit-feed",
       "enabled": true,
       "trigger": { "type": "hook", "hookEvent": "PostToolUse", "matcher": "Edit|Write" },
-      "action": { "type": "run-command", "command": "sh", "args": ["-c", "sleep 5; echo $FEED_MARKER"], "cwd": "/tmp", "feedOutput": true }
+      "action": { "type": "run-command", "command": "node", "args": ["-e", "setTimeout(()=>{console.log('$FEED_MARKER')},4500)"], "cwd": "/tmp", "feedOutput": true }
+    },
+    {
+      "label": "denylist-sh-blocked",
+      "enabled": true,
+      "trigger": { "type": "hook", "hookEvent": "PostToolUse", "matcher": "Edit|Write" },
+      "action": { "type": "run-command", "command": "sh", "args": ["-c", "echo should-not-run $NONCE"], "cwd": "/tmp" }
     },
     {
       "label": "notify-on-stop",
@@ -173,13 +181,13 @@ CREATED_SPELL_ID=$(printf '%s' "$CREATE_OUT" | jval 'd.data&&d.data.id' 2>/dev/n
 [ -n "$CREATED_SPELL_ID" ] || die "create returned no spell id. Raw: $(printf '%s' "$CREATE_OUT" | head -c 400)"
 SP="$CREATED_SPELL_ID"
 NRULES=$(printf '%s' "$CREATE_OUT" | jval 'd.data.rules.length')
-require_eq "spell has 2 rules" "$NRULES" "2"
+require_eq "spell has 3 rules" "$NRULES" "3"
 pass "spell = $SP"
 
 # ── Step 5: show ─────────────────────────────────────────────────────────────
 step "5. Show the spell (GET /api/spells/:id)"
-SHOW_RULES=$(mcli --json spell show "$SP" | jval 'd.data.rules.map(r=>r.action.type).sort().join(",")')
-require_eq "show lists both actions" "$SHOW_RULES" "notify-channel,run-command"
+SHOW_RULES=$(mcli --json spell show "$SP" | jval '[...new Set(d.data.rules.map(r=>r.action.type))].sort().join(",")')
+require_eq "show lists both action types" "$SHOW_RULES" "notify-channel,run-command"
 
 # ── Step 6: edit ─────────────────────────────────────────────────────────────
 step "6. Edit the spell (PUT /api/spells/:id)"
@@ -227,16 +235,22 @@ SCAN=$(node "$SCAN_HELPER" "$CAP_FILE" "$SESS" "$FEED_MARKER")
 printf '%s\n' "$SCAN" | sed 's/^/    /'
 RF_TOTAL=$(printf '%s\n'   "$SCAN" | sed -n 's/^RULE_FIRED_TOTAL=//p')
 RF_OK=$(printf '%s\n'      "$SCAN" | sed -n 's/^RULE_FIRED_OK=//p')
+RF_BLOCKED=$(printf '%s\n' "$SCAN" | sed -n 's/^RULE_FIRED_BLOCKED=//p')
 RF_ACTIONS=$(printf '%s\n' "$SCAN" | sed -n 's/^RULE_FIRED_ACTIONS=//p')
 RF_EVENTS=$(printf '%s\n'  "$SCAN" | sed -n 's/^RULE_FIRED_EVENTS=//p')
+BLOCKED_DENYLIST=$(printf '%s\n' "$SCAN" | sed -n 's/^BLOCKED_DENYLIST_REASON=//p')
 FEED_FOUND=$(printf '%s\n' "$SCAN" | sed -n 's/^FEEDOUTPUT_FOUND=//p')
-require_ge "spell:rule_fired count >= 2" "${RF_TOTAL:-0}" "2"
+require_ge "spell:rule_fired count >= 3" "${RF_TOTAL:-0}" "3"
 require_ge "rule_fired outcome=ok >= 2"  "${RF_OK:-0}" "2"
 require_contains "run-command rule fired"   "$RF_ACTIONS" "run-command"
 require_contains "notify-channel rule fired" "$RF_ACTIONS" "notify-channel"
 require_contains "PostToolUse event fired" "$RF_EVENTS" "PostToolUse"
 require_contains "Stop event fired"        "$RF_EVENTS" "Stop"
 require_eq "F1: >4s run-command feedOutput delivered via session:prompt_send" "$FEED_FOUND" "yes"
+# C5 positive security assertion: the `sh` run-command must be gate-blocked, and
+# the block must be observable on the WS channel with the denylist reason.
+require_ge "C5: >=1 run-command blocked by the gate" "${RF_BLOCKED:-0}" "1"
+require_eq "C5: blocked reason cites the shell/privilege denylist" "$BLOCKED_DENYLIST" "yes"
 
 # ── Step 12: one-shot cast (Mechanism B) ─────────────────────────────────────
 step "12. One-shot cast (POST /api/spells/invoke)"

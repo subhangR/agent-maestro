@@ -37,6 +37,7 @@ import { SpellStudio } from "../spells/studio/SpellStudio";
 import { TeamMemberIntroDialog } from "../maestro/TeamMemberIntroDialog";
 import { SpellbookDrawer } from "../spells/studio/spellbook";
 import { UndoToast } from "../spells/UndoToast";
+import { SpellNotificationToasts } from "../spells/SpellNotificationToasts";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { normalizeSmartQuotes } from "../../app/utils/string";
 
@@ -690,6 +691,7 @@ export function AppModals() {
       <TeamMemberIntroDialog />
       <SpellbookHost />
       <UndoToast />
+      <SpellNotificationToasts />
 
       {/* Agent-generated modals */}
       {activeModals.map((modal) => (

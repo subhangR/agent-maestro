@@ -78,8 +78,9 @@ blindly.
 - **FR-3.11 [MUST] continue-loop** — pick a **loop style** (see `02` loop types) and a **max
   iterations** cap (integer ≥ 1). Explain that this keeps the agent working after it would
   otherwise stop, up to the cap.
-- **FR-3.12 [MUST] notify-channel** — optional **channel** (routing hint, e.g. telegram/slack)
-  + optional **message** override.
+- **FR-3.12 [MUST] notify-channel** — optional **message** override. ⚠️ **CORRECTION
+  (2026-07-04): the `channel` routing hint (telegram/slack) was dropped — notify-channel is
+  in-app only. See `CONTRACT-ADDENDUM.md`.**
 
 ### Rule management
 - **FR-3.13 [MUST]** Give each rule an **enabled/disabled toggle** (a disabled rule is saved

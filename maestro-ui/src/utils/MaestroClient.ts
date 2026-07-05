@@ -38,6 +38,9 @@ import type {
     CreateSpellPayload,
     UpdateSpellPayload,
     ActiveSpell,
+    ActivateSpellResult,
+    SpellCastMode,
+    HookDispatchDryRunResult,
     ResetLoopResult,
     SpellEntity,
     SpellEntityType,
@@ -796,10 +799,21 @@ class MaestroClient {
         await this.fetch<{ success: boolean }>(`/spells/${id}`, { method: 'DELETE' });
     }
 
-    async activateSpell(spellId: string, targetSessionIds: string[], invokerSessionId?: string | null): Promise<{ spell: Spell; sessions: Array<{ sessionId: string; activeSpell: ActiveSpell }> }> {
+    async activateSpell(
+        spellId: string,
+        targetSessionIds: string[],
+        invokerSessionId?: string | null,
+        opts?: { castMode?: SpellCastMode; ensembleName?: string },
+    ): Promise<ActivateSpellResult> {
         return this.fetch(`/spells/${spellId}/activate`, {
             method: 'POST',
-            body: JSON.stringify({ targetSessionIds, invokerSessionId: invokerSessionId ?? null }),
+            body: JSON.stringify({
+                targetSessionIds,
+                invokerSessionId: invokerSessionId ?? null,
+                // C1 — no longer dropped: coordinate casts reach the EnsembleService.
+                ...(opts?.castMode ? { castMode: opts.castMode } : {}),
+                ...(opts?.ensembleName ? { ensembleName: opts.ensembleName } : {}),
+            }),
         });
     }
 
@@ -807,6 +821,34 @@ class MaestroClient {
         return this.fetch(`/spells/${spellId}/deactivate`, {
             method: 'POST',
             body: JSON.stringify({ targetSessionIds }),
+        });
+    }
+
+    /**
+     * Enable/disable an active spell in place (C4) — preserves ruleIterations,
+     * unlike the old deactivate/re-activate dance. Pass `ruleId` to toggle a
+     * single rule's runtime enablement. Reconciled via the `spell:toggled` WS event.
+     */
+    async toggleSpell(spellId: string, sessionId: string, enabled: boolean, ruleId?: string): Promise<{ sessionId: string; spellId: string; activeSpell: ActiveSpell }> {
+        return this.fetch(`/spells/${spellId}/toggle`, {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, enabled, ...(ruleId ? { ruleId } : {}) }),
+        });
+    }
+
+    /**
+     * Dry-run a hook dispatch (C2 — side-effect-free "test fire"). Returns the
+     * per-rule match report (which rules would fire and why). Bypasses the
+     * self-only guard server-side, so the UI may probe any session.
+     */
+    async dispatchHookDryRun(params: {
+        sessionId: string;
+        event: string;
+        payload?: Record<string, unknown>;
+    }): Promise<HookDispatchDryRunResult> {
+        return this.fetch<HookDispatchDryRunResult>('/hooks/dispatch', {
+            method: 'POST',
+            body: JSON.stringify({ ...params, dryRun: true }),
         });
     }
 

@@ -1,3 +1,10 @@
+> ## ⚠️ SUPERSEDED (2026-07-04)
+> This brief froze the **`gate`/6-action taxonomy** and single-action `Spell` model that the
+> v2 clean break **dropped** (`gate` is gone; the dispatcher has no block path; a spell is
+> now 1..20 rules). It is **not** ground truth anymore. Authoritative:
+> `docs/spell-system-redesign.md` §11; current explainer: `docs/spell-system-explainer.md`.
+> Kept for historical context only.
+
 # Spell System Redesign — Design Brief (ground truth for all agents)
 
 Read this + the 6 diagrams in `docs/spell-system-design/*.excalidraw` before any work.

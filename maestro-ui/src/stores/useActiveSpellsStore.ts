@@ -115,6 +115,19 @@ interface ActiveSpellsState {
     ruleIterations: Record<string, number>;
   }) => void;
 
+  /**
+   * Flip a spell's enabled flag in place (C4). Used both optimistically by
+   * `setSpellEnabled` and authoritatively from the `spell:toggled` WS event —
+   * when the server ships the reconciled ActiveSpell, pass its `ruleIterations`
+   * too so counters stay canonical.
+   */
+  applyToggle: (params: {
+    maestroSessionId: string;
+    spellId: string;
+    enabled: boolean;
+    ruleIterations?: Record<string, number>;
+  }) => void;
+
   /** Append a rule-fired observability entry (S8) from `spell:rule_fired`. */
   recordRuleFired: (params: {
     maestroSessionId: string;
@@ -216,6 +229,20 @@ export const useActiveSpellsStore = create<ActiveSpellsState>((set, get) => ({
       const next = { ...state.byMaestroSessionId };
       next[maestroSessionId] = current.map((s) =>
         s.spellId === spellId ? { ...s, ruleIterations: { ...ruleIterations } } : s,
+      );
+      return { byMaestroSessionId: next };
+    });
+  },
+
+  applyToggle: ({ maestroSessionId, spellId, enabled, ruleIterations }) => {
+    set((state) => {
+      const current = state.byMaestroSessionId[maestroSessionId];
+      if (!current) return state;
+      const next = { ...state.byMaestroSessionId };
+      next[maestroSessionId] = current.map((s) =>
+        s.spellId === spellId
+          ? { ...s, enabled, ruleIterations: ruleIterations ? { ...ruleIterations } : s.ruleIterations }
+          : s,
       );
       return { byMaestroSessionId: next };
     });

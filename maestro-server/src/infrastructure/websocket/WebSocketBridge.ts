@@ -25,6 +25,7 @@ const IMMEDIATE_EVENTS = new Set<string>([
   'spell:deactivated',
   'spell:rule_fired',
   'spell:loop_reset',
+  'spell:toggled',
   // Ensemble lifecycle is low-volume and UI must repaint rings immediately
   // when an ensemble is created/updated/disbanded.
   'ensemble:created',
@@ -198,6 +199,7 @@ export class WebSocketBridge {
       'spell:deactivated',
       'spell:rule_fired',
       'spell:loop_reset',
+      'spell:toggled',
       // Ensemble events (P4)
       'ensemble:created',
       'ensemble:updated',

@@ -1,6 +1,7 @@
 import { HookDispatcherService } from '../src/application/services/HookDispatcherService';
 import { ISessionRepository } from '../src/domain/repositories/ISessionRepository';
 import { ISpellRepository } from '../src/domain/repositories/ISpellRepository';
+import { ITeamMemberRepository } from '../src/domain/repositories/ITeamMemberRepository';
 import { IEventBus } from '../src/domain/events/IEventBus';
 import {
   ActiveSpell,
@@ -9,9 +10,10 @@ import {
   SpellRule,
   SpellHookEvent,
   SpellActionConfig,
+  SpellActionType,
+  TeamMember,
+  ACTIONS_BY_EVENT,
 } from '../src/types';
-import { SPELL_LIBRARY } from '../src/infrastructure/repositories/FileSystemSpellRepository';
-import { createSpellSchema } from '../src/api/validation';
 import { silentLogger } from './helpers';
 
 /**
@@ -41,7 +43,7 @@ class InMemoryEventBus implements IEventBus {
   }
 }
 
-function makeSession(actives: ActiveSpell[]): Session {
+function makeSession(actives: ActiveSpell[], overrides: Partial<Session> = {}): Session {
   return {
     id: 'sess_test',
     projectId: 'proj_test',
@@ -58,6 +60,7 @@ function makeSession(actives: ActiveSpell[]): Session {
     timeline: [],
     docs: [],
     activeSpells: actives,
+    ...overrides,
   } as any;
 }
 
@@ -138,14 +141,45 @@ class InMemorySessionRepo implements Partial<ISessionRepository> {
   shutdown(): void {}
 }
 
-function makeDispatcher(session: Session, spells: Map<string, Spell>, eventBus?: IEventBus) {
+class InMemoryTeamMemberRepo implements Partial<ITeamMemberRepository> {
+  constructor(private members: Map<string, TeamMember> = new Map()) {}
+  async findById(_projectId: string, id: string): Promise<TeamMember | null> {
+    return this.members.get(id) ?? null;
+  }
+}
+
+function makeMember(id: string, commandPermissions?: TeamMember['commandPermissions']): TeamMember {
+  return {
+    id,
+    projectId: 'proj_test',
+    name: 'Worker',
+    role: 'exec',
+    avatar: '🔧',
+    isDefault: false,
+    status: 'active',
+    commandPermissions,
+    createdAt: '',
+    updatedAt: '',
+  } as TeamMember;
+}
+
+interface DispatcherOpts {
+  eventBus?: IEventBus;
+  members?: Map<string, TeamMember>;
+  spellCmdAllowlist?: string[];
+}
+
+function makeDispatcher(session: Session, spells: Map<string, Spell>, opts: DispatcherOpts = {}) {
   const sessionRepo = new InMemorySessionRepo(session);
-  const bus = eventBus ?? new InMemoryEventBus();
+  const bus = opts.eventBus ?? new InMemoryEventBus();
+  const teamMemberRepo = new InMemoryTeamMemberRepo(opts.members ?? new Map());
   const dispatcher = new HookDispatcherService(
     sessionRepo as unknown as ISessionRepository,
     new InMemorySpellRepo(spells),
+    teamMemberRepo as unknown as ITeamMemberRepository,
     bus,
     silentLogger,
+    { spellCmdAllowlist: opts.spellCmdAllowlist ?? [] },
   );
   return { dispatcher, sessionRepo, bus };
 }
@@ -376,10 +410,10 @@ describe('HookDispatcherService — run-command (async)', () => {
 
 // --- notify-channel ---
 
-describe('HookDispatcherService — notify-channel', () => {
-  it('emits notify:progress with the channel routing hint threaded through', async () => {
+describe('HookDispatcherService — notify-channel (C3: in-app, honest)', () => {
+  it('emits notify:progress with the in-app payload shape {sessionId, spellId, ruleId, message, level}', async () => {
     const session = makeSession([makeActive('s_notify')]);
-    const rule = makeRule({ trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'notify-channel', channel: 'telegram', message: 'done!' } });
+    const rule = makeRule({ id: 'r_notify', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'notify-channel', message: 'done!', level: 'success' } });
     const spells = new Map<string, Spell>([['s_notify', makeSpell('s_notify', [rule])]]);
     const { dispatcher, bus } = makeDispatcher(session, spells);
 
@@ -387,8 +421,24 @@ describe('HookDispatcherService — notify-channel', () => {
     expect(result.exitCode).toBe(0);
     const notify = (bus as InMemoryEventBus).emitted.find(e => e.event === 'notify:progress');
     expect(notify).toBeTruthy();
+    expect(notify!.data.sessionId).toBe(session.id);
+    expect(notify!.data.spellId).toBe('s_notify');
+    expect(notify!.data.ruleId).toBe('r_notify');
     expect(notify!.data.message).toBe('done!');
-    expect(notify!.data.channel).toBe('telegram');
+    expect(notify!.data.level).toBe('success');
+    // C3: the dropped `channel` field must never appear on the payload.
+    expect('channel' in notify!.data).toBe(false);
+  });
+
+  it('defaults level to "info" when unspecified', async () => {
+    const session = makeSession([makeActive('s_notify')]);
+    const rule = makeRule({ trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'notify-channel', message: 'hi' } });
+    const spells = new Map<string, Spell>([['s_notify', makeSpell('s_notify', [rule])]]);
+    const { dispatcher, bus } = makeDispatcher(session, spells);
+
+    await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    const notify = (bus as InMemoryEventBus).emitted.find(e => e.event === 'notify:progress');
+    expect(notify!.data.level).toBe('info');
   });
 });
 
@@ -456,33 +506,262 @@ describe('HookDispatcherService — all 8 hook events dispatch', () => {
   });
 });
 
-// --- Seed-contract: every SPELL_LIBRARY seed passes the real Zod schema (PI-7b) ---
+// NOTE: the SPELL_LIBRARY seed-contract suite moved to test/spell-library-seeds.test.ts
+// (owned by the spells/docs stream), which extends it further.
 
-describe('SPELL_LIBRARY seed contract', () => {
-  it('every seed validates against createSpellSchema', () => {
-    for (const seed of SPELL_LIBRARY) {
-      const payload = {
-        name: seed.name,
-        description: seed.description,
-        icon: seed.icon,
-        color: seed.color,
-        rules: seed.rules,
-      };
-      const parsed = createSpellSchema.safeParse(payload);
-      if (!parsed.success) {
-        throw new Error(`Seed "${seed.id}" failed schema: ${JSON.stringify(parsed.error.issues)}`);
-      }
-      expect(parsed.success).toBe(true);
-    }
+// --- Matcher target cap (4096) — ReDoS hardening (P2-2) ---
+
+describe('HookDispatcherService — matcher target cap (4096 chars)', () => {
+  it('does NOT match when the needle sits beyond the 4096-char cap', async () => {
+    const session = makeSession([makeActive('s1')]);
+    const rule = makeRule({ trigger: { type: 'hook', hookEvent: 'Notification', matcher: 'NEEDLE' }, action: { type: 'feed-context', prompt: 'x' } });
+    const spells = new Map<string, Spell>([['s1', makeSpell('s1', [rule])]]);
+    const { dispatcher } = makeDispatcher(session, spells);
+
+    // Needle placed AFTER 4096 chars of padding — sliced off before the regex runs.
+    const message = 'A'.repeat(4100) + 'NEEDLE';
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Notification', payload: { message } } as any);
+    expect(result.spells.length).toBe(0);
   });
 
-  it('every run-command seed rule ships disabled by default', () => {
-    for (const seed of SPELL_LIBRARY) {
-      for (const rule of seed.rules) {
-        if (rule.action.type === 'run-command') {
-          expect(rule.enabled).toBe(false);
-        }
-      }
+  it('DOES match when the needle sits within the first 4096 chars', async () => {
+    const session = makeSession([makeActive('s1')]);
+    const rule = makeRule({ trigger: { type: 'hook', hookEvent: 'Notification', matcher: 'NEEDLE' }, action: { type: 'feed-context', prompt: 'x' } });
+    const spells = new Map<string, Spell>([['s1', makeSpell('s1', [rule])]]);
+    const { dispatcher } = makeDispatcher(session, spells);
+
+    const message = 'NEEDLE' + 'A'.repeat(4100);
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Notification', payload: { message } } as any);
+    expect(result.spells.length).toBe(1);
+  });
+});
+
+// --- Per-event ACTIONS_BY_EVENT legality at dispatch time (P2-2) ---
+
+describe('HookDispatcherService — every legal (event, action) combo dispatches', () => {
+  const combos: Array<{ event: SpellHookEvent; action: SpellActionType }> = [];
+  for (const [event, actions] of Object.entries(ACTIONS_BY_EVENT)) {
+    for (const action of actions) combos.push({ event: event as SpellHookEvent, action });
+  }
+
+  function actionConfig(action: SpellActionType): SpellActionConfig {
+    switch (action) {
+      case 'inject-prompt': return { type: 'inject-prompt', prompt: 'p' };
+      case 'feed-context': return { type: 'feed-context', prompt: 'ctx' };
+      case 'run-command': return { type: 'run-command', command: process.execPath, args: ['-e', ''] };
+      case 'continue-loop': return { type: 'continue-loop', maxIterations: 2 };
+      case 'notify-channel': return { type: 'notify-channel', message: 'm' };
     }
+  }
+
+  it.each(combos)('$event × $action fires a rule outcome', async ({ event, action }) => {
+    const session = makeSession([makeActive('s1')]);
+    const rule = makeRule({ id: `r_${event}_${action}`, trigger: { type: 'hook', hookEvent: event }, action: actionConfig(action) });
+    const spells = new Map<string, Spell>([['s1', makeSpell('s1', [rule])]]);
+    const { dispatcher } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event, payload: {} } as any);
+    expect(result.spells.length).toBe(1);
+    expect(result.spells[0].action).toBe(action);
+    // No legal combo should ever surface an error outcome.
+    expect(result.spells[0].error).toBeUndefined();
+  });
+});
+
+// --- Missing run-command binary — graceful degradation (P2-2) ---
+
+describe('HookDispatcherService — missing run-command binary', () => {
+  it('spawn of a nonexistent binary degrades gracefully (exit 0, no throw, async ENOENT swallowed)', async () => {
+    const session = makeSession([makeActive('s_cmd')]);
+    const rule = makeRule({ trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'run-command', command: 'maestro_no_such_binary_zzz', args: [] } });
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [rule])]]);
+    const { dispatcher } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.exitCode).toBe(0);
+    expect(result.spells[0].action).toBe('run-command');
+    // The gate passed and the spawn was attempted (status ok); ENOENT arrives
+    // asynchronously in the exec callback and is logged, never thrown.
+    expect(result.spells[0].status).toBe('ok');
+    await new Promise(r => setTimeout(r, 50)); // let the async ENOENT callback run
+  });
+});
+
+// --- Colliding multi-rule iteration counters (P2-2) ---
+
+describe('HookDispatcherService — colliding rule-id iteration counters', () => {
+  it('same rule id across two different spells tracks counters independently', async () => {
+    const session = makeSession([makeActive('s_a'), makeActive('s_b')]);
+    const spells = new Map<string, Spell>([
+      ['s_a', makeSpell('s_a', [makeRule({ id: 'r_loop', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'continue-loop', maxIterations: 3 } })])],
+      ['s_b', makeSpell('s_b', [makeRule({ id: 'r_loop', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'continue-loop', maxIterations: 3 } })])],
+    ]);
+    const { dispatcher, sessionRepo } = makeDispatcher(session, spells);
+
+    await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    const updated = await sessionRepo.findById(session.id);
+    const a = updated!.activeSpells!.find(x => x.spellId === 's_a')!;
+    const b = updated!.activeSpells!.find(x => x.spellId === 's_b')!;
+    expect(a.ruleIterations['r_loop']).toBe(1);
+    expect(b.ruleIterations['r_loop']).toBe(1);
+  });
+
+  it('two rules with distinct ids in one spell track counters independently', async () => {
+    const session = makeSession([makeActive('s_multi')]);
+    const spell = makeSpell('s_multi', [
+      makeRule({ id: 'r1', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'continue-loop', maxIterations: 5 } }),
+      makeRule({ id: 'r2', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'continue-loop', maxIterations: 5 } }),
+    ]);
+    const spells = new Map<string, Spell>([['s_multi', spell]]);
+    const { dispatcher, sessionRepo } = makeDispatcher(session, spells);
+
+    await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    const updated = await sessionRepo.findById(session.id);
+    const active = updated!.activeSpells![0];
+    expect(active.ruleIterations['r1']).toBe(1);
+    expect(active.ruleIterations['r2']).toBe(1);
+  });
+});
+
+// --- C5: run-command permission gating (block outcomes) ---
+
+describe('HookDispatcherService — run-command permission gating (C5)', () => {
+  const runCmdRule = (command: string) =>
+    makeRule({ id: 'r_cmd', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'run-command', command, args: ['-e', ''] } });
+
+  it('blocks when the session is in readOnly permission mode', async () => {
+    const session = makeSession([makeActive('s_cmd')], { teamMemberSnapshot: { name: 'w', avatar: '🔧', role: 'r', permissionMode: 'readOnly' } as any });
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [runCmdRule(process.execPath)])]]);
+    const { dispatcher, bus } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.spells[0].status).toBe('blocked');
+    expect(result.spells[0].reason).toMatch(/readOnly/i);
+    const fired = (bus as InMemoryEventBus).emitted.find(e => e.event === 'spell:rule_fired');
+    expect(fired!.data.outcome).toBe('blocked');
+    expect(fired!.data.reason).toBeTruthy();
+  });
+
+  it("blocks when the member's commandPermissions.commands['spell-run-command'] is false", async () => {
+    const members = new Map<string, TeamMember>([['tm1', makeMember('tm1', { commands: { 'spell-run-command': false } })]]);
+    const session = makeSession([makeActive('s_cmd')], { teamMemberId: 'tm1' } as any);
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [runCmdRule(process.execPath)])]]);
+    const { dispatcher } = makeDispatcher(session, spells, { members });
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.spells[0].status).toBe('blocked');
+    expect(result.spells[0].reason).toMatch(/spell-run-command/);
+  });
+
+  it("blocks when the member's commandPermissions.groups['spell'] is false", async () => {
+    const members = new Map<string, TeamMember>([['tm1', makeMember('tm1', { groups: { spell: false } })]]);
+    const session = makeSession([makeActive('s_cmd')], { teamMemberId: 'tm1' } as any);
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [runCmdRule(process.execPath)])]]);
+    const { dispatcher } = makeDispatcher(session, spells, { members });
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.spells[0].status).toBe('blocked');
+    expect(result.spells[0].reason).toMatch(/group/);
+  });
+
+  it('blocks a shell binary via the always-on denylist (argv[0] = bash)', async () => {
+    const session = makeSession([makeActive('s_cmd')]);
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [runCmdRule('/bin/bash')])]]);
+    const { dispatcher } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.spells[0].status).toBe('blocked');
+    expect(result.spells[0].reason).toMatch(/denylist/);
+  });
+
+  it('with an allowlist set, blocks a binary that is not on it', async () => {
+    const session = makeSession([makeActive('s_cmd')]);
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [runCmdRule('echo')])]]);
+    const { dispatcher } = makeDispatcher(session, spells, { spellCmdAllowlist: ['node'] });
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.spells[0].status).toBe('blocked');
+    expect(result.spells[0].reason).toMatch(/allowlist|ALLOWLIST/);
+  });
+
+  it('with an allowlist set, permits a listed binary (node)', async () => {
+    const session = makeSession([makeActive('s_cmd')]);
+    const spells = new Map<string, Spell>([['s_cmd', makeSpell('s_cmd', [runCmdRule(process.execPath)])]]);
+    const { dispatcher } = makeDispatcher(session, spells, { spellCmdAllowlist: ['node'] });
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    expect(result.spells[0].status).toBe('ok');
+    await new Promise(r => setTimeout(r, 30));
+  });
+});
+
+// --- C5: run-command concurrency caps (skip outcomes) ---
+
+describe('HookDispatcherService — run-command concurrency cap (C5)', () => {
+  it('skips run-commands past the per-session in-flight cap (3) with outcome "skipped"', async () => {
+    // Four run-command rules on one session, each briefly sleeping so none reaps
+    // before the whole dispatch loop has evaluated all four.
+    const sleeper = (id: string): SpellRule =>
+      makeRule({ id, trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'run-command', command: process.execPath, args: ['-e', 'setTimeout(()=>{},150)'] } });
+    const session = makeSession([makeActive('s_cmd')]);
+    const spell = makeSpell('s_cmd', [sleeper('r1'), sleeper('r2'), sleeper('r3'), sleeper('r4')]);
+    const spells = new Map<string, Spell>([['s_cmd', spell]]);
+    const { dispatcher, bus } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {} } as any);
+    const oks = result.spells.filter(s => s.status === 'ok');
+    const skipped = result.spells.filter(s => s.status === 'skipped');
+    expect(oks.length).toBe(3);
+    expect(skipped.length).toBe(1);
+    expect(skipped[0].reason).toMatch(/concurrency cap/);
+    const firedSkipped = (bus as InMemoryEventBus).emitted.filter(e => e.event === 'spell:rule_fired' && e.data.outcome === 'skipped');
+    expect(firedSkipped.length).toBe(1);
+    await new Promise(r => setTimeout(r, 200)); // let sleepers exit + reap
+  });
+});
+
+// --- C2: dry-run — full match report, zero side effects ---
+
+describe('HookDispatcherService — dry-run (C2)', () => {
+  it('runs matching + composition but executes nothing (no events, no counters)', async () => {
+    const active = makeActive('s_dry', { ruleIterations: { r_loop: 0 } });
+    const session = makeSession([active]);
+    const spell = makeSpell('s_dry', [
+      makeRule({ id: 'r_fc', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'feed-context', prompt: 'ctx' } }),
+      makeRule({ id: 'r_inj', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'inject-prompt', prompt: 'inj' } }),
+      makeRule({ id: 'r_loop', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'continue-loop', maxIterations: 3 } }),
+      makeRule({ id: 'r_cmd', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'run-command', command: process.execPath, args: ['-e', ''] } }),
+    ]);
+    const spells = new Map<string, Spell>([['s_dry', spell]]);
+    const { dispatcher, sessionRepo, bus } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {}, dryRun: true } as any);
+
+    expect(result.dryRun).toBe(true);
+    expect(result.matched?.length).toBe(4);
+    // Compose still reflects would-be behavior (feed-context stdout present).
+    expect(result.stdout).toContain('ctx');
+    // Zero side effects: no domain events at all.
+    const emitted = (bus as InMemoryEventBus).emitted;
+    expect(emitted.some(e => e.event === 'session:prompt_send')).toBe(false);
+    expect(emitted.some(e => e.event === 'spell:rule_fired')).toBe(false);
+    expect(emitted.some(e => e.event === 'notify:progress')).toBe(false);
+    // Counter NOT incremented.
+    const updated = await sessionRepo.findById(session.id);
+    expect(updated!.activeSpells![0].ruleIterations['r_loop']).toBe(0);
+  });
+
+  it('reports wouldExecute:false + skipReason for a gate-blocked run-command', async () => {
+    const session = makeSession([makeActive('s_dry')], { teamMemberSnapshot: { name: 'w', avatar: '🔧', role: 'r', permissionMode: 'readOnly' } as any });
+    const spell = makeSpell('s_dry', [
+      makeRule({ id: 'r_cmd', trigger: { type: 'hook', hookEvent: 'Stop' }, action: { type: 'run-command', command: process.execPath, args: [] } }),
+    ]);
+    const spells = new Map<string, Spell>([['s_dry', spell]]);
+    const { dispatcher } = makeDispatcher(session, spells);
+
+    const result = await dispatcher.dispatch({ sessionId: session.id, event: 'Stop', payload: {}, dryRun: true } as any);
+    const report = result.matched!.find(m => m.ruleId === 'r_cmd')!;
+    expect(report.wouldExecute).toBe(false);
+    expect(report.skipReason).toMatch(/readOnly/i);
   });
 });

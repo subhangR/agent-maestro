@@ -1,3 +1,10 @@
+> ## ⚠️ SUPERSEDED (2026-07-04)
+> Pre-redesign build status. It documents the dropped **`gate` action + 6-action taxonomy +
+> 6 hook events** and a single-action `Spell` as shipped — that model was replaced by the v2
+> multi-rule engine (5 actions, no gate, 8 events). Authoritative contract:
+> `docs/spell-system-redesign.md` §11; current explainer: `docs/spell-system-explainer.md`;
+> library: `docs/spell-library.md`. Kept for historical context only.
+
 # Spell System Build — Final Status
 
 **Branch:** `feat/spell-system-server-dispatch` @ `a01b4b9` (off `feat/spell-system` foundation, off `fix/diagram-doc-detection-and-chips`).

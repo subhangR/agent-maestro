@@ -76,7 +76,7 @@ export const ACTION_META: Record<SpellActionType, ActionMeta> = {
   'feed-context': { label: 'Feed context', blurb: 'Give the agent extra context it reads (stdout channel).' },
   'run-command': { label: 'Run command', blurb: 'Run a shell command on your machine (async, fire-and-forget).' },
   'continue-loop': { label: 'Continue loop', blurb: 'Keep the agent going instead of stopping.' },
-  'notify-channel': { label: 'Notify', blurb: 'Send a notification to a channel (best-effort).' },
+  'notify-channel': { label: 'Notify', blurb: 'Show an in-app notification.' },
 };
 
 export const LOOP_TYPE_META: Record<SpellLoopType, { label: string; blurb: string }> = {
@@ -138,8 +138,7 @@ export interface EditorRule {
   // continue-loop
   loopType: SpellLoopType;
   maxIterations: number;
-  // notify-channel
-  channel: string;
+  // notify-channel (in-app only — C3)
   message: string;
 }
 
@@ -169,7 +168,6 @@ export function blankRule(hookEvent: SpellHookEvent = 'Stop'): EditorRule {
     runCommandAck: false,
     loopType: 'continue-until-done',
     maxIterations: 3,
-    channel: '',
     message: '',
   };
 }
@@ -221,7 +219,6 @@ export function ruleFromSpell(rule: SpellRule): EditorRule {
       base.maxIterations = act.maxIterations ?? 3;
       break;
     case 'notify-channel':
-      base.channel = act.channel ?? '';
       base.message = act.message ?? '';
       break;
   }
@@ -278,7 +275,6 @@ export function buildAction(r: EditorRule): SpellActionConfig {
     case 'notify-channel':
       return {
         type: 'notify-channel',
-        channel: r.channel.trim() || undefined,
         message: r.message.trim() || undefined,
       };
   }

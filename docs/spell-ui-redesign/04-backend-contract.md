@@ -1,5 +1,10 @@
 # Backend Contract (for implementability & wiring)
 
+> **⚠️ CORRECTION (2026-07-04):** the `notify-channel` `channel` field + external relay were
+> **dropped**. `notify:progress` is now `{ sessionId, spellId, ruleId, message, level? }` (no
+> `channel`); notify-channel is in-app only. Ignore `channel`/relay references below. See
+> `CONTRACT-ADDENDUM.md` and `docs/spell-system-explainer.md` §3.6.
+
 What the UI binds to. All of this is **live on staging** today. Types are the source of
 truth from `maestro-server/src/types.ts`; the UI mirrors them in
 `maestro-ui/src/app/types/maestro.ts`. Endpoints are under `/api`.

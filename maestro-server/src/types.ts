@@ -620,6 +620,20 @@ export type SpellLoopType =
   | 'critic-refine';
 
 /**
+ * Severity of an in-app `notify-channel` notification (C3 scope-down). The
+ * former free-text `channel` routing hint was dropped — notify-channel is now
+ * an honest in-app-only surface, so all that remains is the display severity.
+ */
+export type SpellNotifyLevel = 'info' | 'success' | 'warn';
+
+/**
+ * How a spell is cast across its target sessions (C1). `single`/`broadcast`
+ * behave identically server-side (attach to each target); `coordinate`
+ * additionally wires the targets into an Ensemble.
+ */
+export type SpellCastMode = 'single' | 'broadcast' | 'coordinate';
+
+/**
  * Hook event a rule's trigger fires on. v2 expands the list to 8 (adds
  * SubagentStop + SessionEnd — these have REAL hook wiring, §11.6).
  */
@@ -652,7 +666,7 @@ export type SpellActionConfig =
   | { type: 'feed-context'; prompt: string }
   | { type: 'run-command'; command: string; args?: string[]; cwd?: string; feedOutput?: boolean }
   | { type: 'continue-loop'; loopType?: SpellLoopType; maxIterations?: number }
-  | { type: 'notify-channel'; channel?: string; message?: string };
+  | { type: 'notify-channel'; message?: string; level?: SpellNotifyLevel };
 
 /**
  * A single { trigger → action } binding within a spell. A spell holds 1..20
@@ -715,6 +729,12 @@ export interface ActiveSpell {
   enabled: boolean;
   /** ruleId → iteration count (continue-loop is per-rule now). */
   ruleIterations: Record<string, number>;
+  /**
+   * C4: per-rule RUNTIME enablement override on this session. A ruleId mapped to
+   * `false` is skipped by the dispatcher even though the spell definition's
+   * `rule.enabled` is true. Absent / `true` → the definition's enablement wins.
+   */
+  ruleEnabled?: Record<string, boolean>;
   ensembleId?: string;
   castAt: number;
   /** Session ID that cast it, or `null` for UI-cast. */
@@ -817,7 +837,12 @@ export interface HookDispatchPayload {
   event: SpellHookEvent;
   /** Arbitrary structured payload forwarded from the Claude hook environment. */
   payload?: Record<string, any>;
+  /** C2: side-effect-free probe — match + compose, execute nothing. */
+  dryRun?: boolean;
 }
+
+/** Per-rule outcome status surfaced on spell:rule_fired (C5 adds blocked/skipped). */
+export type HookRuleOutcomeStatus = 'ok' | 'error' | 'blocked' | 'skipped';
 
 export interface HookDispatchSpellOutcome {
   spellId: string;
@@ -831,6 +856,22 @@ export interface HookDispatchSpellOutcome {
   reason?: string;
   /** Internal error swallowed by fail-open handling, surfaced for logging. */
   error?: string;
+  /**
+   * Resolved status for observability (C5). Defaults to 'error' when `error` is
+   * set, else 'ok'. 'blocked' = permission-gated; 'skipped' = concurrency cap.
+   */
+  status?: HookRuleOutcomeStatus;
+}
+
+/** C2: per-rule dry-run match report entry. */
+export interface DispatchMatchReport {
+  spellId: string;
+  ruleId?: string;
+  action: SpellActionType;
+  /** Whether this rule's action WOULD run on a live dispatch. */
+  wouldExecute: boolean;
+  /** Why it would NOT run (permission gate, disabled rule, etc.). */
+  skipReason?: string;
 }
 
 export interface DispatchResult {
@@ -847,6 +888,10 @@ export interface DispatchResult {
   /** Per-rule breakdown, for logging and CLI debug. */
   spells: HookDispatchSpellOutcome[];
   timestamp: number;
+  /** C2: true when this result came from a dry-run probe (nothing executed). */
+  dryRun?: boolean;
+  /** C2: per-rule match report — only populated on dry-run. */
+  matched?: DispatchMatchReport[];
 }
 
 // --- P4: Ensemble — persisted multi-session coordination unit ---

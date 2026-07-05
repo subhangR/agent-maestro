@@ -36,7 +36,7 @@ export const ACTION_LABELS: Record<SpellActionType, string> = {
   'feed-context': 'Feed context',
   'run-command': 'Run command',
   'continue-loop': 'Continue loop',
-  'notify-channel': 'Notify channel',
+  'notify-channel': 'Notify (in-app)',
 };
 
 export const LOOP_TYPE_LABELS: Record<SpellLoopType, string> = {
@@ -55,6 +55,30 @@ export const KNOWN_TOOLS: string[] = [
 /** True for events whose matcher targets the tool name (structured builder). */
 export function isToolEvent(event: SpellHookEvent): boolean {
   return event === 'PreToolUse' || event === 'PostToolUse';
+}
+
+/**
+ * Synthetic payload for a dry-run test fire (C2) — representative of what the
+ * CLI would send for the rule's event, shaped so the rule's own matcher has a
+ * fair chance to match (first alternation token for tool events, the raw
+ * matcher embedded in the target text otherwise).
+ */
+export function syntheticHookPayload(trigger: SpellTrigger | undefined | null): Record<string, unknown> {
+  if (!trigger || trigger.type !== 'hook') return {};
+  const matcher = trigger.matcher?.trim();
+  switch (trigger.hookEvent) {
+    case 'PreToolUse':
+    case 'PostToolUse': {
+      const tool = matcher ? matcher.split('|')[0].trim() : 'Bash';
+      return { tool_name: tool || 'Bash', tool_input: {} };
+    }
+    case 'UserPromptSubmit':
+      return { prompt: matcher ? `Test fire: ${matcher}` : 'Test fire: synthetic prompt' };
+    case 'Notification':
+      return { message: matcher ? `Test fire: ${matcher}` : 'Test fire: synthetic notification' };
+    default:
+      return matcher ? { payload: `Test fire: ${matcher}` } : {};
+  }
 }
 
 export function triggerSummary(trigger: SpellTrigger | undefined | null): string {
@@ -78,7 +102,7 @@ export function actionSummary(action: SpellActionConfig | undefined | null): str
         action.maxIterations ? ` ·×${action.maxIterations}` : ''
       }`;
     case 'notify-channel':
-      return `notify${action.channel ? ` ${action.channel}` : ''}`;
+      return 'notify (in-app)';
     default:
       return 'action';
   }
@@ -102,7 +126,9 @@ export const LOOP_TYPE_SENTENCE: Record<SpellLoopType, string> = {
 function triggerClause(trigger: SpellTrigger | undefined | null): string {
   if (!trigger) return 'When triggered';
   if (trigger.type === 'schedule') return 'On a schedule (coming soon)';
-  const base = HOOK_EVENT_DESCRIPTIONS[trigger.hookEvent] ?? 'a hook fires';
+  // Some descriptions already lead with "when …" — strip it so the composed
+  // sentence doesn't read "When when the agent finishes a turn".
+  const base = (HOOK_EVENT_DESCRIPTIONS[trigger.hookEvent] ?? 'a hook fires').replace(/^when\s+/i, '');
   const matcher = trigger.matcher?.trim();
   if (!matcher) return `When ${base}`;
   return isToolEvent(trigger.hookEvent)
@@ -128,7 +154,7 @@ function actionClause(action: SpellActionConfig | undefined | null): string {
       return `keep the agent going — ${LOOP_TYPE_SENTENCE[type]} (up to ${cap}×)`;
     }
     case 'notify-channel':
-      return `send a notification${action.channel?.trim() ? ` to ${action.channel.trim()}` : ''}`;
+      return 'show an in-app notification';
     default:
       return 'act';
   }

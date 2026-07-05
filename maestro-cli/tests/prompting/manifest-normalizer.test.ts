@@ -153,12 +153,16 @@ describe('manifest-normalizer', () => {
     expect(result.warnings.some((message) => message.includes('deterministic first profile'))).toBe(true);
   });
 
-  it('enforces coordinatorSessionId in coordinated modes', () => {
+  it('warns (fail-open) when a coordinated mode has no coordinatorSessionId', () => {
     const result = normalizeManifest(buildManifest({
       mode: 'coordinated-worker',
       coordinatorSessionId: undefined,
     }));
 
-    expect(result.errors[0]).toContain('requires coordinatorSessionId');
+    // Fail-open policy (manifest-normalizer.ts:197-198): a missing
+    // coordinatorSessionId is a warning, not a hard error — no errors are
+    // raised so a coordinated session is never stripped of its ability to run.
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some((message) => message.includes('has no coordinatorSessionId; proceeding without it'))).toBe(true);
   });
 });
