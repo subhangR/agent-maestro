@@ -245,7 +245,7 @@ export function buildSpellBody(spell: Spell): string {
     } else if (action.type === 'run-command') {
       detail = `run-command: ${action.command}`;
     } else if (action.type === 'notify-channel') {
-      detail = `notify-channel${action.channel ? `: ${action.channel}` : ''}`;
+      detail = `notify-channel (in-app)${action.message ? `: ${action.message}` : ''}`;
     } else if (action.type === 'continue-loop') {
       detail = `continue-loop${action.loopType ? `: ${action.loopType}` : ''}`;
     }

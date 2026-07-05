@@ -278,6 +278,18 @@ export interface SpellLoopResetPayload {
   timestamp: number;
 }
 
+/** C4: an active spell (or one of its rules) had its enablement flipped in place. */
+export interface SpellToggledPayload {
+  spellId: string;
+  sessionId: string;
+  /** The specific rule toggled, or `null` when the whole active spell was toggled. */
+  ruleId: string | null;
+  enabled: boolean;
+  /** The updated active-spell entry (authoritative enablement + ruleIterations). */
+  activeSpell: ActiveSpell;
+  timestamp: number;
+}
+
 export interface SpellActivatedEvent {
   type: 'spell:activated';
   data: SpellActivatedPayload;
@@ -443,7 +455,17 @@ export interface TypedEventMap {
   'notify:session_completed': { sessionId: string; name: string };
   'notify:session_failed': { sessionId: string; name: string };
   'notify:needs_input': { sessionId: string; name: string; message?: string };
-  'notify:progress': { sessionId: string; taskId?: string; message?: string; channel?: string };
+  // C3: `channel` dropped (notify-channel is in-app only). Spell-sourced
+  // notifications carry spellId/ruleId/level; session-progress notifications
+  // carry taskId. All fields beyond sessionId are optional to serve both.
+  'notify:progress': {
+    sessionId: string;
+    taskId?: string;
+    spellId?: string;
+    ruleId?: string;
+    message?: string;
+    level?: 'info' | 'success' | 'warn';
+  };
   'session:modal': {
     sessionId: string;
     modalId: string;
@@ -496,11 +518,16 @@ export interface TypedEventMap {
     ruleId: string;
     event: string;
     action: string;
-    outcome: 'ok' | 'error';
+    // C5: 'blocked' (permission-gated) and 'skipped' (concurrency cap) join the
+    // original ok/error so blocked runs are observable, never silent.
+    outcome: 'ok' | 'error' | 'blocked' | 'skipped';
+    reason?: string;
     timestamp: number;
   };
   // D9/FR-6.6: loop-counter reset broadcast so the UI can drop optimistic state.
   'spell:loop_reset': SpellLoopResetPayload;
+  // C4: enable/disable toggle applied in place (preserves ruleIterations).
+  'spell:toggled': SpellToggledPayload;
   // Ensemble events
   'ensemble:created': Ensemble;
   'ensemble:updated': Ensemble;

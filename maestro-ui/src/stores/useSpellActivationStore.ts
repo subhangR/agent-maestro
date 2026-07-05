@@ -1,8 +1,15 @@
 import { create } from 'zustand';
 import { maestroClient } from '../utils/MaestroClient';
 import { useActiveSpellsStore, type ActiveSpellView } from './useActiveSpellsStore';
+import { useEnsembleStore } from './useEnsembleStore';
 import { useSpellLibraryStore } from './useSpellLibraryStore';
+import { useSpellNotificationsStore } from './useSpellNotificationsStore';
 import type { CastSpellInput } from '../app/types/maestro';
+
+/** P1-6 — spell operations must not fail silently: toast every failure. */
+function toastSpellError(message: string, sessionId?: string, spellId?: string) {
+  useSpellNotificationsStore.getState().notify({ sessionId, spellId, message, level: 'warn' });
+}
 
 export interface CastReceipt {
   castId: string;
@@ -44,8 +51,16 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
         input.spellId,
         input.targetSessionIds,
         input.invokerSessionId ?? null,
+        // C1 — cast mode + ensemble name are now forwarded, not dropped.
+        { castMode: input.castMode, ensembleName: input.ensembleName },
       );
       const sessionIds = result.sessions.map((s) => s.sessionId);
+      // A coordinate cast returns an ensembleId; the `ensemble:created` WS event
+      // routes it into useEnsembleStore, but refresh eagerly so the ensemble
+      // surface reflects it even if the socket is momentarily behind.
+      if (result.ensembleId) {
+        void useEnsembleStore.getState().fetchEnsembles();
+      }
       // ui-borders' useActiveSpellsStore will receive WS spell:activated and update.
       const library = useSpellLibraryStore.getState();
       library.trackRecent(input.spellId);
@@ -65,18 +80,27 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
       });
       return { spellId: input.spellId, sessionIds };
     } catch (e: any) {
-      set({ casting: false, error: e?.message ?? 'Cast failed' });
+      const msg = e?.message ?? 'Cast failed';
+      set({ casting: false, error: msg });
+      toastSpellError(`Cast failed: ${msg}`, undefined, input.spellId);
       throw e;
     }
   },
 
   setSpellEnabled: async (sessionId, spellId, enabled) => {
-    // Server contract for toggle is part of P2/P3; for now optimistic-update the
-    // local store and re-cast on enable / deactivate on disable.
-    if (!enabled) {
-      await maestroClient.deactivateSpell(spellId, [sessionId]);
-    } else {
-      await maestroClient.activateSpell(spellId, [sessionId]);
+    // C4 — toggle in place (preserves ruleIterations) instead of the old
+    // deactivate/re-activate dance. The `spell:toggled` WS event reconciles
+    // the authoritative enabled flag; optimistically flip locally for snappiness.
+    useActiveSpellsStore.getState().applyToggle({ maestroSessionId: sessionId, spellId, enabled });
+    try {
+      await maestroClient.toggleSpell(spellId, sessionId, enabled);
+    } catch (e: any) {
+      // Roll back the optimistic flip on failure and surface the error.
+      useActiveSpellsStore.getState().applyToggle({ maestroSessionId: sessionId, spellId, enabled: !enabled });
+      const msg = e?.message ?? 'Failed to toggle spell';
+      set({ error: msg });
+      toastSpellError(`Toggle failed: ${msg}`, sessionId, spellId);
+      throw e;
     }
   },
 
@@ -92,7 +116,9 @@ export const useSpellActivationStore = create<SpellActivationState>((set, get) =
     try {
       await maestroClient.resetSpellLoop(spellId, sessionId, ruleId);
     } catch (e: any) {
-      set({ error: e?.message ?? 'Failed to reset loop' });
+      const msg = e?.message ?? 'Failed to reset loop';
+      set({ error: msg });
+      toastSpellError(`Loop reset failed: ${msg}`, sessionId, spellId);
       throw e;
     }
   },

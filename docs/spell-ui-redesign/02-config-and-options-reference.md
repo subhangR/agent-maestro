@@ -134,9 +134,11 @@ Loop types:
 | `critic-refine` | "critique your previous output and refine it" |
 
 ### `notify-channel`
+> ⚠️ **CORRECTION (2026-07-04): the `channel` field was dropped** — notify-channel is in-app
+> only (no external relay). Only `message` remains. See `CONTRACT-ADDENDUM.md`.
+
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `channel` | string | ➖ | routing hint (e.g. `telegram`, `slack`); relay decides delivery |
 | `message` | string | ➖ | overrides the default "[spell] fired on <event>" text |
 
 ---

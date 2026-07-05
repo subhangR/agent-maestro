@@ -115,7 +115,8 @@ States: standard loading/empty/error.
 3. Add rule → pick event "PostToolUse" (with description) → tool matcher "Edit, Write" →
    action "run command" (filtered list) → command `npm run lint`, feedOutput ON → accept
    shell-command warning → live summary confirms.
-4. Add second rule → event "Stop" → action "notify" → channel telegram.
+4. Add second rule → event "Stop" → action "notify" → message text. (⚠️ 2026-07-04: the old
+   "channel telegram" routing was dropped — notify-channel is in-app only.)
 5. Save → spell appears in library.
 6. Cast (S4): pick the spell → choose session(s) → Single/Broadcast → risky confirm → Cast.
 7. Session shows a new ring/chip (S5); Undo available (toast).

@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync, readdirSync, readFileSync, unlinkSync } from 'fs';
+import { existsSync, writeFileSync, readdirSync, readFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Config } from './infrastructure/config';
 import { ConsoleLogger } from './infrastructure/common/ConsoleLogger';
@@ -117,7 +117,7 @@ async function migrateTeamMemberTasks(taskRepo: ITaskRepository, logger: ILogger
  * To run manually (e.g. on a box that already has the sentinel), delete
  * `<dataDir>/.migrated-spell-redesign-v2` and restart the server.
  */
-function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
+export function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
   try {
     const sentinelPath = join(dataDir, '.migrated-spell-redesign-v2');
     if (existsSync(sentinelPath)) {
@@ -125,6 +125,11 @@ function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
       return;
     }
     logger.info('Running spell clean-break migration (v2)...');
+
+    // This migration runs BEFORE the repos initialize (which is what creates the
+    // data dir), so on a brand-new DATA_DIR the sentinel write below would ENOENT.
+    // Ensure the data dir exists first.
+    mkdirSync(dataDir, { recursive: true });
 
     // (a) Delete old-shape spell files (anything without a rules[] array).
     let deletedSpells = 0;
@@ -285,6 +290,16 @@ export async function createContainer(): Promise<Container> {
   const huddleService = new HuddleService(sessionPromptService, sessionService);
   const commandUsageRepo = new FileSystemSessionCommandUsageRepository(config.dataDir, logger);
   const commandUsageService = new CommandUsageService(commandUsageRepo);
+  // Ensemble service is constructed first so SpellService can delegate
+  // `coordinate` casts to it (C1).
+  const ensembleService = new EnsembleService(
+    ensembleRepo,
+    sessionRepo,
+    spellRepo,
+    eventBus,
+    idGenerator,
+    logger,
+  );
   const spellService = new SpellService(
     projectRepo,
     taskRepo,
@@ -295,20 +310,15 @@ export async function createContainer(): Promise<Container> {
     spellRepo,
     eventBus,
     idGenerator,
-  );
-  const ensembleService = new EnsembleService(
-    ensembleRepo,
-    sessionRepo,
-    spellRepo,
-    eventBus,
-    idGenerator,
-    logger,
+    ensembleService,
   );
   const hookDispatcherService = new HookDispatcherService(
     sessionRepo,
     spellRepo,
+    teamMemberRepo,
     eventBus,
     logger,
+    config,
   );
   const ptyHostService = new PtyHostService(sessionService, logger);
 
@@ -418,6 +428,7 @@ export async function createContainer(): Promise<Container> {
     async shutdown() {
       logger.info('Shutting down container...');
       ptyHostService.shutdownAll();
+      hookDispatcherService.shutdown(); // C5: kill any in-flight run-command children
       logDigestService.shutdown();
       (skillLoader as MultiScopeSkillLoader).shutdown();
       sessionRepo.shutdown();

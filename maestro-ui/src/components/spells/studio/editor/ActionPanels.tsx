@@ -162,29 +162,17 @@ export const ContinueLoopPanel = React.memo(function ContinueLoopPanel({ rule: r
 export const NotifyChannelPanel = React.memo(function NotifyChannelPanel({ rule: r, disabled, patch }: PanelProps) {
   return (
     <div className="spe-panel">
-      <div className="spe-grid-2">
-        <label className="spe-field">
-          <span className="spe-field__label">Channel <span className="spe-field__opt">(optional)</span></span>
-          <input
-            className="spe-input"
-            value={r.channel}
-            disabled={disabled}
-            placeholder="telegram · slack · (default)"
-            onChange={(e) => patch({ channel: e.target.value })}
-          />
-        </label>
-        <label className="spe-field">
-          <span className="spe-field__label">Message <span className="spe-field__opt">(optional)</span></span>
-          <input
-            className="spe-input"
-            value={r.message}
-            disabled={disabled}
-            placeholder="overrides the default fired-on-event text"
-            onChange={(e) => patch({ message: e.target.value })}
-          />
-        </label>
-      </div>
-      <p className="spe-field__help">Routing is a best-effort hint — the relay decides final delivery.</p>
+      <label className="spe-field">
+        <span className="spe-field__label">Message <span className="spe-field__opt">(optional)</span></span>
+        <input
+          className="spe-input"
+          value={r.message}
+          disabled={disabled}
+          placeholder="overrides the default fired-on-event text"
+          onChange={(e) => patch({ message: e.target.value })}
+        />
+      </label>
+      <p className="spe-field__help">Shows an in-app notification (toast + notification history) when the rule fires.</p>
     </div>
   );
 });

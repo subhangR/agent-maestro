@@ -13,7 +13,10 @@ import {
   CreateSpellPayload,
   UpdateSpellPayload,
   ActiveSpell,
+  SpellCastMode,
+  Ensemble,
 } from '../../types';
+import { EnsembleService } from './EnsembleService';
 import { IProjectRepository } from '../../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { ISessionRepository } from '../../domain/repositories/ISessionRepository';
@@ -431,7 +434,28 @@ export class SpellService {
     private spellRepo: ISpellRepository,
     private eventBus: IEventBus,
     private idGenerator: IIdGenerator,
+    /**
+     * Optional so existing test call sites that don't exercise coordinate casts
+     * can keep constructing SpellService with the original 9 args. `coordinate`
+     * casts throw a clear ValidationError when it's absent.
+     */
+    private ensembleService?: EnsembleService,
   ) {}
+
+  // --- Per-session activation serialization (P0-4) ---
+  // activateSpell / toggle do a read-modify-write on Session.activeSpells.
+  // Concurrent casts on the SAME session could otherwise interleave and drop an
+  // update. We serialize per-session with a promise chain (a lightweight mutex).
+  private sessionLocks = new Map<string, Promise<unknown>>();
+
+  private withSessionLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
+    const prev = this.sessionLocks.get(sessionId) ?? Promise.resolve();
+    // Run fn after the previous holder settles (success OR failure).
+    const run = prev.then(fn, fn);
+    // The stored lock swallows errors so one failed op doesn't poison the chain.
+    this.sessionLocks.set(sessionId, run.then(() => {}, () => {}));
+    return run;
+  }
 
   // --- Spell Definitions ---
 
@@ -924,50 +948,137 @@ export class SpellService {
 
   async deleteSpell(id: string): Promise<void> {
     // Repo enforces the isDefault / SEED_IDS guard.
-    return this.spellRepo.delete(id);
+    await this.spellRepo.delete(id);
+    // P1-4: cascade-clean any lingering activeSpells entries for the now-deleted
+    // spell so sessions don't carry orphaned spellIds (dispatcher skips them, but
+    // the stale state confuses the UI and ensemble accounting).
+    await this.cleanupDeletedSpellFromSessions(id);
+  }
+
+  private async cleanupDeletedSpellFromSessions(spellId: string): Promise<void> {
+    let sessions;
+    try {
+      sessions = await this.sessionRepo.findAll();
+    } catch {
+      return;
+    }
+    for (const session of sessions) {
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      if (!actives.some(a => a.spellId === spellId)) continue;
+      await this.withSessionLock(session.id, async () => {
+        // Re-read under the lock so we don't clobber a concurrent activation.
+        const fresh = await this.sessionRepo.findById(session.id);
+        if (!fresh) return;
+        const freshActives = fresh.activeSpells ?? [];
+        if (!freshActives.some(a => a.spellId === spellId)) return;
+        await this.sessionRepo.update(session.id, {
+          activeSpells: freshActives.filter(a => a.spellId !== spellId),
+        });
+      }).catch(() => { /* best-effort cleanup; never fail the delete */ });
+    }
+  }
+
+  /**
+   * C4: flip an active spell's enablement IN PLACE, preserving ruleIterations.
+   * - `ruleId` given → toggle that rule's runtime enablement (ActiveSpell.ruleEnabled).
+   * - `ruleId` omitted → toggle the whole ActiveSpell.enabled.
+   * Emits `spell:toggled` with the authoritative updated entry. Serialized per
+   * session so it can't race a concurrent activation.
+   */
+  async toggleSpell(spellId: string, sessionId: string, enabled: boolean, ruleId?: string): Promise<{
+    spell: Spell;
+    sessionId: string;
+    activeSpell: ActiveSpell;
+  }> {
+    const spell = await this.getSpell(spellId);
+    const updatedActive = await this.withSessionLock(sessionId, async () => {
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) throw new NotFoundError('Session', sessionId);
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      const current = actives.find(a => a.spellId === spellId);
+      if (!current) throw new NotFoundError('ActiveSpell', `${spellId} on ${sessionId}`);
+
+      const next: ActiveSpell = ruleId
+        ? { ...current, ruleEnabled: { ...(current.ruleEnabled ?? {}), [ruleId]: enabled } }
+        : { ...current, enabled };
+      const nextActives = actives.map(a => (a.spellId === spellId ? next : a));
+      await this.sessionRepo.update(sessionId, { activeSpells: nextActives });
+      return next;
+    });
+
+    await this.eventBus.emit('spell:toggled', {
+      spellId,
+      sessionId,
+      ruleId: ruleId ?? null,
+      enabled,
+      activeSpell: updatedActive,
+      timestamp: Date.now(),
+    });
+
+    return { spell, sessionId, activeSpell: updatedActive };
   }
 
   // --- Spell Activation (P1 foundation) ---
   // Wires Session.activeSpells; the dispatcher (P2) consults this state at hook time.
 
-  async activateSpell(spellId: string, targetSessionIds: string[], castBy: string | null): Promise<{
+  async activateSpell(
+    spellId: string,
+    targetSessionIds: string[],
+    castBy: string | null,
+    opts?: { castMode?: SpellCastMode; ensembleName?: string },
+  ): Promise<{
     spell: Spell;
     sessions: { sessionId: string; activeSpell: ActiveSpell }[];
+    ensembleId?: string;
   }> {
     const spell = await this.getSpell(spellId);
     if (targetSessionIds.length === 0) {
       throw new ValidationError('targetSessionIds must not be empty');
     }
+    const castMode: SpellCastMode = opts?.castMode ?? 'broadcast';
 
     const now = Date.now();
+    const validRuleIds = new Set((spell.rules ?? []).map(r => r.id));
+
+    // Attach (or idempotently re-cast) the spell on one session. Serialized per
+    // session so concurrent casts can't drop each other's write (P0-4). Preserves
+    // loop counters for rule ids that still exist (F8). `ensembleId` is stamped
+    // when this is a coordinate cast so UI rings share a color.
+    const attach = (sessionId: string, ensembleId?: string) =>
+      this.withSessionLock(sessionId, async () => {
+        const session = await this.sessionRepo.findById(sessionId);
+        if (!session) throw new NotFoundError('Session', sessionId);
+        const existing = session.activeSpells ?? [];
+        const prior = existing.find(a => a.spellId === spellId);
+        const filtered = existing.filter(a => a.spellId !== spellId);
+        const ruleIterations: Record<string, number> = {};
+        for (const [ruleId, count] of Object.entries(prior?.ruleIterations ?? {})) {
+          if (validRuleIds.has(ruleId)) ruleIterations[ruleId] = count;
+        }
+        const activeSpell: ActiveSpell = {
+          spellId: spell.id,
+          color: spell.color,
+          enabled: true,
+          ruleIterations,
+          ...(ensembleId ? { ensembleId } : {}),
+          castAt: now,
+          castBy,
+        };
+        await this.sessionRepo.update(sessionId, { activeSpells: [...filtered, activeSpell] });
+        return activeSpell;
+      });
+
+    let ensembleId: string | undefined;
+    if (castMode === 'coordinate') {
+      // Create/reuse the ensemble FIRST so we know its id, then attach with it
+      // stamped in a single serialized write per session (no duplicate entries).
+      const ensemble = await this.ensureEnsemble(spell, opts?.ensembleName, targetSessionIds, castBy);
+      ensembleId = ensemble.id;
+    }
+
     const sessions: { sessionId: string; activeSpell: ActiveSpell }[] = [];
-
     for (const sessionId of targetSessionIds) {
-      const session = await this.sessionRepo.findById(sessionId);
-      if (!session) throw new NotFoundError('Session', sessionId);
-
-      const existing = session.activeSpells ?? [];
-      // Idempotent: if already active, re-enable + bump castAt rather than duplicating.
-      const prior = existing.find(a => a.spellId === spellId);
-      const filtered = existing.filter(a => a.spellId !== spellId);
-      // F8: preserve loop counters for rule ids that still exist, so re-casting an
-      // already-active spell mid-loop does not silently reset its counters.
-      const validRuleIds = new Set((spell.rules ?? []).map(r => r.id));
-      const ruleIterations: Record<string, number> = {};
-      for (const [ruleId, count] of Object.entries(prior?.ruleIterations ?? {})) {
-        if (validRuleIds.has(ruleId)) ruleIterations[ruleId] = count;
-      }
-      const activeSpell: ActiveSpell = {
-        spellId: spell.id,
-        color: spell.color,
-        enabled: true,
-        ruleIterations,
-        castAt: now,
-        castBy,
-      };
-      const nextActive = [...filtered, activeSpell];
-
-      await this.sessionRepo.update(sessionId, { activeSpells: nextActive });
+      const activeSpell = await attach(sessionId, ensembleId);
       sessions.push({ sessionId, activeSpell });
     }
 
@@ -978,7 +1089,43 @@ export class SpellService {
       timestamp: now,
     });
 
-    return { spell, sessions };
+    return { spell, sessions, ensembleId };
+  }
+
+  /**
+   * C1: find a live ensemble by exact name + spellId, or create one via the
+   * EnsembleService with the target sessions as members. Reuse adds any new
+   * members. The subsequent per-session attach in activateSpell reconciles each
+   * session to exactly one activeSpell entry (ensembleId stamped, counters kept).
+   */
+  private async ensureEnsemble(
+    spell: Spell,
+    ensembleName: string | undefined,
+    sessionIds: string[],
+    castBy: string | null,
+  ): Promise<Ensemble> {
+    if (!this.ensembleService) {
+      throw new ValidationError('coordinate cast requires the ensemble service');
+    }
+    const name = ensembleName?.trim() || spell.name;
+    const all = await this.ensembleService.list();
+    const existing = all.find(e => !e.disbandedAt && e.name === name && e.spellId === spell.id);
+    if (existing) {
+      for (const sid of sessionIds) {
+        if (!existing.memberSessionIds.includes(sid)) {
+          await this.ensembleService.addMember(existing.id, sid, castBy);
+        }
+      }
+      return this.ensembleService.get(existing.id);
+    }
+    return this.ensembleService.create({
+      name,
+      color: spell.color,
+      objective: `Coordinate via spell "${spell.name}"`,
+      memberSessionIds: sessionIds,
+      spellId: spell.id,
+      createdBy: castBy,
+    });
   }
 
   async deactivateSpell(spellId: string, targetSessionIds: string[]): Promise<{
