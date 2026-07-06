@@ -1,0 +1,13 @@
+#!/bin/bash
+# Resolve the maestro CLI the same way the server resolves it for session spawn
+# (see resolveMaestroCliRuntime/buildMaestroSpawnCommand in sessionRoutes.ts):
+# prefer the session-scoped MAESTRO_CLI_PATH env var over a bare `maestro` PATH
+# lookup, since the latter can be re-clobbered by shell startup files after the
+# server has already prepended the correct entry.
+set -euo pipefail
+
+if [ -n "${MAESTRO_CLI_PATH:-}" ] && [ "$MAESTRO_CLI_PATH" != "maestro" ]; then
+  exec node "$MAESTRO_CLI_PATH" "$@"
+else
+  exec maestro "$@"
+fi
