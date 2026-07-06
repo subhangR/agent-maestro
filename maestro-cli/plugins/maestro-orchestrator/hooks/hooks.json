@@ -7,12 +7,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session register",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session register",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": "maestro hook dispatch SessionStart",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch SessionStart",
             "timeout": 5
           }
         ]
@@ -24,12 +24,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session complete",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session complete",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "maestro hook dispatch SessionEnd",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch SessionEnd",
             "timeout": 5
           }
         ]
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro hook dispatch SubagentStop",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch SubagentStop",
             "timeout": 5
           }
         ]
@@ -53,12 +53,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session needs-input",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "maestro hook dispatch Stop",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch Stop",
             "timeout": 5
           }
         ]
@@ -70,12 +70,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session needs-input",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "maestro hook dispatch Notification",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch Notification",
             "timeout": 5
           }
         ]
@@ -87,12 +87,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session resume-working",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session resume-working",
             "timeout": 3
           },
           {
             "type": "command",
-            "command": "maestro hook dispatch UserPromptSubmit",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch UserPromptSubmit",
             "timeout": 5
           }
         ]
@@ -104,7 +104,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro hook dispatch PreToolUse",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch PreToolUse",
             "timeout": 5
           }
         ]
@@ -126,7 +126,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro hook dispatch PostToolUse",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli hook dispatch PostToolUse",
             "timeout": 5
           }
         ]
@@ -138,7 +138,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session needs-input",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
             "timeout": 3
           }
         ]
@@ -150,7 +150,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "maestro session needs-input",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
             "timeout": 3
           }
         ]
