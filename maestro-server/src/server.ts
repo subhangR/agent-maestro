@@ -47,8 +47,45 @@ async function startServer() {
   // Create Express app
   const app = express();
 
-  // Security headers
-  app.use(helmet());
+  // Security headers.
+  // The browser SPA (served by this server in web mode) uses Firebase for the
+  // Collab Space feature — auth (Identity Toolkit), Firestore, and the Google
+  // sign-in popup/iframe. Helmet's default CSP is `default-src 'self'`, which
+  // blocks every one of those cross-origin requests and surfaces as an opaque
+  // `auth/internal-error` in the client. Allowlist the Firebase/Google origins
+  // (mirrors the desktop app's CSP in maestro-ui/src-tauri/tauri.conf.json) while
+  // keeping all of Helmet's other defaults intact. 'self' still covers the app's
+  // own same-origin REST/WebSocket/PTY traffic.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          'script-src': ["'self'", 'https://apis.google.com', 'https://www.gstatic.com'],
+          'connect-src': [
+            "'self'",
+            'https://*.googleapis.com',
+            'https://identitytoolkit.googleapis.com',
+            'https://securetoken.googleapis.com',
+            'https://firestore.googleapis.com',
+            'https://firebasestorage.googleapis.com',
+            'https://*.firebaseio.com',
+            'wss://*.firebaseio.com',
+            'https://*.cloudfunctions.net',
+            'https://accounts.google.com',
+          ],
+          'frame-src': ["'self'", 'https://*.firebaseapp.com', 'https://accounts.google.com'],
+          'img-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'https://*.googleusercontent.com',
+            'https://lh3.googleusercontent.com',
+          ],
+        },
+      },
+    }),
+  );
 
   // CORS configuration for Tauri app and web clients
   // NOTE: CORS must be registered before rate limiting so preflight OPTIONS
