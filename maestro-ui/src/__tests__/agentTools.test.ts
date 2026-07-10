@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENT_TOOL_OPTIONS,
   AGENT_TOOL_LABELS,
+  ACCESS_MODE_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   DEFAULT_MODEL_BY_AGENT_TOOL,
   createLaunchConfigFromLegacy,
@@ -22,7 +23,8 @@ describe('agent tool UI constants', () => {
   const codexModels = MODELS_BY_AGENT_TOOL.codex.map((model) => model.value);
   const claudeReasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
   const codexReasoningEfforts = ['low', 'medium', 'high', 'xhigh'];
-  const fastCodexModels = ['gpt-5.5', 'gpt-5.4'];
+  const codexMaxReasoningModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
+  const fastCodexModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'];
 
   it('exposes Hermes beside Claude and Codex in user-facing pickers', () => {
     expect(AGENT_TOOL_OPTIONS.map((tool) => tool.id)).toEqual(
@@ -53,6 +55,10 @@ describe('agent tool UI constants', () => {
       value: 'openai/gpt-5.5',
       label: 'Codex OAuth GPT 5.5',
     });
+    expect(MODELS_BY_AGENT_TOOL.hermes).toContainEqual({
+      value: 'openai/gpt-5.6-sol',
+      label: 'Codex OAuth 5.6 Sol',
+    });
   });
 
   it('pins Hermes in the default quick-launch shortcuts', () => {
@@ -67,6 +73,15 @@ describe('agent tool UI constants', () => {
       'medium',
       'high',
       'xhigh',
+    ]);
+  });
+
+  it('exposes canonical launch access modes for task UIs', () => {
+    expect(ACCESS_MODE_OPTIONS.map((item) => item.value)).toEqual([
+      'safe',
+      'acceptEdits',
+      'plan',
+      'fullAccess',
     ]);
   });
 
@@ -108,9 +123,16 @@ describe('agent tool UI constants', () => {
 
   it('matches Codex CLI reasoning and speed-tier support', () => {
     expect(getReasoningOptionsForProvider('openai').map((item) => item.value)).toEqual(codexReasoningEfforts);
+    expect(getReasoningOptionsForProvider('openai', 'gpt-5.6-sol').map((item) => item.value)).toEqual([
+      ...codexReasoningEfforts,
+      'max',
+    ]);
 
     for (const model of codexModels) {
-      for (const effort of codexReasoningEfforts) {
+      const effortsForModel = codexMaxReasoningModels.includes(model)
+        ? [...codexReasoningEfforts, 'max']
+        : codexReasoningEfforts;
+      for (const effort of effortsForModel) {
         const sanitized = sanitizeLaunchConfig({
           provider: 'openai',
           model,
@@ -136,6 +158,18 @@ describe('agent tool UI constants', () => {
       provider: 'openai',
       model: 'gpt-5.5',
     });
+
+    expect(sanitizeLaunchConfig({
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'max',
+      speed: 'fast',
+    })).toEqual({
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'max',
+      speed: 'fast',
+    });
   });
 
   it('formats task launch badges as Provider/Model', () => {
@@ -143,12 +177,16 @@ describe('agent tool UI constants', () => {
     expect(formatProviderModelLabel('claude-code', 'claude-opus-4-7')).toBe('Claude/Opus 4.7');
     expect(formatProviderModelLabel('hermes', 'anthropic:claude-opus-4-8')).toBe('Hermes/Claude Opus 4.8');
     expect(formatProviderModelLabel('codex', 'gpt-5.5')).toBe('OpenAI/Codex 5.5');
+    expect(formatProviderModelLabel('codex', 'gpt-5.6-sol')).toBe('OpenAI/Codex 5.6 Sol');
   });
 
   it('limits speed to supported OpenAI Codex models', () => {
     expect(supportsLaunchSpeed('claude', 'claude-opus-4-8')).toBe(false);
     expect(supportsLaunchSpeed('claude', 'claude-opus-4-7')).toBe(false);
     expect(supportsLaunchSpeed('hermes', 'anthropic:claude-opus-4-8')).toBe(false);
+    expect(supportsLaunchSpeed('openai', 'gpt-5.6-sol')).toBe(true);
+    expect(supportsLaunchSpeed('openai', 'gpt-5.6-terra')).toBe(true);
+    expect(supportsLaunchSpeed('openai', 'gpt-5.6-luna')).toBe(true);
     expect(supportsLaunchSpeed('openai', 'gpt-5.5')).toBe(true);
     expect(supportsLaunchSpeed('openai', 'gpt-5.4-mini')).toBe(false);
   });
@@ -224,6 +262,9 @@ describe('agent tool UI constants', () => {
     expect(claudeValues[0]).toBe('claude-fable-5');
     expect(MODEL_POWER['claude-fable-5']).toBe(6.0);
     expect(MODEL_POWER['claude-fable-5[1m]']).toBe(6.1);
+    expect(MODEL_POWER['gpt-5.6-sol']).toBe(5.6);
+    expect(MODEL_POWER['gpt-5.6-terra']).toBe(5.55);
+    expect(MODEL_POWER['gpt-5.6-luna']).toBe(5.45);
   });
 
   it('passes live Fable 5 and Sonnet 5 model ids through normalizeModelId unchanged', () => {

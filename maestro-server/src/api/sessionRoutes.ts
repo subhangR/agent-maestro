@@ -360,25 +360,29 @@ function accessModeForPermissionMode(permissionMode?: string): LaunchConfig['acc
   }
 }
 
-function getValidReasoningEfforts(provider: LaunchConfig['provider']): LaunchConfig['reasoningEffort'][] {
+const GPT_5_6_CODEX_MODELS = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
+
+function getValidReasoningEfforts(provider: LaunchConfig['provider'], model?: string): LaunchConfig['reasoningEffort'][] {
   switch (provider) {
     case 'claude':
       return ['low', 'medium', 'high', 'xhigh', 'max'];
     case 'openai':
-      return ['minimal', 'low', 'medium', 'high', 'xhigh'];
+      return GPT_5_6_CODEX_MODELS.includes(model || '')
+        ? ['low', 'medium', 'high', 'xhigh', 'max']
+        : ['low', 'medium', 'high', 'xhigh'];
     default:
       return [];
   }
 }
 
 function supportsLaunchSpeed(provider: LaunchConfig['provider'], model?: string): boolean {
-  return provider === 'openai' && (model === 'gpt-5.5' || model === 'gpt-5.4');
+  return provider === 'openai' && ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'].includes(model || '');
 }
 
 function defaultModelForAgentTool(agentTool: AgentTool): string {
   switch (agentTool) {
     case 'codex':
-      return 'gpt-5.5';
+      return 'gpt-5.6-sol';
     case 'hermes':
       return 'hermes-default';
     case 'gemini':
@@ -394,7 +398,7 @@ function sanitizeLaunchConfig(config?: LaunchConfig | null): LaunchConfig | unde
   const validProviders: LaunchConfig['provider'][] = ['claude', 'openai', 'hermes', 'gemini'];
   if (!validProviders.includes(config.provider)) return undefined;
 
-  const validReasoning = getValidReasoningEfforts(config.provider);
+  const validReasoning = getValidReasoningEfforts(config.provider, config.model);
   const reasoningEffort = config.reasoningEffort && validReasoning.includes(config.reasoningEffort)
     ? config.reasoningEffort
     : undefined;
@@ -1741,7 +1745,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'claude-fable-5': 6.0,
         'claude-opus-4-8[1m]': 5.9,
         'claude-opus-4-8': 5.8,
+        'gpt-5.6-sol': 5.6,
+        'gpt-5.6-terra': 5.55,
         'gpt-5.5': 5.5,
+        'gpt-5.6-luna': 5.45,
         'claude-opus-4-7[1m]': 5.2,
         'claude-opus-4-7': 5,
         'gpt-5.4': 4.7,

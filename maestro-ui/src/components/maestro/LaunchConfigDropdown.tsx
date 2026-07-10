@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-import type { AgentTool, LaunchConfig, LaunchReasoningEffort, LaunchSpeed } from "../../app/types/maestro";
+import type { AgentTool, LaunchAccessMode, LaunchConfig, LaunchReasoningEffort, LaunchSpeed } from "../../app/types/maestro";
 import { AgentLogo } from "./AgentChip";
 import {
+    ACCESS_MODE_OPTIONS,
     AGENT_TOOL_OPTIONS,
     createLaunchConfig,
     formatLaunchConfigLabel,
@@ -39,10 +40,10 @@ export function LaunchConfigDropdown({
         ? launchConfig.model
         : selectedTool.models[0]?.id;
     const modelForCapability = String(currentModel || selectedTool.models[0]?.id || "");
-    const reasoningOptions = getReasoningOptionsForProvider(selectedTool.provider);
+    const reasoningOptions = getReasoningOptionsForProvider(selectedTool.provider, modelForCapability);
     const speedSupported = supportsLaunchSpeed(selectedTool.provider, modelForCapability);
 
-    const updateProviderOption = (patch: Partial<Pick<LaunchConfig, "reasoningEffort" | "speed">>) => {
+    const updateProviderOption = (patch: Partial<Pick<LaunchConfig, "reasoningEffort" | "speed" | "accessMode">>) => {
         onLaunchConfigChange((current) => {
             const base = current?.provider === selectedTool.provider
                 ? current
@@ -144,6 +145,32 @@ export function LaunchConfigDropdown({
                                         onClick={() => updateProviderOption({ reasoningEffort: option.value as LaunchReasoningEffort })}
                                     >
                                         <span>{option.label}</span>
+                                        {selected && <span className="terminalStatusCheck">✓</span>}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {showAdvancedOptions && (
+                    <div className="terminalLaunchDropdown__section">
+                        <div className="terminalLaunchDropdown__sectionTitle">Access</div>
+                        <div className="terminalLaunchDropdown__optionGrid">
+                            {ACCESS_MODE_OPTIONS.map((option) => {
+                                const selected = launchConfig?.provider === selectedTool.provider && (launchConfig.accessMode || "safe") === option.value;
+                                return (
+                                    <button
+                                        type="button"
+                                        key={option.value}
+                                        className={`terminalLaunchDropdown__model terminalLaunchDropdown__model--withDescription ${selected ? "terminalLaunchDropdown__model--selected" : ""}`}
+                                        onClick={() => updateProviderOption({ accessMode: option.value as LaunchAccessMode })}
+                                        title={option.description}
+                                    >
+                                        <span>
+                                            <span className="terminalLaunchDropdown__modelLabel">{option.label}</span>
+                                            <span className="terminalLaunchDropdown__modelDescription">{option.description}</span>
+                                        </span>
                                         {selected && <span className="terminalStatusCheck">✓</span>}
                                     </button>
                                 );
