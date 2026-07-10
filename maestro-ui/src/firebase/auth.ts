@@ -13,6 +13,7 @@ import {
 import { getFirebaseApp } from './config';
 
 let auth: Auth | null = null;
+let googleSignInInFlight: Promise<User> | null = null;
 
 export function getFbAuth(): Auth {
   if (auth) return auth;
@@ -24,10 +25,20 @@ export function subscribeAuth(cb: (user: User | null) => void): Unsubscribe {
   return onAuthStateChanged(getFbAuth(), cb);
 }
 
-export async function signInWithGoogle(): Promise<User> {
+export function signInWithGoogle(): Promise<User> {
+  // Firebase cancels the older operation with auth/cancelled-popup-request if
+  // signInWithPopup is invoked again while a popup is active. Keep the guard at
+  // the Firebase boundary so every current and future caller shares one flow.
+  if (googleSignInInFlight) return googleSignInInFlight;
+
   const provider = new GoogleAuthProvider();
-  const result = await signInWithPopup(getFbAuth(), provider);
-  return result.user;
+  googleSignInInFlight = signInWithPopup(getFbAuth(), provider)
+    .then((result) => result.user)
+    .finally(() => {
+      googleSignInInFlight = null;
+    });
+
+  return googleSignInInFlight;
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<User> {
