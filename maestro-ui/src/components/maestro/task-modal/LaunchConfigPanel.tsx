@@ -10,6 +10,7 @@ import {
     toggleCommandOverride,
 } from "../../../utils/commandPermissions";
 import {
+    ACCESS_MODE_OPTIONS,
     accessModeFromPermissionMode,
     AGENT_TOOLS,
     AGENT_TOOL_LABELS,
@@ -23,6 +24,9 @@ import {
 
 const MODELS_BY_TOOL = MODELS_BY_AGENT_TOOL;
 const DEFAULT_MODEL = DEFAULT_MODEL_BY_AGENT_TOOL;
+const defaultAccessModeForMember = (member: TeamMember): LaunchAccessMode => (
+    accessModeFromPermissionMode(member.permissionMode) || 'safe'
+);
 
 const COMMAND_GROUPS = [
     { key: 'root', label: 'Root', commands: ['whoami', 'status', 'commands'] },
@@ -38,11 +42,7 @@ const COMMAND_GROUPS = [
 export interface MemberConfig {
     agentTool: AgentTool;
     model: ModelType;
-    isDangerous: boolean;
-    // The accessMode loaded from the existing config. The binary danger toggle
-    // cannot represent 'plan'/'safe', so we retain it to avoid clobbering those
-    // modes when the user re-saves without touching the toggle.
-    baseAccessMode?: LaunchAccessMode;
+    accessMode: LaunchAccessMode;
     skillIds: string[];
     commandOverrides: Record<string, boolean>;
 }
@@ -62,8 +62,7 @@ export function buildDefaultMemberConfig(member: TeamMember): MemberConfig {
     return {
         agentTool: tool,
         model: (member.model || DEFAULT_MODEL[tool] || 'sonnet') as ModelType,
-        isDangerous: member.permissionMode === 'bypassPermissions',
-        baseAccessMode: accessModeFromPermissionMode(member.permissionMode),
+        accessMode: defaultAccessModeForMember(member),
         skillIds: member.skillIds ? [...member.skillIds] : [],
         commandOverrides: member.commandPermissions?.commands
             ? { ...member.commandPermissions.commands }
@@ -84,12 +83,10 @@ export function buildMemberConfigFromOverride(member: TeamMember, override: Memb
             ? 'claude-code'
             : launchConfig?.provider;
     const tool = (providerTool || member.agentTool || 'claude-code') as AgentTool;
-    const basePerm = launchConfig?.accessMode === 'fullAccess' ? 'bypassPermissions' : member.permissionMode;
     return {
         agentTool: tool,
         model: (launchConfig?.model || member.model || DEFAULT_MODEL[tool] || 'sonnet') as ModelType,
-        isDangerous: basePerm === 'bypassPermissions',
-        baseAccessMode: launchConfig?.accessMode ?? accessModeFromPermissionMode(member.permissionMode),
+        accessMode: launchConfig?.accessMode ?? defaultAccessModeForMember(member),
         skillIds: override.skillIds ? [...override.skillIds] : (member.skillIds ? [...member.skillIds] : []),
         commandOverrides: override.commandPermissions?.commands
             ? { ...override.commandPermissions.commands }
@@ -110,23 +107,12 @@ export function buildOverridesFromConfigs(
         const modelChanged = config.model !== (member.model || DEFAULT_MODEL[member.agentTool || 'claude-code']);
         const toolChanged = config.agentTool !== (member.agentTool || 'claude-code');
 
-        const expectedPerm = config.isDangerous ? 'bypassPermissions' : (member.permissionMode === 'bypassPermissions' ? 'acceptEdits' : member.permissionMode);
-        const accessChanged = expectedPerm !== member.permissionMode;
-        // The binary toggle can't represent 'plan'/'safe'. When the loaded config
-        // carried one of those (and it differs from the member's own default),
-        // preserve it on re-save instead of silently dropping it to acceptEdits.
-        const memberDefaultAccess = accessModeFromPermissionMode(member.permissionMode);
-        const preservedAccess = (!config.isDangerous
-            && (config.baseAccessMode === 'plan' || config.baseAccessMode === 'safe')
-            && config.baseAccessMode !== memberDefaultAccess)
-            ? config.baseAccessMode
-            : undefined;
-        if (toolChanged || modelChanged || accessChanged || preservedAccess) {
+        const memberDefaultAccess = defaultAccessModeForMember(member);
+        const accessChanged = config.accessMode !== memberDefaultAccess;
+        if (toolChanged || modelChanged || accessChanged) {
             override.launchConfig = {
                 ...createLaunchConfig(config.agentTool, config.model),
-                ...(accessChanged
-                    ? { accessMode: expectedPerm === 'bypassPermissions' ? 'fullAccess' : 'acceptEdits' }
-                    : (preservedAccess ? { accessMode: preservedAccess } : {})),
+                ...(accessChanged ? { accessMode: config.accessMode } : {}),
             };
         }
 
@@ -256,16 +242,18 @@ export function LaunchConfigPanel({
                         </select>
                     </div>
 
-                    <div className="pn-fld">
-                        <label className="pn-flabel">Permissions</label>
-                        <button type="button"
-                            className={`pn-toggle ${config.isDangerous ? 'pn-toggle--on-danger' : ''}`}
-                            style={{ height: 36 }}
-                            onClick={() => onUpdateConfig(member.id, { isDangerous: !config.isDangerous })}
-                            title={config.isDangerous ? 'Dangerous mode ON (bypassPermissions)' : 'Dangerous mode OFF'}
+                    <div className="pn-fld" style={{ flex: '0 1 160px' }}>
+                        <label className="pn-flabel">Access</label>
+                        <select
+                            className="pn-select"
+                            value={config.accessMode}
+                            onChange={(e) => onUpdateConfig(member.id, { accessMode: e.target.value as LaunchAccessMode })}
+                            title={ACCESS_MODE_OPTIONS.find(option => option.value === config.accessMode)?.description}
                         >
-                            <Icon name="shield" size={14} /> {config.isDangerous ? 'YOLO' : 'Safe'}
-                        </button>
+                            {ACCESS_MODE_OPTIONS.map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 

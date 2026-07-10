@@ -1,4 +1,4 @@
-import type { AgentTool, LaunchConfig, LaunchProvider, LaunchReasoningEffort, LaunchSpeed, ModelType } from "../types/maestro";
+import type { AgentTool, LaunchAccessMode, LaunchConfig, LaunchProvider, LaunchReasoningEffort, LaunchSpeed, ModelType } from "../types/maestro";
 
 export type AgentToolOption = {
   id: AgentTool;
@@ -28,6 +28,9 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
     { value: "claude-opus-4-6", label: "Opus 4.6 Legacy" },
   ],
   codex: [
+    { value: "gpt-5.6-sol", label: "5.6 Sol" },
+    { value: "gpt-5.6-terra", label: "5.6 Terra" },
+    { value: "gpt-5.6-luna", label: "5.6 Luna" },
     { value: "gpt-5.5", label: "GPT-5.5" },
     { value: "gpt-5.4", label: "GPT-5.4" },
     { value: "gpt-5.4-mini", label: "GPT-5.4-Mini" },
@@ -40,6 +43,9 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
     { value: "anthropic:claude-opus-4-8", label: "Anthropic Claude Opus 4.8" },
     { value: "nous:anthropic/claude-opus-4.8", label: "Nous Claude Opus 4.8" },
     { value: "openrouter:anthropic/claude-opus-4.8", label: "OpenRouter Claude Opus 4.8" },
+    { value: "openai/gpt-5.6-sol", label: "Codex OAuth 5.6 Sol" },
+    { value: "openai/gpt-5.6-terra", label: "Codex OAuth 5.6 Terra" },
+    { value: "openai/gpt-5.6-luna", label: "Codex OAuth 5.6 Luna" },
     { value: "openai/gpt-5.5", label: "Codex OAuth GPT 5.5" },
     { value: "openai/gpt-5.4", label: "Codex OAuth GPT 5.4" },
     { value: "openai/gpt-5.4-mini", label: "Codex OAuth GPT 5.4 Mini" },
@@ -56,7 +62,7 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
 
 export const DEFAULT_MODEL_BY_AGENT_TOOL: Record<AgentTool, ModelType> = {
   "claude-code": "claude-opus-4-8",
-  codex: "gpt-5.5",
+  codex: "gpt-5.6-sol",
   hermes: "hermes-default",
   gemini: "gemini-2.5-pro",
 };
@@ -81,7 +87,10 @@ export const MODEL_POWER: Record<string, number> = {
   "claude-fable-5": 6.0,
   "claude-opus-4-8[1m]": 5.9,
   "claude-opus-4-8": 5.8,
+  "gpt-5.6-sol": 5.6,
+  "gpt-5.6-terra": 5.55,
   "gpt-5.5": 5.5,
+  "gpt-5.6-luna": 5.45,
   "claude-opus-4-7[1m]": 5.2,
   "claude-opus-4-7": 5,
   "gpt-5.4": 4.7,
@@ -179,30 +188,49 @@ export const REASONING_EFFORT_OPTIONS: Array<{ value: LaunchReasoningEffort; lab
   { value: "max", label: "Max" },
 ];
 
-export const CODEX_REASONING_EFFORT_OPTIONS = REASONING_EFFORT_OPTIONS.filter((option) => option.value !== "minimal" && option.value !== "max");
+const GPT_5_6_CODEX_MODELS = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+
+export const CODEX_REASONING_EFFORT_OPTIONS = REASONING_EFFORT_OPTIONS.filter(
+  (option) => option.value !== "minimal" && option.value !== "max",
+);
+
+export const ACCESS_MODE_OPTIONS: Array<{ value: LaunchAccessMode; label: string; description: string }> = [
+  { value: "safe", label: "Safe", description: "Ask before risky actions" },
+  { value: "acceptEdits", label: "Accept Edits", description: "Edit files without prompts" },
+  { value: "plan", label: "Plan", description: "Read-only planning mode" },
+  { value: "fullAccess", label: "Full Access", description: "Bypass prompts and sandbox" },
+];
 
 export const SPEED_OPTIONS: Array<{ value: LaunchSpeed; label: string; description: string }> = [
   { value: "standard", label: "Standard", description: "Default speed, normal usage" },
   { value: "fast", label: "Fast", description: "1.5x speed, increased usage" },
 ];
 
-export function getReasoningOptionsForProvider(provider: LaunchProvider): Array<{ value: LaunchReasoningEffort; label: string }> {
+export function supportsMaxReasoning(provider: LaunchProvider, model?: string): boolean {
+  if (provider === "claude") return true;
+  if (provider === "openai") return GPT_5_6_CODEX_MODELS.includes(model || "");
+  return false;
+}
+
+export function getReasoningOptionsForProvider(provider: LaunchProvider, model?: string): Array<{ value: LaunchReasoningEffort; label: string }> {
   if (provider === "claude") {
     return REASONING_EFFORT_OPTIONS.filter((option) => option.value !== "minimal");
   }
   if (provider === "openai") {
-    return CODEX_REASONING_EFFORT_OPTIONS;
+    return supportsMaxReasoning(provider, model)
+      ? [...CODEX_REASONING_EFFORT_OPTIONS, REASONING_EFFORT_OPTIONS.find((option) => option.value === "max")!]
+      : CODEX_REASONING_EFFORT_OPTIONS;
   }
   return [];
 }
 
-export function getReasoningValuesForProvider(provider: LaunchProvider): LaunchReasoningEffort[] {
-  return getReasoningOptionsForProvider(provider).map((option) => option.value);
+export function getReasoningValuesForProvider(provider: LaunchProvider, model?: string): LaunchReasoningEffort[] {
+  return getReasoningOptionsForProvider(provider, model).map((option) => option.value);
 }
 
 export function supportsLaunchSpeed(provider: LaunchProvider, model?: string): boolean {
   if (provider === "openai") {
-    return model === "gpt-5.5" || model === "gpt-5.4";
+    return ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4"].includes(model || "");
   }
   return false;
 }
@@ -227,11 +255,12 @@ export function sanitizeLaunchConfig(config?: Partial<LaunchConfig> | null): Lau
   if (!["claude", "openai", "hermes", "gemini"].includes(config.provider)) return undefined;
 
   const provider = config.provider as LaunchProvider;
-  const validReasoningValues = getReasoningValuesForProvider(provider);
+  const model = normalizeModelId(config.model)!;
+  const validReasoningValues = getReasoningValuesForProvider(provider, String(model));
   const reasoningEffort = config.reasoningEffort && validReasoningValues.includes(config.reasoningEffort)
     ? config.reasoningEffort
     : undefined;
-  const speed = config.speed && supportsLaunchSpeed(provider, String(config.model))
+  const speed = config.speed && supportsLaunchSpeed(provider, String(model))
     ? config.speed
     : undefined;
   const accessMode = config.accessMode && ["safe", "acceptEdits", "plan", "fullAccess"].includes(config.accessMode)
@@ -240,7 +269,7 @@ export function sanitizeLaunchConfig(config?: Partial<LaunchConfig> | null): Lau
 
   return {
     provider,
-    model: normalizeModelId(config.model)!,
+    model,
     ...(reasoningEffort ? { reasoningEffort } : {}),
     ...(speed ? { speed } : {}),
     ...(accessMode ? { accessMode } : {}),
@@ -264,6 +293,9 @@ const MODEL_LABEL_OVERRIDES: Record<string, string> = {
   "sonnet": "Sonnet",
   "sonnet[1m]": "Sonnet 1M",
   "haiku": "Haiku",
+  "gpt-5.6-sol": "Codex 5.6 Sol",
+  "gpt-5.6-terra": "Codex 5.6 Terra",
+  "gpt-5.6-luna": "Codex 5.6 Luna",
   "gpt-5.5": "Codex 5.5",
   "gpt-5.4": "Codex 5.4",
   "gpt-5.4-mini": "Codex 5.4 Mini",

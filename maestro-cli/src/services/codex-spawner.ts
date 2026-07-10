@@ -31,6 +31,9 @@ export class CodexSpawner {
 
   /** All supported Codex models */
   static readonly MODELS = [
+    'gpt-5.6-sol',
+    'gpt-5.6-terra',
+    'gpt-5.6-luna',
     'gpt-5.5',
     'gpt-5.4',
     'gpt-5.4-mini',
@@ -66,17 +69,17 @@ export class CodexSpawner {
       case 'claude-fable-5':
       case 'claude-fable-5[1m]':
         // Fable is the most-capable Claude; map to the top Codex model.
-        return 'gpt-5.5';
+        return 'gpt-5.6-sol';
       case 'claude-sonnet-5':
       case 'claude-sonnet-5[1m]':
-        return 'gpt-5.4';
+        return 'gpt-5.6-terra';
       case 'claude-opus-4-8[1m]':
       case 'claude-opus-4-8':
       case 'claude-opus-4-7[1m]':
       case 'claude-opus-4-7':
       case 'opus':
       case 'opus[1m]':
-        return 'gpt-5.4';
+        return 'gpt-5.6-terra';
       case 'sonnet':
       case 'sonnet[1m]':
         // Map to a current Codex model. 'gpt-5.2-codex' was removed in PR #83 and
@@ -86,7 +89,7 @@ export class CodexSpawner {
         // 'gpt-5.1-codex-mini' was removed in PR #83; use its current equivalent.
         return 'gpt-5.4-mini';
       default:
-        return 'gpt-5.4';
+        return 'gpt-5.6-sol';
     }
   }
 
@@ -143,6 +146,13 @@ export class CodexSpawner {
     }
   }
 
+  private supportsReasoningEffort(model: string, effort: string): boolean {
+    if (['low', 'medium', 'high', 'xhigh'].includes(effort)) {
+      return true;
+    }
+    return effort === 'max' && ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'].includes(model);
+  }
+
   /**
    * Build Codex CLI arguments
    */
@@ -170,10 +180,10 @@ export class CodexSpawner {
       args.push('--sandbox', sandbox);
     }
 
-    if (launchConfig?.reasoningEffort && ['low', 'medium', 'high', 'xhigh'].includes(launchConfig.reasoningEffort)) {
+    if (launchConfig?.reasoningEffort && this.supportsReasoningEffort(model, launchConfig.reasoningEffort)) {
       args.push('-c', `model_reasoning_effort=${JSON.stringify(launchConfig.reasoningEffort)}`);
     }
-    if (launchConfig?.speed === 'fast' && (model === 'gpt-5.5' || model === 'gpt-5.4')) {
+    if (launchConfig?.speed === 'fast' && ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'].includes(model)) {
       args.push('-c', 'service_tier="fast"');
     }
 

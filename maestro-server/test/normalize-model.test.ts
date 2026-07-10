@@ -14,6 +14,9 @@ describe('normalizeModelId', () => {
   it('passes other active model ids through unchanged', () => {
     expect(normalizeModelId('claude-opus-4-8')).toBe('claude-opus-4-8');
     expect(normalizeModelId('claude-sonnet-4-6')).toBe('claude-sonnet-4-6');
+    expect(normalizeModelId('gpt-5.6-sol')).toBe('gpt-5.6-sol');
+    expect(normalizeModelId('gpt-5.6-terra')).toBe('gpt-5.6-terra');
+    expect(normalizeModelId('gpt-5.6-luna')).toBe('gpt-5.6-luna');
     expect(normalizeModelId('gpt-5.5')).toBe('gpt-5.5');
   });
 

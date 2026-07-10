@@ -151,6 +151,34 @@ describe('Model profile resolution at spawn', () => {
     expect(after.body.session.metadata.launchConfig.reasoningEffort).toBe('high');
   });
 
+  it('keeps max reasoning only for GPT-5.6 OpenAI profiles', async () => {
+    const member = await teamMemberService.createTeamMember({
+      projectId, name: 'Codex Bound', role: 'worker', avatar: 'C', modelProfileId: 'mp_balanced',
+    });
+
+    await modelProfileService.updateModelProfile('mp_balanced', {
+      launchConfig: { provider: 'openai', model: 'gpt-5.6-terra', reasoningEffort: 'max' },
+    });
+
+    const gpt56 = await spawn(app, projectId, taskId, member.id);
+    expect(gpt56.body.session.metadata.launchConfig).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.6-terra',
+      reasoningEffort: 'max',
+    });
+
+    await modelProfileService.updateModelProfile('mp_balanced', {
+      launchConfig: { provider: 'openai', model: 'gpt-5.5', reasoningEffort: 'max' },
+    });
+
+    const older = await spawn(app, projectId, taskId, member.id);
+    expect(older.body.session.metadata.launchConfig).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.5',
+    });
+    expect(older.body.session.metadata.launchConfig.reasoningEffort).toBeUndefined();
+  });
+
   it('falls back to the raw member model when no profile is bound', async () => {
     const member = await teamMemberService.createTeamMember({
       projectId, name: 'Raw', role: 'worker', avatar: '🔧', model: 'claude-haiku-4-5',
