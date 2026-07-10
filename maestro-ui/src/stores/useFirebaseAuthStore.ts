@@ -43,8 +43,9 @@ function friendlyAuthError(err: unknown, fallback: string): string {
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
     case 'auth/popup-closed-by-user':
+      return 'The Google sign-in window closed before sign-in completed. Please try again.';
     case 'auth/cancelled-popup-request':
-      return 'Sign-in was cancelled.';
+      return 'A newer Google sign-in attempt replaced this one. Continue in the latest window.';
     default:
       return (err as Error | undefined)?.message ?? fallback;
   }

@@ -1,7 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
 import cors from 'cors';
-import helmet from 'helmet';
 import { WebSocketServer } from 'ws';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
@@ -32,6 +31,7 @@ import { PtyWebSocketServer } from './infrastructure/websocket/PtyWebSocketServe
 import { errorHandler } from './api/middleware/errorHandler';
 import { createAuthRoutes } from './api/authRoutes';
 import { createAuthMiddleware, isTrustedLocalRequest } from './api/middleware/authMiddleware';
+import { createSecurityHeaders } from './api/middleware/securityHeaders';
 import { AuthService } from './infrastructure/auth/AuthService';
 
 async function startServer() {
@@ -56,36 +56,7 @@ async function startServer() {
   // (mirrors the desktop app's CSP in maestro-ui/src-tauri/tauri.conf.json) while
   // keeping all of Helmet's other defaults intact. 'self' still covers the app's
   // own same-origin REST/WebSocket/PTY traffic.
-  app.use(
-    helmet({
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-          'script-src': ["'self'", 'https://apis.google.com', 'https://www.gstatic.com'],
-          'connect-src': [
-            "'self'",
-            'https://*.googleapis.com',
-            'https://identitytoolkit.googleapis.com',
-            'https://securetoken.googleapis.com',
-            'https://firestore.googleapis.com',
-            'https://firebasestorage.googleapis.com',
-            'https://*.firebaseio.com',
-            'wss://*.firebaseio.com',
-            'https://*.cloudfunctions.net',
-            'https://accounts.google.com',
-          ],
-          'frame-src': ["'self'", 'https://*.firebaseapp.com', 'https://accounts.google.com'],
-          'img-src': [
-            "'self'",
-            'data:',
-            'blob:',
-            'https://*.googleusercontent.com',
-            'https://lh3.googleusercontent.com',
-          ],
-        },
-      },
-    }),
-  );
+  app.use(createSecurityHeaders());
 
   // CORS configuration for Tauri app and web clients
   // NOTE: CORS must be registered before rate limiting so preflight OPTIONS

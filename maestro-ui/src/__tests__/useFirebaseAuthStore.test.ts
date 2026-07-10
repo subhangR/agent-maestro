@@ -24,7 +24,12 @@ vi.mock('../firebase/collabTeardown', () => ({
 
 import { useFirebaseAuthStore } from '../stores/useFirebaseAuthStore';
 import { teardownCollabSubscriptions } from '../firebase/collabTeardown';
-import { subscribeAuth, signInWithEmail, signOut as fbSignOut } from '../firebase/auth';
+import {
+  subscribeAuth,
+  signInWithGoogle,
+  signInWithEmail,
+  signOut as fbSignOut,
+} from '../firebase/auth';
 
 const store = () => useFirebaseAuthStore.getState();
 const fakeUser = (uid: string) => ({ uid }) as User;
@@ -99,5 +104,33 @@ describe('useFirebaseAuthStore — friendly errors', () => {
     vi.mocked(signInWithEmail).mockRejectedValueOnce(new Error('Something odd'));
     await store().signInEmail('a@b.c', 'x');
     expect(store().error).toBe('Something odd');
+  });
+
+  it('does not describe Firebase popup replacement as a user cancellation', async () => {
+    vi.mocked(signInWithGoogle).mockRejectedValueOnce(
+      Object.assign(new Error('conflicting popup'), {
+        code: 'auth/cancelled-popup-request',
+      }),
+    );
+
+    await store().signInGoogle();
+
+    expect(store().error).toBe(
+      'A newer Google sign-in attempt replaced this one. Continue in the latest window.',
+    );
+  });
+
+  it('reports an actually closed popup precisely', async () => {
+    vi.mocked(signInWithGoogle).mockRejectedValueOnce(
+      Object.assign(new Error('popup closed'), {
+        code: 'auth/popup-closed-by-user',
+      }),
+    );
+
+    await store().signInGoogle();
+
+    expect(store().error).toBe(
+      'The Google sign-in window closed before sign-in completed. Please try again.',
+    );
   });
 });
