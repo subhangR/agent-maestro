@@ -47,28 +47,31 @@ async function startServer() {
   // Create Express app
   const app = express();
 
+  // Extra origins for web/VPS deployments (e.g. the Tailscale/HTTPS host, a
+  // Cloudflare Tunnel hostname, or a custom domain the browser loads the SPA
+  // from). Comma-separated, set via env at deploy time. Shared by CORS and
+  // the CSP connect-src below so self-hosters only declare it once.
+  const envOrigins = (process.env.MAESTRO_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   // Security headers.
   // The browser SPA (served by this server in web mode) uses Firebase for the
   // Collab Space feature — auth (Identity Toolkit), Firestore, and the Google
   // sign-in popup/iframe. Helmet's default CSP is `default-src 'self'`, which
   // blocks every one of those cross-origin requests and surfaces as an opaque
-  // `auth/internal-error` in the client. Allowlist the Firebase/Google origins
-  // (mirrors the desktop app's CSP in maestro-ui/src-tauri/tauri.conf.json) while
-  // keeping all of Helmet's other defaults intact. 'self' still covers the app's
-  // own same-origin REST/WebSocket/PTY traffic.
-  app.use(createSecurityHeaders());
+  // `auth/internal-error` in the client. It also blocks the SPA's own
+  // WebSocket/worker use (xterm.js, Monaco). createSecurityHeaders() builds an
+  // explicit, generic CSP for all of this — see its docstring — driven by
+  // MAESTRO_ALLOWED_ORIGINS so a self-hosted domain needs zero code changes.
+  app.use(createSecurityHeaders(envOrigins));
 
   // CORS configuration for Tauri app and web clients
   // NOTE: CORS must be registered before rate limiting so preflight OPTIONS
   // requests always get proper CORS headers and are not blocked by 429.
   app.use(cors({
     origin: (origin, callback) => {
-      // Extra origins for web/VPS deployments (e.g. the Tailscale/HTTPS host the
-      // browser loads the SPA from). Comma-separated, set via env at deploy time.
-      const envOrigins = (process.env.MAESTRO_ALLOWED_ORIGINS || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
       const allowedOrigins = [
         'tauri://localhost',
         ...envOrigins,
