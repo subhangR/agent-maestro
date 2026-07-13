@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { TeamMember, AgentTool } from "../../app/types/maestro";
 import { AGENT_TOOL_LABELS, normalizeModelId } from "../../app/constants/agentTools";
 import { AgentLogo } from "./AgentChip";
 import { Icon } from "./redesign/kit";
 import { useMaestroStore } from "../../stores/useMaestroStore";
+import { ShareToSpaceModal } from "../share/ShareToSpaceModal";
 
 type TeamMemberListProps = {
     teamMembers: TeamMember[];
@@ -23,11 +25,18 @@ function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
         sonnet: "Sonnet",
         "sonnet[1m]": "Sonnet [1M]",
         opus: "Opus",
+        "claude-fable-5": "Fable 5",
+        "claude-fable-5[1m]": "Fable 5 1M",
+        "claude-sonnet-5": "Sonnet 5",
+        "claude-sonnet-5[1m]": "Sonnet 5 1M",
         "claude-opus-4-8": "Opus 4.8",
         "claude-opus-4-8[1m]": "Opus 4.8 [1M]",
         "claude-opus-4-7": "Opus 4.7",
         "claude-opus-4-7[1m]": "Opus 4.7 [1M]",
         "opus[1m]": "Opus [1M]",
+        "gpt-5.6-sol": "5.6 Sol",
+        "gpt-5.6-terra": "5.6 Terra",
+        "gpt-5.6-luna": "5.6 Luna",
         "gpt-5.5": "5.5",
         "gpt-5.4": "5.4",
         "gpt-5.3-codex": "5.3-codex",
@@ -38,6 +47,9 @@ function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
         "openrouter:anthropic/claude-opus-4.8": "Claude Opus 4.8",
         "anthropic/claude-opus-4.8": "Claude Opus 4.8",
         "anthropic/claude-sonnet-4.6": "Claude Sonnet 4.6",
+        "openai/gpt-5.6-sol": "Codex OAuth 5.6 Sol",
+        "openai/gpt-5.6-terra": "Codex OAuth 5.6 Terra",
+        "openai/gpt-5.6-luna": "Codex OAuth 5.6 Luna",
         "openai/gpt-5.5": "Codex OAuth GPT 5.5",
         "openai/gpt-5.4": "Codex OAuth GPT 5.4",
         "gpt-5.3-codex-spark": "Codex OAuth GPT 5.3 Codex Spark",
@@ -67,6 +79,7 @@ function TeamMemberRow({
     setLoadingAction: (v: string | null) => void;
 }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
 
     const isLoading = (action: string) => loadingAction === `${action}:${member.id}`;
 
@@ -227,6 +240,20 @@ function TeamMemberRow({
 
                         {!isArchived && (
                             <button type="button"
+                                className="terminalShareBtn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowShareModal(true);
+                                }}
+                                title="Share this team member to a Collab Space"
+                            >
+                                <span className="terminalShareBtn__icon" aria-hidden="true">↗</span>
+                                <span className="terminalShareBtn__label">Share</span>
+                            </button>
+                        )}
+
+                        {!isArchived && (
+                            <button type="button"
                                 className="pn-btn pn-btn--ghost"
                                 style={{ height: 28 }}
                                 onClick={handleArchive}
@@ -258,6 +285,29 @@ function TeamMemberRow({
                         )}
                     </div>
                 </div>
+            )}
+            {showShareModal && createPortal(
+                <ShareToSpaceModal
+                    payload={{
+                        kind: "team-member",
+                        entityLabel: member.name,
+                        data: {
+                            name: member.name,
+                            role: member.role,
+                            identity: member.identity,
+                            avatar: member.avatar ?? null,
+                            model: member.model ?? null,
+                            agentTool: member.agentTool ?? null,
+                            mode: member.mode ?? null,
+                            skillIds: member.skillIds ?? [],
+                            commandPermissions: member.commandPermissions ?? {},
+                            sourceTeamMemberId: member.id,
+                            sourceProjectId: member.projectId,
+                        },
+                    }}
+                    onClose={() => setShowShareModal(false)}
+                />,
+                document.body
             )}
         </div>
     );

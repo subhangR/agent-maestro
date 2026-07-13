@@ -1,7 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import compression from 'compression';
 import cors from 'cors';
-import helmet from 'helmet';
 import { WebSocketServer } from 'ws';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
@@ -21,6 +20,8 @@ import { createModelProfileRoutes } from './api/modelProfileRoutes';
 import { createWorkflowTemplateRoutes } from './api/workflowTemplateRoutes';
 import { createMasterRoutes } from './api/masterRoutes';
 import { createSpellRoutes } from './api/spellRoutes';
+import { createHookRoutes } from './api/hookRoutes';
+import { createEnsembleRoutes } from './api/ensembleRoutes';
 import { createAlexaRoutes } from './api/alexaRoutes';
 import { createGitRoutes } from './api/gitRoutes';
 import { createAgentLogRoutes } from './api/agentLogRoutes';
@@ -30,6 +31,7 @@ import { PtyWebSocketServer } from './infrastructure/websocket/PtyWebSocketServe
 import { errorHandler } from './api/middleware/errorHandler';
 import { createAuthRoutes } from './api/authRoutes';
 import { createAuthMiddleware, isTrustedLocalRequest } from './api/middleware/authMiddleware';
+import { createSecurityHeaders } from './api/middleware/securityHeaders';
 import { AuthService } from './infrastructure/auth/AuthService';
 
 async function startServer() {
@@ -45,20 +47,31 @@ async function startServer() {
   // Create Express app
   const app = express();
 
-  // Security headers
-  app.use(helmet());
+  // Extra origins for web/VPS deployments (e.g. the Tailscale/HTTPS host, a
+  // Cloudflare Tunnel hostname, or a custom domain the browser loads the SPA
+  // from). Comma-separated, set via env at deploy time. Shared by CORS and
+  // the CSP connect-src below so self-hosters only declare it once.
+  const envOrigins = (process.env.MAESTRO_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Security headers.
+  // The browser SPA (served by this server in web mode) uses Firebase for the
+  // Collab Space feature — auth (Identity Toolkit), Firestore, and the Google
+  // sign-in popup/iframe. Helmet's default CSP is `default-src 'self'`, which
+  // blocks every one of those cross-origin requests and surfaces as an opaque
+  // `auth/internal-error` in the client. It also blocks the SPA's own
+  // WebSocket/worker use (xterm.js, Monaco). createSecurityHeaders() builds an
+  // explicit, generic CSP for all of this — see its docstring — driven by
+  // MAESTRO_ALLOWED_ORIGINS so a self-hosted domain needs zero code changes.
+  app.use(createSecurityHeaders(envOrigins));
 
   // CORS configuration for Tauri app and web clients
   // NOTE: CORS must be registered before rate limiting so preflight OPTIONS
   // requests always get proper CORS headers and are not blocked by 429.
   app.use(cors({
     origin: (origin, callback) => {
-      // Extra origins for web/VPS deployments (e.g. the Tailscale/HTTPS host the
-      // browser loads the SPA from). Comma-separated, set via env at deploy time.
-      const envOrigins = (process.env.MAESTRO_ALLOWED_ORIGINS || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
       const allowedOrigins = [
         'tauri://localhost',
         ...envOrigins,
@@ -132,6 +145,7 @@ async function startServer() {
     taskRepo,
     teamMemberRepo,
     modelProfileRepo,
+    spellRepo: container.spellRepo,
     eventBus,
     config,
     ptyHostService
@@ -167,6 +181,12 @@ async function startServer() {
   // Spell routes
   const spellRoutes = createSpellRoutes(container.spellService);
   app.use('/api', spellRoutes);
+
+  // Hook dispatcher (P2) — every Claude hook posts here
+  app.use('/api', createHookRoutes(container.hookDispatcherService));
+
+  // Ensemble routes (P4)
+  app.use('/api', createEnsembleRoutes(container.ensembleService));
 
   // Master project cross-project routes
   const masterRoutes = createMasterRoutes(projectService, taskService, sessionService);

@@ -1,0 +1,255 @@
+/* ==========================================================================
+   MAESTRO — DESIGN FOUNDATIONS  ·  "ATELIER"
+   Colors, Type, Spacing, Radii, Shadows, Motion — the single source of truth.
+   A warm-paper, editorial workspace: warm ink on warm paper, hairline
+   dividers, one restrained brass accent. Status reads by dots + words, never
+   colored left-border bars. Light by default; html[data-theme="dark"] inverts
+   into warm graphite (never neon). All tokens are prefixed --pn-*.
+   ========================================================================== */
+
+/* ----------------------------------------------------------------------------
+   FONTS
+   Newsreader      → editorial display, empty states, agent "now playing" quotes
+   Hanken Grotesk  → all UI: headings, body, controls
+   JetBrains Mono  → code, terminals, data values, the uppercase micro-labels
+---------------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ========================================================================
+     1 · COLOR — PAPER & INK  (the warm canvas)
+     Surfaces layer to build depth: app paper → panel surface → raised card.
+     A warm, low-saturation greyscale — never neutral, never pure black/white.
+     ======================================================================== */
+  --pn-paper:    #F4F2EC;   /* app canvas behind panels */
+  --pn-surface:  #FBFAF6;   /* panel surface */
+  --pn-card:     #FFFFFF;   /* raised card */
+  --pn-hover:    #F2EFE8;   /* row hover */
+  --pn-active:   #ECE8DF;   /* selected fill */
+
+  --pn-line:     #E7E3D9;   /* hairline divider — the workhorse separator */
+  --pn-line-2:   #D8D3C6;   /* stronger border */
+
+  --pn-ink:      #23201B;   /* primary text — warm near-black */
+  --pn-ink-2:    #5B564C;   /* secondary */
+  --pn-ink-3:    #8E897B;   /* muted / meta */
+  --pn-ink-4:    #B7B2A4;   /* faint / placeholder */
+
+  /* ========================================================================
+     2 · COLOR — BRASS  (the one restrained accent — the conductor's baton, daylit)
+     The only warm-saturated color in the system. Used sparingly: primary
+     action on hover, the prompt glyph, the logo mark, focus, active rail.
+     ======================================================================== */
+  --pn-brand:      #B26A2B;
+  --pn-brand-2:    #9A581F;   /* pressed / dim */
+  --pn-brand-soft: rgba(178, 106, 43, 0.11);
+  --pn-brand-rgb:  178, 106, 43;   /* @kind color */
+
+  /* ========================================================================
+     3 · COLOR — FUNCTIONAL / STATUS  (desaturated for a paper world; anti-neon)
+     Agent lifecycle. Always paired with a label or glyph — never color alone.
+     ======================================================================== */
+  --pn-run:    #3E8E5A;   --pn-run-soft:   rgba(62, 142, 90, 0.12);   /* running / live / done */
+  --pn-wait:   #BD8A2A;   --pn-wait-soft:  rgba(189, 138, 42, 0.14);  /* needs input / waiting */
+  --pn-block:  #BB4D3D;   --pn-block-soft: rgba(187, 77, 61, 0.12);   /* blocked / error */
+  --pn-info:   #3F6C90;   --pn-info-soft:  rgba(63, 108, 144, 0.12);  /* info / neutral */
+  --pn-idle:   #A29C8E;   --pn-idle-soft:  rgba(162, 156, 142, 0.16); /* idle / exited */
+
+  /* ========================================================================
+     4 · TYPE — FAMILIES
+     ======================================================================== */
+  --pn-serif: 'Newsreader', Georgia, 'Times New Roman', serif;        /* @kind font */
+  --pn-ui:    'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif; /* @kind font */
+  --pn-mono:  'JetBrains Mono', ui-monospace, 'SF Mono', 'Menlo', monospace;      /* @kind font */
+
+  /* ----- Type scale (px) ----- */
+  --pn-fs-display: 40px;   /* editorial display (serif) */
+  --pn-fs-h1: 28px;
+  --pn-fs-h2: 22px;
+  --pn-fs-h3: 18px;
+  --pn-fs-title: 15px;     /* panel / card titles */
+  --pn-fs-body: 14px;      /* default UI body */
+  --pn-fs-sm: 13px;
+  --pn-fs-label: 12px;
+  --pn-fs-micro: 11px;     /* uppercase mono eyebrow / meta */
+  --pn-fs-mono: 12.5px;    /* terminal / code */
+
+  --pn-lh-tight: 1.18;   /* @kind font */
+  --pn-lh-snug: 1.35;    /* @kind font */
+  --pn-lh-body: 1.5;     /* @kind font */
+
+  --pn-track-mega: 0.12em;    /* uppercase mono eyebrows */
+  --pn-track-label: 0.06em;   /* uppercase labels */
+  --pn-track-tight: -0.01em;  /* large UI headings */
+
+  /* ========================================================================
+     5 · SPACING  (4px base grid — dense but breathable)
+     ======================================================================== */
+  --pn-space-1: 4px;
+  --pn-space-2: 8px;
+  --pn-space-3: 12px;
+  --pn-space-4: 16px;
+  --pn-space-5: 20px;
+  --pn-space-6: 24px;
+  --pn-space-8: 32px;
+  --pn-space-10: 40px;
+  --pn-space-12: 48px;
+  --pn-space-16: 64px;
+
+  /* ========================================================================
+     6 · RADII  (soft, not bubbly)
+     ======================================================================== */
+  --pn-r-xs: 5px;     /* chips, inputs, tags */
+  --pn-r-sm: 7px;     /* buttons, small cards */
+  --pn-r-md: 10px;    /* cards, menus */
+  --pn-r-lg: 14px;    /* panels, modals */
+  --pn-r-pill: 999px;
+
+  /* ========================================================================
+     7 · ELEVATION  (soft, warm-toned drop shadows do the lifting; no glow)
+     Borders separate in-flow elements; shadow is reserved for raised cards,
+     popovers, menus and modals. There is no neon glow anywhere in Atelier.
+     ======================================================================== */
+  --pn-sh-sm:  0 1px 2px rgba(40, 34, 24, 0.05);                                 /* @kind shadow */
+  --pn-sh-md:  0 2px 6px rgba(40, 34, 24, 0.06), 0 8px 24px rgba(40, 34, 24, 0.06); /* @kind shadow */
+  --pn-sh-pop: 0 12px 34px rgba(40, 34, 24, 0.14);                               /* @kind shadow */
+
+  /* ========================================================================
+     8 · MOTION  (fast, mechanical, confident — no bounce)
+     ======================================================================== */
+  --pn-ease-out: cubic-bezier(0.16, 1, 0.3, 1);    /* @kind other */
+  --pn-ease-standard: cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */
+  --pn-dur-fast: 120ms;   /* @kind other */
+  --pn-dur-base: 180ms;   /* @kind other */
+  --pn-dur-slow: 280ms;   /* @kind other */
+}
+
+/* ==========================================================================
+   DARK VARIANT — same editorial system, inverted into warm graphite.
+   Token-only override; no component rule changes. Set html[data-theme="dark"].
+   ========================================================================== */
+html[data-theme="dark"] {
+  --pn-paper:   #15130E;   /* app canvas — warm near-black */
+  --pn-surface: #1B1810;   /* panel surface */
+  --pn-card:    #221E15;   /* raised card */
+  --pn-hover:   #262117;   /* row hover */
+  --pn-active:  #302A1D;   /* selected fill */
+
+  --pn-line:    #2C2719;   /* hairline */
+  --pn-line-2:  #3B3524;   /* stronger border */
+
+  --pn-ink:     #EFE9DB;   /* primary text — warm near-white */
+  --pn-ink-2:   #BDB5A2;   /* secondary */
+  --pn-ink-3:   #8C8470;   /* muted / meta */
+  --pn-ink-4:   #665E4C;   /* faint / placeholder */
+
+  --pn-brand:      #E0A45A;
+  --pn-brand-2:    #C98A3E;
+  --pn-brand-soft: rgba(224, 164, 90, 0.15);
+  --pn-brand-rgb:  224, 164, 90;   /* @kind color */
+
+  --pn-run:   #5CB381;  --pn-run-soft:   rgba(92, 179, 129, 0.17);
+  --pn-wait:  #D9AA49;  --pn-wait-soft:  rgba(217, 170, 73, 0.18);
+  --pn-block: #DA7D6A;  --pn-block-soft: rgba(218, 125, 106, 0.17);
+  --pn-info:  #6F9FC7;  --pn-info-soft:  rgba(111, 159, 199, 0.17);
+  --pn-idle:  #7A7360;  --pn-idle-soft:  rgba(122, 115, 96, 0.20);
+
+  --pn-sh-sm:  0 1px 2px rgba(0, 0, 0, 0.45);
+  --pn-sh-md:  0 2px 8px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.4);
+  --pn-sh-pop: 0 16px 44px rgba(0, 0, 0, 0.6);
+}
+
+/* ==========================================================================
+   SEMANTIC TYPE CLASSES
+   Editorial display in Newsreader; all working UI in Hanken Grotesk; the
+   signature uppercase eyebrow + code in JetBrains Mono.
+   ========================================================================== */
+.t-display {
+  font-family: var(--pn-serif);
+  font-weight: 500;
+  font-size: var(--pn-fs-display);
+  line-height: var(--pn-lh-tight);
+  letter-spacing: 0;
+  color: var(--pn-ink);
+}
+.t-h1 {
+  font-family: var(--pn-serif);
+  font-weight: 500;
+  font-size: var(--pn-fs-h1);
+  line-height: var(--pn-lh-tight);
+  color: var(--pn-ink);
+}
+.t-h2 {
+  font-family: var(--pn-ui);
+  font-weight: 600;
+  font-size: var(--pn-fs-h2);
+  line-height: var(--pn-lh-snug);
+  letter-spacing: var(--pn-track-tight);
+  color: var(--pn-ink);
+}
+.t-h3 {
+  font-family: var(--pn-ui);
+  font-weight: 600;
+  font-size: var(--pn-fs-h3);
+  line-height: var(--pn-lh-snug);
+  letter-spacing: var(--pn-track-tight);
+  color: var(--pn-ink);
+}
+.t-title {
+  font-family: var(--pn-ui);
+  font-weight: 600;
+  font-size: var(--pn-fs-title);
+  line-height: var(--pn-lh-snug);
+  letter-spacing: var(--pn-track-tight);
+  color: var(--pn-ink);
+}
+.t-body {
+  font-family: var(--pn-ui);
+  font-weight: 400;
+  font-size: var(--pn-fs-body);
+  line-height: var(--pn-lh-body);
+  color: var(--pn-ink-2);
+}
+.t-secondary {
+  font-family: var(--pn-ui);
+  font-weight: 400;
+  font-size: var(--pn-fs-sm);
+  line-height: var(--pn-lh-body);
+  color: var(--pn-ink-3);
+}
+.t-label {
+  font-family: var(--pn-ui);
+  font-weight: 500;
+  font-size: var(--pn-fs-label);
+  color: var(--pn-ink-3);
+}
+/* The signature Maestro micro-label: uppercase mono eyebrow */
+.t-eyebrow {
+  font-family: var(--pn-mono);
+  font-weight: 600;
+  font-size: var(--pn-fs-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--pn-track-mega);
+  color: var(--pn-ink-3);
+}
+.t-quote {
+  font-family: var(--pn-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: var(--pn-fs-h3);
+  line-height: 1.45;
+  color: var(--pn-ink-2);
+}
+.t-mono {
+  font-family: var(--pn-mono);
+  font-weight: 400;
+  font-size: var(--pn-fs-mono);
+  line-height: var(--pn-lh-body);
+  color: var(--pn-ink-2);
+}
+.t-code {
+  font-family: var(--pn-mono);
+  font-weight: 500;
+  font-size: var(--pn-fs-mono);
+  color: var(--pn-brand);
+}

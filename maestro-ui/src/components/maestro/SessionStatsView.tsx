@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "../../platform";
 import { useMaestroStore } from "../../stores/useMaestroStore";
+import { getModelDisplayLabel } from "../../app/constants/agentTools";
 import { useProjectStore } from "../../stores/useProjectStore";
 import type {
   MaestroSession,
@@ -468,6 +469,10 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
   const session: MaestroSession =
     viewId === rootSession.id ? rootSession : allSessions[viewId] ?? rootSession;
   const isViewingChild = session.id !== rootSession.id;
+  // Model chip: prefer the per-spawn launch model over the stored default, then render a
+  // friendly label. Fall through model -> launchConfig.model -> metadata.model -> teamMemberSnapshot.model.
+  const resolvedModelId = session.model ?? session.launchConfig?.model ?? session.metadata?.model ?? session.teamMemberSnapshot?.model;
+  const modelLabel = resolvedModelId ? getModelDisplayLabel(resolvedModelId) : null;
 
   const [stats, setStats] = useState<TranscriptStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -797,9 +802,9 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
                 {TOOL_LOGO[agentTool] && <img src={TOOL_LOGO[agentTool]} alt="" />}
                 {agentTool}
               </span>
-              {session.model && (
+              {modelLabel && (
                 <span className="ssv-meta-chip">
-                  <span className="ssv-meta-chip-lbl">model</span> {String(session.model)}
+                  <span className="ssv-meta-chip-lbl">model</span> {modelLabel}
                 </span>
               )}
               {session.mode && (

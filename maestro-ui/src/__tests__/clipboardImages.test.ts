@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractImageFiles, dataTransferHasFiles } from "../utils/clipboardImages";
+import { extractImageFiles, dataTransferHasFiles, nextImageNameIndex } from "../utils/clipboardImages";
 
 function makeFile(name: string, type: string, content = "x"): File {
     return new File([content], name, { type });
@@ -64,7 +64,7 @@ describe("extractImageFiles", () => {
         expect(result.name).toBe("image1.png");
     });
 
-    it("keeps real filenames intact", () => {
+    it("keeps real filenames intact by default", () => {
         const named = makeFile("mockup-v2.png", "image/png");
         const [result] = extractImageFiles(makeDataTransfer({ files: [named] }));
         expect(result.name).toBe("mockup-v2.png");
@@ -84,9 +84,30 @@ describe("extractImageFiles", () => {
         expect(result.map(f => f.name)).toEqual(["image1.png", "image2.png"]);
     });
 
+    it("can rename all dropped images from an existing sequence", () => {
+        const a = makeFile("mockup.png", "image/png", "aaa");
+        const b = makeFile("diagram.jpg", "image/jpeg", "bbbb");
+        const result = extractImageFiles(makeDataTransfer({ files: [a, b] }), { renameAll: true, startIndex: 3 });
+        expect(result.map(f => f.name)).toEqual(["image3.png", "image4.jpg"]);
+    });
+
     it("skips items whose getAsFile returns null", () => {
         const result = extractImageFiles(makeDataTransfer({ itemFiles: [null] }));
         expect(result).toEqual([]);
+    });
+});
+
+describe("nextImageNameIndex", () => {
+    it("continues after existing task and staged image names", () => {
+        expect(nextImageNameIndex([
+            { filename: "image1.png" },
+            { name: "image2.jpg" },
+            { filename: "notes.png" },
+        ])).toBe(3);
+    });
+
+    it("starts at 1 when no sequential image names exist", () => {
+        expect(nextImageNameIndex([{ filename: "screenshot.png" }])).toBe(1);
     });
 });
 

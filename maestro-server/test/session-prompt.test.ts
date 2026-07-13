@@ -44,6 +44,10 @@ async function buildApp(dataDir: string) {
     teamMemberRepo: container.teamMemberRepo,
     modelProfileRepo: container.modelProfileRepo,
     eventBus: container.eventBus,
+    // Deps required by SessionRouteDependencies but not exercised by these tests.
+    teamService: container.teamService,
+    spellRepo: {} as any,
+    ptyHostService: {} as any,
     config,
   });
 

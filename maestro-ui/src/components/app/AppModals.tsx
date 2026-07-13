@@ -33,7 +33,12 @@ import { RecordingsListModal } from "../modals/RecordingsListModal";
 import { ReplayModal } from "../modals/ReplayModal";
 import { AgentModalViewer } from "../modals/AgentModalViewer";
 import { useMaestroStore } from "../../stores/useMaestroStore";
-import { SpellPicker } from "../maestro/SpellPicker";
+import { SpellStudio } from "../spells/studio/SpellStudio";
+import { TeamMemberIntroDialog } from "../maestro/TeamMemberIntroDialog";
+import { SpellbookDrawer } from "../spells/studio/spellbook";
+import { UndoToast } from "../spells/UndoToast";
+import { SpellNotificationToasts } from "../spells/SpellNotificationToasts";
+import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { normalizeSmartQuotes } from "../../app/utils/string";
 
 export function AppModals() {
@@ -677,8 +682,16 @@ export function AppModals() {
         />
       )}
 
-      {/* Spell picker */}
-      <SpellPicker />
+      {/* Spell Studio — unified Library/Detail/Cast/Entities + editor overlay
+          (Track UI-A). Bridges the legacy launcher store, so every existing
+          "cast this spell" caller opens the Studio in cast mode. */}
+      <SpellStudio />
+
+      {/* Intro dialog for agent/CLI-created team members */}
+      <TeamMemberIntroDialog />
+      <SpellbookHost />
+      <UndoToast />
+      <SpellNotificationToasts />
 
       {/* Agent-generated modals */}
       {activeModals.map((modal) => (
@@ -689,5 +702,18 @@ export function AppModals() {
         />
       ))}
     </>
+  );
+}
+
+function SpellbookHost() {
+  const isOpen = useSpellbookStore((s) => s.isOpen);
+  const scrollToSessionId = useSpellbookStore((s) => s.scrollToSessionId);
+  const close = useSpellbookStore((s) => s.closeSpellbook);
+  return (
+    <SpellbookDrawer
+      isOpen={isOpen}
+      scrollToSessionId={scrollToSessionId}
+      onClose={close}
+    />
   );
 }

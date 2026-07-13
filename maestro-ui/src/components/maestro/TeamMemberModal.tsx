@@ -680,7 +680,7 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                     activeTool={activeLaunchTool}
                     onActiveToolChange={setActiveLaunchTool}
                     onLaunchConfigChange={handleLaunchConfigChange}
-                    showAdvancedOptions={false}
+                    showAdvancedOptions
                 />
             </div>
         </>,

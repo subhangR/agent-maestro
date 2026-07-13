@@ -7,6 +7,14 @@ import { useProjectStore } from "../stores/useProjectStore";
 import { buildTeamGroups, getGroupedSessionOrder } from "../utils/teamGrouping";
 import { NewSpaceDropdown } from "./NewSpaceDropdown";
 import { Icon } from "./maestro/redesign/kit";
+import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../utils/spellRings";
+import { useActiveSpellsForSession } from "../stores/useActiveSpellsStore";
+import { useSpellbookStore } from "../stores/useSpellbookStore";
+import { useEnsembleStore } from "../stores/useEnsembleStore";
+import { useSpellCastPulse } from "../utils/useSpellCastPulse";
+import { useProjectCollabSpaces } from "../hooks/useProjectCollabSpaces";
+import { makeCollabActiveId } from "../app/types/space";
+import { SpaceAvatar } from "./space-window/SpaceAvatar";
 
 type RailSession = {
     id: string;
@@ -56,12 +64,32 @@ function RailSessionButton({
     const needsInput = Boolean(maestroSession?.needsInput?.active);
     const isTerminal = !effect?.iconSrc && !session.maestroSessionId;
 
+    // Concentric spell rings — see docs/spell-system-design/UI_SPEC.md §7.
+    const activeSpells = useActiveSpellsForSession(session.maestroSessionId ?? null);
+    // Subscribe to ensembles so ring color updates when an ensemble changes.
+    const ensembles = useEnsembleStore((s) => s.ensembles);
+    const ringSpecs = useMemo<RingSpec[]>(
+        () => buildRingSpecsFromActive(activeSpells),
+        [activeSpells, ensembles],
+    );
+    const ringAttrs = useMemo(() => spellRingAttrs(ringSpecs), [ringSpecs]);
+    const ringHasRings = ringAttrs['data-spell-rings'] > 0;
+    const justCast = useSpellCastPulse(session.maestroSessionId ?? null);
+    const ringClass = ringHasRings ? (justCast ? ' spell-ring spell-ring--just-cast' : ' spell-ring') : '';
+    const ringOverflow = ringAttrs['data-spell-ring-overflow'] ?? 0;
+    const ringAriaLabel = spellRingAriaLabel(`Session ${session.name}`, activeSpells);
+
     return (
         <button
-            className={`pn-srail-s ${isActive ? "pn-srail-s--active" : ""} ${isExited ? "pn-srail-s--exited" : ""} ${isTerminal ? "pn-agent--term" : ""}`}
+            className={`pn-srail-s ${isActive ? "pn-srail-s--active" : ""} ${isExited ? "pn-srail-s--exited" : ""} ${isTerminal ? "pn-agent--term" : ""}${ringClass}`}
             onClick={onSelect}
             title={session.name}
             type="button"
+            style={ringAttrs.style}
+            data-spell-rings={ringAttrs['data-spell-rings'] || undefined}
+            data-spell-ring-names={ringAttrs['data-spell-ring-names'] || undefined}
+            data-spell-ring-overflow={ringOverflow || undefined}
+            aria-label={ringAriaLabel || undefined}
             {...(session.maestroSessionId ? { 'data-maestro-session-id': session.maestroSessionId } : {})}
         >
             {effect?.iconSrc ? (
@@ -73,6 +101,20 @@ function RailSessionButton({
             )}
             {isWorking && <span className="pn-srail-pulse" />}
             {needsInput && <span className="pn-srail-wait" />}
+            {ringOverflow > 0 && (
+                <span
+                    className="spell-ring__overflow"
+                    aria-label={`${ringOverflow} more spells`}
+                    role="img"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const sid = session.maestroSessionId;
+                        if (sid) useSpellbookStore.getState().openSpellbook({ scrollToSessionId: sid });
+                    }}
+                >
+                    +{ringOverflow}
+                </span>
+            )}
         </button>
     );
 }
@@ -98,6 +140,8 @@ export const SpacesRail: React.FC<SpacesRailProps> = ({
         [allSpaces, activeProjectId],
     );
 
+    const { spaces: collabSpaces } = useProjectCollabSpaces();
+
     const teamGroupData = useMemo(() => {
         return buildTeamGroups(sessions, maestroSessions, teamsMap);
     }, [sessions, maestroSessions, teamsMap]);
@@ -106,7 +150,7 @@ export const SpacesRail: React.FC<SpacesRailProps> = ({
         return getGroupedSessionOrder(sessions, teamGroupData.groups);
     }, [sessions, teamGroupData.groups]);
 
-    const totalCount = sessions.length + spaces.length;
+    const totalCount = sessions.length + spaces.length + collabSpaces.length;
 
     return (
         <div className="pn-srail" style={{ width: "100%" }}>
@@ -183,6 +227,25 @@ export const SpacesRail: React.FC<SpacesRailProps> = ({
                         <Icon name={space.type === "whiteboard" ? "pen" : "doc"} />
                     </button>
                 ))}
+
+                {/* Joined Collab Spaces matching the active project's git remote */}
+                {collabSpaces.length > 0 && <div className="spacesRailDivider" />}
+                {collabSpaces.map((cs) => {
+                    const activeId = makeCollabActiveId(cs.id);
+                    const isActive = activeId === activeSessionId;
+                    return (
+                        <button
+                            type="button"
+                            key={cs.id}
+                            className={`spacesRailSession spacesRailSpace spacesRailSpace--collab ${isActive ? "spacesRailSession--active" : ""}`}
+                            onClick={() => onSelectSession(activeId)}
+                            title={`${cs.name} · ${cs.githubUrl}`}
+                        >
+                            {isActive && <span className="iconRailActiveIndicator iconRailActiveIndicator--right" />}
+                            <SpaceAvatar colorKey={cs.id} name={cs.name} size={26} />
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );

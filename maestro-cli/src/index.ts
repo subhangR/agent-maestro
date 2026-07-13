@@ -26,6 +26,8 @@ import { registerSpellCommands } from './commands/spell.js';
 import { registerAnnounceCommands } from './commands/announce.js';
 import { registerGitCommands } from './commands/git.js';
 import { registerCommandLogCommands } from './commands/command-log.js';
+import { registerHookCommands } from './commands/hook.js';
+import { registerEnsembleCommands } from './commands/ensemble.js';
 import { installCommandTracker, setTrackedCommand } from './services/command-tracker.js';
 import {
   loadCommandPermissions,
@@ -376,6 +378,8 @@ registerSpellCommands(program);
 registerAnnounceCommands(program);
 registerGitCommands(program);
 registerCommandLogCommands(program);
+registerHookCommands(program);
+registerEnsembleCommands(program);
 program.command('status')
   .description('Show summary of current project state')
   .action(async () => {

@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
-    AgentTool, ModelType, TeamMember, MemberLaunchOverride,
+    AgentTool, LaunchAccessMode, ModelType, TeamMember, MemberLaunchOverride,
 } from "../../app/types/maestro";
 import { ClaudeCodeSkillsSelector } from "./ClaudeCodeSkillsSelector";
 import { Icon } from "./redesign/kit";
@@ -12,6 +12,8 @@ import {
     toggleCommandOverride,
 } from "../../utils/commandPermissions";
 import {
+    ACCESS_MODE_OPTIONS,
+    accessModeFromPermissionMode,
     AGENT_TOOLS,
     AGENT_TOOL_LABELS,
     createLaunchConfig,
@@ -23,6 +25,9 @@ import {
 
 const MODELS_BY_TOOL = MODELS_BY_AGENT_TOOL;
 const DEFAULT_MODEL = DEFAULT_MODEL_BY_AGENT_TOOL;
+const defaultAccessModeForMember = (member: TeamMember): LaunchAccessMode => (
+    accessModeFromPermissionMode(member.permissionMode) || 'safe'
+);
 
 const COMMAND_GROUPS = [
     { key: 'root', label: 'Root', commands: ['whoami', 'status', 'commands'] },
@@ -51,7 +56,7 @@ interface TeamLaunchConfigModalProps {
 interface MemberConfig {
     agentTool: AgentTool;
     model: ModelType;
-    isDangerous: boolean;
+    accessMode: LaunchAccessMode;
     skillIds: string[];
     commandOverrides: Record<string, boolean>;
     expanded: boolean; // whether this member's details panel is open
@@ -89,7 +94,7 @@ export function TeamLaunchConfigModal({
             configs[id] = {
                 agentTool: tool,
                 model: (member.model || DEFAULT_MODEL[tool] || 'sonnet') as ModelType,
-                isDangerous: member.permissionMode === 'bypassPermissions',
+                accessMode: defaultAccessModeForMember(member),
                 skillIds: member.skillIds ? [...member.skillIds] : [],
                 commandOverrides: member.commandPermissions?.commands
                     ? { ...member.commandPermissions.commands }
@@ -158,12 +163,11 @@ export function TeamLaunchConfigModal({
             const modelChanged = config.model !== (member.model || DEFAULT_MODEL[member.agentTool || 'claude-code']);
             const toolChanged = config.agentTool !== (member.agentTool || 'claude-code');
 
-            const expectedPerm = config.isDangerous ? 'bypassPermissions' : (member.permissionMode === 'bypassPermissions' ? 'acceptEdits' : member.permissionMode);
-            const accessChanged = expectedPerm !== member.permissionMode;
+            const accessChanged = config.accessMode !== defaultAccessModeForMember(member);
             if (toolChanged || modelChanged || accessChanged) {
                 override.launchConfig = {
                     ...createLaunchConfig(config.agentTool, config.model),
-                    ...(accessChanged ? { accessMode: expectedPerm === 'bypassPermissions' ? 'fullAccess' : 'acceptEdits' } : {}),
+                    ...(accessChanged ? { accessMode: config.accessMode } : {}),
                 };
             }
 
@@ -291,14 +295,18 @@ export function TeamLaunchConfigModal({
                                                     ))}
                                                 </select>
 
-                                                {/* Dangerous mode toggle */}
-                                                <button type="button"
-                                                    className={`pn-toggle ${config.isDangerous ? 'pn-toggle--on-danger' : ''}`}
-                                                    onClick={() => updateConfig(member.id, { isDangerous: !config.isDangerous })}
-                                                    title={config.isDangerous ? 'Dangerous mode ON (bypassPermissions)' : 'Dangerous mode OFF'}
+                                                {/* Access mode */}
+                                                <select
+                                                    className="pn-select"
+                                                    style={{ width: 'auto', minWidth: 128 }}
+                                                    value={config.accessMode}
+                                                    onChange={(e) => updateConfig(member.id, { accessMode: e.target.value as LaunchAccessMode })}
+                                                    title={ACCESS_MODE_OPTIONS.find(option => option.value === config.accessMode)?.description}
                                                 >
-                                                    <Icon name="shield" size={14} /> {config.isDangerous ? 'dangerous' : 'safe'}
-                                                </button>
+                                                    {ACCESS_MODE_OPTIONS.map(option => (
+                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                    ))}
+                                                </select>
 
                                                 {/* Expand/collapse */}
                                                 <button type="button"

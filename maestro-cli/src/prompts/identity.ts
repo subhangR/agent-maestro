@@ -93,8 +93,8 @@ export const COORDINATED_WORKER_IDENTITY_INSTRUCTION =
 
 export const COORDINATED_COORDINATOR_IDENTITY_INSTRUCTION =
   'You are a sub-coordinator in a hierarchical multi-agent team. ' +
-  'You were spawned by a parent coordinator and must coordinate only within the existing assigned team. ' +
-  'Do not spawn new sessions. ' +
+  'You were spawned by a parent coordinator to coordinate your assigned slice of the work. ' +
+  'You may spawn your own helper sessions with `maestro session spawn ...` whenever the work calls for it. ' +
   'Use `maestro session siblings` to inspect the active team roster and communicate with sibling sessions using `maestro session prompt <sessionId> --message "<your question or info>"`.\n' +
   'Regularly monitor sibling workers by running `maestro session logs` to read their output and track progress. ' +
   'Decompose your assigned tasks INTO DEDICATED TASKS before delegating: for each unit of work, FIRST run ' +

@@ -21,6 +21,17 @@ const IMMEDIATE_EVENTS = new Set<string>([
   'session:modal_action',
   'session:modal_closed',
   'spell:invoked',
+  'spell:activated',
+  'spell:deactivated',
+  'spell:rule_fired',
+  'spell:loop_reset',
+  'spell:toggled',
+  // Ensemble lifecycle is low-volume and UI must repaint rings immediately
+  // when an ensemble is created/updated/disbanded.
+  'ensemble:created',
+  'ensemble:updated',
+  'ensemble:disbanded',
+  'ensemble:message',
 ]);
 
 /** Subscription filter for per-client event filtering. */
@@ -184,6 +195,16 @@ export class WebSocketBridge {
       'team_member:archived',
       // Spell events
       'spell:invoked',
+      'spell:activated',
+      'spell:deactivated',
+      'spell:rule_fired',
+      'spell:loop_reset',
+      'spell:toggled',
+      // Ensemble events (P4)
+      'ensemble:created',
+      'ensemble:updated',
+      'ensemble:disbanded',
+      'ensemble:message',
       'custom_prompt:created',
       'custom_prompt:updated',
       'custom_prompt:deleted',
@@ -366,11 +387,20 @@ export class WebSocketBridge {
       return false;
     }
 
-    // Spell events — filter by target sessionId
+    // Spell events — filter by target session(s). Payloads vary:
+    //   activated/deactivated → sessionIds[]; invoked → targetSessionId;
+    //   rule_fired/loop_reset → singular sessionId.
     if (event.startsWith('spell:')) {
-      const sessionId = data?.targetSessionId;
-      if (sub.sessionIds && sessionId && !sub.sessionIds.has(sessionId)) return true;
-      return false;
+      if (!sub.sessionIds) return false;
+      const targetIds: string[] = Array.isArray(data?.sessionIds)
+        ? data.sessionIds
+        : data?.targetSessionId
+          ? [data.targetSessionId]
+          : data?.sessionId
+            ? [data.sessionId]
+            : [];
+      if (targetIds.length === 0) return false;
+      return !targetIds.some((id) => sub.sessionIds!.has(id));
     }
 
     // Custom prompt events — pass through to all clients (global)

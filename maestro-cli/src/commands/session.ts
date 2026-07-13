@@ -86,20 +86,20 @@ function getValidReasoningEfforts(provider: LaunchConfig['provider']): LaunchCon
         case 'claude':
             return ['low', 'medium', 'high', 'xhigh', 'max'];
         case 'openai':
-            return ['low', 'medium', 'high', 'xhigh'];
+            return ['low', 'medium', 'high', 'xhigh', 'max'];
         default:
             return [];
     }
 }
 
 function supportsLaunchSpeed(provider: LaunchConfig['provider'], model?: string): boolean {
-    return provider === 'openai' && (model === 'gpt-5.5' || model === 'gpt-5.4');
+    return provider === 'openai' && ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'].includes(model || '');
 }
 
 function defaultModelForAgentTool(agentTool: AgentTool): string {
     switch (agentTool) {
         case 'codex':
-            return 'gpt-5.5';
+            return 'gpt-5.6-sol';
         case 'hermes':
             return 'hermes-default';
         case 'gemini':

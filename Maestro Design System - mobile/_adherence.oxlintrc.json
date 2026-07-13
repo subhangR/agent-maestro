@@ -1,0 +1,199 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "mobile-app/**",
+              "panel-redesign/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Newsreader|Hanken Grotesk|JetBrains Mono))/i]",
+        "message": "Font not provided by the design system. Available: Newsreader, Hanken Grotesk, JetBrains Mono."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {},
+    "tokens": [
+      "--pn-active",
+      "--pn-block",
+      "--pn-block-soft",
+      "--pn-brand",
+      "--pn-brand-2",
+      "--pn-brand-rgb",
+      "--pn-brand-soft",
+      "--pn-card",
+      "--pn-dur-base",
+      "--pn-dur-fast",
+      "--pn-dur-slow",
+      "--pn-ease-out",
+      "--pn-ease-standard",
+      "--pn-fs-body",
+      "--pn-fs-display",
+      "--pn-fs-h1",
+      "--pn-fs-h2",
+      "--pn-fs-h3",
+      "--pn-fs-label",
+      "--pn-fs-micro",
+      "--pn-fs-mono",
+      "--pn-fs-sm",
+      "--pn-fs-title",
+      "--pn-hover",
+      "--pn-idle",
+      "--pn-idle-soft",
+      "--pn-info",
+      "--pn-info-soft",
+      "--pn-ink",
+      "--pn-ink-2",
+      "--pn-ink-3",
+      "--pn-ink-4",
+      "--pn-lh-body",
+      "--pn-lh-snug",
+      "--pn-lh-tight",
+      "--pn-line",
+      "--pn-line-2",
+      "--pn-mono",
+      "--pn-paper",
+      "--pn-r-lg",
+      "--pn-r-md",
+      "--pn-r-pill",
+      "--pn-r-sm",
+      "--pn-r-xs",
+      "--pn-run",
+      "--pn-run-soft",
+      "--pn-serif",
+      "--pn-sh-md",
+      "--pn-sh-pop",
+      "--pn-sh-sm",
+      "--pn-space-1",
+      "--pn-space-10",
+      "--pn-space-12",
+      "--pn-space-16",
+      "--pn-space-2",
+      "--pn-space-3",
+      "--pn-space-4",
+      "--pn-space-5",
+      "--pn-space-6",
+      "--pn-space-8",
+      "--pn-surface",
+      "--pn-track-label",
+      "--pn-track-mega",
+      "--pn-track-tight",
+      "--pn-ui",
+      "--pn-wait",
+      "--pn-wait-soft"
+    ],
+    "tokenKinds": {
+      "--pn-paper": "color",
+      "--pn-surface": "color",
+      "--pn-card": "color",
+      "--pn-hover": "color",
+      "--pn-active": "color",
+      "--pn-line": "color",
+      "--pn-line-2": "color",
+      "--pn-ink": "color",
+      "--pn-ink-2": "color",
+      "--pn-ink-3": "color",
+      "--pn-ink-4": "color",
+      "--pn-brand": "color",
+      "--pn-brand-2": "color",
+      "--pn-brand-soft": "color",
+      "--pn-brand-rgb": "color",
+      "--pn-run": "color",
+      "--pn-run-soft": "color",
+      "--pn-wait": "color",
+      "--pn-wait-soft": "color",
+      "--pn-block": "color",
+      "--pn-block-soft": "color",
+      "--pn-info": "color",
+      "--pn-info-soft": "color",
+      "--pn-idle": "color",
+      "--pn-idle-soft": "color",
+      "--pn-serif": "font",
+      "--pn-ui": "font",
+      "--pn-mono": "font",
+      "--pn-fs-display": "spacing",
+      "--pn-fs-h1": "spacing",
+      "--pn-fs-h2": "spacing",
+      "--pn-fs-h3": "spacing",
+      "--pn-fs-title": "spacing",
+      "--pn-fs-body": "spacing",
+      "--pn-fs-sm": "spacing",
+      "--pn-fs-label": "spacing",
+      "--pn-fs-micro": "spacing",
+      "--pn-fs-mono": "spacing",
+      "--pn-lh-tight": "font",
+      "--pn-lh-snug": "font",
+      "--pn-lh-body": "font",
+      "--pn-track-mega": "spacing",
+      "--pn-track-label": "spacing",
+      "--pn-track-tight": "spacing",
+      "--pn-space-1": "spacing",
+      "--pn-space-2": "spacing",
+      "--pn-space-3": "spacing",
+      "--pn-space-4": "spacing",
+      "--pn-space-5": "spacing",
+      "--pn-space-6": "spacing",
+      "--pn-space-8": "spacing",
+      "--pn-space-10": "spacing",
+      "--pn-space-12": "spacing",
+      "--pn-space-16": "spacing",
+      "--pn-r-xs": "spacing",
+      "--pn-r-sm": "spacing",
+      "--pn-r-md": "spacing",
+      "--pn-r-lg": "spacing",
+      "--pn-r-pill": "spacing",
+      "--pn-sh-sm": "shadow",
+      "--pn-sh-md": "shadow",
+      "--pn-sh-pop": "shadow",
+      "--pn-ease-out": "other",
+      "--pn-ease-standard": "other",
+      "--pn-dur-fast": "other",
+      "--pn-dur-base": "other",
+      "--pn-dur-slow": "other"
+    },
+    "fontFamilies": [
+      "Hanken Grotesk",
+      "JetBrains Mono",
+      "Newsreader"
+    ]
+  }
+}

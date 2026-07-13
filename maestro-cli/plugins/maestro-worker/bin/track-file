@@ -14,9 +14,10 @@ fi
 # Extract file path from hook input
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
 
-# If we have a file path, track it
+# If we have a file path, track it (routed through maestro-cli so it resolves
+# MAESTRO_CLI_PATH the same way the other hooks do, instead of a bare PATH lookup)
 if [ -n "$FILE_PATH" ]; then
-  maestro track-file "$FILE_PATH" 2>/dev/null || true
+  "$(dirname "$0")/maestro-cli" track-file "$FILE_PATH" 2>/dev/null || true
 fi
 
 exit 0

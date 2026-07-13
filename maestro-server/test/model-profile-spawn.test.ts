@@ -76,6 +76,10 @@ async function buildApp(dataDir: string) {
     teamMemberRepo: container.teamMemberRepo,
     modelProfileRepo: container.modelProfileRepo,
     eventBus: container.eventBus,
+    // Deps required by SessionRouteDependencies but not exercised by these tests.
+    teamService: container.teamService,
+    spellRepo: {} as any,
+    ptyHostService: {} as any,
     config,
   });
 
@@ -145,6 +149,34 @@ describe('Model profile resolution at spawn', () => {
     const after = await spawn(app, projectId, taskId, member.id);
     expect(after.body.session.metadata.model).toBe('claude-opus-4-8');
     expect(after.body.session.metadata.launchConfig.reasoningEffort).toBe('high');
+  });
+
+  it('keeps max reasoning only for GPT-5.6 OpenAI profiles', async () => {
+    const member = await teamMemberService.createTeamMember({
+      projectId, name: 'Codex Bound', role: 'worker', avatar: 'C', modelProfileId: 'mp_balanced',
+    });
+
+    await modelProfileService.updateModelProfile('mp_balanced', {
+      launchConfig: { provider: 'openai', model: 'gpt-5.6-terra', reasoningEffort: 'max' },
+    });
+
+    const gpt56 = await spawn(app, projectId, taskId, member.id);
+    expect(gpt56.body.session.metadata.launchConfig).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.6-terra',
+      reasoningEffort: 'max',
+    });
+
+    await modelProfileService.updateModelProfile('mp_balanced', {
+      launchConfig: { provider: 'openai', model: 'gpt-5.5', reasoningEffort: 'max' },
+    });
+
+    const older = await spawn(app, projectId, taskId, member.id);
+    expect(older.body.session.metadata.launchConfig).toMatchObject({
+      provider: 'openai',
+      model: 'gpt-5.5',
+    });
+    expect(older.body.session.metadata.launchConfig.reasoningEffort).toBeUndefined();
   });
 
   it('falls back to the raw member model when no profile is bound', async () => {

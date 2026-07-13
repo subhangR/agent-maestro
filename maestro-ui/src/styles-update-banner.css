@@ -101,6 +101,12 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  /* Vertical stack: the session-log strip is a horizontal row on top, the
+     terminal deck fills the flexible region below it. Keeping the strip in
+     normal flow (rather than overlaying it) means the terminal box shrinks by
+     the strip's height, so xterm's ResizeObserver refits correctly. */
+  display: flex;
+  flex-direction: column;
   /* Terminal chrome surround — stays dark in both themes; only the value
      flips (#1c1a16 light / #100E0A dark) via html[data-theme]. */
   background: var(--pn-term-bg);
@@ -110,6 +116,16 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   transition: box-shadow 0.15s ease;
+}
+
+/* The terminal deck — the flexible region below the strip. It is the
+   positioning context for the absolutely-filled .terminalContainer panes
+   (inset:0), confining them to the space that remains under the strip. */
+.terminalDeck {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
 }
 
 .terminalPane--dragOver {

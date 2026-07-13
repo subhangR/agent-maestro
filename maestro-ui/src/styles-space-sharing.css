@@ -1,0 +1,198 @@
+/*
+ * Space sharing (Tasks / Team Members / Spells) — states not covered by
+ * styles-space-window.css: loading skeletons, error banner + retry, inline
+ * spinners, optimistic/pending affordances, and responsive tweaks.
+ * Owned by Vertical A. Complements (never overrides) styles-space-window.css.
+ */
+
+/* ---- Loading skeletons ---- */
+.spaceSharingSkeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.spaceSharingSkeletonRow {
+  height: 56px;
+  border-radius: 10px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.03) 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 70%
+  );
+  background-size: 200% 100%;
+  animation: spaceSharingShimmer 1.3s ease-in-out infinite;
+}
+
+.spaceSharingSkeletonRow--tall {
+  height: 76px;
+}
+
+@keyframes spaceSharingShimmer {
+  0% {
+    background-position: 180% 0;
+  }
+  100% {
+    background-position: -20% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spaceSharingSkeletonRow {
+    animation: none;
+  }
+}
+
+/* ---- Inline loading label ---- */
+.spaceSharingLoadingLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 4px;
+  font-size: 12px;
+  color: var(--text-secondary, #9aa4b2);
+}
+
+.spaceSharingSpinner {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(255, 255, 255, 0.7);
+  animation: spaceSharingSpin 0.7s linear infinite;
+  flex: 0 0 auto;
+}
+
+@keyframes spaceSharingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- Error banner (inline, dismissible, non-blocking) ---- */
+.spaceSharingError {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--space-error-border, rgba(240, 103, 103, 0.35));
+  background: var(--space-error-bg, rgba(240, 103, 103, 0.1));
+  color: var(--space-error-fg, #f4a3a3);
+  font-size: 12px;
+}
+
+.spaceSharingErrorMsg {
+  flex: 1 1 auto;
+  line-height: 1.35;
+}
+
+.spaceSharingErrorRetry {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--space-error-border, rgba(240, 103, 103, 0.45));
+  background: transparent;
+  color: var(--space-error-fg, #f4a3a3);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.spaceSharingErrorRetry:hover {
+  background: var(--space-error-bg, rgba(240, 103, 103, 0.16));
+}
+
+.spaceSharingErrorDismiss {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--space-error-fg, #f4a3a3);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.spaceSharingErrorDismiss:hover {
+  opacity: 1;
+}
+
+/* ---- Optimistic / pending affordance on action buttons ---- */
+.spaceEntityPrimaryBtn.spaceSharingBtn--pending,
+.spaceEntityGhostBtn.spaceSharingBtn--pending {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.spaceSharingBtnSpinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  animation: spaceSharingSpin 0.7s linear infinite;
+}
+
+/* Row-level pending tint while a pull/adopt/install is in flight. */
+.spaceTaskItem--pending,
+.spaceTeamItem--pending,
+.spaceSpellItem--pending {
+  outline: 1px solid var(--space-pending-border, rgba(124, 158, 255, 0.25));
+  outline-offset: -1px;
+}
+
+/* ---- Inline per-action error (below a row's actions) ---- */
+.spaceSharingRowError {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--space-error-fg, #f4a3a3);
+}
+
+/* ---- Empty picker / permission notes in modals ---- */
+.spaceSharingPickerEmpty {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-secondary, #9aa4b2);
+  line-height: 1.5;
+}
+
+.spaceSharingPickerLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px 12px;
+  font-size: 12px;
+  color: var(--text-secondary, #9aa4b2);
+}
+
+/* Disabled control that still communicates *why* (permission-gated). */
+.spaceSharingGated {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---- Responsive: collapse header controls on narrow panes ---- */
+@media (max-width: 640px) {
+  .spaceEntityHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .spaceEntityHeaderRight {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .spaceEntitySearchInput {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+}

@@ -227,6 +227,23 @@ const manifestSchema: JSONSchemaType<MaestroManifest> = {
       nullable: true,
       description: 'Optional standard skills to load',
     },
+    spells: {
+      type: 'array',
+      nullable: true,
+      items: {
+        type: 'object',
+        properties: {
+          id: { type: 'string' },
+          name: { type: 'string' },
+          description: { type: 'string', nullable: true },
+          icon: { type: 'string', nullable: true },
+          color: { type: 'string', nullable: true },
+        },
+        required: ['id', 'name'] as const,
+        additionalProperties: true,
+      },
+      description: 'Spells to auto-activate at session start (from Task.spellIds)',
+    },
     agentTool: {
       type: 'string',
       enum: ['claude-code', 'codex', 'hermes', 'gemini'],

@@ -1,3 +1,4 @@
+use base64::Engine;
 use serde::Serialize;
 use std::{
     fs,
@@ -6,6 +7,7 @@ use std::{
 };
 
 const MAX_TEXT_FILE_BYTES: u64 = 2 * 1024 * 1024;
+const MAX_DROPPED_IMAGE_BYTES: u64 = 25 * 1024 * 1024;
 const BINARY_CHECK_BYTES: usize = 8 * 1024;
 
 #[derive(Serialize, Clone)]
@@ -15,6 +17,15 @@ pub struct FsEntry {
     pub path: String,
     pub is_dir: bool,
     pub size: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DroppedImageFile {
+    pub filename: String,
+    pub mime_type: String,
+    pub data: String,
+    pub last_modified: Option<u64>,
 }
 
 fn canonicalize_existing(path: &Path) -> Result<PathBuf, String> {
@@ -167,6 +178,63 @@ pub fn read_text_file(root: String, path: String) -> Result<String, String> {
     }
 
     String::from_utf8(bytes).map_err(|_| "file is not valid UTF-8".to_string())
+}
+
+fn mime_type_for_image_path(path: &Path) -> Option<&'static str> {
+    match path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.to_ascii_lowercase())
+    {
+        Some(ext) if ext == "png" => Some("image/png"),
+        Some(ext) if ext == "jpg" || ext == "jpeg" => Some("image/jpeg"),
+        Some(ext) if ext == "gif" => Some("image/gif"),
+        Some(ext) if ext == "webp" => Some("image/webp"),
+        Some(ext) if ext == "svg" => Some("image/svg+xml"),
+        _ => None,
+    }
+}
+
+#[tauri::command]
+pub fn read_dropped_image_file(path: String) -> Result<DroppedImageFile, String> {
+    let path = Path::new(path.trim());
+    if !path.is_absolute() {
+        return Err("path must be absolute".to_string());
+    }
+
+    let file = canonicalize_existing(path)?;
+    if !file.is_file() {
+        return Err("not a file".to_string());
+    }
+
+    let mime_type =
+        mime_type_for_image_path(&file).ok_or_else(|| "unsupported image type".to_string())?;
+    let meta = fs::metadata(&file).map_err(|e| format!("metadata failed: {e}"))?;
+    let size = meta.len();
+    if size > MAX_DROPPED_IMAGE_BYTES {
+        return Err(format!(
+            "image too large ({size} bytes, max {MAX_DROPPED_IMAGE_BYTES} bytes)"
+        ));
+    }
+
+    let filename = file
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "invalid filename".to_string())?
+        .to_string();
+    let bytes = fs::read(&file).map_err(|e| format!("read failed: {e}"))?;
+    let last_modified = meta
+        .modified()
+        .ok()
+        .and_then(|modified| modified.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|duration| duration.as_millis() as u64);
+
+    Ok(DroppedImageFile {
+        filename,
+        mime_type: mime_type.to_string(),
+        data: base64::engine::general_purpose::STANDARD.encode(bytes),
+        last_modified,
+    })
 }
 
 #[tauri::command]

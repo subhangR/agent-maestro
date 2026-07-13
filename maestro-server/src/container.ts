@@ -1,4 +1,4 @@
-import { existsSync, writeFileSync } from 'fs';
+import { existsSync, writeFileSync, readdirSync, readFileSync, unlinkSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { Config } from './infrastructure/config';
 import { ConsoleLogger } from './infrastructure/common/ConsoleLogger';
@@ -14,6 +14,8 @@ import { FileSystemOrderingRepository } from './infrastructure/repositories/File
 import { FileSystemTeamMemberRepository } from './infrastructure/repositories/FileSystemTeamMemberRepository';
 import { FileSystemTeamRepository } from './infrastructure/repositories/FileSystemTeamRepository';
 import { FileSystemCustomPromptRepository } from './infrastructure/repositories/FileSystemCustomPromptRepository';
+import { FileSystemSpellRepository } from './infrastructure/repositories/FileSystemSpellRepository';
+import { FileSystemEnsembleRepository } from './infrastructure/repositories/FileSystemEnsembleRepository';
 import { FileSystemModelProfileRepository } from './infrastructure/repositories/FileSystemModelProfileRepository';
 import { FileSystemSessionPromptRepository } from './infrastructure/repositories/FileSystemSessionPromptRepository';
 import { MultiScopeSkillLoader } from './infrastructure/skills/MultiScopeSkillLoader';
@@ -33,6 +35,8 @@ import { HuddleService } from './application/services/HuddleService';
 import { CommandUsageService } from './application/services/CommandUsageService';
 import { FileSystemSessionCommandUsageRepository } from './infrastructure/repositories/FileSystemSessionCommandUsageRepository';
 import { SpellService } from './application/services/SpellService';
+import { EnsembleService } from './application/services/EnsembleService';
+import { HookDispatcherService } from './application/services/HookDispatcherService';
 import { PtyHostService } from './application/services/PtyHostService';
 import { AnnouncementService } from './application/services/AnnouncementService';
 import { AlexaIngressService } from './application/services/AlexaIngressService';
@@ -51,6 +55,8 @@ import { IOrderingRepository } from './domain/repositories/IOrderingRepository';
 import { ITeamMemberRepository } from './domain/repositories/ITeamMemberRepository';
 import { ITeamRepository } from './domain/repositories/ITeamRepository';
 import { ICustomPromptRepository } from './domain/repositories/ICustomPromptRepository';
+import { ISpellRepository } from './domain/repositories/ISpellRepository';
+import { IEnsembleRepository } from './domain/repositories/IEnsembleRepository';
 import { IModelProfileRepository } from './domain/repositories/IModelProfileRepository';
 import { ISessionPromptRepository } from './domain/repositories/ISessionPromptRepository';
 import { ISkillLoader } from './domain/services/ISkillLoader';
@@ -99,6 +105,83 @@ async function migrateTeamMemberTasks(taskRepo: ITaskRepository, logger: ILogger
 }
 
 /**
+ * Clean-break migration for the v2 spell redesign (§11.9). The data model changed
+ * shape (single-action `Spell` → multi-rule `Spell.rules[]`, and `ActiveSpell`
+ * dropped `iteration`/`hookEvent`/`matcher` for `ruleIterations`). Old-shaped JSON
+ * is NOT parsed into the new type, so this one-shot:
+ *   (a) deletes any data/spells/*.json that lacks a `rules[]` array (old shape), and
+ *   (b) strips `activeSpells` from every data/sessions/* file so no stale rings render.
+ * Fresh seeds reappear from code (SPELL_LIBRARY). Guarded by a sentinel; malformed
+ * files are skipped, and any failure is non-fatal so the server still starts.
+ *
+ * To run manually (e.g. on a box that already has the sentinel), delete
+ * `<dataDir>/.migrated-spell-redesign-v2` and restart the server.
+ */
+export function migrateSpellCleanBreak(logger: ILogger, dataDir: string): void {
+  try {
+    const sentinelPath = join(dataDir, '.migrated-spell-redesign-v2');
+    if (existsSync(sentinelPath)) {
+      logger.info('Spell clean-break migration already completed, skipping.');
+      return;
+    }
+    logger.info('Running spell clean-break migration (v2)...');
+
+    // This migration runs BEFORE the repos initialize (which is what creates the
+    // data dir), so on a brand-new DATA_DIR the sentinel write below would ENOENT.
+    // Ensure the data dir exists first.
+    mkdirSync(dataDir, { recursive: true });
+
+    // (a) Delete old-shape spell files (anything without a rules[] array).
+    let deletedSpells = 0;
+    const spellsDir = join(dataDir, 'spells');
+    if (existsSync(spellsDir)) {
+      for (const file of readdirSync(spellsDir)) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = join(spellsDir, file);
+        try {
+          const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
+          if (!parsed || !Array.isArray(parsed.rules)) {
+            unlinkSync(filePath);
+            deletedSpells++;
+          }
+        } catch {
+          // Malformed JSON — leave it untouched rather than guess.
+        }
+      }
+    }
+
+    // (b) Strip activeSpells from every session file.
+    let strippedSessions = 0;
+    const sessionsDir = join(dataDir, 'sessions');
+    if (existsSync(sessionsDir)) {
+      for (const file of readdirSync(sessionsDir)) {
+        if (!file.endsWith('.json')) continue;
+        const filePath = join(sessionsDir, file);
+        try {
+          const parsed = JSON.parse(readFileSync(filePath, 'utf-8'));
+          if (parsed && Array.isArray(parsed.activeSpells) && parsed.activeSpells.length > 0) {
+            parsed.activeSpells = [];
+            writeFileSync(filePath, JSON.stringify(parsed));
+            strippedSessions++;
+          }
+        } catch {
+          // Malformed JSON — skip.
+        }
+      }
+    }
+
+    logger.info(
+      `Spell clean-break migration complete: deleted ${deletedSpells} old spell file(s), ` +
+      `cleared activeSpells on ${strippedSessions} session(s).`,
+    );
+    writeFileSync(sentinelPath, new Date().toISOString());
+  } catch (err) {
+    logger.error('Error during spell clean-break migration:', err instanceof Error ? err : new Error(String(err)));
+    // Don't throw - allow server to start even if migration fails
+  }
+}
+
+/**
  * Dependency injection container.
  * Wires together all application components.
  */
@@ -121,6 +204,8 @@ export interface Container {
   teamMemberRepo: ITeamMemberRepository;
   teamRepo: ITeamRepository;
   customPromptRepo: ICustomPromptRepository;
+  spellRepo: ISpellRepository;
+  ensembleRepo: IEnsembleRepository;
   modelProfileRepo: IModelProfileRepository;
   sessionPromptRepo: ISessionPromptRepository;
 
@@ -142,6 +227,8 @@ export interface Container {
   huddleService: HuddleService;
   commandUsageService: CommandUsageService;
   spellService: SpellService;
+  ensembleService: EnsembleService;
+  hookDispatcherService: HookDispatcherService;
   ptyHostService: PtyHostService;
   announcementService: AnnouncementService;
   alexaIngressService: AlexaIngressService;
@@ -180,6 +267,8 @@ export async function createContainer(): Promise<Container> {
   const teamMemberRepo = new FileSystemTeamMemberRepository(config.dataDir, idGenerator, logger);
   const teamRepo = new FileSystemTeamRepository(config.dataDir, idGenerator, logger);
   const customPromptRepo = new FileSystemCustomPromptRepository(config.dataDir, idGenerator, logger);
+  const spellRepo = new FileSystemSpellRepository(config.dataDir, idGenerator, logger);
+  const ensembleRepo = new FileSystemEnsembleRepository(config.dataDir, logger);
   const modelProfileRepo = new FileSystemModelProfileRepository(config.dataDir, idGenerator, logger);
   const sessionPromptRepo = new FileSystemSessionPromptRepository(config.dataDir, logger);
 
@@ -201,6 +290,16 @@ export async function createContainer(): Promise<Container> {
   const huddleService = new HuddleService(sessionPromptService, sessionService);
   const commandUsageRepo = new FileSystemSessionCommandUsageRepository(config.dataDir, logger);
   const commandUsageService = new CommandUsageService(commandUsageRepo);
+  // Ensemble service is constructed first so SpellService can delegate
+  // `coordinate` casts to it (C1).
+  const ensembleService = new EnsembleService(
+    ensembleRepo,
+    sessionRepo,
+    spellRepo,
+    eventBus,
+    idGenerator,
+    logger,
+  );
   const spellService = new SpellService(
     projectRepo,
     taskRepo,
@@ -208,8 +307,18 @@ export async function createContainer(): Promise<Container> {
     teamMemberRepo,
     skillLoader,
     customPromptRepo,
+    spellRepo,
     eventBus,
     idGenerator,
+    ensembleService,
+  );
+  const hookDispatcherService = new HookDispatcherService(
+    sessionRepo,
+    spellRepo,
+    teamMemberRepo,
+    eventBus,
+    logger,
+    config,
   );
   const ptyHostService = new PtyHostService(sessionService, logger);
 
@@ -258,6 +367,8 @@ export async function createContainer(): Promise<Container> {
     teamMemberRepo,
     teamRepo,
     customPromptRepo,
+    spellRepo,
+    ensembleRepo,
     modelProfileRepo,
     sessionPromptRepo,
     skillLoader,
@@ -275,12 +386,18 @@ export async function createContainer(): Promise<Container> {
     huddleService,
     commandUsageService,
     spellService,
+    ensembleService,
+    hookDispatcherService,
     ptyHostService,
     announcementService,
     alexaIngressService,
 
     async initialize() {
       logger.info('Initializing container...');
+
+      // Clean-break spell migration (§11.9) — runs on-disk BEFORE repos load their
+      // caches, so stale activeSpells / old-shape spell files never reach memory.
+      migrateSpellCleanBreak(logger, config.dataDir);
 
       // Initialize repositories in parallel
       await Promise.all([
@@ -293,6 +410,8 @@ export async function createContainer(): Promise<Container> {
         teamMemberRepo.initialize(),
         teamRepo.initialize(),
         customPromptRepo.initialize(),
+        spellRepo.initialize(),
+        ensembleRepo.initialize(),
         modelProfileRepo.initialize(),
         sessionPromptRepo.initialize(),
       ]);
@@ -309,6 +428,7 @@ export async function createContainer(): Promise<Container> {
     async shutdown() {
       logger.info('Shutting down container...');
       ptyHostService.shutdownAll();
+      hookDispatcherService.shutdown(); // C5: kill any in-flight run-command children
       logDigestService.shutdown();
       (skillLoader as MultiScopeSkillLoader).shutdown();
       sessionRepo.shutdown();

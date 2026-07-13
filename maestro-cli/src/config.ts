@@ -81,6 +81,8 @@ export const config = {
     if (raw === 'permissive' || raw === 'safe-degraded') {
       return raw;
     }
-    return 'safe-degraded';
+    // 0-gates policy: a flaky manifest read must never strip a session's ability
+    // to create tasks, create team members, or spawn. Default to permissive.
+    return 'permissive';
   },
 };

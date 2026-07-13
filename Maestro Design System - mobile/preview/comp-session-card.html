@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Session Card" subtitle="An agent session — avatar tile, live status pill, current action, meta" viewport="700x210" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-paper); font-family: var(--pn-ui); padding: 22px 26px; }
+  .card { background: var(--pn-card); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); padding: 14px; box-shadow: var(--pn-sh-sm); max-width: 360px; }
+  .top { display: flex; align-items: center; gap: 11px; }
+  .ava { width: 30px; height: 30px; border-radius: 8px; background: var(--pn-surface); border: 1px solid var(--pn-line); display: grid; place-items: center; font-family: var(--pn-mono); font-weight: 700; color: var(--pn-run); }
+  .name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: var(--pn-ink); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; padding: 2.5px 8px; border-radius: var(--pn-r-pill); color: var(--pn-run); background: var(--pn-run-soft); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .act { margin-top: 11px; font-family: var(--pn-mono); font-size: 11.5px; color: var(--pn-ink-2); line-height: 1.5; display: flex; gap: 7px; }
+  .act .caret { color: var(--pn-ink-4); }
+  .foot { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .meta { font-family: var(--pn-mono); font-size: 10.5px; color: var(--pn-ink-3); }
+  .meta b { color: var(--pn-ink-2); }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="ava">&gt;_</div>
+      <span class="name">fluffy-starlight</span>
+      <span class="pill"><span class="dot"></span>running</span>
+    </div>
+    <div class="act"><span class="caret">&gt;</span><span>Reparenting the terminal node, then re-running the fit</span></div>
+    <div class="foot">
+      <span class="meta">claude · <b>opus-4.8</b></span>
+      <span class="meta">· 14m</span>
+      <span class="meta">· 18 turns</span>
+    </div>
+  </div>
+</body>
+</html>
