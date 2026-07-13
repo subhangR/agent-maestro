@@ -521,6 +521,14 @@ export class FileSystemSessionRepository implements ISessionRepository {
     }
     if (updates.agentId !== undefined) session.agentId = updates.agentId;
     if (updates.env !== undefined) session.env = { ...session.env, ...updates.env };
+    // Deletion is applied AFTER the merge: the merge above cannot drop a key (an
+    // omitted key is retained). Callers that must remove a key (e.g. the Codex
+    // resume path stripping a stale MAESTRO_CLAUDE_SESSION_ID) opt in via removeEnvKeys.
+    if (updates.removeEnvKeys !== undefined && session.env) {
+      for (const key of updates.removeEnvKeys) {
+        delete session.env[key];
+      }
+    }
     if (updates.events !== undefined) session.events = [...session.events, ...updates.events];
     if (updates.timeline !== undefined) session.timeline = [...session.timeline, ...updates.timeline];
     if (updates.needsInput !== undefined) {

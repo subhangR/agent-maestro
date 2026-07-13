@@ -398,9 +398,10 @@ describe('ClaudeSpawner', () => {
 
   describe('buildResumeArgs', () => {
     const CLAUDE_SESSION_ID = '11111111-2222-3333-4444-555555555555';
+    const MAESTRO_SESSION_ID = 'sess_abc';
 
     it('passes --resume with the claude session id, not --session-id', async () => {
-      const args = await spawner.buildResumeArgs(workerManifest, CLAUDE_SESSION_ID);
+      const args = await spawner.buildResumeArgs(workerManifest, MAESTRO_SESSION_ID, CLAUDE_SESSION_ID);
 
       expect(args).toContain('--resume');
       expect(args[args.indexOf('--resume') + 1]).toBe(CLAUDE_SESSION_ID);
@@ -417,16 +418,23 @@ describe('ClaudeSpawner', () => {
         },
       };
 
-      const args = await spawner.buildResumeArgs(manifest, CLAUDE_SESSION_ID);
+      const args = await spawner.buildResumeArgs(manifest, MAESTRO_SESSION_ID, CLAUDE_SESSION_ID);
 
       expect(args[args.indexOf('--model') + 1]).toBe('opus');
       expect(args).toContain('--permission-mode');
     });
 
-    it('does not append a system prompt or task prompt on resume', async () => {
-      const args = await spawner.buildResumeArgs(workerManifest, CLAUDE_SESSION_ID);
+    it('re-appends the Maestro system prompt via --append-system-prompt on resume', async () => {
+      const args = await spawner.buildResumeArgs(workerManifest, MAESTRO_SESSION_ID, CLAUDE_SESSION_ID);
 
-      expect(args).not.toContain('--append-system-prompt');
+      // --resume restores the conversation's message history, not the invocation's
+      // appended system prompt — so, like a fresh spawn, resume must re-append the
+      // Maestro role/system prompt to preserve identity, commands, and permissions.
+      const idx = args.indexOf('--append-system-prompt');
+      expect(idx).toBeGreaterThan(-1);
+      // The appended prompt is non-empty and precedes --resume (a flag value, not the id).
+      expect(args[idx + 1]).toBeTruthy();
+      expect(args[idx + 1]).not.toBe(CLAUDE_SESSION_ID);
     });
   });
 

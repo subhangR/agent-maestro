@@ -91,6 +91,30 @@ const CODEX_MESSAGE_TEXT_TYPES = new Set([
 ]);
 
 /**
+ * Extract the Codex native session id (the rollout UUID required by
+ * `codex resume <SESSION_ID>`) from the head of a rollout `.jsonl` file.
+ *
+ * A Codex rollout's first line is a `session_meta` record whose `payload.id`
+ * is the thread UUID Codex itself assigns (Codex cannot be pre-seeded with an
+ * id, so this is the only authoritative source). Pure and side-effect free so
+ * the parse can be unit-tested without touching the filesystem.
+ */
+export function extractCodexSessionIdFromRolloutHead(head: string): string | null {
+  for (const raw of head.split('\n')) {
+    const line = raw.trim();
+    if (!line || !line.includes('"type":"session_meta"')) continue;
+    try {
+      const parsed = JSON.parse(line);
+      const id = parsed?.payload?.id;
+      if (typeof id === 'string' && id.trim()) return id.trim();
+    } catch {
+      // Truncated/partial trailing line in the head window — skip it.
+    }
+  }
+  return null;
+}
+
+/**
  * Stateless, on-demand service for reading Claude session JSONL logs
  * and producing text-only digests for coordinator observation.
  */
@@ -453,6 +477,12 @@ export class LogDigestService {
         if (match && match[1] === sessionId) {
           this.pathCache.set(sessionId, { path: filePath, source: 'codex', resolvedAt: Date.now() });
           this.evictOldestIfOverLimit();
+          // Eagerly persist the native Codex rollout id the first time we locate
+          // the rollout (fires on every digest/stats poll for an active Codex
+          // session), so it is already cached when a resume is later requested —
+          // even if the session dies before the resume-time scan can run. The
+          // `session_meta` record is line 1, so the 256KB header always holds it.
+          void this.captureCodexSessionId(sessionId, header);
           return filePath;
         }
       } catch {
@@ -461,6 +491,52 @@ export class LogDigestService {
     }
 
     return null;
+  }
+
+  /**
+   * Best-effort eager capture of the native Codex rollout id onto the session's
+   * metadata. Idempotent and write-once: no-ops when the id is already cached or
+   * cannot be parsed. Any failure is swallowed — the resume route's on-demand
+   * {@link resolveCodexSessionId} scan is the backstop, so this is purely an
+   * optimization that also survives sessions that die before resume.
+   */
+  private async captureCodexSessionId(sessionId: string, rolloutHead: string): Promise<void> {
+    try {
+      const codexId = extractCodexSessionIdFromRolloutHead(rolloutHead);
+      if (!codexId) return;
+      const session = await this.sessionService.getSession(sessionId);
+      if (!session || session.metadata?.codexSessionId) return;
+      await this.sessionService.updateSession(sessionId, {
+        metadata: { ...session.metadata, codexSessionId: codexId },
+      });
+    } catch {
+      // Backstop: resume-time resolveCodexSessionId re-scans the rollout.
+    }
+  }
+
+  /**
+   * Resolve the Codex native session id (the rollout `session_meta.payload.id`)
+   * for a Maestro session, so a resume can run `codex resume <id>` against the
+   * exact prior thread.
+   *
+   * This reuses the same rollout lookup as digests: the rollout file is located
+   * by the `<session_id>sess_…</session_id>` marker Maestro injects into the
+   * Codex prompt, then its `session_meta` head record is parsed. Codex assigns
+   * this id itself and it cannot be pre-seeded, so it only exists once Codex has
+   * written a rollout for the session. Returns null when no matching rollout is
+   * found yet (e.g. the session died before Codex flushed one) — callers must
+   * then fresh-start with full context rather than fabricate an id or guess with
+   * `codex resume --last`.
+   */
+  async resolveCodexSessionId(sessionId: string, workingDir?: string | null): Promise<string | null> {
+    const jsonlPath = await this.resolveJsonlPath(sessionId, workingDir);
+    if (!jsonlPath) return null;
+    try {
+      const head = await this.readHead(jsonlPath, 1024 * 1024);
+      return extractCodexSessionIdFromRolloutHead(head);
+    } catch {
+      return null;
+    }
   }
 
   /**
