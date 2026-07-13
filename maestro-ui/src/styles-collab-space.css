@@ -1,6 +1,12 @@
 /* Collab Space Panel */
 
 .collabSpacePanel {
+  /* Fill the side-panel column and own the vertical scroll. Without
+     flex:1 + min-height:0 the panel can't shrink below its content height, so
+     tall Collab content overflows and is clipped by the pn-mp overflow:hidden
+     column while this overflow-y:auto never engages. Mirrors the tasks pn-scroll. */
+  flex: 1 1 0;
+  min-height: 0;
   padding: 12px 16px;
   display: flex;
   flex-direction: column;

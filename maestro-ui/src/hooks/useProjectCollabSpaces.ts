@@ -33,18 +33,24 @@ export function useProjectCollabSpaces(): {
         (s) => Boolean(s.detectionLoading[activeProjectId]),
     );
     const detectRemote = useCollabSpaceStore((s) => s.detectRemote);
+    const hydrateRemoteFromProject = useCollabSpaceStore((s) => s.hydrateRemoteFromProject);
 
     const joinedSpaces = useJoinedSpacesStore((s) => s.spaces);
 
-    // Auto-trigger remote detection once per project.
+    // Resolve the repo once per project: seed the persisted project.githubUrl
+    // first, then fall back to local git detection only when there's no saved URL.
     useEffect(() => {
         if (!activeProject) return;
         if (detectedRemote !== undefined) return;
+        if (activeProject.githubUrl) {
+            hydrateRemoteFromProject(activeProjectId, activeProject.githubUrl);
+            return;
+        }
         // Prefer workingDir (source of truth on MaestroProject); fall back to basePath.
         const workingDir = activeProject.workingDir || activeProject.basePath;
         if (!workingDir) return;
         void detectRemote(activeProjectId, workingDir);
-    }, [activeProjectId, activeProject, detectedRemote, detectRemote]);
+    }, [activeProjectId, activeProject, detectedRemote, detectRemote, hydrateRemoteFromProject]);
 
     const canonical = detectedRemote?.canonical ?? null;
 

@@ -363,6 +363,9 @@ export interface MaestroProject {
   isMaster?: boolean;
   createdAt: number;
   updatedAt: number;
+  // Canonical GitHub repository URL (https://github.com/<owner>/<repo>) for
+  // Collab Spaces. Server-owned, optional; absent on projects with no saved repo.
+  githubUrl?: string;
   // UI specific fields that might come from API or be computed
   basePath?: string | null;
   environmentId: string | null;

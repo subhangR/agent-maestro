@@ -52,10 +52,28 @@ export const modeParamSchema = z.object({
 
 // --- Project schemas ---
 
+// Canonical per-project GitHub repository URL: `https://github.com/<owner>/<repo>`.
+// Strict on purpose (this is the trust boundary): https only, host must be exactly
+// github.com, exactly one owner and one repo segment, no `.git` suffix, no trailing
+// slash, no extra path/query. Owner/repo allow the characters GitHub permits. The
+// repo segment may lead with a `.` (GitHub allows this, e.g. the special `.github`
+// repo) but not be exactly the reserved segments `.` or `..`.
+const githubRepoUrl = z
+  .string()
+  .regex(
+    /^https:\/\/github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\/(?!\.{1,2}$)[A-Za-z0-9._-]+$/,
+    'githubUrl must be a canonical GitHub repository URL (https://github.com/owner/repo)'
+  )
+  .refine((v) => !/\.git$/i.test(v), 'githubUrl must not end with .git');
+
+// Optional on the wire; an empty string is an explicit request to clear the saved URL.
+const githubUrlField = githubRepoUrl.or(z.literal('')).optional();
+
 export const createProjectSchema = z.object({
   name: shortString,
   workingDir: z.string().min(1).max(1000),
   description: z.string().max(500).optional(),
+  githubUrl: githubUrlField,
   isMaster: z.boolean().optional(),
 }).strict();
 
@@ -63,6 +81,7 @@ export const updateProjectSchema = z.object({
   name: shortString.optional(),
   workingDir: z.string().min(1).max(1000).optional(),
   description: z.string().max(500).optional(),
+  githubUrl: githubUrlField,
   isMaster: z.boolean().optional(),
 }).strict();
 

@@ -98,6 +98,7 @@ export class FileSystemProjectRepository implements IProjectRepository {
       name: input.name,
       workingDir: input.workingDir,
       description: input.description || '',
+      ...(input.githubUrl ? { githubUrl: input.githubUrl } : {}),
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
@@ -134,6 +135,12 @@ export class FileSystemProjectRepository implements IProjectRepository {
       createdAt: project.createdAt, // Preserve creation time
       updatedAt: Date.now()
     };
+
+    // An empty githubUrl is an explicit clear: drop the key so the persisted JSON
+    // (and the in-memory copy) stays consistent with the optional `githubUrl?: string`.
+    if (updatedProject.githubUrl === '') {
+      delete updatedProject.githubUrl;
+    }
 
     this.projects.set(id, updatedProject);
     await this.saveProject(updatedProject);
