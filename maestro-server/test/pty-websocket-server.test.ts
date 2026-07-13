@@ -242,6 +242,116 @@ describe('PtyWebSocketServer', () => {
     });
   });
 
+  describe('protocol heartbeat reaps phantom subscribers (#150)', () => {
+    // The ws-level ping/pong heartbeat runs on a real setInterval; drive it with
+    // fake timers so a sweep is a single deterministic tick instead of a 30s wait.
+    const HEARTBEAT_MS = 30_000;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('marks a live client not-alive and pings it on the first sweep, then terminates it on the next missed pong', () => {
+      host = makeHost();
+      start(host);
+      const ws = connect(wss, '/pty?sessionId=s1');
+      expect(ws.isAlive).toBe(true); // the attach handshake marked it alive
+
+      jest.advanceTimersByTime(HEARTBEAT_MS); // sweep 1
+      expect(ws.isAlive).toBe(false); // marked pending-pong…
+      expect(ws.pings).toBe(1); // …and pinged
+      expect(ws.terminated).toBe(0); // given one interval to answer
+
+      jest.advanceTimersByTime(HEARTBEAT_MS); // sweep 2, still no pong
+      expect(ws.terminated).toBe(1); // reaped
+    });
+
+    it('keeps a client that answers the ping (a pong resets aliveness before the next sweep)', () => {
+      host = makeHost();
+      start(host);
+      const ws = connect(wss, '/pty?sessionId=s1');
+
+      jest.advanceTimersByTime(HEARTBEAT_MS); // sweep 1: isAlive=false, ping #1
+      expect(ws.isAlive).toBe(false);
+      ws.emit('pong'); // the client answers the protocol ping
+      expect(ws.isAlive).toBe(true);
+
+      jest.advanceTimersByTime(HEARTBEAT_MS); // sweep 2: still alive → ping #2, no reap
+      expect(ws.terminated).toBe(0);
+      expect(ws.pings).toBe(2);
+    });
+
+    it('stops sweeping after shutdown (the interval is cleared, not merely unref-ed)', () => {
+      host = makeHost();
+      const s = start(host);
+      const ws = connect(wss, '/pty?sessionId=s1');
+      jest.advanceTimersByTime(HEARTBEAT_MS);
+      expect(ws.pings).toBe(1);
+
+      s.shutdown();
+      jest.advanceTimersByTime(HEARTBEAT_MS * 5);
+      expect(ws.pings).toBe(1); // no further pings
+      expect(ws.terminated).toBe(0); // and nothing reaped
+    });
+
+    it('unref()s the heartbeat interval so it never keeps the process alive on its own', () => {
+      host = makeHost();
+      const unref = jest.fn();
+      const setIntervalSpy = jest
+        .spyOn(global, 'setInterval')
+        .mockReturnValue({ unref } as unknown as ReturnType<typeof setInterval>);
+      try {
+        start(host);
+        expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+        expect(unref).toHaveBeenCalledTimes(1);
+      } finally {
+        setIntervalSpy.mockRestore();
+      }
+    });
+  });
+
+  describe('replay snapshot then synchronous live join (#150)', () => {
+    it('joins the live stream synchronously within the attach — no await splits snapshot → subscribe', () => {
+      // Model a tiny live PTY: a byte produced "right after attach" is delivered
+      // only if addSubscriber has already run. If an await were inserted between
+      // the replay snapshot and the join, `subscriber` would still be null when the
+      // attach call returns, and that live byte would be dropped.
+      let subscriber: any = null;
+      host = makeHost({
+        getReplay: jest
+          .fn()
+          .mockReturnValue({ base: 0, gap: 0, next: 4, data: Buffer.from('AAAA', 'utf8') }),
+        addSubscriber: jest.fn((_id: string, ws: any) => {
+          subscriber = ws;
+          return true;
+        }),
+      });
+      start(host);
+
+      const ws = connect(wss, '/pty?sessionId=s1&offset=0');
+
+      // The join completed before connect() returned: proof the attach sequence is
+      // synchronous. (Were it split by an await, `subscriber` would still be null.)
+      expect(subscriber).toBe(ws);
+
+      // getReplay (snapshot) ran strictly BEFORE addSubscriber (join).
+      const snapshotOrder = host.getReplay.mock.invocationCallOrder[0];
+      const joinOrder = host.addSubscriber.mock.invocationCallOrder[0];
+      expect(snapshotOrder).toBeLessThan(joinOrder);
+
+      // A live byte emitted after the join reaches the client exactly once, and the
+      // replay frame is distinct from it — no gap, no duplicate.
+      subscriber.send(Buffer.from('BBBB', 'utf8'));
+      const binary = ws.binaryFrames();
+      expect(binary[0].toString('utf8')).toBe('AAAA'); // replay
+      expect(binary[1].toString('utf8')).toBe('BBBB'); // live
+      expect(Buffer.concat(binary).toString('utf8')).toBe('AAAABBBB');
+    });
+  });
+
   describe('inbound messages', () => {
     it('writes binary frames to the PTY as keystrokes', () => {
       host = makeHost();

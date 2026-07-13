@@ -257,3 +257,86 @@ describe('PtyHostService.getReplay — sanitized display bytes, raw offsets', ()
     expect(replay.data.toString('latin1')).toBe('hithere');
   });
 });
+
+/**
+ * #150 — the replay→subscribe ordering seam.
+ *
+ * The WS attach handshake takes a scrollback SNAPSHOT (getReplay, which freezes
+ * the raw boundary `next`) and then joins the live stream (addSubscriber). node-pty
+ * output arrives on a SEPARATE event-loop task (proc.onData), so as long as those
+ * two steps run with nothing awaited between them, no live chunk can interleave in
+ * the window: every byte < next is in the replay, every byte >= next is delivered
+ * live, and the two partitions cover the stream with no overlap and no hole.
+ *
+ * These tests pin that exactly-once property at the service seam the WS server
+ * depends on. They are the regression guard behind the "keep it synchronous"
+ * invariant documented in PtyWebSocketServer.handleConnection: were an await ever
+ * inserted between the snapshot and the join, a chunk emitted in that window would
+ * be lost (in neither the replay nor the live feed), and this accounting would stop
+ * closing.
+ */
+describe('PtyHostService replay→subscribe ordering seam (#150)', () => {
+  beforeEach(() => {
+    mockSpawnedProcs.length = 0;
+    jest.clearAllMocks();
+  });
+
+  /** Concatenate every binary (Buffer) frame this socket received live. */
+  function liveBytes(ws: { send: jest.Mock }): Buffer {
+    return Buffer.concat(
+      ws.send.mock.calls
+        .map(([d]: [unknown]) => d)
+        .filter((d: unknown): d is Buffer => Buffer.isBuffer(d)),
+    );
+  }
+
+  it('delivers each post-snapshot byte exactly once when a subscriber joins right after the snapshot (no gap, no duplicate)', () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's1', ...baseParams });
+
+    // Pre-snapshot output — this belongs to the replay, not the live feed.
+    mockSpawnedProcs[0]._onData(Buffer.from('AAAA', 'utf8'));
+
+    // 1) SNAPSHOT: the attach handshake reads the replay first. `next` freezes the
+    //    boundary between "already replayed" and "arrives live from here on".
+    const replay = svc.getReplay('s1', 0)!;
+    expect(replay.next).toBe(4);
+    expect(replay.data.toString('utf8')).toBe('AAAA');
+
+    // 2) JOIN: subscribe SYNCHRONOUSLY after the snapshot (as the WS server does).
+    const ws = fakeWs();
+    svc.addSubscriber('s1', ws);
+
+    // 3) Live output produced AFTER the join.
+    mockSpawnedProcs[0]._onData(Buffer.from('BBBB', 'utf8'));
+
+    // The subscriber saw ONLY the post-snapshot bytes: the replayed bytes are NOT
+    // re-sent live (no duplicate) and the live bytes are NOT missing (no gap).
+    expect(liveBytes(ws).toString('utf8')).toBe('BBBB');
+
+    // Replay ++ live reconstructs the whole stream, each byte once, in order, and
+    // the offset accounting closes: next(4) + live(4) == raw total(8).
+    const clientView = Buffer.concat([replay.data, liveBytes(ws)]);
+    expect(clientView.toString('utf8')).toBe('AAAABBBB');
+    expect(replay.next + liveBytes(ws).length).toBe(svc.getReplay('s1', 0)!.next);
+  });
+
+  it('partitions the stream with no overlap: snapshot bytes and post-join bytes are disjoint and together cover the total', () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's7', ...baseParams });
+    mockSpawnedProcs[0]._onData(Buffer.from('HEAD', 'utf8'));
+
+    const replay = svc.getReplay('s7', 0)!; // snapshot at next=4
+    const ws = fakeWs();
+    svc.addSubscriber('s7', ws); // join — still synchronous, no await between
+    mockSpawnedProcs[0]._onData(Buffer.from('TAIL', 'utf8'));
+
+    const total = svc.getReplay('s7', 0)!.next;
+    expect(total).toBe(8);
+    // Every byte accounted for exactly once: |replay| + |live| == total, and the
+    // two halves share no byte.
+    expect(replay.data.length + liveBytes(ws).length).toBe(total);
+    expect(replay.data.toString('utf8')).toBe('HEAD');
+    expect(liveBytes(ws).toString('utf8')).toBe('TAIL');
+  });
+});

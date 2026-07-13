@@ -155,8 +155,23 @@ export class PtyWebSocketServer {
       this.send(ws, replay.data);
     }
 
-    // Now join the live stream. getReplay already gated existence, so this
-    // cannot fail for a live session, but keep the guard honest.
+    // Join the live stream.
+    //
+    // ORDERING INVARIANT (#150) — DO NOT insert an `await` anywhere between the
+    // getReplay snapshot above and this addSubscriber join. The snapshot froze the
+    // stream boundary at `next`; node-pty output arrives on a SEPARATE event-loop
+    // task (PtyHostService's proc.onData → safeSend), so as long as this whole
+    // attach sequence (snapshot → size/attached/replay frames → join) runs
+    // synchronously, no live chunk can interleave: every byte < next is in the
+    // replay, every byte >= next is delivered live to this subscriber, and the two
+    // partitions cover the stream with no overlap and no hole. Yielding the
+    // microtask/task queue here (any await, or moving the join before the snapshot)
+    // reopens that window — a chunk emitted in it would be lost (in neither the
+    // replay nor the live feed) or duplicated. Keep it synchronous; the
+    // replay→subscribe seam tests pin this exactly-once accounting.
+    //
+    // getReplay already gated existence, so this cannot fail for a live session,
+    // but keep the guard honest.
     const attached = this.ptyHostService.addSubscriber(sessionId, ws);
     if (!attached) {
       this.closeWith(ws, 1011, 'no live PTY for session');
