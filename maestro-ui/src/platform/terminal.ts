@@ -63,6 +63,15 @@ const _sockets = new Map<string, WebSocket>();
 // queued payload size so overflow can be enforced in O(1) per enqueue (see
 // _enqueuePending). Deterministically BOUNDED — see MAX_PENDING_* below.
 const _pendingSends = new Map<string, { frames: Array<string | Uint8Array>; bytes: number }>();
+// Sessions whose pending queue has overflowed and FAILED CLOSED. While an id is
+// latched here every further frame is dropped (never queued) until a socket
+// successfully opens, which clears the latch (see _ensureSocket's onopen). This
+// is what guarantees no tail of a chunked paste survives an overflow — the whole
+// queue is discarded on overflow and nothing accumulates behind the latch. The
+// latch is also cleared on explicit close / logical end so it never leaks, but
+// deliberately PERSISTS across a transport drop + reconnect (it resets only on a
+// real open).
+const _overflowLatched = new Set<string>();
 const _outputHandlers: Array<(id: string, data: string) => void> = [];
 const _exitHandlers: Array<(id: string, exitCode?: number | null) => void> = [];
 const _sizeHandlers: Array<(id: string, size: { cols: number; rows: number }) => void> = [];
@@ -95,10 +104,15 @@ const _wakeStaggered = new Set<string>();
 // Deterministic bounds on the per-session pending-send queue (input/resize
 // frames buffered while the socket is down). Without a cap a long outage under a
 // noisy writer (a paste loop, a runaway script echoing input) could grow the
-// queue without limit. On overflow the OLDEST frames are dropped — the newest
-// keystrokes/resize are the ones worth replaying — until the queue is within
-// BOTH caps, and a warning is emitted so the drop is observable. A single frame
-// larger than the byte cap is retained ALONE rather than discarded.
+// queue without limit. Overflow FAILS CLOSED rather than dropping oldest: the
+// moment a frame would push the queue past EITHER cap, the entire pending queue
+// (including that triggering frame) is discarded and the session is latched, so
+// every later frame is dropped until a socket successfully opens. Drop-oldest
+// would keep the TAIL of a chunked paste and flush that suffix as a partial
+// shell command on reconnect; failing closed guarantees zero tail survives.
+// There is no oversized-frame exception — a single paste larger than the cap is
+// dropped too, since it can execute unexpectedly after reconnect. A warning is
+// emitted once per overflow episode so the loss is observable.
 const MAX_PENDING_BYTES = 256 * 1024;
 const MAX_PENDING_ENTRIES = 1024;
 
@@ -264,6 +278,11 @@ function _ensureSocket(id: string): WebSocket {
 
   ws.onopen = () => {
     _reconnectAttempts.set(id, 0);
+    // A successful open is the ONLY thing that clears the fail-closed latch (it
+    // deliberately persists across a transport drop + reconnect). On overflow the
+    // queue was already discarded, so there is nothing to flush here — this just
+    // re-enables normal queueing/sending for input that arrives after the open.
+    _overflowLatched.delete(id);
     const pending = _pendingSends.get(id);
     if (pending) {
       for (const frame of pending.frames) ws.send(frame);
@@ -334,6 +353,9 @@ function _ensureSocket(id: string): WebSocket {
       _received.delete(id);
       _pendingReplay.delete(id);
       _epochs.delete(id);
+      // Session is over — no reconnect will clear the latch, so clear it here to
+      // avoid leaking a latched id for a session that will never reopen.
+      _overflowLatched.delete(id);
       if (!alreadyExited) {
         for (const h of _exitHandlers) h(id, null);
       }
@@ -355,6 +377,7 @@ function _ensureSocket(id: string): WebSocket {
       _received.delete(id);
       _pendingReplay.delete(id);
       _epochs.delete(id);
+      _overflowLatched.delete(id);
     }
   };
 
@@ -435,30 +458,36 @@ function _frameSize(frame: string | Uint8Array): number {
 
 /**
  * Append a frame to a session's pending-send queue, enforcing the deterministic
- * byte + entry caps with a drop-OLDEST (FIFO) overflow policy. The just-queued
- * frame is never the one dropped, so a single oversized paste is retained alone
- * rather than silently discarded. Any drop is reported via console.warn so the
- * overflow is observable rather than a silent data loss.
+ * byte + entry caps with a FAIL-CLOSED overflow policy. Once a session has
+ * overflowed it is latched (`_overflowLatched`) and every further frame is
+ * dropped until a socket successfully opens — so nothing accumulates behind the
+ * latch. When a frame would push the queue past EITHER cap, the ENTIRE queue
+ * (including that triggering frame) is discarded and the session is latched:
+ * dropping oldest instead would keep the tail of a chunked paste and replay it
+ * as a partial shell command on reconnect. There is no oversized-frame
+ * exception. The overflow is reported via a single console.warn per episode so
+ * the loss is observable rather than silent.
  */
 function _enqueuePending(id: string, frame: string | Uint8Array): void {
+  // Latched from a prior overflow: drop silently (the episode already warned).
+  if (_overflowLatched.has(id)) return;
+
   const entry = _pendingSends.get(id) ?? { frames: [], bytes: 0 };
   entry.frames.push(frame);
   entry.bytes += _frameSize(frame);
 
-  let dropped = 0;
-  while (
-    entry.frames.length > 1 &&
-    (entry.bytes > MAX_PENDING_BYTES || entry.frames.length > MAX_PENDING_ENTRIES)
-  ) {
-    const removed = entry.frames.shift() as string | Uint8Array;
-    entry.bytes -= _frameSize(removed);
-    dropped += 1;
-  }
-  if (dropped > 0) {
+  if (entry.bytes > MAX_PENDING_BYTES || entry.frames.length > MAX_PENDING_ENTRIES) {
+    // FAIL CLOSED: discard the whole queue (including this frame) and latch, so
+    // no pre-overflow prefix or post-overflow tail is ever flushed. Cleared on
+    // the next successful open (see _ensureSocket's onopen).
+    _pendingSends.delete(id);
+    _overflowLatched.add(id);
     console.warn(
-      `[webTerminal] pending input overflow for ${id}: dropped ${dropped} oldest frame(s) ` +
-        `(cap ${MAX_PENDING_BYTES}B / ${MAX_PENDING_ENTRIES} entries)`,
+      `[webTerminal] pending input overflow for ${id}: queued input exceeded ` +
+        `${MAX_PENDING_BYTES}B / ${MAX_PENDING_ENTRIES} entries — dropping ALL queued ` +
+        `input until reconnect (fail-closed; no partial paste is replayed)`,
     );
+    return;
   }
   _pendingSends.set(id, entry);
 }
@@ -544,6 +573,7 @@ export const webTerminal: TerminalTransport = {
       _sockets.delete(id);
     }
     _pendingSends.delete(id);
+    _overflowLatched.delete(id);
     _decoders.delete(id);
     _received.delete(id);
     _pendingReplay.delete(id);
