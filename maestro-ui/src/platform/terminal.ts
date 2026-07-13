@@ -105,6 +105,13 @@ const _received = new Map<string, number>();
 // (raw) bytes, and the frame itself is a sanitized/shorter slice, so counting it
 // would desync the offset. A one-shot flag: consumed by the first binary frame.
 const _pendingReplay = new Set<string>();
+// Per-session opaque stream epoch last seen on an `attached` ack (#151). Compared
+// by EQUALITY ONLY: a changed epoch is an authoritative respawn/restart that
+// resets the terminal regardless of byte counts, while the same epoch resumes and
+// supersedes the legacy base-rewind heuristic. Absent until the first
+// epoch-bearing ack — a pre-#151 server never populates it, so the legacy
+// offset-rewind fallback is preserved untouched.
+const _epochs = new Map<string, string>();
 
 function _decodeFor(id: string, bytes: Uint8Array): string {
   let dec = _decoders.get(id);
@@ -116,26 +123,54 @@ function _decodeFor(id: string, bytes: Uint8Array): string {
 }
 
 /**
- * Apply an `attached{base,gap,next,hasReplay}` ack — the heart of offset resume.
+ * Apply an `attached{base,gap,next,hasReplay,epoch?}` ack — the heart of offset
+ * resume and stream-identity reset.
  *
  * `next` is the server's authoritative RAW end-of-stream offset; we snap
  * `_received` to it rather than trusting our own count (the replay slice is
  * sanitized/shorter than the raw window, so counting its bytes would desync the
- * offset). The terminal + decoder are reset ONLY when the on-screen buffer is no
- * longer a prefix of the incoming stream:
- *   - `gap > 0`             the server evicted raw bytes below `base` (bounded loss).
- *   - `base < prevReceived` the stream rewound below what we already consumed —
- *                           a fresh PTY respawned under the same session id.
- * On a normal resume neither holds, so the decoder PERSISTS (a multi-byte glyph
+ * offset).
+ *
+ * The terminal + decoder are reset ONLY when the on-screen buffer is no longer a
+ * prefix of the incoming stream. There are exactly three reset sources:
+ *   - EPOCH change  (#151): the ack carries an `epoch` differing from the one we
+ *                   last saw for this session — an authoritative respawn/restart.
+ *                   Resets regardless of byte counts, because a fresh stream can
+ *                   emit at least as many bytes as the old one (so `base` need not
+ *                   rewind). After the reset we continue from this ack's metadata.
+ *   - GAP           the server evicted raw bytes below `base` (`gap > 0`, honest
+ *                   bounded loss). Always a reset, epoch present or not.
+ *   - LEGACY rewind `base < prevReceived` — the pre-#151 respawn heuristic,
+ *                   consulted ONLY when no epoch is present. A present epoch is
+ *                   authoritative and SUPERSEDES it (the same epoch means "same
+ *                   stream" even if the offsets look like they rewound).
+ * On a normal resume none holds, so the decoder PERSISTS (a multi-byte glyph
  * split across the disconnect boundary is completed by the replay delta) and no
  * onReattach fires (the terminal keeps its scrollback and just appends the delta).
  */
 function _handleAttached(
   id: string,
-  frame: { base: number; gap: number; next: number; hasReplay: boolean },
+  frame: { base: number; gap: number; next: number; hasReplay: boolean; epoch?: string },
 ): void {
   const prevReceived = _received.get(id) ?? 0;
-  if (frame.gap > 0 || frame.base < prevReceived) {
+
+  // GAP is a reset source regardless of stream identity: evicted bytes leave a
+  // hole so the on-screen buffer can no longer be a clean prefix.
+  let reset = frame.gap > 0;
+
+  if (frame.epoch !== undefined) {
+    // EPOCH is authoritative (#151): a changed epoch resets; the same (or a
+    // first-seen) epoch resumes and SUPERSEDES the legacy base-rewind heuristic.
+    const prevEpoch = _epochs.get(id);
+    if (prevEpoch !== undefined && prevEpoch !== frame.epoch) reset = true;
+    _epochs.set(id, frame.epoch);
+  } else if (frame.base < prevReceived) {
+    // LEGACY rewind: no epoch to compare, so fall back to the byte-count proxy
+    // for a cross-stream respawn (the stream rewound below what we consumed).
+    reset = true;
+  }
+
+  if (reset) {
     _decoders.delete(id);
     for (const h of _reattachHandlers) h(id);
   }
@@ -271,6 +306,7 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
       _decoders.delete(id);
       _received.delete(id);
       _pendingReplay.delete(id);
+      _epochs.delete(id);
       if (!alreadyExited) {
         for (const h of _exitHandlers) h(id, null);
       }
@@ -292,6 +328,7 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
       _decoders.delete(id);
       _received.delete(id);
       _pendingReplay.delete(id);
+      _epochs.delete(id);
     }
   };
 
@@ -355,6 +392,7 @@ export const webTerminal: TerminalTransport = {
     // clear any stale display-only-replay flag from a prior use of this id.
     _received.delete(id);
     _pendingReplay.delete(id);
+    _epochs.delete(id);
     // Plain terminals (no maestroSessionId) have no server-side PTY yet — the
     // server only spawns one for maestro sessions during session spawn. Ask the
     // server to spawn a PTY BEFORE attaching the socket; otherwise the attach
@@ -414,6 +452,7 @@ export const webTerminal: TerminalTransport = {
     _decoders.delete(id);
     _received.delete(id);
     _pendingReplay.delete(id);
+    _epochs.delete(id);
     return Promise.resolve();
   },
 

@@ -30,12 +30,19 @@ export type PtyControlFrame =
        *               loss); `> 0` means the terminal must be reset.
        *  - `hasReplay` whether exactly one display-only binary replay frame
        *               follows this ack.
+       *  - `epoch`    OPTIONAL opaque per-spawn stream identity (#151). Present
+       *               only when the server knows one; compared by EQUALITY ONLY
+       *               (never ordered). A changed epoch means a respawn/restart and
+       *               an authoritative client reset; the same epoch resumes
+       *               normally and supersedes the legacy base-rewind heuristic. An
+       *               absent epoch preserves the pre-#151 offset-rewind fallback.
        */
       type: 'attached';
       base: number;
       gap: number;
       next: number;
       hasReplay: boolean;
+      epoch?: string;
     };
 
 /**
@@ -68,13 +75,19 @@ export function parseControlFrame(data: string): PtyControlFrame | null {
       // `next` and detects rewind via `base`); without them the frame is
       // unusable and treated as non-control.
       if (!Number.isFinite(m.base) || !Number.isFinite(m.next)) return null;
-      return {
+      const frame: Extract<PtyControlFrame, { type: 'attached' }> = {
         type: 'attached',
         base: m.base as number,
         gap: Number.isFinite(m.gap) ? (m.gap as number) : 0,
         next: m.next as number,
         hasReplay: Boolean(m.hasReplay),
       };
+      // `epoch` (#151) is the optional, additive opaque stream identity. Surface
+      // it verbatim only when it is a string; a missing or non-string value is
+      // treated as absent so the client falls back to the legacy behavior rather
+      // than acting on a bogus identity.
+      if (typeof m.epoch === 'string') frame.epoch = m.epoch;
+      return frame;
     }
 
     default:

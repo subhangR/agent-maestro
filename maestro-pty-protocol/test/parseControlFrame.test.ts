@@ -90,6 +90,40 @@ describe('parseControlFrame', () => {
     expect(parseControlFrame(JSON.stringify({ type: 'attached', base: 'x', next: 10 }))).toBeNull();
   });
 
+  it('parses the optional opaque stream epoch on an attached frame (#151)', () => {
+    // The epoch is an opaque, additive per-spawn stream identity. When present it
+    // is surfaced verbatim so the client can compare it by equality only.
+    expect(
+      parseControlFrame(
+        JSON.stringify({
+          type: 'attached',
+          base: 0,
+          gap: 0,
+          next: 0,
+          hasReplay: false,
+          epoch: 'boot-7:3',
+        }),
+      ),
+    ).toEqual({ type: 'attached', base: 0, gap: 0, next: 0, hasReplay: false, epoch: 'boot-7:3' });
+  });
+
+  it('treats an absent or non-string epoch as legacy (no epoch surfaced)', () => {
+    // Absent epoch → pre-#151 wire shape; the key is simply not present, so the
+    // client falls back to the legacy offset-rewind behavior.
+    const legacy = parseControlFrame(
+      JSON.stringify({ type: 'attached', base: 5, gap: 0, next: 5, hasReplay: false }),
+    );
+    expect(legacy).not.toBeNull();
+    expect(legacy && 'epoch' in legacy).toBe(false);
+    // A non-string epoch is malformed and must be ignored (never surfaced as a
+    // bogus identity that could wrongly force a reset).
+    const malformed = parseControlFrame(
+      JSON.stringify({ type: 'attached', base: 5, gap: 0, next: 5, hasReplay: false, epoch: 42 }),
+    );
+    expect(malformed).not.toBeNull();
+    expect(malformed && 'epoch' in malformed).toBe(false);
+  });
+
   it('keeps the RAW `next` offset independent of any (shorter) replay payload', () => {
     // The raw-`next`-vs-sanitized-`data` rule from #136/#153: `next` is the
     // server-authoritative RAW end-of-stream offset; the client snaps its resume
