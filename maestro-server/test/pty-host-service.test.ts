@@ -60,6 +60,22 @@ function receivedExitFrame(ws: { send: jest.Mock }): boolean {
   );
 }
 
+/** Build the kind of errno error node-pty's kill() surfaces from the OS: an
+ *  Error carrying a `.code` (e.g. 'ESRCH' no-such-process, 'EPERM' not-permitted). */
+function errnoError(code: string): NodeJS.ErrnoException {
+  const err: NodeJS.ErrnoException = new Error(`kill ${code}`);
+  err.code = code;
+  return err;
+}
+
+/** Did the logger warn about a kill FAILURE (used to prove a benign
+ *  already-exited race is NOT logged as noise)? */
+function warnedKillFailed(logger: { warn: jest.Mock }): boolean {
+  return logger.warn.mock.calls.some(
+    ([msg]: [unknown]) => typeof msg === 'string' && msg.includes('kill failed'),
+  );
+}
+
 describe('PtyHostService stale-exit identity guard', () => {
   beforeEach(() => {
     mockSpawnedProcs.length = 0;
@@ -159,11 +175,11 @@ describe('PtyHostService kill/replace notification semantics', () => {
     expect(svc.hasSession('s2')).toBe(false);
   });
 
-  it('kill() still finalizes the session and logs when proc.kill() throws', () => {
+  it('kill() still finalizes the session and logs when proc.kill() genuinely fails', () => {
     const { svc, logger } = makeService();
     svc.spawn({ sessionId: 's3', ...baseParams });
     mockSpawnedProcs[0].kill = jest.fn(() => {
-      throw new Error('ESRCH');
+      throw errnoError('EPERM');
     });
 
     svc.kill('s3');
@@ -191,14 +207,62 @@ describe('PtyHostService kill/replace notification semantics', () => {
     expect(svc.hasSession('s6')).toBe(false);
   });
 
-  it("kill() returns 'error' when proc.kill() throws, but STILL finalizes the entry", () => {
+  it("kill() returns 'error' when proc.kill() genuinely fails (EPERM), but STILL finalizes the entry", () => {
     const { svc } = makeService();
     svc.spawn({ sessionId: 's7', ...baseParams });
     mockSpawnedProcs[0].kill = jest.fn(() => {
-      throw new Error('ESRCH');
+      throw errnoError('EPERM');
     });
     expect(svc.kill('s7')).toBe('error');
     expect(svc.hasSession('s7')).toBe(false); // cleanup still happens
+  });
+
+  // #154 hardening — an ESRCH is the already-EXITED race: the PTY entry was still
+  // in the map (its async onExit had not fired yet) but the OS process had already
+  // died, so proc.kill() throws ESRCH. Killing something already dead achieves the
+  // desired end-state, so it is IDEMPOTENT SUCCESS ('killed'), NOT 'error' — the
+  // /pty/stop route must then return 2xx, not 500. Only a GENUINE failure (EPERM,
+  // etc.) is 'error'.
+  it("kill() treats an already-exited race (proc.kill() throws ESRCH) as idempotent 'killed', not 'error'", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's9', ...baseParams });
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('ESRCH');
+    });
+
+    expect(svc.kill('s9')).toBe('killed');
+    expect(svc.hasSession('s9')).toBe(false); // still finalized
+  });
+
+  it('kill() does NOT log an already-exited (ESRCH) race as a kill failure', () => {
+    const { svc, logger } = makeService();
+    svc.spawn({ sessionId: 's10', ...baseParams });
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('ESRCH');
+    });
+
+    svc.kill('s10');
+
+    // A benign race is not a failure; it must not surface as warn-level noise.
+    expect(warnedKillFailed(logger)).toBe(false);
+  });
+
+  it('an explicit kill() on an already-exited race still sends the exit frame and finalizes', () => {
+    // notify defaults to true (explicit stop): even though the process was already
+    // gone, the client must still get its terminal {type:'exit'} frame so it
+    // finalizes the terminal rather than hanging attached.
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's11', ...baseParams });
+    const ws = fakeWs();
+    svc.addSubscriber('s11', ws);
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('ESRCH');
+    });
+
+    expect(svc.kill('s11')).toBe('killed');
+    expect(receivedExitFrame(ws)).toBe(true);
+    expect(ws.close).toHaveBeenCalled();
+    expect(svc.hasSession('s11')).toBe(false);
   });
 
   it("kill() from an internal replace path (notify=false) still reports 'killed'", () => {

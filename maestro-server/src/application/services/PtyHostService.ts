@@ -22,11 +22,19 @@ export interface PtySpawnParams {
 /**
  * Outcome of {@link PtyHostService.kill}, so an EXPLICIT caller (the /pty/stop
  * route) can distinguish the three cases it must report differently:
- *   - `killed`    a live PTY existed and proc.kill() succeeded; entry finalized.
- *   - `not_found` no live PTY for the id; nothing to kill (a no-op).
- *   - `error`     a live PTY existed but proc.kill() threw; the entry is STILL
- *                 finalized (cleanup is unconditional), but the kill signal
- *                 genuinely failed and the caller may surface a non-2xx.
+ *   - `killed`    a tracked PTY entry existed and the process is now gone; entry
+ *                 finalized. This covers both proc.kill() succeeding AND the
+ *                 already-exited race (proc.kill() throwing ESRCH — the process
+ *                 had already died between our map lookup and the signal), because
+ *                 both reach the same intended end-state and are idempotent success.
+ *   - `not_found` no tracked PTY entry for the id; nothing to kill (a no-op).
+ *   - `error`     a tracked PTY entry existed but proc.kill() threw a GENUINE
+ *                 failure (e.g. EPERM). The entry is STILL finalized (cleanup is
+ *                 unconditional), but the kill signal really failed and the caller
+ *                 may surface a non-2xx.
+ * The `killed`/`not_found` split is strictly "did a tracked entry exist?" — an
+ * ESRCH race stays `killed` (an entry existed and we finalized it) rather than
+ * collapsing to `not_found`, keeping the two outcomes orthogonal.
  * Internal callers (spawn-replace, shutdownAll) ignore this and rely only on the
  * unconditional finalization, so their behavior is unchanged.
  */
@@ -371,16 +379,28 @@ export class PtyHostService {
     try {
       entry.proc.kill();
     } catch (error) {
-      // A PTY whose process already died (ESRCH) throws here; that is not fatal
-      // to CLEANUP — the entry is still finalized and its subscribers detached
-      // below — but it IS a genuine kill-signal failure the explicit /pty/stop
-      // caller can surface as a distinguishable non-2xx (internal callers ignore
-      // the outcome).
-      this.logger.warn('PtyHostService: kill failed', {
-        sessionId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      outcome = 'error';
+      const code = (error as NodeJS.ErrnoException | null)?.code;
+      if (code === 'ESRCH') {
+        // ESRCH ("no such process"): the PTY had already exited between our map
+        // lookup and this signal (its async onExit had not fired yet to remove the
+        // entry). Signalling an already-dead process reaches the exact end-state a
+        // kill intends, so this is IDEMPOTENT SUCCESS — keep the 'killed' outcome
+        // (the explicit /pty/stop caller returns 2xx) and log it as a benign race,
+        // NOT a warning. Finalization below is unconditional either way.
+        this.logger.debug('PtyHostService: PTY already exited before kill (ESRCH)', {
+          sessionId,
+        });
+      } else {
+        // A GENUINE kill-signal failure (e.g. EPERM). Cleanup below still runs, but
+        // the signal really failed, so report 'error' — the explicit /pty/stop
+        // caller surfaces it as a distinguishable non-2xx (internal callers ignore
+        // the outcome).
+        this.logger.warn('PtyHostService: kill failed', {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        outcome = 'error';
+      }
     }
     if (notify) {
       this.notifyExit(entry, null);
