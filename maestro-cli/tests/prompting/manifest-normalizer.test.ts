@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MaestroManifest } from '../../src/types/manifest.js';
 import { normalizeManifest } from '../../src/prompting/manifest-normalizer.js';
+import { normalizeModelId } from '../../src/types/manifest.js';
 
 function buildManifest(overrides: Partial<MaestroManifest> = {}): MaestroManifest {
   return {
@@ -63,33 +64,32 @@ describe('manifest-normalizer', () => {
     expect(result.manifest.teamMemberProfiles?.[0].identity).toBe('Build backend APIs');
   });
 
-  it('coerces retired Fable 5 model ids to Opus 4.8 everywhere the spawner reads them', () => {
+  it('leaves live Fable 5 / Sonnet 5 model ids unchanged everywhere the spawner reads them', () => {
     const manifest = buildManifest({
       session: { model: 'claude-fable-5', permissionMode: 'acceptEdits' },
       launchConfig: { provider: 'claude', model: 'claude-fable-5[1m]' },
-      availableTeamMembers: [
+      teamMemberProfiles: [
         {
           id: 'tm-2',
           name: 'Bob',
-          role: 'Tester',
-          identity: 'Write tests',
           avatar: 'B',
-          model: 'claude-fable-5',
+          identity: 'Write tests',
+          model: 'claude-sonnet-5',
         },
       ],
     } as Partial<MaestroManifest>);
 
     const result = normalizeManifest(manifest);
 
-    expect(result.manifest.session.model).toBe('claude-opus-4-8');
-    expect(result.manifest.launchConfig?.model).toBe('claude-opus-4-8[1m]');
-    expect(result.manifest.availableTeamMembers?.[0].model).toBe('claude-opus-4-8');
+    expect(result.manifest.session.model).toBe('claude-fable-5');
+    expect(result.manifest.launchConfig?.model).toBe('claude-fable-5[1m]');
+    expect(result.manifest.teamMemberProfiles?.[0].model).toBe('claude-sonnet-5');
   });
 
-  it('coerces a retired model id on session.launchConfig (the field the spawner launches)', () => {
+  it('leaves a live model id on session.launchConfig unchanged (the field the spawner launches)', () => {
     const manifest = buildManifest({
       session: {
-        model: 'claude-fable-5',
+        model: 'claude-sonnet-5',
         permissionMode: 'acceptEdits',
         launchConfig: { provider: 'claude', model: 'claude-fable-5[1m]' },
       },
@@ -97,8 +97,8 @@ describe('manifest-normalizer', () => {
 
     const result = normalizeManifest(manifest);
 
-    expect(result.manifest.session.launchConfig?.model).toBe('claude-opus-4-8[1m]');
-    expect(result.manifest.session.model).toBe('claude-opus-4-8');
+    expect(result.manifest.session.launchConfig?.model).toBe('claude-fable-5[1m]');
+    expect(result.manifest.session.model).toBe('claude-sonnet-5');
   });
 
   it('flags deprecated workflow fields as warnings', () => {
@@ -191,12 +191,29 @@ describe('manifest-normalizer', () => {
     expect(result.warnings.some((message) => message.includes('deterministic first profile'))).toBe(true);
   });
 
-  it('enforces coordinatorSessionId in coordinated modes', () => {
+  it('warns (fail-open) when a coordinated mode has no coordinatorSessionId', () => {
     const result = normalizeManifest(buildManifest({
       mode: 'coordinated-worker',
       coordinatorSessionId: undefined,
     }));
 
-    expect(result.errors[0]).toContain('requires coordinatorSessionId');
+    // Fail-open policy (manifest-normalizer.ts:197-198): a missing
+    // coordinatorSessionId is a warning, not a hard error — no errors are
+    // raised so a coordinated session is never stripped of its ability to run.
+    expect(result.errors).toEqual([]);
+    expect(result.warnings.some((message) => message.includes('has no coordinatorSessionId; proceeding without it'))).toBe(true);
+  });
+});
+
+describe('normalizeModelId identity (LEGACY_MODEL_ALIASES is empty — no live model is coerced)', () => {
+  it.each([
+    'claude-fable-5',
+    'claude-fable-5[1m]',
+    'claude-sonnet-5',
+    'claude-sonnet-5[1m]',
+    'anthropic:claude-fable-5',
+    'anthropic/claude-fable-5',
+  ])('returns %s unchanged (pass-through to the spawner --model flag)', (id) => {
+    expect(normalizeModelId(id)).toBe(id);
   });
 });

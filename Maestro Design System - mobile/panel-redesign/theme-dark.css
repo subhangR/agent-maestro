@@ -1,0 +1,21 @@
+/* ==========================================================================
+   MAESTRO · PANEL REDESIGN — DARK VARIANT (component overrides only)
+   The dark *tokens* now live in the root stylesheet (../colors_and_type.css),
+   applied via html[data-theme="dark"]. This file keeps only the handful of
+   component-level dark tweaks that aren't pure token swaps. Link AFTER
+   theme.css. (Plain consumers get dark for free by setting data-theme="dark";
+   they don't need this file.)
+   ========================================================================== */
+
+/* the center terminal sits a touch darker than the panels for separation */
+html[data-theme="dark"] .pn-term { background: #100E0A; }
+html[data-theme="dark"] .pn-term-bar,
+html[data-theme="dark"] .pn-term-input { border-color: #221E15; }
+
+/* priority/status tag borders read a bit stronger on dark */
+html[data-theme="dark"] .pn-tag { border-color: var(--pn-line-2); }
+
+/* tab background fills (a near-white in light) stay subtle on dark */
+html[data-theme="dark"] body,
+html[data-theme="dark"] #stage,
+html[data-theme="dark"] #frame { background: var(--pn-paper); }

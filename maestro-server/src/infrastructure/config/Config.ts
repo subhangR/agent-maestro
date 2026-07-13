@@ -81,6 +81,14 @@ export interface ConfigOptions {
 
   // Voice / Alexa integration
   voice: VoiceConfig;
+
+  /**
+   * Optional allowlist of binaries a spell `run-command` action may execute
+   * (C5). When non-empty, ONLY these binaries (matched by basename) are permitted
+   * — everything else is blocked. When empty, only the always-on denylist applies.
+   * Sourced from MAESTRO_SPELL_CMD_ALLOWLIST (comma-separated).
+   */
+  spellCmdAllowlist: string[];
 }
 
 /**
@@ -165,7 +173,13 @@ export class Config implements Readonly<ConfigOptions> {
         vmToken: process.env.VM_TOKEN || undefined,
         vmDevice: process.env.VM_DEVICE || undefined,
         alexaRootTeamMemberId: process.env.ALEXA_ROOT_TEAM_MEMBER_ID || 'tm_system_alexa_coordinator',
-      }
+      },
+
+      // Spell run-command allowlist (C5)
+      spellCmdAllowlist: (process.env.MAESTRO_SPELL_CMD_ALLOWLIST || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean),
     };
   }
 
@@ -242,6 +256,7 @@ export class Config implements Readonly<ConfigOptions> {
   get log(): LogConfig { return this.config.log; }
   get nodeEnv(): ConfigOptions['nodeEnv'] { return this.config.nodeEnv; }
   get voice(): VoiceConfig { return this.config.voice; }
+  get spellCmdAllowlist(): string[] { return this.config.spellCmdAllowlist; }
 
   /**
    * Check if running in development mode.

@@ -1,0 +1,155 @@
+/* ═══════════════════════════════════════════════════
+   SPELL COLORS — Palette CSS custom properties.
+
+   Source of truth: docs/spell-system-design/uispec/01-design-system.md §1.2.
+   Mirrored in TypeScript at app/constants/spellColors.ts. Keep both in sync.
+
+   Each spell color id exposes 5 vars resolved through the cascade:
+     --spell-<id>-primary       hex
+     --spell-<id>-primary-rgb   "R, G, B" tuple for rgba()/var()
+     --spell-<id>-dim           rgba (~10-18% alpha)
+     --spell-<id>-border        rgba (~42-46% alpha)
+     --spell-<id>-text          hex
+   ═══════════════════════════════════════════════════ */
+
+/* ─── Light theme — surface --pn-surface = #FBFAF6 ──────────── */
+html[data-redesign] {
+  /* Brass */
+  --spell-brass-primary:     #B26A2B;
+  --spell-brass-primary-rgb: 178, 106, 43;
+  --spell-brass-dim:         rgba(178, 106, 43, 0.12);
+  --spell-brass-border:      rgba(178, 106, 43, 0.42);
+  --spell-brass-text:        #8A4F1E;
+
+  /* Vermilion */
+  --spell-vermilion-primary:     #B14538;
+  --spell-vermilion-primary-rgb: 177, 69, 56;
+  --spell-vermilion-dim:         rgba(177, 69, 56, 0.12);
+  --spell-vermilion-border:      rgba(177, 69, 56, 0.42);
+  --spell-vermilion-text:        #962F23;
+
+  /* Moss */
+  --spell-moss-primary:     #3E8E5A;
+  --spell-moss-primary-rgb: 62, 142, 90;
+  --spell-moss-dim:         rgba(62, 142, 90, 0.12);
+  --spell-moss-border:      rgba(62, 142, 90, 0.42);
+  --spell-moss-text:        #2B6A41;
+
+  /* Lapis */
+  --spell-lapis-primary:     #3F6C90;
+  --spell-lapis-primary-rgb: 63, 108, 144;
+  --spell-lapis-dim:         rgba(63, 108, 144, 0.12);
+  --spell-lapis-border:      rgba(63, 108, 144, 0.42);
+  --spell-lapis-text:        #2E5478;
+
+  /* Amber */
+  --spell-amber-primary:     #A07410;
+  --spell-amber-primary-rgb: 160, 116, 16;
+  --spell-amber-dim:         rgba(160, 116, 16, 0.12);
+  --spell-amber-border:      rgba(160, 116, 16, 0.42);
+  --spell-amber-text:        #7E5A06;
+
+  /* Aubergine */
+  --spell-aubergine-primary:     #6E3F7A;
+  --spell-aubergine-primary-rgb: 110, 63, 122;
+  --spell-aubergine-dim:         rgba(110, 63, 122, 0.12);
+  --spell-aubergine-border:      rgba(110, 63, 122, 0.42);
+  --spell-aubergine-text:        #562F61;
+
+  /* Teal */
+  --spell-teal-primary:     #1F7A75;
+  --spell-teal-primary-rgb: 31, 122, 117;
+  --spell-teal-dim:         rgba(31, 122, 117, 0.12);
+  --spell-teal-border:      rgba(31, 122, 117, 0.42);
+  --spell-teal-text:        #155954;
+
+  /* Clay */
+  --spell-clay-primary:     #9A4E2A;
+  --spell-clay-primary-rgb: 154, 78, 42;
+  --spell-clay-dim:         rgba(154, 78, 42, 0.12);
+  --spell-clay-border:      rgba(154, 78, 42, 0.42);
+  --spell-clay-text:        #79361A;
+
+  /* Slate */
+  --spell-slate-primary:     #4F5360;
+  --spell-slate-primary-rgb: 79, 83, 96;
+  --spell-slate-dim:         rgba(79, 83, 96, 0.12);
+  --spell-slate-border:      rgba(79, 83, 96, 0.42);
+  --spell-slate-text:        #3A3D48;
+
+  /* Plum */
+  --spell-plum-primary:     #7F2D52;
+  --spell-plum-primary-rgb: 127, 45, 82;
+  --spell-plum-dim:         rgba(127, 45, 82, 0.12);
+  --spell-plum-border:      rgba(127, 45, 82, 0.42);
+  --spell-plum-text:        #621F3F;
+
+  /* Portal z-stack tokens (theme-independent). */
+  --spell-drawer-z:  1010;
+  --spell-flyout-z:  1050;
+  --spell-toast-z:   1090;
+  --spell-tooltip-z: 1100;
+}
+
+/* ─── Dark theme — surface --pn-surface = #1B1810 ──────────── */
+html[data-redesign][data-theme='dark'] {
+  --spell-brass-primary:     #E0A45A;
+  --spell-brass-primary-rgb: 224, 164, 90;
+  --spell-brass-dim:         rgba(224, 164, 90, 0.16);
+  --spell-brass-border:      rgba(224, 164, 90, 0.46);
+  --spell-brass-text:        #E8B574;
+
+  --spell-vermilion-primary:     #DA7D6A;
+  --spell-vermilion-primary-rgb: 218, 125, 106;
+  --spell-vermilion-dim:         rgba(218, 125, 106, 0.17);
+  --spell-vermilion-border:      rgba(218, 125, 106, 0.46);
+  --spell-vermilion-text:        #E59785;
+
+  --spell-moss-primary:     #7BC097;
+  --spell-moss-primary-rgb: 123, 192, 151;
+  --spell-moss-dim:         rgba(123, 192, 151, 0.16);
+  --spell-moss-border:      rgba(123, 192, 151, 0.46);
+  --spell-moss-text:        #94CFAA;
+
+  --spell-lapis-primary:     #6F9FC7;
+  --spell-lapis-primary-rgb: 111, 159, 199;
+  --spell-lapis-dim:         rgba(111, 159, 199, 0.17);
+  --spell-lapis-border:      rgba(111, 159, 199, 0.46);
+  --spell-lapis-text:        #8FB7D7;
+
+  --spell-amber-primary:     #D9AA49;
+  --spell-amber-primary-rgb: 217, 170, 73;
+  --spell-amber-dim:         rgba(217, 170, 73, 0.18);
+  --spell-amber-border:      rgba(217, 170, 73, 0.46);
+  --spell-amber-text:        #E4BC68;
+
+  --spell-aubergine-primary:     #B589C2;
+  --spell-aubergine-primary-rgb: 181, 137, 194;
+  --spell-aubergine-dim:         rgba(181, 137, 194, 0.16);
+  --spell-aubergine-border:      rgba(181, 137, 194, 0.46);
+  --spell-aubergine-text:        #C7A1D2;
+
+  --spell-teal-primary:     #5CB3AC;
+  --spell-teal-primary-rgb: 92, 179, 172;
+  --spell-teal-dim:         rgba(92, 179, 172, 0.16);
+  --spell-teal-border:      rgba(92, 179, 172, 0.46);
+  --spell-teal-text:        #7DC4BD;
+
+  --spell-clay-primary:     #D08966;
+  --spell-clay-primary-rgb: 208, 137, 102;
+  --spell-clay-dim:         rgba(208, 137, 102, 0.16);
+  --spell-clay-border:      rgba(208, 137, 102, 0.46);
+  --spell-clay-text:        #DDA081;
+
+  --spell-slate-primary:     #9CA1B0;
+  --spell-slate-primary-rgb: 156, 161, 176;
+  --spell-slate-dim:         rgba(156, 161, 176, 0.15);
+  --spell-slate-border:      rgba(156, 161, 176, 0.46);
+  --spell-slate-text:        #BBC0CE;
+
+  --spell-plum-primary:     #C77BA0;
+  --spell-plum-primary-rgb: 199, 123, 160;
+  --spell-plum-dim:         rgba(199, 123, 160, 0.16);
+  --spell-plum-border:      rgba(199, 123, 160, 0.46);
+  --spell-plum-text:        #D595B5;
+}

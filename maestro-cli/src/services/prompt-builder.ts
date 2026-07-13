@@ -941,7 +941,7 @@ export class PromptBuilder {
     lines.push('      Use `maestro master sessions --active` to see live sessions across the workspace.');
     lines.push('      Use `maestro session prompt &lt;id&gt; --message "..."` to message any session in any project.');
     lines.push('      Use `maestro session logs &lt;id&gt;` to read any session\'s recent output.');
-    lines.push('      Use `maestro session spawn --project &lt;id&gt; ...` to spawn into another project (requires coordinator mode).');
+    lines.push('      Use `maestro session spawn --project &lt;id&gt; ...` to spawn into another project.');
     lines.push('    </commands>');
     lines.push('  </workspace_context>');
     return lines.join('\n');
@@ -953,9 +953,8 @@ export class PromptBuilder {
     if (!isWorker) return null;
 
     const lines: string[] = ['  <coordinator_promotion>'];
-    lines.push('  You are a worker. You can ping, read, and observe any session, but you cannot spawn new ones.');
-    lines.push('  If your task requires spawning helpers, run `maestro coordinator enable` first.');
-    lines.push('  This converts you to a coordinator for the rest of the session.');
+    lines.push('  You can spawn helper sessions directly with `maestro session spawn ...` — no promotion needed.');
+    lines.push('  Run `maestro coordinator enable` only if you want the full coordinator command set and orchestration prompt for the rest of the session.');
     lines.push('  </coordinator_promotion>');
     return lines.join('\n');
   }

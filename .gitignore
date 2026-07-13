@@ -13,6 +13,21 @@ package-lock.json
 # TypeScript build artifacts
 *.tsbuildinfo
 
+# maestro-mobile (Expo / RN)
+# standalone npm app — DO track its lockfile (monorepo ignores package-lock.json globally)
+!maestro-mobile/package-lock.json
+maestro-mobile/.expo/
+maestro-mobile/.expo-shared/
+maestro-mobile/web-build/
+maestro-mobile/ios/
+maestro-mobile/android/
+maestro-mobile/*.jks
+maestro-mobile/*.p8
+maestro-mobile/*.p12
+maestro-mobile/*.key
+maestro-mobile/*.mobileprovision
+maestro-mobile/.metro-health-check*
+
 # Rust / Tauri
 src-tauri/target/
 src-tauri/.tauri/
@@ -33,6 +48,10 @@ AGENTS.md
 # Firebase service account keys
 *-firebase-adminsdk-*.json
 
+# Firebase env (Web SDK config)
+maestro-ui/.env.local
+maestro-ui/.env.local.*
+
 # Marketing posts
 marketing-posts/
 
@@ -49,3 +68,10 @@ maestro-design-system/
 
 # Graphify knowledge-graph artifacts (generated, not source)
 graphify-out/
+
+# design-sync (transient)
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules

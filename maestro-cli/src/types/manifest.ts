@@ -7,6 +7,19 @@
  */
 
 
+/**
+ * Subset of the server-side `Spell` entity carried in the manifest so the CLI
+ * can auto-activate task-assigned spells at worker init time. Full schema lives
+ * in maestro-server/src/types.ts (Spell).
+ */
+export interface ManifestSpell {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  color?: string;
+}
+
 /** Agent mode — four-mode model covering all session scenarios */
 export type AgentMode = 'worker' | 'coordinator' | 'coordinated-worker' | 'coordinated-coordinator';
 
@@ -48,15 +61,10 @@ export function normalizeMode(mode: AgentModeInput, hasCoordinator?: boolean): A
 /**
  * Retired model IDs mapped to their active replacements. Keep this map in sync
  * with the copies in maestro-server (types.ts) and maestro-ui
- * (constants/agentTools.ts). Claude Fable 5 was retired; persisted configs are
- * migrated to Opus 4.8, preserving the 1M-context variant.
+ * (constants/agentTools.ts). Currently empty: Claude Fable 5 is live again, so
+ * nothing is retired. Retained (with normalizeModelId) for future retirements.
  */
-export const LEGACY_MODEL_ALIASES: Record<string, string> = {
-  'claude-fable-5': 'claude-opus-4-8',
-  'claude-fable-5[1m]': 'claude-opus-4-8[1m]',
-  'anthropic:claude-fable-5': 'anthropic:claude-opus-4-8',
-  'anthropic/claude-fable-5': 'anthropic:claude-opus-4-8',
-};
+export const LEGACY_MODEL_ALIASES: Record<string, string> = {};
 
 /** Normalize a (possibly retired) model id to its active replacement. */
 export function normalizeModelId(model: string): string;
@@ -112,6 +120,13 @@ export interface MaestroManifest {
 
   /** Optional standard skills to load from ~/.skills/ */
   skills?: string[];
+
+  /**
+   * Spells to auto-activate at session start. Mirrors the server-side `Spell`
+   * shape (subset). The worker-init flow calls
+   * `POST /api/spells/:id/activate` for each so the dispatcher can match them.
+   */
+  spells?: ManifestSpell[];
 
   /** Agent tool to use for this session (defaults to 'claude-code') */
   agentTool?: AgentTool;
@@ -359,7 +374,7 @@ export interface TaskData {
  * Session configuration for Claude Code
  */
 export interface SessionConfig {
-  /** Model to use (e.g. sonnet, claude-opus-4-8, claude-opus-4-8[1m], claude-opus-4-7[1m], gpt-5.5, hermes-default, gemini-3-pro-preview) */
+  /** Model to use (e.g. sonnet, claude-fable-5, claude-sonnet-5, claude-opus-4-8, claude-opus-4-8[1m], claude-opus-4-7[1m], gpt-5.6-sol, hermes-default, gemini-3-pro-preview) */
   model: string;
 
   /** Permission mode for the session */

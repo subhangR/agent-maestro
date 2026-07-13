@@ -1,3 +1,12 @@
+> ## ⚠️ SUPERSEDED (2026-07-04)
+> This document describes the **legacy spell-invocation model** (quick-action prompt
+> buttons that `POST /api/spells/invoke`). It does **not** describe the current spell
+> system. The v2 multi-rule, hook-triggered spell system is authoritative in
+> **`docs/spell-system-redesign.md` §11** and explained in **`docs/spell-system-explainer.md`**.
+> The invoke path summarized here still exists (see the explainer §7), but for anything
+> about spell *behavior*, triggers, actions, or the library, read those two docs. Kept for
+> historical context only.
+
 # Spells Feature — Consolidated End-to-End Design
 
 ## Overview

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Spacing" name="Corner Radii" subtitle="Soft, not bubbly — 5px to pill" viewport="700x180" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 24px 26px; }
+  .row { display: flex; gap: 16px; align-items: flex-end; }
+  .item { display: flex; flex-direction: column; gap: 9px; align-items: center; }
+  .box { width: 78px; height: 78px; background: var(--pn-card); border: 1px solid var(--pn-line-2); }
+  .name { font-family: var(--pn-mono); font-size: 10.5px; color: var(--pn-ink-2); font-weight: 600; }
+  .val { font-family: var(--pn-mono); font-size: 9.5px; color: var(--pn-ink-4); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="item"><div class="box" style="border-radius:5px;"></div><span class="name">xs</span><span class="val">5px</span></div>
+    <div class="item"><div class="box" style="border-radius:7px;"></div><span class="name">sm</span><span class="val">7px</span></div>
+    <div class="item"><div class="box" style="border-radius:10px;"></div><span class="name">md</span><span class="val">10px</span></div>
+    <div class="item"><div class="box" style="border-radius:14px;"></div><span class="name">lg</span><span class="val">14px</span></div>
+    <div class="item"><div class="box" style="border-radius:999px;"></div><span class="name">pill</span><span class="val">999px</span></div>
+  </div>
+</body>
+</html>

@@ -22,6 +22,7 @@ import { AppError } from '../domain/common/Errors';
 import { SessionStatus, AgentTool, AgentMode, TeamMember, TeamMemberSnapshot, MemberLaunchOverride, LaunchConfig, isCoordinatorMode, normalizeMode, normalizeModelId } from '../types';
 import { ITeamMemberRepository } from '../domain/repositories/ITeamMemberRepository';
 import { IModelProfileRepository } from '../domain/repositories/IModelProfileRepository';
+import { ISpellRepository } from '../domain/repositories/ISpellRepository';
 import { SessionFilter } from '../domain/repositories/ISessionRepository';
 import { handleRouteError } from './middleware/errorHandler';
 import {
@@ -61,6 +62,24 @@ function resolveMaestroCliRuntime(cliPathOverride?: string): { maestroBin: strin
     return { maestroBin, monorepoRoot };
   }
   return { maestroBin: 'maestro', monorepoRoot: null };
+}
+
+/**
+ * Build the shell command that launches the maestro CLI for a spawned/resumed session.
+ *
+ * Wraps the resolved CLI entry point as `node <maestroBin>` so the spawned agent always runs THIS
+ * server's resolved CLI, and falls back to a bare `maestro` (PATH lookup) only when the path could
+ * not be resolved (packaged build). Extracted from the route handlers so the branch selection is
+ * unit-testable — the produced string is byte-identical to the previous inline builders.
+ *
+ * Contract: maestroBin (and any MAESTRO_CLI_PATH override) MUST be a Node-executable entry point —
+ * a .js/.cjs/.mjs file or a node-shebang symlink such as node_modules/.bin/maestro — NOT a
+ * pkg-compiled native binary, because the resolved-path form wraps it as `node ${maestroBin}`.
+ */
+export function buildMaestroSpawnCommand(maestroBin: string, initCommand: string, subcommand: string): string {
+  return maestroBin === 'maestro'
+    ? `maestro ${initCommand} ${subcommand}`
+    : `node ${maestroBin} ${initCommand} ${subcommand}`;
 }
 
 function getNodeRuntimePathEntries(monorepoRoot: string | null): string[] {
@@ -341,25 +360,29 @@ function accessModeForPermissionMode(permissionMode?: string): LaunchConfig['acc
   }
 }
 
-function getValidReasoningEfforts(provider: LaunchConfig['provider']): LaunchConfig['reasoningEffort'][] {
+const GPT_5_6_CODEX_MODELS = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
+
+function getValidReasoningEfforts(provider: LaunchConfig['provider'], model?: string): LaunchConfig['reasoningEffort'][] {
   switch (provider) {
     case 'claude':
       return ['low', 'medium', 'high', 'xhigh', 'max'];
     case 'openai':
-      return ['minimal', 'low', 'medium', 'high', 'xhigh'];
+      return GPT_5_6_CODEX_MODELS.includes(model || '')
+        ? ['low', 'medium', 'high', 'xhigh', 'max']
+        : ['low', 'medium', 'high', 'xhigh'];
     default:
       return [];
   }
 }
 
 function supportsLaunchSpeed(provider: LaunchConfig['provider'], model?: string): boolean {
-  return provider === 'openai' && (model === 'gpt-5.5' || model === 'gpt-5.4');
+  return provider === 'openai' && ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'].includes(model || '');
 }
 
 function defaultModelForAgentTool(agentTool: AgentTool): string {
   switch (agentTool) {
     case 'codex':
-      return 'gpt-5.5';
+      return 'gpt-5.6-sol';
     case 'hermes':
       return 'hermes-default';
     case 'gemini':
@@ -375,7 +398,7 @@ function sanitizeLaunchConfig(config?: LaunchConfig | null): LaunchConfig | unde
   const validProviders: LaunchConfig['provider'][] = ['claude', 'openai', 'hermes', 'gemini'];
   if (!validProviders.includes(config.provider)) return undefined;
 
-  const validReasoning = getValidReasoningEfforts(config.provider);
+  const validReasoning = getValidReasoningEfforts(config.provider, config.model);
   const reasoningEffort = config.reasoningEffort && validReasoning.includes(config.reasoningEffort)
     ? config.reasoningEffort
     : undefined;
@@ -478,6 +501,7 @@ interface SessionRouteDependencies {
   taskRepo: ITaskRepository;
   teamMemberRepo: ITeamMemberRepository;
   modelProfileRepo: IModelProfileRepository;
+  spellRepo: ISpellRepository;
   eventBus: IEventBus;
   config: Config;
   ptyHostService: PtyHostService;
@@ -487,7 +511,7 @@ interface SessionRouteDependencies {
  * Create session routes using the SessionService.
  */
 export function createSessionRoutes(deps: SessionRouteDependencies) {
-  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, eventBus, config, ptyHostService } = deps;
+  const { sessionService, sessionPromptService, huddleService, commandUsageService, logDigestService, teamService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, spellRepo, eventBus, config, ptyHostService } = deps;
   const gitService = new GitService();
   const router = express.Router();
 
@@ -620,6 +644,12 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       teamMemberSnapshot: session.teamMemberSnapshot,
       teamMemberId: session.teamMemberId,
       isMasterSession: session.isMasterSession,
+      // Surface the resolved per-spawn model + launch config in the list DTO so the
+      // session-list badge reflects the actually-launched model (e.g. claude-fable-5)
+      // rather than falling back to the team member's configured default. Both live
+      // only in metadata; the full/enriched path already exposes metadata directly.
+      model: session.metadata?.model ?? null,
+      launchConfig: session.metadata?.launchConfig ?? null,
       startedAt: session.startedAt,
       completedAt: session.completedAt,
       createdAt: session.createdAt,
@@ -1424,9 +1454,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
   // Spawn session (complex endpoint - uses CLI for manifest generation)
   router.post('/sessions/spawn', validateBody(spawnSessionSchema), async (req: Request, res: Response) => {
     try {
-      // SPAWN GATE: when a session spawns another session, the sender must be a
-      // coordinator-role session. UI-initiated spawns (spawnSource === 'ui') are
-      // user-driven and have no sender session, so they bypass this gate.
+      // Any session may spawn another session — there is no coordinator-role
+      // gate. For session-initiated spawns we still resolve the sender so the
+      // child can be wired to its parent (parentSessionId/projectId fallback).
       const senderSessionId = req.headers['x-session-id'] as string | undefined;
       const isSessionSpawn = req.body?.spawnSource === 'session';
       let senderSession: any = null;
@@ -1447,16 +1477,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
             error: true,
             code: 'sender_session_not_found',
             message: `Sender session ${senderSessionId} not found`,
-          });
-        }
-
-        const senderMode: AgentMode = (senderSession.metadata?.mode as AgentMode) || 'worker';
-        const senderRole = isCoordinatorMode(senderMode) ? 'coordinator' : 'worker';
-        if (senderRole !== 'coordinator') {
-          return res.status(403).json({
-            error: true,
-            code: 'spawn_requires_coordinator',
-            message: 'Spawning requires coordinator mode. Run `maestro coordinator enable` first.',
           });
         }
       } else if (senderSessionId) {
@@ -1721,9 +1741,14 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       // Fetch team member defaults from the effective members (after task-level fallback)
       const MODEL_POWER: Record<string, number> = {
+        'claude-fable-5[1m]': 6.1,
+        'claude-fable-5': 6.0,
         'claude-opus-4-8[1m]': 5.9,
         'claude-opus-4-8': 5.8,
+        'gpt-5.6-sol': 5.6,
+        'gpt-5.6-terra': 5.55,
         'gpt-5.5': 5.5,
+        'gpt-5.6-luna': 5.45,
         'claude-opus-4-7[1m]': 5.2,
         'claude-opus-4-7': 5,
         'gpt-5.4': 4.7,
@@ -1731,6 +1756,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'gpt-5.3-codex': 4.2,
         'opus': 4,
         'gpt-5.2-codex': 3.8,
+        'claude-sonnet-5[1m]': 3.6,
+        'claude-sonnet-5': 3.4,
         'sonnet[1m]': 3,
         'gpt-5.1-codex-max': 2.8,
         'sonnet': 2.5,
@@ -1757,8 +1784,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
                 : undefined;
               // Full launch config of the winning candidate (carries reasoning/speed/access).
               const effectiveLaunchConfig = override?.launchConfig || profileConfig || undefined;
-              // Coerce any retired model id (e.g. claude-fable-5) to its active
-              // replacement so ranking, the snapshot, and the launched model agree.
+              // Coerce any retired model id to its active replacement via
+              // LEGACY_MODEL_ALIASES (currently empty / a no-op — retained for
+              // future retirements) so ranking, the snapshot, and the launched
+              // model agree.
               const effectiveModel = normalizeModelId(override?.launchConfig?.model || profileConfig?.model || teamMember.model);
               const effectiveAgentTool = effectiveLaunchConfig
                 ? agentToolForProvider(effectiveLaunchConfig.provider)
@@ -2049,6 +2078,60 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         manifestPath = result.manifestPath;
         manifest = result.manifest;
 
+        // P5: Populate manifest.spells from Task.spellIds so the CLI's
+        // spell-auto-activator (worker-init / orchestrator-init) can fire each
+        // task-attached spell at session start. The CLI's manifest generator
+        // doesn't know about spells; the server owns Spell + Task state, so we
+        // resolve here and patch the on-disk manifest.
+        try {
+          const uniqueSpellIds: string[] = [];
+          const seen = new Set<string>();
+          for (const task of verifiedTasks) {
+            const ids = (task as any)?.spellIds as string[] | undefined;
+            if (!Array.isArray(ids)) continue;
+            for (const id of ids) {
+              if (typeof id === 'string' && id && !seen.has(id)) {
+                seen.add(id);
+                uniqueSpellIds.push(id);
+              }
+            }
+          }
+          if (uniqueSpellIds.length > 0) {
+            // The CLI auto-activator only needs id + display fields; it activates
+            // by id and the server re-reads the full rules at dispatch time.
+            const resolvedSpells: Array<{
+              id: string;
+              name: string;
+              description?: string;
+              icon?: string;
+              color?: string;
+            }> = [];
+            for (const id of uniqueSpellIds) {
+              try {
+                const spell = await spellRepo.findById(id);
+                if (!spell) continue;
+                resolvedSpells.push({
+                  id: spell.id,
+                  name: spell.name,
+                  description: spell.description,
+                  icon: spell.icon,
+                  color: spell.color,
+                });
+              } catch {
+                // Missing/broken spell: skip silently so spawn isn't blocked.
+              }
+            }
+            if (resolvedSpells.length > 0) {
+              manifest.spells = resolvedSpells;
+              await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+            }
+          }
+        } catch (spellInjectErr: unknown) {
+          // Non-fatal: a broken spell-injection step must not block spawn.
+          const msg = spellInjectErr instanceof Error ? spellInjectErr.message : String(spellInjectErr);
+          console.warn('[spawn] Failed to inject spells into manifest:', msg);
+        }
+
       } catch (manifestError: unknown) {
         const msg = manifestError instanceof Error ? manifestError.message : 'Unknown error';
         return res.status(500).json({
@@ -2063,11 +2146,21 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const initCommand = isCoordinatorMode(resolvedMode) ? 'orchestrator' : 'worker';
       const cwd = worktreeResult?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
-      // On Windows, cmd.exe may not find bare `maestro` even with PATH set,
-      // so use `node <path>` to invoke the CLI entry point directly.
-      const command = platform() === 'win32'
-        ? `node ${maestroBin} ${initCommand} init`
-        : `maestro ${initCommand} init`;
+      if (maestroBin !== 'maestro' && !existsSync(maestroBin)) {
+        return res.status(500).json({
+          error: true,
+          code: 'maestro_cli_not_found',
+          message: `Resolved maestro CLI path does not exist: ${maestroBin}. Set MAESTRO_CLI_PATH to a valid Node-executable CLI entry point, or rebuild the CLI (cd maestro-cli && bun run build).`,
+        });
+      }
+      // Invoke the resolved CLI entry point directly via `node <path>` on ALL platforms, so the
+      // spawned agent always runs THIS server's resolved CLI (maestroBin) and never a stale/global
+      // `maestro` that happens to be first on PATH (which could still map retired model ids to their
+      // old replacements). Fall back to bare `maestro` only when the path couldn't be resolved.
+      // The resolved maestroBin (and any MAESTRO_CLI_PATH override) MUST be a Node-executable entry
+      // point — a .js/.cjs/.mjs file or a node-shebang symlink such as node_modules/.bin/maestro —
+      // NOT a pkg-compiled native binary, because the resolved-path form wraps it as `node ${maestroBin}`.
+      const command = buildMaestroSpawnCommand(maestroBin, initCommand, 'init');
 
       // Pass through auth-related API keys from server environment
       const authEnvKeys = [
@@ -2242,6 +2335,13 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       const cwd = session.metadata?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
+      if (maestroBin !== 'maestro' && !existsSync(maestroBin)) {
+        return res.status(500).json({
+          error: true,
+          code: 'maestro_cli_not_found',
+          message: `Resolved maestro CLI path does not exist: ${maestroBin}. Set MAESTRO_CLI_PATH to a valid Node-executable CLI entry point, or rebuild the CLI (cd maestro-cli && bun run build).`,
+        });
+      }
 
       // Regenerate manifest so MAESTRO_MANIFEST_PATH points to a valid file
       const mode = session.metadata?.mode || 'worker';
@@ -2323,9 +2423,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Determine command: resume if session had a Claude session ID, fresh spawn otherwise
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
       const subcommand = hadClaudeSessionId ? 'resume' : 'init';
-      const command = platform() === 'win32'
-        ? `node ${maestroBin} ${initCommand} ${subcommand}`
-        : `maestro ${initCommand} ${subcommand}`;
+      // Invoke the resolved CLI directly on all platforms (see the spawn path above); fall back to
+      // bare `maestro` only when maestroBin couldn't be resolved to a path.
+      const command = buildMaestroSpawnCommand(maestroBin, initCommand, subcommand);
 
       // Reconstruct env vars — reuse stored env, refresh dynamic values
       const finalEnvVars: Record<string, string> = {

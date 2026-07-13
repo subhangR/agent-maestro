@@ -1,4 +1,4 @@
-import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload } from '../../types';
+import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell, Ensemble } from '../../types';
 
 /**
  * Type-safe domain event definitions.
@@ -157,7 +157,8 @@ export interface NotifyNeedsInputEvent {
 
 export interface NotifyProgressEvent {
   type: 'notify:progress';
-  data: { sessionId: string; taskId?: string; message?: string };
+  /** `channel` is an optional routing hint from notify-channel spell rules (§11.7). */
+  data: { sessionId: string; taskId?: string; message?: string; channel?: string };
 }
 
 // Modal Events
@@ -254,6 +255,78 @@ export interface SpellInvokedEvent {
   data: SpellInvocationResult;
 }
 
+export interface SpellActivatedPayload {
+  spellId: string;
+  sessionIds: string[];
+  activeSpell: ActiveSpell;
+  timestamp: number;
+}
+
+export interface SpellDeactivatedPayload {
+  spellId: string;
+  sessionIds: string[];
+  timestamp: number;
+}
+
+export interface SpellLoopResetPayload {
+  spellId: string;
+  sessionId: string;
+  /** The specific rule reset, or `null` when ALL rules were reset. */
+  ruleId: string | null;
+  /** The updated active-spell entry (authoritative ruleIterations). */
+  activeSpell: ActiveSpell;
+  timestamp: number;
+}
+
+/** C4: an active spell (or one of its rules) had its enablement flipped in place. */
+export interface SpellToggledPayload {
+  spellId: string;
+  sessionId: string;
+  /** The specific rule toggled, or `null` when the whole active spell was toggled. */
+  ruleId: string | null;
+  enabled: boolean;
+  /** The updated active-spell entry (authoritative enablement + ruleIterations). */
+  activeSpell: ActiveSpell;
+  timestamp: number;
+}
+
+export interface SpellActivatedEvent {
+  type: 'spell:activated';
+  data: SpellActivatedPayload;
+}
+
+export interface SpellDeactivatedEvent {
+  type: 'spell:deactivated';
+  data: SpellDeactivatedPayload;
+}
+
+// Ensemble Events (P4 — multi-session coordination unit)
+export interface EnsembleCreatedEvent {
+  type: 'ensemble:created';
+  data: Ensemble;
+}
+
+export interface EnsembleUpdatedEvent {
+  type: 'ensemble:updated';
+  data: Ensemble;
+}
+
+export interface EnsembleDisbandedEvent {
+  type: 'ensemble:disbanded';
+  data: { id: string; memberSessionIds: string[]; spellId: string };
+}
+
+export interface EnsembleMessageEvent {
+  type: 'ensemble:message';
+  data: {
+    ensembleId: string;
+    senderSessionId: string | null;
+    recipients: string[];
+    content: string;
+    timestamp: number;
+  };
+}
+
 export interface CustomPromptCreatedEvent {
   type: 'custom_prompt:created';
   data: CustomPrompt;
@@ -333,6 +406,12 @@ export type DomainEvent =
   | TeamDeletedEvent
   | TeamArchivedEvent
   | SpellInvokedEvent
+  | SpellActivatedEvent
+  | SpellDeactivatedEvent
+  | EnsembleCreatedEvent
+  | EnsembleUpdatedEvent
+  | EnsembleDisbandedEvent
+  | EnsembleMessageEvent
   | CustomPromptCreatedEvent
   | CustomPromptUpdatedEvent
   | CustomPromptDeletedEvent
@@ -376,7 +455,17 @@ export interface TypedEventMap {
   'notify:session_completed': { sessionId: string; name: string };
   'notify:session_failed': { sessionId: string; name: string };
   'notify:needs_input': { sessionId: string; name: string; message?: string };
-  'notify:progress': { sessionId: string; taskId?: string; message?: string };
+  // C3: `channel` dropped (notify-channel is in-app only). Spell-sourced
+  // notifications carry spellId/ruleId/level; session-progress notifications
+  // carry taskId. All fields beyond sessionId are optional to serve both.
+  'notify:progress': {
+    sessionId: string;
+    taskId?: string;
+    spellId?: string;
+    ruleId?: string;
+    message?: string;
+    level?: 'info' | 'success' | 'warn';
+  };
   'session:modal': {
     sessionId: string;
     modalId: string;
@@ -402,6 +491,10 @@ export interface TypedEventMap {
     content: string;
     mode: 'send' | 'paste';
     senderSessionId: string | null;
+    /** Project the sender lives in (null = UI). */
+    senderProjectId?: string | null;
+    /** Project the target session lives in. */
+    targetProjectId?: string | null;
     timestamp: number;
   };
   // Team member events
@@ -416,6 +509,36 @@ export interface TypedEventMap {
   'team:archived': Team;
   // Spell events
   'spell:invoked': SpellInvocationResult;
+  'spell:activated': SpellActivatedPayload;
+  'spell:deactivated': SpellDeactivatedPayload;
+  // PI-6: lightweight per-rule observability so silent dispatch failures are visible.
+  'spell:rule_fired': {
+    sessionId: string;
+    spellId: string;
+    ruleId: string;
+    event: string;
+    action: string;
+    // C5: 'blocked' (permission-gated) and 'skipped' (concurrency cap) join the
+    // original ok/error so blocked runs are observable, never silent.
+    outcome: 'ok' | 'error' | 'blocked' | 'skipped';
+    reason?: string;
+    timestamp: number;
+  };
+  // D9/FR-6.6: loop-counter reset broadcast so the UI can drop optimistic state.
+  'spell:loop_reset': SpellLoopResetPayload;
+  // C4: enable/disable toggle applied in place (preserves ruleIterations).
+  'spell:toggled': SpellToggledPayload;
+  // Ensemble events
+  'ensemble:created': Ensemble;
+  'ensemble:updated': Ensemble;
+  'ensemble:disbanded': { id: string; memberSessionIds: string[]; spellId: string };
+  'ensemble:message': {
+    ensembleId: string;
+    senderSessionId: string | null;
+    recipients: string[];
+    content: string;
+    timestamp: number;
+  };
   'custom_prompt:created': CustomPrompt;
   'custom_prompt:updated': CustomPrompt;
   'custom_prompt:deleted': { id: string };

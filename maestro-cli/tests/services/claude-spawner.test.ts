@@ -137,6 +137,10 @@ describe('ClaudeSpawner', () => {
 
   describe('buildClaudeArgs', () => {
     const officialClaudeModels = [
+      'claude-fable-5',
+      'claude-fable-5[1m]',
+      'claude-sonnet-5',
+      'claude-sonnet-5[1m]',
       'claude-opus-4-8',
       'claude-opus-4-7',
       'claude-opus-4-7[1m]',
@@ -362,6 +366,33 @@ describe('ClaudeSpawner', () => {
 
       expect(args).toBeDefined();
       expect(Array.isArray(args)).toBe(true);
+    });
+  });
+
+  describe('plugin hooks.json command resolution', () => {
+    // Regression guard: hook commands must resolve maestro via MAESTRO_CLI_PATH
+    // (through ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli) instead of a bare `maestro`
+    // PATH lookup, since interactive shell startup files (e.g. ~/.zshrc) can
+    // re-prepend a stale/different `maestro` ahead of what the server already
+    // resolved and injected for this session.
+    it.each(['worker', 'coordinator'])('plugin for %s mode has no bare `maestro` hook commands', async (mode) => {
+      const pluginDir = spawner.getPluginDir(mode);
+      expect(pluginDir).toBeTruthy();
+
+      const hooksPath = join(pluginDir as string, 'hooks', 'hooks.json');
+      const hooks = JSON.parse(await (await import('fs/promises')).readFile(hooksPath, 'utf-8'));
+
+      const commands: string[] = [];
+      for (const eventHooks of Object.values(hooks.hooks) as any[]) {
+        for (const entry of eventHooks) {
+          for (const hook of entry.hooks) {
+            commands.push(hook.command);
+          }
+        }
+      }
+
+      const bareMaestroCommands = commands.filter((cmd) => /^maestro\b/.test(cmd));
+      expect(bareMaestroCommands).toEqual([]);
     });
   });
 

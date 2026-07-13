@@ -4,7 +4,7 @@ import type { AgentLogFile } from '../../platform';
 import { parseJsonlText, groupMessages, checkMessagesOngoing } from '../../utils/claude-log';
 import type { ParsedMessage, ConversationGroup } from '../../utils/claude-log';
 import { LogMessageGroup } from './LogMessageGroup';
-import { useSpellStore } from '../../stores/useSpellStore';
+import { useSpellLauncherStore } from '../../stores/useSpellLauncherStore';
 import { Icon } from '../Icon';
 import { SessionDocsMenu } from '../maestro/SessionDocsMenu';
 
@@ -168,7 +168,7 @@ function ContextGauge({ tokens }: { tokens: number }) {
 
 export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDraw }: TerminalStripProps) {
   const provider = resolveLogProvider(agentTool);
-  const openPicker = useSpellStore((s) => s.openPicker);
+  const openLauncher = useSpellLauncherStore((s) => s.openLauncher);
   const [resolvedProvider, setResolvedProvider] = useState<LogProvider>(provider);
   // The cwd whose project dir actually held the log. May be an ancestor of the
   // live `cwd` prop once the agent has cd'd into a subdirectory.
@@ -177,6 +177,11 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Fully hide the strip from the layout. When hidden the strip renders no
+  // content and leaves no footprint (the terminal deck reclaims the row); only
+  // the compact floating restore control below remains, so the user can bring
+  // the strip back without reloading the view.
+  const [hidden, setHidden] = useState(false);
   const offsetRef = useRef(0);
   const bodyRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -306,24 +311,29 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   // Don't render until we've found the log file
   if (!ready || !selectedFile) return null;
 
+  // Hidden: no strip content, no layout footprint — just a compact, labelled,
+  // keyboard-reachable restore control floating in the terminal's top corner.
+  if (hidden) {
+    return (
+      <button
+        type="button"
+        className="termStripRestore"
+        onClick={() => setHidden(false)}
+        title="Show session log"
+        aria-label="Show session log"
+      >
+        <span className="termStripChevron" aria-hidden="true">▾</span>
+        <span className="termStripRestoreLabel">Session Log</span>
+        {isOngoing && <span className="termStripLiveDot" />}
+      </button>
+    );
+  }
+
   return (
     <div className={`termStrip ${expanded ? 'termStrip--expanded' : ''}`}>
-      {/* Expanded: full log transcript — opens UPWARD, above the strip */}
-      {expanded && (
-        <div className="termStripOverlay" ref={bodyRef} onScroll={handleScroll}>
-          {allMessages.length === 0 ? (
-            <div className="termStripEmpty">Waiting for log data...</div>
-          ) : (
-            <div className="sessionLogViewer">
-              {groups.map((group, i) => (
-                <LogMessageGroup key={i} group={group} index={i} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* The fused bottom strip */}
+      {/* The fused strip — a horizontal row above the terminal. The bar sits on
+          top; the expanded transcript drops down below it (both in normal flow,
+          never overlaying the terminal). */}
       <div className="termStripBar">
         {/* 1. Session Log toggle */}
         <button
@@ -333,7 +343,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           aria-expanded={expanded}
           title={expanded ? 'Collapse session log' : 'Expand session log'}
         >
-          <span className="termStripChevron">{expanded ? '▾' : '▸'}</span>
+          <span className="termStripChevron">{expanded ? '◂' : '▸'}</span>
           <span className="termStripLabel">Session Log</span>
           {isOngoing && <span className="termStripLiveDot" />}
           {isOngoing && <span className="termStripLiveTag">LIVE</span>}
@@ -343,19 +353,9 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
         <div className="termStripRail">
           <div className="termStripRailInner">
             {stats.contextTokens > 0 && <ContextGauge tokens={stats.contextTokens} />}
-            {stats.cacheHitPct > 0 && (
-              <span className="termStripStat termStripStat--cache" title="Cache hit rate">
-                {stats.cacheHitPct}% cache
-              </span>
-            )}
             {stats.totalOutput > 0 && (
               <span className="termStripStat termStripStat--dim" title="Total output tokens">
                 out {formatTokens(stats.totalOutput)}
-              </span>
-            )}
-            {stats.turns > 0 && (
-              <span className="termStripStat termStripStat--dim" title="API turns">
-                {stats.turns} {stats.turns === 1 ? 'turn' : 'turns'}
               </span>
             )}
             {stats.toolCalls > 0 && (
@@ -371,16 +371,18 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           </div>
         </div>
 
-        {/* 3. Model badge — brass pill, kept fully visible */}
+        {/* 3. Docs & diagrams — inline tabs, open in the shared doc overlay */}
+        <SessionDocsMenu maestroSessionId={maestroSessionId} />
+
+        {/* 4. Model badge — brass pill, kept fully visible */}
         {stats.model && (
           <span className="termStripModel" title="Model">
             {stats.model.replace('claude-', '').replace(/-\d{8}$/, '')}
           </span>
         )}
 
-        {/* 4. Actions */}
+        {/* 5. Actions */}
         <div className="termStripActions">
-          <SessionDocsMenu maestroSessionId={maestroSessionId} />
           <button
             type="button"
             className="termStripActionBtn"
@@ -402,14 +404,38 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           <button
             type="button"
             className="termStripActionBtn"
-            onClick={() => openPicker(maestroSessionId)}
+            onClick={() => openLauncher({ source: 'workspace', targetSessionIds: [maestroSessionId] })}
             title="Cast spell — inject prompt into session"
-            aria-label="Open spell picker"
+            aria-label="Open spell launcher"
           >
             <span className="termStripActionGlyph">✦</span>
           </button>
+          <button
+            type="button"
+            className="termStripActionBtn"
+            onClick={() => setHidden(true)}
+            title="Hide session log"
+            aria-label="Hide session log"
+          >
+            <span className="termStripActionGlyph">×</span>
+          </button>
         </div>
       </div>
+
+      {/* Expanded: full log transcript — drops down below the bar */}
+      {expanded && (
+        <div className="termStripOverlay" ref={bodyRef} onScroll={handleScroll}>
+          {allMessages.length === 0 ? (
+            <div className="termStripEmpty">Waiting for log data...</div>
+          ) : (
+            <div className="sessionLogViewer">
+              {groups.map((group, i) => (
+                <LogMessageGroup key={i} group={group} index={i} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

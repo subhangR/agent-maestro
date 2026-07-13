@@ -1,3 +1,10 @@
+> ## ⚠️ SUPERSEDED (2026-07-04)
+> This document describes the **legacy spell-invocation UI** (terminal-overlay quick-action
+> picker). It does **not** describe the current spell system. The live UI is the **Spell
+> Studio** (Cmd/Ctrl+Shift+S); the v2 multi-rule, hook-triggered spell system is
+> authoritative in **`docs/spell-system-redesign.md` §11** and explained in
+> **`docs/spell-system-explainer.md`**. Kept for historical context only.
+
 # Spells Feature — UI-Side Design Document
 
 ## Overview

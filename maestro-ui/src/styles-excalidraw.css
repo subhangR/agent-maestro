@@ -222,4 +222,736 @@
   }
 }
 
+/* ── Space icons in SpacesRail ── */
+
+.spacesRailSpace {
+  color: var(--muted);
+}
+
+.spacesRailSpace--whiteboard {
+  color: var(--theme-primary, #7aa2f7);
+}
+
+.spacesRailSpace--document {
+  color: var(--theme-accent, #bb9af7);
+}
+
+.spacesRailSpace--collab {
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spacesRailSpace--collab:hover .spaceAvatar {
+  border-radius: 30%;
+  transform: scale(1.05);
+}
+
+.spacesRailSpace--collab.spacesRailSession--active .spaceAvatar {
+  border-radius: 30%;
+}
+
+/* ── Columns Container ── */
+
+.taskBoardColumns {
+  display: flex;
+  gap: 1px;
+  flex: 1;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: rgba(var(--theme-primary-rgb), 0.015);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--theme-primary-rgb), 0.1) transparent;
+}
+
+/* ── Column ── */
+
+.taskBoardColumn {
+  flex: 1 0 240px;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background:
+    linear-gradient(180deg,
+      var(--style-surface-1, var(--bg, #0a0e16)),
+      var(--bg, #0a0e16));
+  border-right: 1px solid rgba(var(--theme-primary-rgb), 0.04);
+  transition: background 0.2s ease;
+}
+
+.taskBoardColumn:last-child {
+  border-right: none;
+}
+
+.taskBoardColumn--dragOver {
+  background: rgba(var(--theme-primary-rgb), 0.04);
+  box-shadow: inset 0 0 0 1px rgba(var(--theme-primary-rgb), 0.12);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.taskBoardColumnCollapsed {
+  flex: 0 0 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 0;
+  background: var(--bg, #0a0e16);
+  border-right: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.taskBoardColumnCollapsed:hover {
+  background: rgba(var(--theme-primary-rgb), 0.05);
+}
+
+.taskBoardColumnCollapsedLabel {
+  font-family: var(--style-font-ui);
+  font-size: 16px;
+  color: rgba(var(--theme-primary-rgb), 0.4);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.taskBoardColumnCollapsedCount {
+  font-family: var(--style-font-ui);
+  font-size: 12px;
+  color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.15);
+  padding: 2px 6px;
+  border-radius: 8px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ── Column Header ── */
+
+.taskBoardColumnHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(var(--theme-primary-rgb), 0.05);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+  background: rgba(var(--theme-primary-rgb), 0.015);
+}
+
+.taskBoardColumnHeader:hover {
+  background: rgba(var(--theme-primary-rgb), 0.03);
+}
+
+.taskBoardColumnDot {
+  font-size: 14px;
+  font-family: var(--style-font-ui);
+}
+
+.taskBoardColumnDot--todo { color: rgba(var(--theme-primary-rgb), 0.4); }
+.taskBoardColumnDot--blocked { color: #ef4444; }
+.taskBoardColumnDot--in_progress {
+  color: #00d9ff;
+  animation: taskBoardPulse 2s ease-in-out infinite;
+}
+.taskBoardColumnDot--in_review { color: #a855f7; }
+.taskBoardColumnDot--completed { color: var(--theme-primary); }
+
+@keyframes taskBoardPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.taskBoardColumnLabel {
+  font-family: var(--style-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(var(--theme-primary-rgb), 0.6);
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.taskBoardColumnCount {
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(var(--theme-primary-rgb), 0.7);
+  background: rgba(var(--theme-primary-rgb), 0.06);
+  padding: 2px 8px;
+  border-radius: var(--style-radius-sm, 4px);
+  min-width: 22px;
+  text-align: center;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.08);
+}
+
+/* ── Column Body ── */
+
+.taskBoardColumnBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--theme-primary-rgb), 0.1) transparent;
+  contain: content;
+}
+
+.taskBoardColumnEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 80px;
+}
+
+.taskBoardColumnEmptyText {
+  font-family: var(--style-font-ui);
+  font-size: 12px;
+  color: rgba(var(--theme-primary-rgb), 0.2);
+  text-transform: lowercase;
+}
+
+/* ── Drag-active body cursor override ── */
+body.dragging-active,
+body.dragging-active * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* ── Task Card ── */
+
+.taskBoardCard {
+  display: flex;
+  flex-shrink: 0;
+  background:
+    linear-gradient(145deg,
+      var(--style-surface-2, var(--panel, #10151e)),
+      var(--style-surface-1, var(--panel, #10151e)));
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.06);
+  border-radius: var(--style-radius-md, 6px);
+  cursor: grab;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, opacity 0.2s ease;
+  overflow: hidden;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.taskBoardCard:hover {
+  border-color: rgba(var(--theme-primary-rgb), 0.15);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transform: translateY(-2px);
+}
+
+.taskBoardCard:active {
+  cursor: grabbing;
+}
+
+.taskBoardCard--dragging {
+  opacity: 0.2;
+  transform: scale(0.97);
+  border-style: dashed;
+  border-color: rgba(var(--theme-primary-rgb), 0.2);
+}
+
+/* ── Drag Ghost ── */
+
+.dragGhostCard {
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.5))
+          drop-shadow(0 0 12px rgba(var(--theme-primary-rgb), 0.15));
+}
+
+.taskBoardCard--ghost {
+  border-color: rgba(var(--theme-primary-rgb), 0.2);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.3),
+    0 0 1px rgba(var(--theme-primary-rgb), 0.1);
+  background:
+    linear-gradient(145deg,
+      var(--style-surface-3, rgba(22, 27, 38, 0.98)),
+      var(--style-surface-2, var(--panel, #10151e)));
+}
+
+.taskBoardCard--active {
+  border-left: none;
+}
+
+.taskBoardCard--blocked {
+  border-left: none;
+}
+
+.taskBoardCard--done {
+  opacity: 0.6;
+}
+
+.taskBoardCard--cancelled {
+  opacity: 0.4;
+}
+
+/* ── Card Stripe ── */
+
+.taskBoardCardStripe {
+  width: 3px;
+  flex-shrink: 0;
+}
+
+.taskBoardCard--active .taskBoardCardStripe {
+  background: linear-gradient(180deg, #38bdf8, #0ea5e9) !important;
+}
+
+.taskBoardCard--blocked .taskBoardCardStripe {
+  background: linear-gradient(180deg, #f87171, #ef4444) !important;
+}
+
+/* ── Card Content ── */
+
+.taskBoardCardContent {
+  flex: 1;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.taskBoardCardTitle {
+  font-family: var(--style-font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-text, #f0f4f8);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.taskBoardCardTitle--cancelled {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* ── Card Meta ── */
+
+.taskBoardCardMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+}
+
+.taskBoardCardPriority {
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.taskBoardCardPriority--high { color: #ff6464; }
+.taskBoardCardPriority--medium { color: #ffb000; }
+.taskBoardCardPriority--low { color: rgba(var(--theme-primary-rgb), 0.4); }
+
+.taskBoardCardSubtasks {
+  color: rgba(var(--theme-primary-rgb), 0.4);
+}
+
+.taskBoardCardTime {
+  color: rgba(var(--theme-primary-rgb), 0.3);
+  margin-left: auto;
+}
+
+/* ── Card Sessions ── */
+
+.taskBoardCardSessions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  color: rgba(var(--theme-primary-rgb), 0.4);
+}
+
+.taskBoardCardSessionDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(var(--theme-primary-rgb), 0.3);
+}
+
+.taskBoardCardSessionDot--active {
+  background: #00d9ff;
+  box-shadow: 0 0 4px rgba(0, 217, 255, 0.5);
+  animation: taskBoardPulse 2s ease-in-out infinite;
+}
+
+.taskBoardCardSessionCount {
+  color: rgba(var(--theme-primary-rgb), 0.4);
+}
+
+/* ── Card Action ── */
+
+.taskBoardCardAction {
+  background: rgba(var(--theme-primary-rgb), 0.04);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.1);
+  color: rgba(var(--theme-primary-rgb), 0.5);
+  padding: 5px 12px;
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: var(--style-radius-sm, 4px);
+  align-self: flex-start;
+}
+
+.taskBoardCardAction:hover {
+  border-color: rgba(var(--theme-primary-rgb), 0.25);
+  color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.08);
+}
+
+.taskBoardCardAction .terminalPrompt {
+  color: var(--terminal-amber, #ffb000);
+  font-weight: 700;
+}
+
+/* ── Task Board Tabs ── */
+
+.taskBoardTabs {
+  display: flex;
+  gap: 2px;
+  background: rgba(var(--theme-primary-rgb), 0.03);
+  border-radius: var(--style-radius-sm, 4px);
+  padding: 3px;
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.06);
+}
+
+.taskBoardTab {
+  background: transparent;
+  border: none;
+  color: rgba(var(--theme-primary-rgb), 0.4);
+  font-family: var(--style-font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: var(--style-radius-sm, 3px);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.taskBoardTab:hover {
+  color: rgba(var(--theme-primary-rgb), 0.6);
+  background: rgba(var(--theme-primary-rgb), 0.04);
+}
+
+.taskBoardTab--active {
+  color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.taskBoardTabSymbol {
+  font-size: 14px;
+}
+
+/* ── Sessions Board ── */
+
+.sessionBoardEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 200px;
+}
+
+.sessionBoardEmptyText {
+  font-family: var(--style-font-ui);
+  font-size: 13px;
+  color: rgba(var(--theme-primary-rgb), 0.2);
+  text-transform: lowercase;
+}
+
+/* ── Session Column ── */
+
+.sessionBoardColumns .sessionBoardColumn {
+  flex: 1 1 0;
+  min-width: 200px;
+  max-width: none;
+}
+
+.sessionBoardColumn {
+  flex: 1 0 280px;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #0a0e16);
+  border-right: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  transition: opacity 0.2s ease;
+}
+
+.sessionBoardColumn:last-child {
+  border-right: none;
+}
+
+.sessionBoardColumn--inactive {
+  opacity: 0.5;
+}
+
+.sessionBoardColumn--inactive:hover {
+  opacity: 0.75;
+}
+
+/* ── Session Column Header ── */
+
+.sessionColumnHeader {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sessionColumnHeader:hover {
+  background: rgba(var(--theme-primary-rgb), 0.05);
+}
+
+.sessionColumnHeaderTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sessionColumnStatusDot {
+  font-size: 14px;
+  font-family: var(--style-font-ui);
+  flex-shrink: 0;
+}
+
+.sessionColumnStatusDot--working {
+  animation: taskBoardPulse 2s ease-in-out infinite;
+}
+
+.sessionColumnName {
+  font-family: var(--style-font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-text, #f0f4f8);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionColumnTaskCount {
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.1);
+  padding: 1px 6px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.sessionColumnHeaderBottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sessionColumnMeta {
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  color: rgba(var(--theme-primary-rgb), 0.35);
+}
+
+.sessionColumnDuration {
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  color: rgba(var(--theme-primary-rgb), 0.35);
+}
+
+/* ── Session Column Timeline ── */
+
+.sessionColumnTimeline {
+  border-bottom: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--theme-primary-rgb), 0.1) transparent;
+}
+
+.sessionColumnTimeline--full {
+  flex: 1;
+  max-height: none;
+  overflow-y: auto;
+}
+
+/* ── Session Column Toggle ── */
+
+.sessionColumnToggle {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.sessionColumnToggleBtn {
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  border-radius: 3px;
+  background: transparent;
+  color: rgba(var(--theme-primary-rgb), 0.35);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sessionColumnToggleBtn:hover {
+  color: var(--theme-primary);
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+}
+
+.sessionColumnToggleBtn--active {
+  color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.1);
+  border-color: rgba(var(--theme-primary-rgb), 0.3);
+}
+
+/* ── Session Column Terminal Host ── */
+
+.sessionColumnTerminalHost {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.sessionColumnTerminalHost .terminalContainer {
+  position: absolute;
+  inset: 0;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.sessionBoardColumn--terminal {
+  min-height: 0;
+}
+
+.sessionBoardColumn--working {
+  border-color: rgba(0, 217, 255, 0.15);
+}
+
+/* Terminal reparented into board column */
+.terminalInBoard {
+  position: absolute !important;
+  inset: 0 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+/* Terminal reparented into TeamView slot host */
+.terminalInTeamView {
+  position: absolute !important;
+  inset: 0 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  border-radius: 0 0 4px 4px;
+}
+
+/* ── Session Column Tasks ── */
+
+.sessionColumnTasks {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--theme-primary-rgb), 0.1) transparent;
+}
+
+.sessionColumnSectionLabel {
+  font-family: var(--style-font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(var(--theme-primary-rgb), 0.3);
+  text-transform: uppercase;
+  padding: 4px 4px 2px;
+}
+
+.sessionColumnTasksEmpty {
+  font-family: var(--style-font-ui);
+  font-size: 12px;
+  color: rgba(var(--theme-primary-rgb), 0.2);
+  padding: 8px 4px;
+  text-align: center;
+}
+
+/* ── Session Task Card ── */
+
+.sessionTaskCard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--panel, #10151e);
+  border: 1px solid var(--theme-border, rgba(255,255,255,0.08));
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.sessionTaskCard:hover {
+  border-color: rgba(var(--theme-primary-rgb), 0.25);
+  background: rgba(var(--theme-primary-rgb), 0.04);
+}
+
+.sessionTaskCardSymbol {
+  font-family: var(--style-font-ui);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.sessionTaskCardTitle {
+  font-family: var(--style-font-ui);
+  font-size: 12px;
+  color: var(--theme-text, #f0f4f8);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionTaskCardStatus {
+  font-family: var(--style-font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
 /* ============================================================ */

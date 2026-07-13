@@ -1500,157 +1500,71 @@ html[data-redesign] .mermaidDiagramFallback {
   }
 }
 
-/* ─── Session docs menu — drop-UP control in the bottom terminal strip ─── */
+/* ─── Session docs tabs — inline row in the bottom terminal strip ─── */
 
-.termStripDocs {
-  position: relative;
+/* Edge-faded column of doc/diagram tabs. Shares the strip's middle space
+   with the stats rail; scrolls vertically when there are many docs. Icon-only
+   in the narrow vertical strip — the full title lives in the button tooltip. */
+.termStripDocTabs {
+  flex: 0 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  padding: 4px 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+.termStripDocTabs::-webkit-scrollbar { display: none; }
+
+.termStripDocTab {
+  flex-shrink: 0;
+  width: 32px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
-}
-
-/* Docs button — wider than the icon-only action buttons (holds a count). */
-.termStripDocsBtn {
-  width: auto;
+  justify-content: center;
   gap: 5px;
-  padding: 0 7px;
-}
-
-.termStripDocsCount {
-  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.termStripDocsBtn--open {
-  color: var(--pn-term-acc, #d99a4e);
-  background: rgba(217, 154, 78, 0.12);
-  border-color: rgba(217, 154, 78, 0.34);
-}
-
-/* The menu opens upward, anchored to the button's right edge. */
-.termStripDocsMenu {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  z-index: 60;
-  min-width: 220px;
-  max-width: 320px;
-  max-height: min(50vh, 380px);
-  overflow-y: auto;
-  padding: 5px;
-  background: var(--pn-term-bg, #1B1812);
+  padding: 0;
   border: 1px solid var(--term-strip-line, #2c2922);
-  border-radius: 8px;
-  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
-  scrollbar-width: thin;
-  animation: docViewerFadeIn 0.12s ease;
-}
-
-.termStripDocsMenuTitle {
-  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
-  font-size: 9px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--pn-term-dim, #8a8474);
-  padding: 4px 8px 6px;
-}
-
-.termStripDocsItem {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid transparent;
   border-radius: 6px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--pn-term-ink, #cfc9bb);
   font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
-  font-size: 12px;
-  text-align: left;
+  font-size: 10px;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.termStripDocsItem:hover {
+.termStripDocTab:hover {
   background: rgba(217, 154, 78, 0.1);
   border-color: rgba(217, 154, 78, 0.28);
   color: var(--pn-term-acc, #d99a4e);
 }
 
-.termStripDocsItemIcon {
+.termStripDocTab--active {
+  color: var(--pn-term-acc, #d99a4e);
+  background: rgba(217, 154, 78, 0.14);
+  border-color: rgba(217, 154, 78, 0.4);
+}
+
+.termStripDocTabIcon {
   flex-shrink: 0;
-  width: 18px;
-  font-size: 11px;
-  text-align: center;
+  font-size: 10px;
   color: var(--pn-term-dim, #8a8474);
 }
 
-.termStripDocsItemIcon--diagram {
+.termStripDocTab--diagram .termStripDocTabIcon,
+.termStripDocTab--active .termStripDocTabIcon {
   color: var(--pn-term-acc, #d99a4e);
 }
 
-.termStripDocsItemLabel {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Overlay — the opened doc, covering the terminal pane (terminal stays mounted).
-   position:fixed is contained to .terminalPane (contain: strict establishes it
-   as the containing block), so this fills the terminal area even though the menu
-   that triggers it lives in the bottom strip. */
-.sessionDocsOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  background: rgba(0, 0, 0, 0.82);
-  animation: docViewerFadeIn 0.15s ease;
-}
-
-.sessionDocsOverlay .docViewerInline,
-.sessionDocsOverlay > .docViewerInline {
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  display: flex;
-}
-
-.sessionDocsOverlay .docViewerPanel {
-  width: 100%;
-  max-width: 100%;
-  height: 100%;
-  max-height: 100%;
-  border-radius: 0;
-}
-
-.sessionDocsOverlayClose {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 41;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--muted, rgba(255, 255, 255, 0.6));
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease;
-}
-
-.sessionDocsOverlayClose:hover {
-  color: var(--terminal-green, #4ec9b0);
-  border-color: rgba(var(--theme-primary-rgb), 0.5);
+.termStripDocTabLabel {
+  /* Hidden in the narrow vertical strip — the doc title is the button tooltip. */
+  display: none;
 }

@@ -29,6 +29,11 @@ import { useUIStore } from './useUIStore';
 import { WS_URL } from '../utils/serverConfig';
 import { playEventSound, soundManager } from '../services/soundManager';
 import { usePromptAnimationStore, selectPromptSurface, type PromptSurface } from './usePromptAnimationStore';
+import { useActiveSpellsStore } from './useActiveSpellsStore';
+import { useEnsembleStore } from './useEnsembleStore';
+import { useSpellNotificationsStore } from './useSpellNotificationsStore';
+import { useTeamMemberIntroStore } from './useTeamMemberIntroStore';
+import { useSpellCastPulseStore } from '../utils/useSpellCastPulse';
 import { buildTeamGroups } from '../utils/teamGrouping';
 
 /**
@@ -69,6 +74,30 @@ function resolvePromptAnimationMeta(
 
   const senderInitial = senderName?.trim()?.[0]?.toUpperCase();
   return { accent, senderName, targetName, senderInitial, edgeTravel };
+}
+
+/**
+ * If a server session payload carries `activeSpells`, mirror it into the
+ * per-session ring store so the borders survive a refetch / reconnect without
+ * waiting for the next `spell:activated`. The session type doesn't formally
+ * declare the field yet (server-side foundation work) so we read it loosely.
+ */
+function hydrateActiveSpellsFromSession(session: MaestroSession | undefined | null) {
+  if (!session) return;
+  const raw = (session as unknown as { activeSpells?: ReadonlyArray<any> }).activeSpells;
+  if (!Array.isArray(raw)) return;
+  useActiveSpellsStore.getState().hydrate(
+    session.id,
+    raw.map((s: any) => ({
+      spellId: s.spellId,
+      spellName: s.spellName,
+      color: s.color,
+      ensembleId: s.ensembleId,
+      castAt: typeof s.castAt === 'number' ? s.castAt : Date.now(),
+      enabled: s.enabled ?? true,
+      ruleIterations: (s.ruleIterations && typeof s.ruleIterations === 'object') ? s.ruleIterations : {},
+    })),
+  );
 }
 
 // Global WebSocket singleton
@@ -314,7 +343,12 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
    * Play a sound for a session-related event using team member instruments when available.
    * Falls back to project/global instrument if session has no team members registered.
    */
-  const playSessionAwareSound = (eventType: string, sessionOrData: { teamMemberIds?: string[]; teamMemberId?: string } | null) => {
+  const playSessionAwareSound = (eventType: string, sessionOrData: { id?: string; teamMemberIds?: string[]; teamMemberId?: string } | null) => {
+    // Per-session random instrument takes precedence over team member / project sounds
+    if (sessionOrData?.id) {
+      soundManager.playSessionInstrumentSound(eventType as any, sessionOrData.id).catch(() => {});
+      return;
+    }
     let teamMemberIds: string[] = [];
     if (sessionOrData?.teamMemberIds?.length) {
       teamMemberIds = sessionOrData.teamMemberIds;
@@ -362,13 +396,17 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'session:created': {
         const session = normalizeSession(message.data.session || message.data);
         batchSet((prev) => ({ sessions: { ...prev.sessions, [session.id]: session } }));
-        // Play sound using team member instruments when available
+        hydrateActiveSpellsFromSession(session);
+        // Assign a random instrument for this session at start
+        soundManager.getOrAssignSessionInstrument(session.id);
+        // Play sound using this session's instrument
         playSessionAwareSound(message.event, session);
         break;
       }
       case 'session:updated': {
         const updatedSession = applyPendingLifecycle(normalizeSession(message.data));
         batchSet((prev) => ({ sessions: { ...prev.sessions, [updatedSession.id]: updatedSession } }));
+        hydrateActiveSpellsFromSession(updatedSession);
         // Play sound using team member instruments (only if not a high-frequency update)
         if (shouldLogDetails) {
           playSessionAwareSound(message.event, updatedSession);
@@ -392,7 +430,9 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           const { [message.data.id]: _, ...sessions } = prev.sessions;
           return { sessions };
         });
+        useActiveSpellsStore.getState().clearSession(message.data.id);
         playSessionAwareSound(message.event, deletedSession || message.data);
+        soundManager.clearSessionInstrument(message.data.id);
         break;
       }
       case 'session:spawn': {
@@ -514,31 +554,11 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
         break;
       }
       case 'spell:invoked': {
-        const { sessionId: maestroSessionId, content, entityType, entityId, spellName } = message.data;
-
-        // Find terminal session for this maestro session
-        const spellSessions = useSessionStore.getState().sessions;
-        const terminalSession = spellSessions.find(
-          (s) => s.maestroSessionId === maestroSessionId && !s.exited
-        );
-        if (!terminalSession) break;
-
-        // Inject prompt into PTY (same pattern as session:prompt_send)
-        const spellPtyId = terminalSession.id;
-        const spellText = content.replace(/[\r\n]+$/, '');
-        (async () => {
-          try {
-            if (spellText) {
-              await platform.terminal.write(spellPtyId, spellText, 'system');
-              await new Promise(r => setTimeout(r, 200));
-            }
-            await platform.terminal.write(spellPtyId, '\r', 'system');
-          } catch {
-            // best-effort
-          }
-        })();
-
-        // Trigger prompt animation (spell delivery has no sender → target pulse only).
+        // Feedback-only since P1 foundation: the server now delivers spell
+        // content through `session:prompt_send` (single-path PTY write). This
+        // event is the cosmetic "spell N landed on session X" signal — never
+        // write to the PTY here, or we double-inject the prompt.
+        const { sessionId: maestroSessionId, content, spellName } = message.data;
         const spellMeta = resolvePromptAnimationMeta(
           get().sessions,
           get().teams,
@@ -549,11 +569,90 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           surface: 'rail',
           senderMaestroSessionId: null,
           targetMaestroSessionId: maestroSessionId,
-          content: `[Spell: ${spellName}] ${content.slice(0, 50)}...`,
+          content: `[Spell: ${spellName}] ${(content ?? '').slice(0, 50)}...`,
           direction: 'forward',
           ...spellMeta,
         });
-
+        break;
+      }
+      case 'spell:activated': {
+        const { sessionIds, spellId, activeSpell } = message.data ?? {};
+        if (!sessionIds || !Array.isArray(sessionIds) || !spellId || !activeSpell) break;
+        useActiveSpellsStore.getState().activate({
+          sessionIds,
+          spellId,
+          spellName: activeSpell.spellName ?? message.data.spellName ?? spellId,
+          color: activeSpell.color,
+          ensembleId: activeSpell.ensembleId,
+          castAt: activeSpell.castAt ?? Date.now(),
+          enabled: activeSpell.enabled ?? true,
+          ruleIterations: activeSpell.ruleIterations ?? {},
+        });
+        // Trigger the transient ring-host cast-pulse on each affected session.
+        const markCast = useSpellCastPulseStore.getState().markCast;
+        const at = activeSpell.castAt ?? Date.now();
+        for (const sid of sessionIds) markCast(sid, at);
+        break;
+      }
+      case 'spell:deactivated': {
+        const { sessionIds, spellId } = message.data ?? {};
+        if (!sessionIds || !Array.isArray(sessionIds) || !spellId) break;
+        useActiveSpellsStore.getState().deactivate({ sessionIds, spellId });
+        break;
+      }
+      case 'spell:toggled': {
+        // C4 — enable/disable flipped in place server-side; reconcile the
+        // authoritative ActiveSpell (enabled + preserved ruleIterations).
+        const { sessionId, spellId, activeSpell } = message.data ?? {};
+        if (!sessionId || !spellId) break;
+        useActiveSpellsStore.getState().applyToggle({
+          maestroSessionId: sessionId,
+          spellId,
+          enabled: activeSpell?.enabled ?? Boolean(message.data?.enabled),
+          ruleIterations: activeSpell?.ruleIterations,
+        });
+        break;
+      }
+      case 'ensemble:created':
+      case 'ensemble:updated': {
+        // C1 — a coordinate cast (or CLI/another client) created or changed an
+        // ensemble; route it into useEnsembleStore so the ensemble UI surfaces it.
+        const ens = message.data?.ensemble ?? message.data;
+        if (ens?.id) useEnsembleStore.getState().upsert(ens);
+        break;
+      }
+      case 'ensemble:disbanded':
+      case 'ensemble:deleted': {
+        const ens = message.data?.ensemble ?? message.data;
+        const ensembleId = ens?.id ?? message.data?.ensembleId;
+        if (ensembleId) useEnsembleStore.getState().remove(ensembleId);
+        break;
+      }
+      case 'spell:loop_reset': {
+        // CONTRACT-ADDENDUM Addition 2 — authoritative loop-counter reset. The
+        // server ships the reconciled ActiveSpell; replace ruleIterations from it.
+        const { sessionId, spellId, activeSpell } = message.data ?? {};
+        if (!sessionId || !spellId) break;
+        useActiveSpellsStore.getState().applyLoopReset({
+          maestroSessionId: sessionId,
+          spellId,
+          ruleIterations: activeSpell?.ruleIterations ?? {},
+        });
+        break;
+      }
+      case 'spell:rule_fired': {
+        // CONTRACT-ADDENDUM Addition 2 — per-session observability feed (S8).
+        const { sessionId, spellId, ruleId, event, action, outcome, timestamp } = message.data ?? {};
+        if (!sessionId || !spellId) break;
+        useActiveSpellsStore.getState().recordRuleFired({
+          maestroSessionId: sessionId,
+          spellId,
+          ruleId: ruleId ?? '',
+          event: event ?? '',
+          action: action ?? '',
+          outcome: outcome === 'error' ? 'error' : 'ok',
+          timestamp: typeof timestamp === 'number' ? timestamp : undefined,
+        });
         break;
       }
       case 'task:session_added':
@@ -578,23 +677,34 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'notify:task_blocked':
       case 'notify:task_session_completed':
       case 'notify:task_session_failed':
+      case 'notify:progress': {
+        // C3 — real in-app delivery for notify-channel rules: a visible toast
+        // plus a persistent history entry (SpellNotificationToasts host), in
+        // addition to the session-instrument sound below.
+        const { sessionId, spellId, ruleId, message: text, level } = message.data ?? {};
+        if (text) {
+          useSpellNotificationsStore.getState().notify({
+            sessionId,
+            spellId,
+            ruleId,
+            message: text,
+            level: level === 'success' || level === 'warn' ? level : 'info',
+          });
+        }
+        if (sessionId) {
+          soundManager.playSessionInstrumentSound(message.event as any, sessionId).catch(() => { /* best-effort sound */ });
+        } else {
+          playEventSound(message.event as any);
+        }
+        break;
+      }
       case 'notify:session_completed':
       case 'notify:session_failed':
-      case 'notify:needs_input':
-      case 'notify:progress': {
-        // Try to get team member IDs from the associated session for ensemble sound
+      case 'notify:needs_input': {
+        // Use the associated session's randomly-assigned instrument when available
         const sessionId = message.data?.sessionId;
-        let teamMemberIds: string[] = [];
         if (sessionId) {
-          const session = get().sessions[sessionId];
-          if (session?.teamMemberIds?.length) {
-            teamMemberIds = session.teamMemberIds;
-          } else if (session?.teamMemberId) {
-            teamMemberIds = [session.teamMemberId];
-          }
-        }
-        if (teamMemberIds.length > 0) {
-          soundManager.playSessionEventSound(message.event as any, teamMemberIds).catch(() => { /* best-effort sound */ });
+          soundManager.playSessionInstrumentSound(message.event as any, sessionId).catch(() => { /* best-effort sound */ });
         } else {
           playEventSound(message.event as any);
         }
@@ -609,10 +719,16 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
       case 'team_member:updated':
       case 'team_member:archived': {
         const teamMember = message.data;
+        const isNewMember = message.event === 'team_member:created' && !get().teamMembers[teamMember.id];
         batchSet((prev) => ({ teamMembers: { ...prev.teamMembers, [teamMember.id]: teamMember } }));
         // Sync instrument with sound manager
         if (teamMember.soundInstrument) {
           soundManager.registerTeamMember(teamMember.id, teamMember.soundInstrument);
+        }
+        // Introduce members created by agents/CLI (or other clients). Members
+        // created by this client's own modal are suppressed via markLocallyCreated.
+        if (isNewMember) {
+          useTeamMemberIntroStore.getState().enqueue(teamMember.id);
         }
         // Play sound for event
         playEventSound(message.event as any);
@@ -1212,6 +1328,10 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
 
     createTeamMember: async (data) => {
       const teamMember = await maestroClient.createTeamMember(data);
+      // Suppress the intro dialog for members created by this client's own
+      // modal — the user already configured them. The matching WS event will
+      // consume this mark instead of enqueuing an introduction.
+      useTeamMemberIntroStore.getState().markLocallyCreated(teamMember.id);
       set((prev) => ({ teamMembers: { ...prev.teamMembers, [teamMember.id]: teamMember } }));
       return teamMember;
     },

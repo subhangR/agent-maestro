@@ -7,6 +7,23 @@
  * copied from Finder, and they become attachments.
  */
 
+type ImageLikeName = {
+    filename?: string;
+    name?: string;
+};
+
+type ImageRenameOptions = {
+    startIndex?: number;
+    renameAll?: boolean;
+};
+
+type DroppedImageFile = {
+    filename: string;
+    mimeType: string;
+    data: string;
+    lastModified?: number;
+};
+
 const GENERIC_CLIPBOARD_NAMES = new Set([
     "",
     "image.png",
@@ -26,6 +43,16 @@ function isGenericClipboardName(name: string): boolean {
     return GENERIC_CLIPBOARD_NAMES.has(lower) || /^pasted[-_]image(?:[-_]\d+)?\.(png|jpe?g|gif|webp)$/i.test(name);
 }
 
+export function nextImageNameIndex(items: ImageLikeName[]): number {
+    let max = 0;
+    for (const item of items) {
+        const name = item.filename || item.name || "";
+        const match = /^image(\d+)\.[^.]+$/i.exec(name);
+        if (match) max = Math.max(max, Number(match[1]));
+    }
+    return max + 1;
+}
+
 function fileKey(f: File): string {
     return `${f.name}:${f.size}:${f.type}`;
 }
@@ -38,14 +65,37 @@ function extForMime(mimeType: string): string {
     return sub;
 }
 
+function withImageSequenceName(file: File, index: number): File {
+    const name = `image${index}.${extForMime(file.type)}`;
+    const renamed = new File([file], name, { type: file.type, lastModified: file.lastModified });
+    if (renamed.name !== name) {
+        try {
+            Object.defineProperty(renamed, "name", { value: name, configurable: true });
+        } catch {
+            // Browser File constructors normally preserve the supplied name.
+        }
+    }
+    return renamed;
+}
+
+function applyImageSequenceNames(files: File[], options: ImageRenameOptions = {}): File[] {
+    let nextIndex = options.startIndex ?? 1;
+    return files.map((file) => {
+        if (!options.renameAll && !isGenericClipboardName(file.name)) return file;
+        const renamed = withImageSequenceName(file, nextIndex);
+        nextIndex += 1;
+        return renamed;
+    });
+}
+
 /**
  * Extract image Files from a paste or drop DataTransfer.
  *
  * Reads both `items` (screenshots, "Copy Image") and `files` (OS file
- * copies — WebKit sometimes only populates one of the two), deduping
+ * copies - WebKit sometimes only populates one of the two), deduping
  * entries that appear in both.
  */
-export function extractImageFiles(data: DataTransfer | null): File[] {
+export function extractImageFiles(data: DataTransfer | null, options: ImageRenameOptions = {}): File[] {
     if (!data) return [];
 
     const out: File[] = [];
@@ -71,21 +121,43 @@ export function extractImageFiles(data: DataTransfer | null): File[] {
         }
     }
 
-    let genericImageIndex = 0;
-    return out.map((file) => {
-        if (!isGenericClipboardName(file.name)) return file;
-        genericImageIndex += 1;
-        const name = `image${genericImageIndex}.${extForMime(file.type)}`;
-        const renamed = new File([file], name, { type: file.type, lastModified: file.lastModified });
-        if (renamed.name !== name) {
-            try {
-                Object.defineProperty(renamed, "name", { value: name, configurable: true });
-            } catch {
-                // Browser File constructors normally preserve the supplied name.
-            }
-        }
-        return renamed;
+    return applyImageSequenceNames(out, options);
+}
+
+function base64ToFile(image: DroppedImageFile): File {
+    const binary = atob(image.data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return new File([bytes], image.filename, {
+        type: image.mimeType,
+        lastModified: image.lastModified ?? Date.now(),
     });
+}
+
+export async function extractDroppedImagePathFiles(paths: string[], options: ImageRenameOptions = {}): Promise<File[]> {
+    if (paths.length === 0) return [];
+
+    let invoke: undefined | (<T>(cmd: string, args?: Record<string, unknown>) => Promise<T>);
+    try {
+        ({ invoke } = await import("@tauri-apps/api/core"));
+    } catch {
+        return [];
+    }
+    if (!invoke) return [];
+
+    const files: File[] = [];
+    for (const path of paths) {
+        try {
+            const image = await invoke<DroppedImageFile>("read_dropped_image_file", { path });
+            files.push(base64ToFile(image));
+        } catch {
+            // Skip non-images, unreadable paths, and files rejected by the native guard.
+        }
+    }
+
+    return applyImageSequenceNames(files, { ...options, renameAll: true });
 }
 
 /** True if the DataTransfer carries files at all (used to accept drag-over). */

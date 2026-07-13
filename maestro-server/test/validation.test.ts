@@ -32,14 +32,14 @@ describe('spawnSessionSchema — backward & forward compatibility', () => {
   });
 
   it('accepts legacy top-level model + agentTool (pre-launchConfig clients)', () => {
-    const result = spawnSessionSchema.safeParse({ ...base, agentTool: 'codex', model: 'gpt-5.5' });
+    const result = spawnSessionSchema.safeParse({ ...base, agentTool: 'codex', model: 'gpt-5.6-sol' });
     expect(result.success).toBe(true);
   });
 
   it('tolerates unknown/future fields inside launchConfig (not .strict())', () => {
     const result = spawnSessionSchema.safeParse({
       ...base,
-      launchConfig: { provider: 'openai', model: 'gpt-5.5', temperature: 0.4 },
+      launchConfig: { provider: 'openai', model: 'gpt-5.6-terra', reasoningEffort: 'max', temperature: 0.4 },
     });
     expect(result.success).toBe(true);
   });

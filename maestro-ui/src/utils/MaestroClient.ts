@@ -34,10 +34,23 @@ import type {
     CreateTeamPayload,
     UpdateTeamPayload,
     WorkflowTemplate,
-    SpellDefinition,
+    Spell,
+    CreateSpellPayload,
+    UpdateSpellPayload,
+    ActiveSpell,
+    ActivateSpellResult,
+    SpellCastMode,
+    HookDispatchDryRunResult,
+    ResetLoopResult,
     SpellEntity,
     SpellEntityType,
-    SpellInvocation,
+    SpellDefinition,
+    SpellInvocationPayload,
+    SpellInvocationResult,
+    CustomPrompt,
+    CreateCustomPromptPayload,
+    UpdateCustomPromptPayload,
+    Ensemble,
     GitCapabilities,
     GitDiffSummary,
     GitPrInfo,
@@ -758,44 +771,182 @@ class MaestroClient {
         return this.fetch<WorkflowTemplate>(`/workflow-templates/${encodeURIComponent(id)}`);
     }
 
-    // ==================== SPELLS ====================
+    // ==================== SPELLS (first-class entity, P1+) ====================
 
-    async getSpellDefinitions(): Promise<SpellDefinition[]> {
-        return this.fetch<SpellDefinition[]>('/spells/definitions');
+    async listSpells(): Promise<Spell[]> {
+        return this.fetch<Spell[]>('/spells');
     }
 
-    async getSpellEntities(type: SpellEntityType, projectId?: string): Promise<SpellEntity[]> {
-        const params = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
-        return this.fetch<SpellEntity[]>(`/spells/entities/${type}${params}`);
+    async getSpell(id: string): Promise<Spell> {
+        return this.fetch<Spell>(`/spells/${id}`);
     }
 
-    async invokeSpell(invocation: SpellInvocation): Promise<void> {
-        await this.fetch<{ success: boolean }>('/spells/invoke', {
+    async createSpell(payload: CreateSpellPayload): Promise<Spell> {
+        return this.fetch<Spell>('/spells', {
             method: 'POST',
-            body: JSON.stringify(invocation),
+            body: JSON.stringify(payload),
         });
     }
 
-    async getCustomPrompts(): Promise<SpellEntity[]> {
-        return this.fetch<SpellEntity[]>('/spells/custom-prompts');
-    }
-
-    async createCustomPrompt(data: { name: string; content: string; description?: string; icon?: string; entityType?: SpellEntityType; tags?: string[] }): Promise<any> {
-        return this.fetch<any>('/spells/custom-prompts', {
-            method: 'POST',
-            body: JSON.stringify(data),
+    async updateSpell(id: string, payload: UpdateSpellPayload): Promise<Spell> {
+        return this.fetch<Spell>(`/spells/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
         });
     }
 
-    async updateCustomPrompt(id: string, data: { name?: string; content?: string; description?: string; icon?: string; entityType?: SpellEntityType; tags?: string[] }): Promise<any> {
-        return this.fetch<any>(`/spells/custom-prompts/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(data),
+    async deleteSpell(id: string): Promise<void> {
+        await this.fetch<{ success: boolean }>(`/spells/${id}`, { method: 'DELETE' });
+    }
+
+    async activateSpell(
+        spellId: string,
+        targetSessionIds: string[],
+        invokerSessionId?: string | null,
+        opts?: { castMode?: SpellCastMode; ensembleName?: string },
+    ): Promise<ActivateSpellResult> {
+        return this.fetch(`/spells/${spellId}/activate`, {
+            method: 'POST',
+            body: JSON.stringify({
+                targetSessionIds,
+                invokerSessionId: invokerSessionId ?? null,
+                // C1 — no longer dropped: coordinate casts reach the EnsembleService.
+                ...(opts?.castMode ? { castMode: opts.castMode } : {}),
+                ...(opts?.ensembleName ? { ensembleName: opts.ensembleName } : {}),
+            }),
+        });
+    }
+
+    async deactivateSpell(spellId: string, targetSessionIds: string[]): Promise<{ sessionIds: string[] }> {
+        return this.fetch(`/spells/${spellId}/deactivate`, {
+            method: 'POST',
+            body: JSON.stringify({ targetSessionIds }),
+        });
+    }
+
+    /**
+     * Enable/disable an active spell in place (C4) — preserves ruleIterations,
+     * unlike the old deactivate/re-activate dance. Pass `ruleId` to toggle a
+     * single rule's runtime enablement. Reconciled via the `spell:toggled` WS event.
+     */
+    async toggleSpell(spellId: string, sessionId: string, enabled: boolean, ruleId?: string): Promise<{ sessionId: string; spellId: string; activeSpell: ActiveSpell }> {
+        return this.fetch(`/spells/${spellId}/toggle`, {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, enabled, ...(ruleId ? { ruleId } : {}) }),
+        });
+    }
+
+    /**
+     * Dry-run a hook dispatch (C2 — side-effect-free "test fire"). Returns the
+     * per-rule match report (which rules would fire and why). Bypasses the
+     * self-only guard server-side, so the UI may probe any session.
+     */
+    async dispatchHookDryRun(params: {
+        sessionId: string;
+        event: string;
+        payload?: Record<string, unknown>;
+    }): Promise<HookDispatchDryRunResult> {
+        return this.fetch<HookDispatchDryRunResult>('/hooks/dispatch', {
+            method: 'POST',
+            body: JSON.stringify({ ...params, dryRun: true }),
+        });
+    }
+
+    /** Reset loop counters for an active spell (CONTRACT-ADDENDUM Addition 1). */
+    async resetSpellLoop(spellId: string, sessionId: string, ruleId?: string): Promise<ResetLoopResult> {
+        return this.fetch<ResetLoopResult>(`/spells/${spellId}/reset-loop`, {
+            method: 'POST',
+            body: JSON.stringify({ sessionId, ruleId }),
+        });
+    }
+
+    // ============ CASTS / ENTITIES / CUSTOM PROMPTS (Mechanism B) ============
+
+    /** Invocation templates (verbs) available, optionally filtered by entity type. */
+    async listSpellDefinitions(entityType?: SpellEntityType): Promise<SpellDefinition[]> {
+        const query = entityType ? `?entityType=${encodeURIComponent(entityType)}` : '';
+        return this.fetch<SpellDefinition[]>(`/spells/definitions${query}`);
+    }
+
+    /** Entities of a given type that a one-shot cast can be launched from. */
+    async listSpellEntities(type: SpellEntityType, projectId: string): Promise<SpellEntity[]> {
+        return this.fetch<SpellEntity[]>(
+            `/spells/entities/${encodeURIComponent(type)}?projectId=${encodeURIComponent(projectId)}`,
+        );
+    }
+
+    /** Fire a one-shot cast (Mechanism B). No persistence, no ring. */
+    async invokeSpell(payload: SpellInvocationPayload): Promise<SpellInvocationResult> {
+        return this.fetch<SpellInvocationResult>('/spells/invoke', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async listCustomPrompts(): Promise<CustomPrompt[]> {
+        return this.fetch<CustomPrompt[]>('/spells/custom-prompts');
+    }
+
+    async createCustomPrompt(payload: CreateCustomPromptPayload): Promise<CustomPrompt> {
+        return this.fetch<CustomPrompt>('/spells/custom-prompts', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async updateCustomPrompt(id: string, payload: UpdateCustomPromptPayload): Promise<CustomPrompt> {
+        return this.fetch<CustomPrompt>(`/spells/custom-prompts/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
         });
     }
 
     async deleteCustomPrompt(id: string): Promise<void> {
         await this.fetch<{ success: boolean }>(`/spells/custom-prompts/${id}`, { method: 'DELETE' });
+    }
+
+    // ==================== ENSEMBLES (P4) ====================
+
+    async listEnsembles(): Promise<Ensemble[]> {
+        return this.fetch<Ensemble[]>('/ensembles').catch(() => []);
+    }
+
+    async createEnsemble(payload: { name: string; color: string; objective: string; memberSessionIds: string[]; leaderSessionId?: string | null; spellId: string }): Promise<Ensemble> {
+        return this.fetch<Ensemble>('/ensembles', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async updateEnsemble(id: string, payload: { name?: string; objective?: string; leaderSessionId?: string | null }): Promise<Ensemble> {
+        return this.fetch<Ensemble>(`/ensembles/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload),
+        });
+    }
+
+    async addEnsembleMember(id: string, sessionId: string): Promise<Ensemble> {
+        return this.fetch<Ensemble>(`/ensembles/${id}/members`, {
+            method: 'POST',
+            body: JSON.stringify({ sessionId }),
+        });
+    }
+
+    async removeEnsembleMember(id: string, sessionId: string): Promise<Ensemble> {
+        return this.fetch<Ensemble>(`/ensembles/${id}/members/${encodeURIComponent(sessionId)}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async disbandEnsemble(id: string): Promise<void> {
+        await this.fetch<{ success: boolean }>(`/ensembles/${id}/disband`, { method: 'POST' });
+    }
+
+    async messageEnsemble(id: string, content: string, senderSessionId?: string | null): Promise<void> {
+        await this.fetch<{ success: boolean }>(`/ensembles/${id}/message`, {
+            method: 'POST',
+            body: JSON.stringify({ content, senderSessionId: senderSessionId ?? null }),
+        });
     }
 
     // ── Git ───────────────────────────────────────────────────────────────────

@@ -41,6 +41,7 @@ import { useAgentShortcutStore } from './useAgentShortcutStore';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useSecureStorageStore } from './useSecureStorageStore';
 import { useMaestroStore } from './useMaestroStore';
+import { reconcileProjectsWithServer, resolveActiveProject, toMaestroProject } from './projectSync';
 import { IS_TAURI, platform } from '../platform';
 
 /**
@@ -358,16 +359,10 @@ export function initApp(
 
     const projectById = new Map(state.projects.map((p) => [p.id, p]));
 
-    const activeProjectId = projectById.size === 0
-      ? ''
-      : projectById.has(state.activeProjectId)
-        ? state.activeProjectId
-        : state.projects[0].id;
-
-    const activeSessionByProject = Object.fromEntries(
-      Object.entries(state.activeSessionByProject).filter(([projectId]) =>
-        projectById.has(projectId),
-      ),
+    const { activeProjectId, activeSessionByProject } = resolveActiveProject(
+      state.projects,
+      state.activeProjectId,
+      state.activeSessionByProject,
     );
 
     // ──── SYNC PROJECTS WITH MAESTRO SERVER ────
@@ -378,67 +373,56 @@ export function initApp(
 
     try {
       const serverProjects = await maestroClient.getProjects();
-      const serverProjectsById = new Map(serverProjects.map((p) => [p.id, p]));
-      const localProjectsById = new Map(state.projects.map((p) => [p.id, p]));
+      const { projectsToDisplay, projectsToCreateOnServer } = reconcileProjectsWithServer({
+        localProjects: state.projects,
+        serverProjects,
+        closedProjectIds,
+        isTauri: IS_TAURI,
+      });
 
-      const mergedProjects: MaestroProject[] = [];
+      const mergedProjects: MaestroProject[] = [...projectsToDisplay];
 
-      for (const serverProj of serverProjects) {
-        // Skip projects that were explicitly closed by the user
-        if (closedProjectIds.has(serverProj.id)) continue;
-
-        const localProj = localProjectsById.get(serverProj.id);
-        mergedProjects.push({
-          id: serverProj.id,
-          name: serverProj.name,
-          workingDir: serverProj.workingDir,
-          createdAt: serverProj.createdAt,
-          updatedAt: serverProj.updatedAt,
-          basePath: serverProj.workingDir || null,
-          environmentId: localProj?.environmentId ?? null,
-          assetsEnabled: localProj?.assetsEnabled ?? true,
-          soundInstrument: localProj?.soundInstrument ?? 'piano',
-          soundConfig: localProj?.soundConfig,
-        });
-      }
-
-      for (const localProj of state.projects) {
-        if (!serverProjectsById.has(localProj.id)) {
-          try {
-            const created = await maestroClient.createProject({
-              name: localProj.name,
-              workingDir: localProj.workingDir,
-              createdAt: localProj.createdAt,
-              updatedAt: localProj.updatedAt,
-              description: '',
-            });
-            mergedProjects.push({
-              id: created.id,
-              name: created.name,
-              workingDir: created.workingDir,
-              createdAt: created.createdAt,
-              updatedAt: created.updatedAt,
-              environmentId: localProj.environmentId,
-              assetsEnabled: localProj.assetsEnabled ?? true,
-              soundInstrument: localProj.soundInstrument ?? 'piano',
-              soundConfig: localProj.soundConfig,
-            });
-          } catch {
-            mergedProjects.push(localProj);
-          }
+      // Desktop only: local-only projects are pushed UP to the server
+      // (offline-first). In web mode `projectsToCreateOnServer` is always
+      // empty — the server is authoritative, so local-only ("ghost")
+      // projects are pruned instead of being resurrected on the server.
+      for (const localProj of projectsToCreateOnServer) {
+        try {
+          const created = await maestroClient.createProject({
+            name: localProj.name,
+            workingDir: localProj.workingDir,
+            createdAt: localProj.createdAt,
+            updatedAt: localProj.updatedAt,
+            description: '',
+          });
+          mergedProjects.push(toMaestroProject(created, localProj));
+        } catch {
+          mergedProjects.push(localProj);
         }
       }
 
-      if (mergedProjects.length > 0) {
+      // Desktop: keep the locally-restored projects if the merge produced
+      // none (offline safety net — never blank the UI on a transient issue).
+      // Web: the server response is authoritative, including the empty case
+      // — that's what prunes stale localStorage ghosts on a real data wipe.
+      if (IS_TAURI) {
+        if (mergedProjects.length > 0) state.projects = mergedProjects;
+      } else {
         state.projects = mergedProjects;
       }
     } catch {
     }
 
+    // Recompute the active project + session-by-project map against the
+    // FINAL (post-sync) project list, so a project pruned/remapped during
+    // sync can't be left dangling as "active".
+    const { activeProjectId: finalActiveProjectId, activeSessionByProject: finalActiveSessionByProject } =
+      resolveActiveProject(state.projects, activeProjectId, activeSessionByProject);
+
     // ──── SET STORE STATE ────
     s.project.getState().setProjects(state.projects);
-    s.project.getState().setActiveProjectId(activeProjectId);
-    s.project.getState().setActiveSessionByProject(activeSessionByProject);
+    s.project.getState().setActiveProjectId(finalActiveProjectId);
+    s.project.getState().setActiveSessionByProject(finalActiveSessionByProject);
     s.project.getState().setClosedProjectIds(Array.from(closedProjectIds));
 
     // ──── WORKSPACE VIEW RESTORATION ────

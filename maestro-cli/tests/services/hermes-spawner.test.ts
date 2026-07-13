@@ -140,7 +140,7 @@ describe('HermesSpawner', () => {
       ...manifest,
       session: {
         ...manifest.session,
-        model: 'openai/gpt-5.5',
+        model: 'openai/gpt-5.6-sol',
         permissionMode: 'interactive',
       },
     }, 'session-123', 'system prompt', 'task prompt');
@@ -148,7 +148,7 @@ describe('HermesSpawner', () => {
     expect(args).toContain('--provider');
     expect(args).toContain('openai-codex');
     expect(args).toContain('--model');
-    expect(args).toContain('gpt-5.5');
+    expect(args).toContain('gpt-5.6-sol');
   });
 
   it('builds interactive Hermes TUI args with the task as the startup query', () => {

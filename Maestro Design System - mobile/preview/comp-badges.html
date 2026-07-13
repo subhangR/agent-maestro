@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Tags & Pills" subtitle="Status pills, priority tags, count chips — mono, hairline" viewport="700x190" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 24px 26px; }
+  .lbl { font-family: var(--pn-mono); font-size: 9.5px; color: var(--pn-ink-4); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 9px; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .row + .lbl { margin-top: 18px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em; padding: 3px 9px; border-radius: var(--pn-r-pill); color: var(--pn-ink-2); background: var(--pn-active); }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill--run { color: var(--pn-run); background: var(--pn-run-soft); }
+  .pill--wait { color: var(--pn-wait); background: var(--pn-wait-soft); }
+  .pill--idle { color: var(--pn-ink-3); background: var(--pn-idle-soft); }
+  .tag { font-family: var(--pn-mono); font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--pn-ink-3); border: 1px solid var(--pn-line-2); border-radius: var(--pn-r-xs); padding: 1.5px 6px; }
+  .tag--high { color: var(--pn-block); border-color: rgba(187,77,61,0.32); }
+  .chip { font-family: var(--pn-mono); font-size: 10.5px; font-weight: 600; color: var(--pn-ink-3); background: var(--pn-active); border-radius: var(--pn-r-pill); padding: 1px 8px; }
+</style>
+</head>
+<body>
+  <p class="lbl">Status pills</p>
+  <div class="row">
+    <span class="pill pill--run"><span class="dot"></span>running</span>
+    <span class="pill pill--wait"><span class="dot"></span>waiting</span>
+    <span class="pill pill--idle"><span class="dot"></span>idle</span>
+  </div>
+  <p class="lbl">Priority tags · count chips</p>
+  <div class="row">
+    <span class="tag tag--high">High</span>
+    <span class="tag">Med</span>
+    <span class="tag">Low</span>
+    <span class="chip">6</span>
+    <span class="chip">2 active</span>
+  </div>
+</body>
+</html>

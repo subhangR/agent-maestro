@@ -12,6 +12,7 @@ import { maestroClient } from "../../utils/MaestroClient";
 import { isDiagramDoc } from "../../utils/docHelpers";
 import { LaunchConfigDropdown } from "./LaunchConfigDropdown";
 import { Icon, Glyph, Avatar, Avatars } from "./redesign/kit";
+import { ShareToSpaceModal } from "../share/ShareToSpaceModal";
 
 type TaskListItemProps = {
     task: MaestroTask;
@@ -96,6 +97,7 @@ export const TaskListItem = React.memo(function TaskListItem({
     const [isMetaExpanded, setIsMetaExpanded] = useState(false);
     const [taskDocs, setTaskDocs] = useState<DocEntry[]>(task.docs ?? []);
     const [docsLoaded, setDocsLoaded] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showStatusDropdown, setShowStatusDropdown] = useState(false);
@@ -757,6 +759,19 @@ export const TaskListItem = React.memo(function TaskListItem({
                             <Icon name="gitBranch" size={13} /> {task.useWorktree ? 'worktree' : 'in-place'}
                         </button>
 
+                        <button
+                            type="button"
+                            className="terminalShareBtn"
+                            title="Share this task to a Collab Space"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowShareModal(true);
+                            }}
+                        >
+                            <span className="terminalShareBtn__icon" aria-hidden="true">↗</span>
+                            <span className="terminalShareBtn__label">Share</span>
+                        </button>
+
                         <span className="pn-tt__time">{formatTimeAgo(task.updatedAt)}</span>
                     </div>
 
@@ -845,6 +860,31 @@ export const TaskListItem = React.memo(function TaskListItem({
                         </div>
                     )}
                 </div>
+            )}
+
+            {showShareModal && createPortal(
+                <ShareToSpaceModal
+                    payload={{
+                        kind: "task",
+                        entityLabel: task.title || "Untitled task",
+                        data: {
+                            title: task.title || "Untitled task",
+                            description: task.description ?? "",
+                            status: (task.status === "archived" ? "completed" : task.status) as
+                                | "todo"
+                                | "in_progress"
+                                | "in_review"
+                                | "completed"
+                                | "cancelled"
+                                | "blocked",
+                            priority: task.priority,
+                            sourceTaskId: task.id,
+                            sourceProjectId: task.projectId,
+                        },
+                    }}
+                    onClose={() => setShowShareModal(false)}
+                />,
+                document.body
             )}
 
             {showDeleteConfirm && createPortal(

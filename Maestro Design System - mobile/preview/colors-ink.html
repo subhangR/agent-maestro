@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Colors" name="Paper & Ink" subtitle="The warm canvas — app paper to ink, surfaces layer for depth" viewport="700x250" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-surface); font-family: var(--pn-ui); padding: 24px 26px; color: var(--pn-ink-2); }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .sw { height: 86px; border-radius: var(--pn-r-sm); border: 1px solid var(--pn-line); display: flex; flex-direction: column; justify-content: flex-end; padding: 9px 10px; }
+  .name { font-family: var(--pn-mono); font-size: 11px; font-weight: 600; color: var(--pn-ink); }
+  .hex { font-family: var(--pn-mono); font-size: 10px; color: var(--pn-ink-3); }
+  .inks { display: flex; gap: 10px; margin-top: 16px; }
+  .ink { flex: 1; height: 44px; border-radius: var(--pn-r-sm); display: grid; place-items: center; font-family: var(--pn-mono); font-size: 10px; font-weight: 600; }
+  .cap { display: block; margin-top: 16px; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw" style="background:#F4F2EC;"><span class="name">paper</span><span class="hex">#F4F2EC</span></div>
+    <div class="sw" style="background:#FBFAF6;"><span class="name">surface</span><span class="hex">#FBFAF6</span></div>
+    <div class="sw" style="background:#FFFFFF;"><span class="name">card</span><span class="hex">#FFFFFF</span></div>
+    <div class="sw" style="background:#F2EFE8;"><span class="name">hover</span><span class="hex">#F2EFE8</span></div>
+    <div class="sw" style="background:#ECE8DF;"><span class="name">active</span><span class="hex">#ECE8DF</span></div>
+  </div>
+  <div class="inks">
+    <div class="ink" style="background:#23201B; color:#F4F2EC;">ink · #23201B</div>
+    <div class="ink" style="background:#5B564C; color:#F4F2EC;">ink-2 · #5B564C</div>
+    <div class="ink" style="background:#8E897B; color:#FBFAF6;">ink-3 · #8E897B</div>
+    <div class="ink" style="background:#B7B2A4; color:#23201B;">ink-4 · #B7B2A4</div>
+  </div>
+  <span class="cap t-eyebrow">Warm greyscale · surfaces step up to build depth · hairline #E7E3D9 divides</span>
+</body>
+</html>

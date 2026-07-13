@@ -1,0 +1,438 @@
+rules_version = '2';
+
+// Collab Space security rules. Model documented in docs/COLLAB_SPACE_RULES_MODEL.md.
+//
+// Principles:
+//  - Membership-gated: every subcollection read/write requires space membership.
+//  - Validate the FINAL document on every write (not just the diff), so updates
+//    can never smuggle oversized or malformed fields.
+//  - Immutable provenance: createdBy / createdAt / spaceId / source* never change.
+//  - Fan-out writes (pull/adopt/install/download tracking) are the only writes
+//    non-creators may make, and they are pinned to the caller's own uid:
+//    append-only uid arrays and per-uid map keys only for request.auth.uid.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function spaceData(spaceId) {
+      return get(/databases/$(database)/documents/collabSpaces/$(spaceId)).data;
+    }
+
+    function isSpaceMember(spaceId) {
+      return isSignedIn() && request.auth.uid in spaceData(spaceId).memberIds;
+    }
+
+    function isSpaceOwner(spaceId) {
+      return isSignedIn() && request.auth.uid == spaceData(spaceId).ownerId;
+    }
+
+    // Admin = a member whose denormalized role is 'admin'. Admins can moderate
+    // and manage members, but cannot delete the space or touch the owner.
+    function isSpaceAdmin(spaceId) {
+      return isSpaceMember(spaceId)
+        && spaceData(spaceId).members[request.auth.uid].role == 'admin';
+    }
+
+    // True when the space referenced will be owned by the caller AFTER this
+    // commit — lets the owner create the default #general channel in the same
+    // atomic batch as the space itself (the space doc doesn't exist pre-commit).
+    function willOwnSpace(spaceId) {
+      return isSignedIn()
+        && getAfter(/databases/$(database)/documents/collabSpaces/$(spaceId))
+             .data.ownerId == request.auth.uid;
+    }
+
+    function affectedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // Shared-entity provenance/audit fields may never change after create.
+    function coreImmutable() {
+      return request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.spaceId == resource.data.spaceId;
+    }
+
+    // `field` is an append-only uid array: existing entries preserved, at most
+    // one new entry per write, and the only uid a caller may add is their own.
+    // Hard-capped so fan-out arrays cannot grow unbounded.
+    function appendsOwnUidOnly(field) {
+      let oldList = resource.data.get(field, []);
+      let newList = request.resource.data.get(field, []);
+      // The set of ADDED elements must be empty or exactly {caller}. Checking
+      // `caller in newList` instead would let anyone who already fanned out
+      // once append arbitrary uids afterwards.
+      return newList.hasAll(oldList)
+        && newList.size() <= oldList.size() + 1
+        && newList.size() <= 1000
+        && (newList.size() == oldList.size()
+            || newList.toSet().difference(oldList.toSet()) == [request.auth.uid].toSet());
+    }
+
+    // `field` is a per-uid map — a caller may only create/replace their own key.
+    function touchesOwnMapKeyOnly(field) {
+      return request.resource.data.get(field, {})
+        .diff(resource.data.get(field, {}))
+        .affectedKeys().hasOnly([request.auth.uid]);
+    }
+
+    function validCreatedBy() {
+      return request.resource.data.createdBy == request.auth.uid;
+    }
+
+    // Collab Spaces
+    match /collabSpaces/{spaceId} {
+
+      function validSpaceShape() {
+        return request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.description is string
+          && request.resource.data.description.size() <= 500
+          && request.resource.data.githubUrl is string
+          && request.resource.data.githubUrl.size() <= 300
+          && (request.resource.data.visibility == 'public' || request.resource.data.visibility == 'private')
+          && request.resource.data.memberIds is list
+          && request.resource.data.memberIds.size() <= 200;
+      }
+
+      // Anyone signed in can read public spaces. Members can read private spaces.
+      allow read: if isSignedIn() && (
+        resource.data.visibility == 'public' ||
+        request.auth.uid in resource.data.memberIds
+      );
+
+      // Anyone signed in can create a space they own; they are the sole
+      // initial member and their member entry carries the 'owner' role.
+      allow create: if isSignedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && validSpaceShape()
+        && request.resource.data.memberIds == [request.auth.uid]
+        && request.resource.data.members[request.auth.uid].role == 'owner';
+
+      // Owner can edit the space (never transfer ownership or rewrite history).
+      // Admins can edit space profile + manage members (never the owner).
+      // Anyone signed in can join a public space (add themselves only).
+      // A member can leave (remove themselves only).
+      allow update: if isSignedIn() && validSpaceShape()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && (
+        // Owner: full edit of profile + members — but always stays a member
+        // with the 'owner' role (no orphaned spaces; delete instead).
+        (
+          resource.data.ownerId == request.auth.uid &&
+          request.resource.data.memberIds.hasAll([resource.data.ownerId]) &&
+          request.resource.data.members[resource.data.ownerId].role == 'owner'
+        ) ||
+        // Admin: edit name/description/visibility + manage members. May NOT
+        // remove the owner or demote the owner out of the 'owner' role.
+        (
+          isSpaceAdmin(spaceId) &&
+          request.resource.data.memberIds.hasAll([resource.data.ownerId]) &&
+          request.resource.data.members[resource.data.ownerId].role == 'owner' &&
+          affectedOnly(['name', 'description', 'visibility', 'memberIds', 'members', 'updatedAt'])
+        ) ||
+        // Self-join on public space: may only add their own membership.
+        (
+          resource.data.visibility == 'public' &&
+          affectedOnly(['memberIds', 'members', 'updatedAt']) &&
+          request.auth.uid in request.resource.data.memberIds &&
+          !(request.auth.uid in resource.data.memberIds) &&
+          request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+          request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+          request.resource.data.members.diff(resource.data.members).affectedKeys()
+            .hasOnly([request.auth.uid]) &&
+          request.resource.data.members[request.auth.uid].role == 'member'
+        ) ||
+        // Self-leave: may only remove their own membership. The owner cannot
+        // leave (they must delete the space instead — no orphaned spaces).
+        (
+          request.auth.uid != resource.data.ownerId &&
+          affectedOnly(['memberIds', 'members', 'updatedAt']) &&
+          !(request.auth.uid in request.resource.data.memberIds) &&
+          request.auth.uid in resource.data.memberIds &&
+          resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
+          resource.data.memberIds.size() == request.resource.data.memberIds.size() + 1 &&
+          request.resource.data.members.diff(resource.data.members).affectedKeys()
+            .hasOnly([request.auth.uid])
+        )
+      );
+
+      // Only owner can delete.
+      allow delete: if isSignedIn()
+        && resource.data.ownerId == request.auth.uid;
+
+      // Channels — Slack-style channels per space
+      match /channels/{channelId} {
+
+        function validChannelShape() {
+          return request.resource.data.name is string
+            && request.resource.data.name.size() > 0
+            && request.resource.data.name.size() <= 64
+            && request.resource.data.description is string
+            && request.resource.data.description.size() <= 300;
+        }
+
+        allow read: if isSpaceMember(spaceId);
+
+        // Members create channels; the owner may also create the default
+        // channel in the same batch that creates the space (willOwnSpace).
+        allow create: if (isSpaceMember(spaceId) || willOwnSpace(spaceId))
+          && validCreatedBy()
+          && request.resource.data.spaceId == spaceId
+          && validChannelShape();
+
+        // Owner can rename / reorder (never rewrite audit fields).
+        // Members can only bump lastMessageAt / updatedAt (after sending).
+        allow update: if (
+            isSpaceOwner(spaceId)
+            && affectedOnly(['name', 'description', 'position', 'updatedAt'])
+            && validChannelShape()
+          )
+          || (isSpaceMember(spaceId)
+              && affectedOnly(['lastMessageAt', 'updatedAt']));
+
+        allow delete: if isSpaceOwner(spaceId);
+
+        // Messages — one timeline per channel
+        match /messages/{messageId} {
+          allow read: if isSpaceMember(spaceId);
+
+          allow create: if isSpaceMember(spaceId)
+            && request.resource.data.authorUid == request.auth.uid
+            && request.resource.data.spaceId == spaceId
+            && request.resource.data.channelId == channelId
+            && request.resource.data.content is string
+            && request.resource.data.content.size() <= 10000
+            && request.resource.data.get('attachments', []) is list
+            && request.resource.data.get('attachments', []).size() <= 10
+            // Empty content allowed only for attachment-only messages.
+            && (request.resource.data.content.size() > 0
+                || request.resource.data.get('attachments', []).size() > 0);
+
+          // Author can edit their own content (or soft-delete via deletedAt,
+          // which also clears the attachment refs).
+          allow update: if isSignedIn()
+            && request.auth.uid == resource.data.authorUid
+            && affectedOnly(['content', 'editedAt', 'deletedAt', 'attachments'])
+            && request.resource.data.content is string
+            && request.resource.data.content.size() <= 10000
+            && request.resource.data.get('attachments', []) is list
+            && request.resource.data.get('attachments', []).size() <= 10;
+
+          // Author or space owner can hard-delete (rare; soft-delete preferred).
+          allow delete: if isSignedIn()
+            && (request.auth.uid == resource.data.authorUid || isSpaceOwner(spaceId));
+        }
+      }
+
+      // Shared tasks pushed from local Maestro projects.
+      match /tasks/{taskId} {
+
+        function validTaskShape() {
+          return request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 200
+            && request.resource.data.description is string
+            && request.resource.data.description.size() <= 20000
+            && request.resource.data.status in ['todo', 'in_progress', 'in_review', 'completed', 'cancelled', 'blocked']
+            && request.resource.data.priority in ['high', 'medium', 'low'];
+        }
+
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && validCreatedBy()
+          && validTaskShape();
+
+        // Creator/owner: edit content fields. Any member: pull fan-out only,
+        // pinned to their own uid.
+        allow update: if isSpaceMember(spaceId) && coreImmutable() && (
+          (
+            (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
+            && affectedOnly(['title', 'description', 'status', 'priority', 'assigneeUids', 'position', 'updatedAt'])
+            && validTaskShape()
+          ) ||
+          (
+            affectedOnly(['pulledByUids', 'linkedLocalIdsByUid', 'updatedAt'])
+            && appendsOwnUidOnly('pulledByUids')
+            && touchesOwnMapKeyOnly('linkedLocalIdsByUid')
+          )
+        );
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+
+      // Shared team-member configurations.
+      match /teamMembers/{tmId} {
+
+        function validTeamMemberShape() {
+          return request.resource.data.name is string
+            && request.resource.data.name.size() > 0
+            && request.resource.data.name.size() <= 120
+            && request.resource.data.role is string
+            && request.resource.data.role.size() <= 200
+            && request.resource.data.identity is string
+            && request.resource.data.identity.size() <= 20000
+            && request.resource.data.skillIds is list
+            && request.resource.data.skillIds.size() <= 50;
+        }
+
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && validCreatedBy()
+          && validTeamMemberShape();
+
+        // Creator/owner: edit content fields. Any member: adoption fan-out only.
+        allow update: if isSpaceMember(spaceId) && coreImmutable() && (
+          (
+            (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
+            && affectedOnly(['name', 'role', 'identity', 'avatar', 'model', 'agentTool', 'mode', 'commandPermissions', 'skillIds', 'updatedAt'])
+            && validTeamMemberShape()
+          ) ||
+          (
+            affectedOnly(['adoptedByUids', 'linkedLocalIdsByUid', 'updatedAt'])
+            && appendsOwnUidOnly('adoptedByUids')
+            && touchesOwnMapKeyOnly('linkedLocalIdsByUid')
+          )
+        );
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+
+      // Shared spells library (schema v2: lossless rules[] payload).
+      match /spells/{spellId} {
+
+        function validSpellShape() {
+          return request.resource.data.name is string
+            && request.resource.data.name.size() > 0
+            && request.resource.data.name.size() <= 120
+            && request.resource.data.description is string
+            && request.resource.data.description.size() <= 2000
+            && request.resource.data.get('body', '') is string
+            && request.resource.data.get('body', '').size() <= 20000
+            && request.resource.data.get('rules', []) is list
+            && request.resource.data.get('rules', []).size() <= 20;
+        }
+
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && validCreatedBy()
+          && validSpellShape();
+
+        // Creator/owner: edit content fields. Any member: install fan-out only.
+        allow update: if isSpaceMember(spaceId) && coreImmutable() && (
+          (
+            (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
+            && affectedOnly(['name', 'description', 'body', 'icon', 'color', 'rules', 'updatedAt'])
+            && validSpellShape()
+          ) ||
+          (
+            affectedOnly(['installedByUids', 'linkedLocalIdsByUid', 'updatedAt'])
+            && appendsOwnUidOnly('installedByUids')
+            && touchesOwnMapKeyOnly('linkedLocalIdsByUid')
+          )
+        );
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+
+      // Shared docs (markdown / diagram sources, content inline).
+      match /docs/{docId} {
+
+        function validDocShape() {
+          return request.resource.data.title is string
+            && request.resource.data.title.size() > 0
+            && request.resource.data.title.size() <= 200
+            && (request.resource.data.kind == 'markdown' || request.resource.data.kind == 'diagram')
+            && request.resource.data.content is string
+            && request.resource.data.content.size() <= 200000;
+        }
+
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && validCreatedBy()
+          && validDocShape();
+
+        allow update: if isSpaceMember(spaceId) && coreImmutable() && (
+          (
+            (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
+            && affectedOnly(['title', 'content', 'kind', 'updatedAt'])
+            && validDocShape()
+          ) ||
+          (
+            affectedOnly(['pulledByUids', 'linkedLocalIdsByUid', 'updatedAt'])
+            && appendsOwnUidOnly('pulledByUids')
+            && touchesOwnMapKeyOnly('linkedLocalIdsByUid')
+          )
+        );
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+
+      // Shared files (small files inline as base64 — Storage bucket requires
+      // the Blaze plan; caps keep every doc far below the 1MiB limit).
+      match /files/{fileId} {
+
+        function validFileShape() {
+          return request.resource.data.name is string
+            && request.resource.data.name.size() > 0
+            && request.resource.data.name.size() <= 200
+            && request.resource.data.mimeType is string
+            && request.resource.data.mimeType.size() <= 100
+            && request.resource.data.size is number
+            && request.resource.data.size > 0
+            && request.resource.data.size <= 614400
+            && request.resource.data.data is string
+            && request.resource.data.data.size() <= 819200
+            && (request.resource.data.caption == null
+                || (request.resource.data.caption is string
+                    && request.resource.data.caption.size() <= 500));
+        }
+
+        allow read: if isSpaceMember(spaceId);
+
+        allow create: if isSpaceMember(spaceId)
+          && request.resource.data.spaceId == spaceId
+          && validCreatedBy()
+          && validFileShape();
+
+        allow update: if isSpaceMember(spaceId) && coreImmutable() && (
+          (
+            (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
+            && affectedOnly(['name', 'caption', 'updatedAt'])
+            && validFileShape()
+          ) ||
+          (
+            affectedOnly(['downloadedByUids', 'updatedAt'])
+            && appendsOwnUidOnly('downloadedByUids')
+          )
+        );
+
+        allow delete: if isSignedIn()
+          && (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId));
+      }
+    }
+
+    // Everything else is denied (explicit default-deny).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

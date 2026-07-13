@@ -23,6 +23,11 @@
           "name": "maestro-server",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "git",
+          "cmd": "git",
+          "args": true
         }
       ]
     }

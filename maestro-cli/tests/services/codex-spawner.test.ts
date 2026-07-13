@@ -4,6 +4,9 @@ import type { MaestroManifest } from '../../src/types/manifest.js';
 
 describe('CodexSpawner', () => {
   const officialCodexModels = [
+    'gpt-5.6-sol',
+    'gpt-5.6-terra',
+    'gpt-5.6-luna',
     'gpt-5.5',
     'gpt-5.4',
     'gpt-5.4-mini',
@@ -12,7 +15,8 @@ describe('CodexSpawner', () => {
     'gpt-5.2',
   ];
   const codexReasoningEfforts = ['low', 'medium', 'high', 'xhigh'];
-  const fastTierModels = ['gpt-5.5', 'gpt-5.4'];
+  const maxReasoningModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
+  const fastTierModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'];
 
   const createManifest = (model: string, launchConfig?: MaestroManifest['launchConfig']): MaestroManifest => ({
     manifestVersion: '1.0',
@@ -59,6 +63,17 @@ describe('CodexSpawner', () => {
     expect(args[args.indexOf('--model') + 1]).toBe(expectedModel);
   });
 
+  it.each([
+    ['claude-fable-5', 'gpt-5.6-sol'],
+    ['claude-fable-5[1m]', 'gpt-5.6-sol'],
+    ['claude-sonnet-5', 'gpt-5.6-terra'],
+    ['claude-sonnet-5[1m]', 'gpt-5.6-terra'],
+  ])('maps Claude model %s to Codex model %s', (claudeModel, expectedModel) => {
+    const args = new CodexSpawner().buildCodexArgs(createManifest(claudeModel));
+
+    expect(args[args.indexOf('--model') + 1]).toBe(expectedModel);
+  });
+
   it.each(officialCodexModels.flatMap((model) => codexReasoningEfforts.map((effort) => [model, effort])))(
     'passes supported reasoning effort for official model %s at %s',
     (model, effort) => {
@@ -72,7 +87,17 @@ describe('CodexSpawner', () => {
     },
   );
 
-  it.each(['minimal', 'max'])('does not pass unsupported Codex reasoning effort %s', (effort) => {
+  it.each(maxReasoningModels)('passes max reasoning only for GPT-5.6 Codex model %s', (model) => {
+    const args = new CodexSpawner().buildCodexArgs(createManifest(model, {
+      provider: 'openai',
+      model,
+      reasoningEffort: 'max',
+    }));
+
+    expect(args).toContain('model_reasoning_effort="max"');
+  });
+
+  it.each(['minimal', 'max'])('does not pass unsupported Codex reasoning effort %s for older models', (effort) => {
     const args = new CodexSpawner().buildCodexArgs(createManifest('gpt-5.5', {
       provider: 'openai',
       model: 'gpt-5.5',

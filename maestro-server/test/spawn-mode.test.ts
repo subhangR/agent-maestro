@@ -110,12 +110,15 @@ async function buildApp(dataDir: string) {
     huddleService: container.huddleService,
     commandUsageService: container.commandUsageService,
     logDigestService,
+    teamService: container.teamService,
     projectRepo: container.projectRepo,
     taskRepo: container.taskRepo,
     teamMemberRepo: container.teamMemberRepo,
     modelProfileRepo: container.modelProfileRepo,
+    spellRepo: { findById: async () => null } as any,
     eventBus: container.eventBus,
     config,
+    ptyHostService: { spawn: () => {}, kill: () => {} } as any,
   });
 
   const teamMemberRoutes = createTeamMemberRoutes(teamMemberService);
@@ -215,19 +218,19 @@ describe('POST /api/sessions/spawn — spawn gate', () => {
     expect(res.body.code).toBe('sender_session_not_found');
   });
 
-  it('returns 403 when sender session is a worker', async () => {
+  it('worker sender passes the gate — any session may spawn', async () => {
     const workerSession = await createWorkerSession(container, projectId, taskId);
 
     const res = await supertest(app)
       .post('/api/sessions/spawn')
       .set('X-Session-Id', workerSession.id)
-      .send({ taskIds: [taskId], spawnSource: 'session' });
+      .send({ taskIds: [taskId], spawnSource: 'session', sessionId: workerSession.id, mode: 'worker' });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('spawn_requires_coordinator');
+    expect(res.status).not.toBe(403);
+    expect(res.body.code).not.toBe('spawn_requires_coordinator');
   });
 
-  it('returns 403 when sender session is coordinated-worker', async () => {
+  it('coordinated-worker sender passes the gate — any session may spawn', async () => {
     const session = await container.sessionService.createSession({
       ...createTestSession(projectId, [taskId]),
       metadata: { mode: 'coordinated-worker' },
@@ -236,10 +239,10 @@ describe('POST /api/sessions/spawn — spawn gate', () => {
     const res = await supertest(app)
       .post('/api/sessions/spawn')
       .set('X-Session-Id', session.id)
-      .send({ taskIds: [taskId], spawnSource: 'session' });
+      .send({ taskIds: [taskId], spawnSource: 'session', sessionId: session.id, mode: 'worker' });
 
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe('spawn_requires_coordinator');
+    expect(res.status).not.toBe(403);
+    expect(res.body.code).not.toBe('spawn_requires_coordinator');
   });
 
   it('coordinator sender passes gate and spawn succeeds', async () => {

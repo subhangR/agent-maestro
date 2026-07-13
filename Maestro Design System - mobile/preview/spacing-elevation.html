@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Spacing" name="Elevation" subtitle="Soft warm-toned shadows — for raised cards, popovers & modals. No glow." viewport="700x200" -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html, body { margin: 0; }
+  body { background: var(--pn-paper); font-family: var(--pn-ui); padding: 30px 26px; }
+  .row { display: flex; gap: 22px; }
+  .item { display: flex; flex-direction: column; gap: 11px; align-items: center; }
+  .box { width: 150px; height: 80px; background: var(--pn-card); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); }
+  .name { font-family: var(--pn-mono); font-size: 10.5px; color: var(--pn-ink-2); font-weight: 600; }
+  .sub { font-family: var(--pn-mono); font-size: 9.5px; color: var(--pn-ink-4); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="item"><div class="box" style="box-shadow: var(--pn-sh-sm);"></div><span class="name">sh-sm</span><span class="sub">resting card</span></div>
+    <div class="item"><div class="box" style="box-shadow: var(--pn-sh-md);"></div><span class="name">sh-md</span><span class="sub">hover / raised</span></div>
+    <div class="item"><div class="box" style="box-shadow: var(--pn-sh-pop);"></div><span class="name">sh-pop</span><span class="sub">menu / modal</span></div>
+  </div>
+</body>
+</html>

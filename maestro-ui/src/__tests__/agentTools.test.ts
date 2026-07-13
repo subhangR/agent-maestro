@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AGENT_TOOL_OPTIONS,
   AGENT_TOOL_LABELS,
+  ACCESS_MODE_OPTIONS,
   CODEX_REASONING_EFFORT_OPTIONS,
   DEFAULT_MODEL_BY_AGENT_TOOL,
   createLaunchConfigFromLegacy,
@@ -22,7 +23,8 @@ describe('agent tool UI constants', () => {
   const codexModels = MODELS_BY_AGENT_TOOL.codex.map((model) => model.value);
   const claudeReasoningEfforts = ['low', 'medium', 'high', 'xhigh', 'max'];
   const codexReasoningEfforts = ['low', 'medium', 'high', 'xhigh'];
-  const fastCodexModels = ['gpt-5.5', 'gpt-5.4'];
+  const codexMaxReasoningModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
+  const fastCodexModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5', 'gpt-5.4'];
 
   it('exposes Hermes beside Claude and Codex in user-facing pickers', () => {
     expect(AGENT_TOOL_OPTIONS.map((tool) => tool.id)).toEqual(
@@ -53,6 +55,10 @@ describe('agent tool UI constants', () => {
       value: 'openai/gpt-5.5',
       label: 'Codex OAuth GPT 5.5',
     });
+    expect(MODELS_BY_AGENT_TOOL.hermes).toContainEqual({
+      value: 'openai/gpt-5.6-sol',
+      label: 'Codex OAuth 5.6 Sol',
+    });
   });
 
   it('pins Hermes in the default quick-launch shortcuts', () => {
@@ -70,11 +76,20 @@ describe('agent tool UI constants', () => {
     ]);
   });
 
+  it('exposes canonical launch access modes for task UIs', () => {
+    expect(ACCESS_MODE_OPTIONS.map((item) => item.value)).toEqual([
+      'safe',
+      'acceptEdits',
+      'plan',
+      'fullAccess',
+    ]);
+  });
+
   it('matches Claude CLI effort support and excludes speed', () => {
     expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
     expect(MODELS_BY_AGENT_TOOL['claude-code'][0]).toEqual({
-      value: 'claude-opus-4-8',
-      label: 'Opus 4.8',
+      value: 'claude-fable-5',
+      label: 'Fable 5',
     });
     expect(getReasoningOptionsForProvider('claude').map((item) => item.value)).toEqual(claudeReasoningEfforts);
 
@@ -108,9 +123,16 @@ describe('agent tool UI constants', () => {
 
   it('matches Codex CLI reasoning and speed-tier support', () => {
     expect(getReasoningOptionsForProvider('openai').map((item) => item.value)).toEqual(codexReasoningEfforts);
+    expect(getReasoningOptionsForProvider('openai', 'gpt-5.6-sol').map((item) => item.value)).toEqual([
+      ...codexReasoningEfforts,
+      'max',
+    ]);
 
     for (const model of codexModels) {
-      for (const effort of codexReasoningEfforts) {
+      const effortsForModel = codexMaxReasoningModels.includes(model)
+        ? [...codexReasoningEfforts, 'max']
+        : codexReasoningEfforts;
+      for (const effort of effortsForModel) {
         const sanitized = sanitizeLaunchConfig({
           provider: 'openai',
           model,
@@ -136,6 +158,18 @@ describe('agent tool UI constants', () => {
       provider: 'openai',
       model: 'gpt-5.5',
     });
+
+    expect(sanitizeLaunchConfig({
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'max',
+      speed: 'fast',
+    })).toEqual({
+      provider: 'openai',
+      model: 'gpt-5.6-sol',
+      reasoningEffort: 'max',
+      speed: 'fast',
+    });
   });
 
   it('formats task launch badges as Provider/Model', () => {
@@ -143,12 +177,16 @@ describe('agent tool UI constants', () => {
     expect(formatProviderModelLabel('claude-code', 'claude-opus-4-7')).toBe('Claude/Opus 4.7');
     expect(formatProviderModelLabel('hermes', 'anthropic:claude-opus-4-8')).toBe('Hermes/Claude Opus 4.8');
     expect(formatProviderModelLabel('codex', 'gpt-5.5')).toBe('OpenAI/Codex 5.5');
+    expect(formatProviderModelLabel('codex', 'gpt-5.6-sol')).toBe('OpenAI/Codex 5.6 Sol');
   });
 
   it('limits speed to supported OpenAI Codex models', () => {
     expect(supportsLaunchSpeed('claude', 'claude-opus-4-8')).toBe(false);
     expect(supportsLaunchSpeed('claude', 'claude-opus-4-7')).toBe(false);
     expect(supportsLaunchSpeed('hermes', 'anthropic:claude-opus-4-8')).toBe(false);
+    expect(supportsLaunchSpeed('openai', 'gpt-5.6-sol')).toBe(true);
+    expect(supportsLaunchSpeed('openai', 'gpt-5.6-terra')).toBe(true);
+    expect(supportsLaunchSpeed('openai', 'gpt-5.6-luna')).toBe(true);
     expect(supportsLaunchSpeed('openai', 'gpt-5.5')).toBe(true);
     expect(supportsLaunchSpeed('openai', 'gpt-5.4-mini')).toBe(false);
   });
@@ -217,38 +255,36 @@ describe('agent tool UI constants', () => {
     expect(getModelDisplayLabel('gpt-5.2-codex')).toBe('Codex 5.2');
   });
 
-  it('no longer offers retired Claude Fable 5 and tops the Claude list with Opus 4.8', () => {
+  it('offers live Claude Fable 5 and Sonnet 5 and tops the Claude list with Fable 5', () => {
     const claudeValues = MODELS_BY_AGENT_TOOL['claude-code'].map((model) => model.value);
-    expect(claudeValues).not.toContain('claude-fable-5');
-    expect(claudeValues).not.toContain('claude-fable-5[1m]');
-    expect(claudeValues[0]).toBe('claude-opus-4-8');
-    expect(DEFAULT_MODEL_BY_AGENT_TOOL['claude-code']).toBe('claude-opus-4-8');
-    expect(MODELS_BY_AGENT_TOOL.hermes.map((m) => m.value)).not.toContain('anthropic:claude-fable-5');
-    expect(MODEL_POWER['claude-fable-5']).toBeUndefined();
-    expect(MODEL_POWER['claude-fable-5[1m]']).toBeUndefined();
+    expect(claudeValues).toContain('claude-fable-5');
+    expect(claudeValues).toContain('claude-sonnet-5');
+    expect(claudeValues[0]).toBe('claude-fable-5');
+    expect(MODEL_POWER['claude-fable-5']).toBe(6.0);
+    expect(MODEL_POWER['claude-fable-5[1m]']).toBe(6.1);
+    expect(MODEL_POWER['gpt-5.6-sol']).toBe(5.6);
+    expect(MODEL_POWER['gpt-5.6-terra']).toBe(5.55);
+    expect(MODEL_POWER['gpt-5.6-luna']).toBe(5.45);
   });
 
-  it('migrates retired Fable 5 model ids to their Opus 4.8 replacements', () => {
-    // Fable 5 -> Opus 4.8; Fable 5 1M -> Opus 4.8 1M (per-variant migration).
-    expect(normalizeModelId('claude-fable-5')).toBe('claude-opus-4-8');
-    expect(normalizeModelId('claude-fable-5[1m]')).toBe('claude-opus-4-8[1m]');
-    expect(normalizeModelId('anthropic:claude-fable-5')).toBe('anthropic:claude-opus-4-8');
-    expect(normalizeModelId('anthropic/claude-fable-5')).toBe('anthropic:claude-opus-4-8');
-    // Non-retired ids pass through unchanged.
+  it('passes live Fable 5 and Sonnet 5 model ids through normalizeModelId unchanged', () => {
+    // Both are live models again — no alias remapping.
+    expect(normalizeModelId('claude-fable-5')).toBe('claude-fable-5');
+    expect(normalizeModelId('claude-sonnet-5')).toBe('claude-sonnet-5');
+    // Non-aliased ids pass through unchanged.
     expect(normalizeModelId('claude-opus-4-8')).toBe('claude-opus-4-8');
     expect(normalizeModelId(undefined)).toBeUndefined();
   });
 
-  it('keeps legacy Fable setups working: display, ranking, and launch config resolve to Opus', () => {
-    // A persisted team member still on Fable shows and launches as Opus 4.8.
-    expect(getModelDisplayLabel('claude-fable-5')).toBe('Opus 4.8');
-    expect(getModelDisplayLabel('claude-fable-5[1m]')).toBe('Opus 4.8 1M');
+  it('labels, launches, and ranks live Fable 5 and Sonnet 5 as themselves', () => {
+    expect(getModelDisplayLabel('claude-fable-5')).toBe('Fable 5');
+    expect(getModelDisplayLabel('claude-sonnet-5')).toBe('Sonnet 5');
     expect(sanitizeLaunchConfig({ provider: 'claude', model: 'claude-fable-5' })).toEqual({
       provider: 'claude',
-      model: 'claude-opus-4-8',
+      model: 'claude-fable-5',
     });
-    // Ranking treats a legacy Fable member as its Opus 4.8 equivalent (not unranked/0).
-    const members = [{ model: 'claude-fable-5' }, { model: 'claude-sonnet-4-6' }];
+    // Fable 5 (6.0) outranks Opus 4.8 (5.8).
+    const members = [{ model: 'claude-fable-5' }, { model: 'claude-opus-4-8' }];
     expect(pickTopMember(members)?.model).toBe('claude-fable-5');
   });
 });

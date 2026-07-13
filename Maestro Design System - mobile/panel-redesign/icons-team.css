@@ -1,0 +1,42 @@
+/* icons-team.css — gallery for the 50 team-member emblems. */
+.ti-stage { min-height: 100vh; background: var(--pn-paper); color: var(--pn-ink); font-family: var(--pn-ui); padding: 40px 44px 80px; }
+.ti-h { font-family: var(--pn-serif); font-size: 30px; font-weight: 500; letter-spacing: -0.01em; margin: 0 0 4px; }
+.ti-sub { color: var(--pn-ink-2); font-size: 14px; margin: 0 0 28px; max-width: 680px; line-height: 1.55; }
+
+.ti-cap { font-family: var(--pn-mono); font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--pn-ink-3); margin: 30px 0 14px; display: flex; align-items: center; gap: 10px; }
+.ti-cap .ln { flex: 1; height: 1px; background: var(--pn-line); }
+
+.ti-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 12px; }
+.ti-cell { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 6px 12px; border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); background: var(--pn-surface); transition: border-color 160ms, box-shadow 160ms, transform 160ms; cursor: pointer; }
+.ti-cell:hover { border-color: var(--pn-line-2); box-shadow: var(--pn-sh-md); transform: translateY(-2px); }
+.ti-cell:hover .ti-tile { background: var(--pn-brand); color: #fff; box-shadow: 0 4px 12px rgba(178,106,43,0.3); }
+.ti-cell:hover .ti-tile .ti-acc { color: #fff; }
+.ti-name { font-size: 11px; color: var(--pn-ink-3); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* the avatar tile */
+.ti-tile { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--pn-card); border: 1px solid var(--pn-line); color: var(--pn-ink); transition: background 180ms, color 180ms, box-shadow 180ms; }
+.ti-tile svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ti-tile .ti-acc { color: var(--pn-brand); transition: color 180ms; }
+
+/* style-variant strip */
+.ti-variants { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+.ti-vcol { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ti-vlabel { font-family: var(--pn-mono); font-size: 10px; color: var(--pn-ink-4); letter-spacing: 0.04em; }
+
+.ti-tile--lg { width: 60px; height: 60px; border-radius: 15px; }
+.ti-tile--lg svg { width: 32px; height: 32px; }
+
+/* paper (default) already styled. brass ring */
+.ti-tile--ring { box-shadow: 0 0 0 1.5px var(--pn-brand), 0 0 0 3.5px var(--pn-card); }
+/* tinted */
+.ti-tile--tint { background: var(--pn-brand-soft); border-color: transparent; color: var(--pn-brand-2); }
+.ti-tile--tint .ti-acc { color: var(--pn-brand); }
+/* solid brass */
+.ti-tile--solid { background: var(--pn-brand); border-color: transparent; color: #fff; }
+.ti-tile--solid .ti-acc { color: #fff; }
+/* ink */
+.ti-tile--ink { background: #221E15; border-color: transparent; color: #E9E3D5; }
+.ti-tile--ink .ti-acc { color: var(--pn-brand); }
+/* sage / green */
+.ti-tile--sage { background: var(--pn-run-soft); border-color: transparent; color: var(--pn-run); }
+.ti-tile--sage .ti-acc { color: var(--pn-run); }
