@@ -1014,20 +1014,19 @@
 
 /* ------------------------------------------------------------------ */
 /*  Terminal Strip — fused log toggle + stats + model + actions        */
-/*  Pinned at the foot of the terminal; lives in the always-dark       */
-/*  terminal warm-graphite palette (NOT the panel light theme).        */
+/*  A horizontal row ABOVE the terminal (normal flow, never an         */
+/*  overlay); lives in the always-dark terminal warm-graphite palette  */
+/*  (NOT the panel light theme).                                       */
 /* ------------------------------------------------------------------ */
 
 .termStrip {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: auto;
-  z-index: 30;
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
   display: flex;
-  flex-direction: row;
-  /* Anchored to the left edge; the expanded transcript grows to the right. */
+  flex-direction: column;
+  /* Horizontal row above the terminal; the expanded transcript drops down
+     below the bar. Both stay in normal flow — never overlaying the terminal. */
   pointer-events: auto;
   /* Terminal-chrome hairline; flips with the terminal theme below. */
   --term-strip-line: #2c2922;
@@ -1036,19 +1035,18 @@ html[data-redesign][data-theme='dark'] .termStrip {
   --term-strip-line: #221E15;
 }
 
-/* The left strip — same idiom as the redesign terminal bar/input chrome */
+/* The strip bar — same idiom as the redesign terminal bar/input chrome */
 .termStripBar {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
-  width: 48px;
-  min-width: 48px;
-  height: 100%;
-  padding: 10px 0;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
   /* Inherits the terminal canvas; flips #1c1a16 -> #100E0A like the pane. */
   background: var(--pn-term-bg, #1B1812);
-  border-right: 1px solid var(--term-strip-line);
+  border-bottom: 1px solid var(--term-strip-line);
   font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
   color: #a9a294;
   flex-shrink: 0;
@@ -1058,12 +1056,11 @@ html[data-redesign][data-theme='dark'] .termStrip {
 /* 1. Session Log toggle */
 .termStripToggle {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
-  width: 40px;
-  padding: 6px 0;
+  padding: 4px 8px;
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
@@ -1091,9 +1088,6 @@ html[data-redesign][data-theme='dark'] .termStrip {
   letter-spacing: 0.1em;
   color: var(--pn-term-ink, #cfc9bb);
   white-space: nowrap;
-  /* Read top-to-bottom down the narrow strip. */
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
 }
 
 .termStripLiveDot {
@@ -1125,21 +1119,20 @@ html[data-redesign][data-theme='dark'] .termStrip {
 
 /* 2. Stats rail — edge-faded so it never hard-clips */
 .termStripRail {
-  flex: 0 1 auto;
-  min-height: 0;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
 .termStripRailInner {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 10px;
-  padding: 6px 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  padding: 0 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
   scrollbar-width: none;
 }
 .termStripRailInner::-webkit-scrollbar { display: none; }
@@ -1166,7 +1159,7 @@ html[data-redesign][data-theme='dark'] .termStrip {
 /* Circular context-window gauge */
 .termStripGauge {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 3px;
   flex-shrink: 0;
@@ -1212,7 +1205,7 @@ html[data-redesign][data-theme='dark'] .termStrip {
 /* 4. Actions */
 .termStripActions {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
@@ -1244,15 +1237,15 @@ html[data-redesign][data-theme='dark'] .termStrip {
   line-height: 1;
 }
 
-/* Expanded transcript — opens to the right of the strip, full height */
+/* Expanded transcript — drops DOWN below the bar, full width, capped height */
 .termStripOverlay {
-  width: min(46vw, 460px);
-  height: 100%;
+  width: 100%;
+  max-height: 40vh;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 12px 16px;
   background: var(--pn-term-bg, #1B1812);
-  border-left: 1px solid var(--term-strip-line);
+  border-top: 1px solid var(--term-strip-line);
   color: var(--pn-term-ink, #cfc9bb);
   scrollbar-width: thin;
 }
@@ -1272,6 +1265,41 @@ html[data-redesign][data-theme='dark'] .termStrip {
   font-style: italic;
   text-align: center;
   padding: 40px 0;
+}
+
+/* Compact restore control — shown in place of the whole strip while it is
+   hidden. A normal-flow horizontal chip (never an overlay) so it occupies a
+   thin, non-growing row above the terminal deck and stays keyboard-reachable
+   without a reload. Uses the same terminal warm-graphite chrome tokens. */
+.termStripRestore {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 10px;
+  padding: 3px 10px;
+  border: 1px solid var(--term-strip-line, #2c2922);
+  border-radius: var(--pn-r-pill, 999px);
+  background: var(--pn-term-bg, #1B1812);
+  color: var(--pn-term-dim, #8a8474);
+  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.termStripRestore:hover {
+  color: var(--pn-term-acc, #d99a4e);
+  border-color: rgba(217, 154, 78, 0.32);
+  background: rgba(217, 154, 78, 0.1);
+}
+.termStripRestoreLabel {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
 /* ===================================================================
@@ -1328,11 +1356,9 @@ html[data-redesign] .sessionLogModal {
 /* ------------------------------------------------------------------ */
 
 @media (max-width: 768px) {
-  /* Compact the vertical strip width */
+  /* Keep the bar a horizontal row on mobile; just tighten padding. */
   .termStripBar {
-    width: 42px;
-    min-width: 42px;
-    padding: 8px 0;
+    padding: 6px 8px;
     gap: 6px;
   }
 
@@ -1341,7 +1367,7 @@ html[data-redesign] .sessionLogModal {
     display: none;
   }
 
-  /* Hide all dim stats on mobile to save space */
+  /* Hide all dim stats on mobile to save horizontal space */
   .termStripStat--dim {
     display: none;
   }
@@ -1366,21 +1392,20 @@ html[data-redesign] .sessionLogModal {
     font-size: 15px;
   }
 
-  /* Expanded overlay: cap width so the terminal is still usable. */
+  /* Expanded overlay: full-width drop-down, a little shorter on mobile. */
   .termStripOverlay {
-    width: min(78vw, 340px);
+    max-height: 50vh;
     padding: 10px 12px;
   }
 
   /* Tighten the inner stat rail */
   .termStripRailInner {
     gap: 8px;
-    padding: 4px 0;
+    padding: 0 4px;
   }
 
   .termStripToggle {
-    width: 36px;
-    padding: 5px 0;
+    padding: 4px 6px;
   }
 }
 
