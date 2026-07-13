@@ -2496,7 +2496,15 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // The Tauri desktop path (ptyHost === 'tauri') relies on the event above instead.
       // Without this, the browser's PTY WebSocket attaches to a non-existent session
       // and is immediately closed (1011 "no live PTY"), so resume hangs on web-ui.
-      if (config.ptyHost === 'server') {
+      //
+      // Idempotent, mirroring /pty/spawn's guard: a server PTY outlives its /pty
+      // socket, so resuming a session whose PTY is STILL ALIVE must not kill+replace
+      // it. spawn() restarts output at offset 0, so replacing a live PTY under an
+      // attached web client (which still holds a large resume offset) would hand it a
+      // fresh stream it can't align to. Only spawn when there is genuinely no live PTY
+      // (the real "process exited, bring it back" case); otherwise the session:resume
+      // event above lets the client re-attach to the existing PTY over /pty.
+      if (config.ptyHost === 'server' && !ptyHostService.hasSession(session.id)) {
         try {
           ptyHostService.spawn({
             sessionId: session.id,
