@@ -18,7 +18,7 @@ import { IProjectRepository } from '../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../domain/repositories/ITaskRepository';
 import { IEventBus } from '../domain/events/IEventBus';
 import { Config } from '../infrastructure/config';
-import { AppError } from '../domain/common/Errors';
+import { AppError, NotFoundError } from '../domain/common/Errors';
 import { SessionStatus, AgentTool, AgentMode, TeamMember, TeamMemberSnapshot, MemberLaunchOverride, LaunchConfig, isCoordinatorMode, normalizeMode, normalizeModelId } from '../types';
 import { ITeamMemberRepository } from '../domain/repositories/ITeamMemberRepository';
 import { IModelProfileRepository } from '../domain/repositories/IModelProfileRepository';
@@ -568,11 +568,35 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       });
     }
     const id = req.params.id as string;
+
+    // Kill the live PTY first (if any). A GENUINE kill-signal failure gets its own
+    // distinguishable code and short-circuits — it must not be conflated with the
+    // "PTY-only id, no Session to persist" case handled below, nor be masked by a
+    // subsequent status write.
+    const killOutcome = ptyHostService.kill(id);
+    if (killOutcome === 'error') {
+      return res.status(500).json({
+        error: true,
+        code: 'pty_kill_failed',
+        message: 'Failed to kill server PTY',
+      });
+    }
+
+    // Persist the stopped status. A PTY-only id — a standalone web terminal
+    // spawned via /pty/spawn with no Session record — has nothing to update, and
+    // updateSession throws NotFoundError. That is NOT a failure: the PTY it named
+    // was already killed above (or there was none), so the terminal IS stopped.
+    // Only a NON-NotFound error (a real persistence fault) is surfaced as 500,
+    // keeping its original code so it stays distinct from a kill failure.
     try {
-      ptyHostService.kill(id);
       await sessionService.updateSession(id, { status: 'stopped' });
       return res.json({ success: true });
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        // No Session backs this id (PTY-only, or an already-gone id). Stop is
+        // idempotent, so report success.
+        return res.json({ success: true });
+      }
       return res.status(500).json({
         error: true,
         code: 'pty_stop_failed',

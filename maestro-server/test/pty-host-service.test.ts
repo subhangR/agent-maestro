@@ -175,6 +175,40 @@ describe('PtyHostService kill/replace notification semantics', () => {
     );
   });
 
+  // #154 — kill() reports a discriminated outcome so the explicit /pty/stop route
+  // can tell "killed a live PTY", "nothing to kill", and "kill signal failed"
+  // apart. Internal callers (spawn-replace, shutdownAll) ignore it and finalize
+  // unconditionally, so their behavior is unchanged.
+  it("kill() returns 'not_found' when there is no live PTY for the id (a no-op)", () => {
+    const { svc } = makeService();
+    expect(svc.kill('never-spawned')).toBe('not_found');
+  });
+
+  it("kill() returns 'killed' when it terminates a live PTY cleanly", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's6', ...baseParams });
+    expect(svc.kill('s6')).toBe('killed');
+    expect(svc.hasSession('s6')).toBe(false);
+  });
+
+  it("kill() returns 'error' when proc.kill() throws, but STILL finalizes the entry", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's7', ...baseParams });
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw new Error('ESRCH');
+    });
+    expect(svc.kill('s7')).toBe('error');
+    expect(svc.hasSession('s7')).toBe(false); // cleanup still happens
+  });
+
+  it("kill() from an internal replace path (notify=false) still reports 'killed'", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's8', ...baseParams });
+    // Same call shape spawn()/shutdownAll use; the outcome is available but ignored
+    // by those callers.
+    expect(svc.kill('s8', false)).toBe('killed');
+  });
+
   it('a reconnect with a stale offset after respawn gets a full replay of the new stream', () => {
     const { svc } = makeService();
     svc.spawn({ sessionId: 's5', ...baseParams });

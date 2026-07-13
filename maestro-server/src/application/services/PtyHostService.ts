@@ -19,6 +19,19 @@ export interface PtySpawnParams {
   rows?: number;
 }
 
+/**
+ * Outcome of {@link PtyHostService.kill}, so an EXPLICIT caller (the /pty/stop
+ * route) can distinguish the three cases it must report differently:
+ *   - `killed`    a live PTY existed and proc.kill() succeeded; entry finalized.
+ *   - `not_found` no live PTY for the id; nothing to kill (a no-op).
+ *   - `error`     a live PTY existed but proc.kill() threw; the entry is STILL
+ *                 finalized (cleanup is unconditional), but the kill signal
+ *                 genuinely failed and the caller may surface a non-2xx.
+ * Internal callers (spawn-replace, shutdownAll) ignore this and rely only on the
+ * unconditional finalization, so their behavior is unchanged.
+ */
+export type PtyKillOutcome = 'killed' | 'not_found' | 'error';
+
 interface PtyEntry {
   proc: IPty;
   /** Offset-tracked scrollback buffer: counts every raw byte the PTY has ever
@@ -346,19 +359,28 @@ export class PtyHostService {
    *   terminal {type:'exit'} frame so the client finalizes the terminal. When
    *   false (an internal replace/respawn), only close the sockets — the client
    *   reconnects and resumes onto the new PTY instead of finalizing.
+   * @returns a {@link PtyKillOutcome} the explicit /pty/stop caller uses to
+   *   distinguish a clean kill from "nothing to kill" and from a genuine kill
+   *   failure. Finalization (notify/close + delete) is UNCONDITIONAL regardless
+   *   of the outcome, so internal callers can keep ignoring the return.
    */
-  kill(sessionId: string, notify = true): void {
+  kill(sessionId: string, notify = true): PtyKillOutcome {
     const entry = this.sessions.get(sessionId);
-    if (!entry) return;
+    if (!entry) return 'not_found';
+    let outcome: PtyKillOutcome = 'killed';
     try {
       entry.proc.kill();
     } catch (error) {
       // A PTY whose process already died (ESRCH) throws here; that is not fatal
-      // — the session must still be finalized and its subscribers detached.
+      // to CLEANUP — the entry is still finalized and its subscribers detached
+      // below — but it IS a genuine kill-signal failure the explicit /pty/stop
+      // caller can surface as a distinguishable non-2xx (internal callers ignore
+      // the outcome).
       this.logger.warn('PtyHostService: kill failed', {
         sessionId,
         error: error instanceof Error ? error.message : String(error),
       });
+      outcome = 'error';
     }
     if (notify) {
       this.notifyExit(entry, null);
@@ -366,6 +388,7 @@ export class PtyHostService {
       this.closeSubscribers(entry);
     }
     this.sessions.delete(sessionId);
+    return outcome;
   }
 
   /**
