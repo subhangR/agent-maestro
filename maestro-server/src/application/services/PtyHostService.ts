@@ -142,6 +142,34 @@ export class PtyHostService {
     this.logger.info('PtyHostService: spawned session PTY', { sessionId, pid: proc.pid, cwd });
   }
 
+  /**
+   * Spawn a PTY only if the session has no live one, otherwise reattach to the
+   * existing process untouched.
+   *
+   * This is the reattach-safe counterpart to {@link spawn}: on a browser reload
+   * the UI re-creates its persisted standalone terminals, each re-POSTing to
+   * /pty/spawn. Those must NOT tear down and respawn a still-running shell (that
+   * would kill the user's process and drop its scrollback) — they reattach to
+   * the live PTY by session identity. A PTY that has already exited is no longer
+   * tracked (onExit removes it), so it is recreated.
+   *
+   * `spawn()` stays deliberately destructive for the agent resume path, which
+   * intends to replace the process.
+   *
+   * @returns `{ reused: true }` when a live PTY was reattached, `{ reused:
+   *   false }` when a new PTY was spawned.
+   */
+  spawnIfAbsent(params: PtySpawnParams): { reused: boolean } {
+    if (this.sessions.has(params.sessionId)) {
+      this.logger.info('PtyHostService: reattaching to existing PTY', {
+        sessionId: params.sessionId,
+      });
+      return { reused: true };
+    }
+    this.spawn(params);
+    return { reused: false };
+  }
+
   /** Whether a live PTY exists for the session. */
   hasSession(sessionId: string): boolean {
     return this.sessions.has(sessionId);
