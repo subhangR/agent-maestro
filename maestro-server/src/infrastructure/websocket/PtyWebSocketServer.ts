@@ -19,10 +19,14 @@ type TrackedWebSocket = WebSocket & { isAlive?: boolean };
  *                          size is known; lets the client match the width the scrollback
  *                          was authored at)
  *                        { "type": "attached", "base": <n>, "gap": <n>, "next": <n>,
- *                          "hasReplay": <bool> }  (the resume handshake — all offsets RAW;
- *                          `next` is the authoritative offset the client snaps its receive
- *                          counter to, `gap` counts evicted bytes it must surface as a
- *                          truncation, `hasReplay` says whether a replay binary frame follows)
+ *                          "hasReplay": <bool>, "epoch"?: <string> }  (the resume handshake —
+ *                          all offsets RAW; `next` is the authoritative offset the client snaps
+ *                          its receive counter to, `gap` counts evicted bytes it must surface as
+ *                          a truncation, `hasReplay` says whether a replay binary frame follows.
+ *                          `epoch` is the OPTIONAL opaque per-spawn stream identity (#151):
+ *                          present only when known, compared by equality only — a changed epoch
+ *                          means a respawn/restart and an authoritative client reset. Absent
+ *                          epoch preserves the pre-#151 offset-rewind fallback.)
  *                        { "type": "exit", "exitCode": <n|null> }  (real process exit)
  *                      binary frame   = the sanitized scrollback replay (sent once, right
  *                        after `attached`, iff hasReplay), then raw live PTY output
@@ -119,17 +123,23 @@ export class PtyWebSocketServer {
     // which is sanitized and therefore shorter than the raw span it represents),
     // and surfaces `gap` evicted bytes as a truncation marker. `hasReplay` tells
     // it whether a single scrollback binary frame follows.
+    //
+    // `epoch` (#151) is the opaque per-spawn stream identity. It is ADDITIVE: the
+    // key is present only when the host has one, so a pre-#151 client (and the
+    // legacy offset-rewind fallback) is unaffected. A client that understands it
+    // compares by equality only — a changed epoch means a respawn/restart and an
+    // authoritative reset; the same epoch resumes normally.
     const hasReplay = replay.data.length > 0;
-    this.send(
-      ws,
-      JSON.stringify({
-        type: 'attached',
-        base: replay.base,
-        gap: replay.gap,
-        next: replay.next,
-        hasReplay,
-      }),
-    );
+    const epoch = this.ptyHostService.getEpoch(sessionId);
+    const attachedFrame: Record<string, unknown> = {
+      type: 'attached',
+      base: replay.base,
+      gap: replay.gap,
+      next: replay.next,
+      hasReplay,
+    };
+    if (epoch) attachedFrame.epoch = epoch;
+    this.send(ws, JSON.stringify(attachedFrame));
 
     if (replay.gap > 0) {
       // Honest, bounded loss: the client resumed from behind the retained window,

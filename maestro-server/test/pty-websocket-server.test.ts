@@ -44,6 +44,9 @@ function makeHost(overrides: Partial<Record<string, any>> = {}) {
   return {
     getReplay: jest.fn().mockReturnValue({ base: 0, gap: 0, next: 0, data: Buffer.alloc(0) }),
     getSize: jest.fn().mockReturnValue(null),
+    // Absent stream epoch by default: the attached frame stays back-compatible
+    // (no `epoch` key) so pre-#151 assertions hold. Epoch-aware tests override this.
+    getEpoch: jest.fn().mockReturnValue(undefined),
     addSubscriber: jest.fn().mockReturnValue(true),
     removeSubscriber: jest.fn(),
     write: jest.fn(),
@@ -177,6 +180,43 @@ describe('PtyWebSocketServer', () => {
     const ws = connect(wss, '/pty?sessionId=s1');
     const kinds = ws.textFrames().map((f) => f.type);
     expect(kinds).toEqual(['attached']);
+  });
+
+  describe('stream epoch in the attached frame (#151)', () => {
+    it('includes the epoch when the host has one for the session', () => {
+      host = makeHost({
+        getEpoch: jest.fn().mockReturnValue('boot9-3'),
+        getReplay: jest
+          .fn()
+          .mockReturnValue({ base: 0, gap: 0, next: 4, data: Buffer.from('hiya', 'utf8') }),
+      });
+      start(host);
+      const ws = connect(wss, '/pty?sessionId=s1&offset=0');
+
+      const attached = ws.textFrames().find((f) => f.type === 'attached');
+      expect(attached).toEqual({
+        type: 'attached',
+        base: 0,
+        gap: 0,
+        next: 4,
+        hasReplay: true,
+        epoch: 'boot9-3',
+      });
+      expect(host.getEpoch).toHaveBeenCalledWith('s1');
+    });
+
+    it('omits the epoch key entirely when the host has none (back-compatible frame)', () => {
+      host = makeHost({
+        getEpoch: jest.fn().mockReturnValue(undefined),
+        getReplay: jest.fn().mockReturnValue({ base: 0, gap: 0, next: 0, data: Buffer.alloc(0) }),
+      });
+      start(host);
+      const ws = connect(wss, '/pty?sessionId=s1');
+
+      const attached = ws.textFrames().find((f) => f.type === 'attached');
+      expect(attached).toEqual({ type: 'attached', base: 0, gap: 0, next: 0, hasReplay: false });
+      expect(attached).not.toHaveProperty('epoch');
+    });
   });
 
   describe('offset parsing', () => {

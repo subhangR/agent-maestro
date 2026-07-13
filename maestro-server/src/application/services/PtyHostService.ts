@@ -1,6 +1,7 @@
 import * as pty from 'node-pty';
 import type { IPty } from 'node-pty';
 import type { WebSocket } from 'ws';
+import { randomUUID } from 'crypto';
 import { ILogger } from '../../domain/common/ILogger';
 import { SessionService } from './SessionService';
 import { OutputBuffer, ReplaySlice } from './OutputBuffer';
@@ -32,6 +33,12 @@ interface PtyEntry {
    *  authored at (otherwise replayed output wraps at the wrong column). */
   cols: number;
   rows: number;
+  /** Opaque stream identity for THIS spawn (see {@link PtyHostService.newEpoch}).
+   *  Minted once per spawn and never mutated, so it is stable for the life of one
+   *  stream; a kill+respawn under the same sessionId installs a fresh entry with a
+   *  new epoch. The client compares it by equality only (a change ⇒ authoritative
+   *  reset) and never infers ordering. Echoed to clients in the `attached` frame. */
+  epoch: string;
 }
 
 const DEFAULT_COLS = 80;
@@ -143,10 +150,31 @@ function shouldStripCsi(finalByte: number, params: Buffer): boolean {
 export class PtyHostService {
   private readonly sessions = new Map<string, PtyEntry>();
 
+  /**
+   * Per-INSTANCE boot nonce for stream epochs (#151). Minted once when the
+   * service is constructed, so every PTY spawned by this process shares this
+   * prefix, and a NEW process (server restart) — a new PtyHostService instance —
+   * gets a fresh nonce. That is what makes two service instances mint disjoint
+   * epochs even for the very first spawn (where a bare per-instance counter would
+   * collide at the same value). Combined with {@link epochCounter}, the full
+   * epoch is unique per spawn AND across restarts.
+   */
+  private readonly bootNonce = randomUUID();
+  /** Monotonic per-spawn counter; makes each respawn within THIS process
+   *  distinct even under the same sessionId. */
+  private epochCounter = 0;
+
   constructor(
     private readonly sessionService: SessionService,
     private readonly logger: ILogger,
   ) {}
+
+  /** Mint the next opaque stream epoch: a per-instance boot nonce (restart
+   *  distinctness) plus a monotonic counter (per-spawn distinctness). Opaque and
+   *  equality-only on the wire — the client never parses these parts. */
+  private newEpoch(): string {
+    return `${this.bootNonce}-${++this.epochCounter}`;
+  }
 
   /**
    * Spawn a PTY for a session. If one already exists it is killed first.
@@ -188,6 +216,7 @@ export class PtyHostService {
       exitCode: null,
       cols: initialCols,
       rows: initialRows,
+      epoch: this.newEpoch(),
     };
     this.sessions.set(sessionId, entry);
 
@@ -269,6 +298,19 @@ export class PtyHostService {
     const entry = this.sessions.get(sessionId);
     if (!entry) return null;
     return { cols: entry.cols, rows: entry.rows };
+  }
+
+  /**
+   * The opaque stream epoch for a session's LIVE PTY, or null if none exists
+   * (#151). Stable for the life of one stream and distinct across respawns and
+   * server restarts. The PtyWebSocketServer echoes it in the `attached` frame so
+   * a reconnecting client can tell "same stream, resume" from "new stream, reset"
+   * by equality alone — no offset/byte-count inference.
+   */
+  getEpoch(sessionId: string): string | null {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return null;
+    return entry.epoch;
   }
 
   /** Write input (keystrokes) to the PTY. */
