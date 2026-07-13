@@ -81,15 +81,20 @@ function makeFakeWs(): FakeWs {
   return { readyState: 1, send: jest.fn(), close: jest.fn() };
 }
 
-/** Concatenate everything the server sent to a subscriber socket into one string. */
-function received(ws: FakeWs): string {
+/** Concatenate the raw output bytes the server sent to a subscriber socket. */
+function receivedBytes(ws: FakeWs): Buffer {
   return Buffer.concat(
     ws.send.mock.calls
       .map((c) => c[0])
       // Ignore JSON control frames (exit/size); we only assert on raw output.
       .filter((d: unknown) => Buffer.isBuffer(d) || d instanceof Uint8Array)
       .map((d: Buffer | Uint8Array) => (Buffer.isBuffer(d) ? d : Buffer.from(d))),
-  ).toString('utf8');
+  );
+}
+
+/** Concatenate everything the server sent to a subscriber socket into one string. */
+function received(ws: FakeWs): string {
+  return receivedBytes(ws).toString('utf8');
 }
 
 function makeService() {
@@ -184,6 +189,62 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     svc.addSubscriber('s1', ws as any);
 
     expect(received(ws)).toBe(`${ESC}[13;2u${ESC}[>1uX${ESC}[<1uY`);
+  });
+
+  it('resumes scanning after a malformed CSI interrupted by a C0 control, still stripping a later DSR', () => {
+    const svc = makeService();
+    svc.spawn(spawnParams('s1'));
+    const proc = spawnedPtys[0];
+
+    // `ESC[` is interrupted by a newline (neither a parameter 0x20–0x3f nor a
+    // final 0x40–0x7e byte), making it a malformed CSI that must survive as
+    // literal bytes. The scanner must NOT bail on the rest of the buffer: the
+    // later, well-formed `ESC[6n` DSR still has to be stripped.
+    proc.emitData(Buffer.from(`X${ESC}[\nY${ESC}[6nZ`));
+
+    const ws = makeFakeWs();
+    svc.addSubscriber('s1', ws as any);
+
+    expect(received(ws)).toBe(`X${ESC}[\nYZ`);
+  });
+
+  it('resumes scanning after a malformed CSI interrupted by a high byte, still stripping a later DA', () => {
+    const svc = makeService();
+    svc.spawn(spawnParams('s1'));
+    const proc = spawnedPtys[0];
+
+    // 0xff (above the final-byte range) breaks `ESC[` → malformed, preserved
+    // literally. The subsequent `ESC[c` primary-DA must still be stripped.
+    proc.emitData(
+      Buffer.concat([
+        Buffer.from(`${ESC}[`), // malformed CSI intro
+        Buffer.from([0xff]), // high byte breaks the sequence
+        Buffer.from('M'),
+        Buffer.from(`${ESC}[c`), // valid DA query → stripped
+        Buffer.from('N'),
+      ]),
+    );
+
+    const ws = makeFakeWs();
+    svc.addSubscriber('s1', ws as any);
+
+    const expected = Buffer.concat([Buffer.from(`${ESC}[`), Buffer.from([0xff]), Buffer.from('MN')]);
+    expect(receivedBytes(ws).equals(expected)).toBe(true);
+  });
+
+  it('preserves a genuinely truncated CSI at the very end of the ring', () => {
+    const svc = makeService();
+    svc.spawn(spawnParams('s1'));
+    const proc = spawnedPtys[0];
+
+    // The ring ends mid-CSI with no final byte and nothing follows — a real
+    // partial sequence, not a leak risk, so it must pass through verbatim.
+    proc.emitData(Buffer.from(`tail${ESC}[6`));
+
+    const ws = makeFakeWs();
+    svc.addSubscriber('s1', ws as any);
+
+    expect(received(ws)).toBe(`tail${ESC}[6`);
   });
 
   it('leaves the LIVE output stream untouched so real-time terminal queries still reach the client', () => {

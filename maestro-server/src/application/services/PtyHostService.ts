@@ -91,11 +91,21 @@ export function stripScrollbackDeviceQueries(data: Buffer): Buffer {
         i = j + 1;
         continue;
       }
-      // Incomplete CSI at the tail (no final byte yet): copy the remainder
-      // verbatim. On the concatenated ring this only happens at the very end.
-      data.copy(out, w, i, len);
-      w += len - i;
-      break;
+      if (j >= len) {
+        // Genuinely incomplete CSI at the tail (scanned off the end before a
+        // final byte). Copy the remainder verbatim — on the concatenated ring
+        // this only happens at the very end.
+        data.copy(out, w, i, len);
+        w += len - i;
+        break;
+      }
+      // Malformed CSI mid-buffer: a non-parameter/non-final byte (a C0 control,
+      // DEL, or a high byte) interrupted the sequence. Emit the ESC literally
+      // and resume scanning at the next byte so a later well-formed device
+      // query is still stripped instead of leaking through. Bytes are neither
+      // dropped nor reordered.
+      out[w++] = data[i++];
+      continue;
     }
     out[w++] = data[i++];
   }
