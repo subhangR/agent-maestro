@@ -58,7 +58,11 @@ import { API_BASE_URL, PTY_WS_URL } from '../utils/serverConfig';
 import { parseControlFrame } from './ptyProtocol';
 
 const _sockets = new Map<string, WebSocket>();
-const _pendingSends = new Map<string, Array<string | Uint8Array>>();
+// Per-session queue of input/resize frames buffered while the socket is down,
+// flushed in FIFO order on the next open. `bytes` is a running total of the
+// queued payload size so overflow can be enforced in O(1) per enqueue (see
+// _enqueuePending). Deterministically BOUNDED — see MAX_PENDING_* below.
+const _pendingSends = new Map<string, { frames: Array<string | Uint8Array>; bytes: number }>();
 const _outputHandlers: Array<(id: string, data: string) => void> = [];
 const _exitHandlers: Array<(id: string, exitCode?: number | null) => void> = [];
 const _sizeHandlers: Array<(id: string, size: { cols: number; rows: number }) => void> = [];
@@ -69,11 +73,6 @@ const _reattachHandlers: Array<(id: string) => void> = [];
 // a socket that closes for a session we've since detached from must NOT come
 // back to life.
 const _activeSessions = new Set<string>();
-// Ids that have connected at least once. Distinguishes a session's FIRST-EVER
-// connect (nothing to reset, no scrollback yet on screen) from a RECONNECT
-// (the client already rendered some of this PTY's ring buffer, so replaying it
-// again would duplicate history — see _reattachHandlers).
-const _connectedIds = new Set<string>();
 // Ids for which a real {type:'exit'} frame has already fired onExit, so the
 // close event that follows it (the server always closes subscriber sockets
 // right after sending that frame — see PtyHostService) does not fire again or
@@ -82,7 +81,33 @@ const _exitedSessions = new Set<string>();
 // Per-session reconnect backoff bookkeeping (mirrors useMaestroStore's
 // connectGlobal: exponential backoff + jitter, reset on successful open).
 const _reconnectAttempts = new Map<string, number>();
+// At most ONE pending reconnect timer per session lives here at a time, whether
+// it is a backoff timer (_scheduleReconnect) or a wake-stagger timer
+// (_reattachActiveSockets). A new schedule always clears the prior one first, so
+// a session can never accumulate duplicate reconnect timers.
 const _reconnectTimers = new Map<string, number>();
+// Sessions whose current `_reconnectTimers` entry is a WAKE-stagger timer (as
+// opposed to a backoff timer). A subsequent wake must neither duplicate that
+// timer nor promote the session to the immediate slot, so it is left untouched
+// while this flag is set — this is what makes repeated wakes idempotent.
+const _wakeStaggered = new Set<string>();
+
+// Deterministic bounds on the per-session pending-send queue (input/resize
+// frames buffered while the socket is down). Without a cap a long outage under a
+// noisy writer (a paste loop, a runaway script echoing input) could grow the
+// queue without limit. On overflow the OLDEST frames are dropped — the newest
+// keystrokes/resize are the ones worth replaying — until the queue is within
+// BOTH caps, and a warning is emitted so the drop is observable. A single frame
+// larger than the byte cap is retained ALONE rather than discarded.
+const MAX_PENDING_BYTES = 256 * 1024;
+const MAX_PENDING_ENTRIES = 1024;
+
+// Wake-reconnect stagger: on wake exactly one session reconnects immediately and
+// the rest are spread over deterministic slots (STAGGER_STEP_MS apart, capped at
+// MAX_STAGGER_MS, plus 0–STAGGER_STEP_MS of jitter) so many terminals do not
+// stampede the server the instant a laptop lid opens.
+const STAGGER_STEP_MS = 250;
+const MAX_STAGGER_MS = 2000;
 
 // One streaming decoder per session. PTY output arrives as raw bytes split on
 // arbitrary boundaries, so a multi-byte UTF-8 glyph (box-drawing chars, emoji,
@@ -188,6 +213,10 @@ function _clearReconnectTimer(id: string): void {
     window.clearTimeout(timer);
     _reconnectTimers.delete(id);
   }
+  // A cleared timer is no longer a pending wake-stagger, so drop the flag too;
+  // this keeps _wakeStaggered from leaking a session whose reconnect was
+  // superseded, cancelled (closeSession) or ended (logical-end onclose).
+  _wakeStaggered.delete(id);
 }
 
 /** Exponential backoff + jitter, mirroring useMaestroStore's connectGlobal. */
@@ -202,12 +231,12 @@ function _scheduleReconnect(id: string): void {
   const timer = window.setTimeout(() => {
     _reconnectTimers.delete(id);
     if (!_activeSessions.has(id)) return;
-    _ensureSocket(id, { isReconnect: true });
+    _ensureSocket(id);
   }, delay);
   _reconnectTimers.set(id, timer);
 }
 
-function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSocket {
+function _ensureSocket(id: string): WebSocket {
   const existing = _sockets.get(id);
   if (
     existing &&
@@ -220,10 +249,9 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
   // Under offset resume the repaint decision is NO LONGER made here. #140 reset
   // xterm eagerly on every reconnect because the fresh socket replayed the FULL
   // ring; this layer instead resumes from `_received` and lets the server's
-  // `attached{gap,next}` ack decide whether a reset is needed (see
-  // _handleAttached). `_connectedIds` is retained purely as lifecycle
-  // bookkeeping; `opts.isReconnect` no longer changes connect behavior.
-  _connectedIds.add(id);
+  // `attached{gap,next,epoch}` ack decide whether a reset is needed (see
+  // _handleAttached). A reconnect is therefore indistinguishable from a first
+  // connect at this layer — no per-connect reset flag is needed.
 
   // Resume from the last RAW byte offset we authoritatively consumed (0 on the
   // first-ever connect). An absent/invalid offset makes the server send a full
@@ -238,7 +266,7 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
     _reconnectAttempts.set(id, 0);
     const pending = _pendingSends.get(id);
     if (pending) {
-      for (const frame of pending) ws.send(frame);
+      for (const frame of pending.frames) ws.send(frame);
       _pendingSends.delete(id);
     }
   };
@@ -302,7 +330,6 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
     if (ev.code === 1011 || alreadyExited) {
       _activeSessions.delete(id);
       _reconnectAttempts.delete(id);
-      _connectedIds.delete(id);
       _decoders.delete(id);
       _received.delete(id);
       _pendingReplay.delete(id);
@@ -324,7 +351,6 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
       // Detached without a logical-end frame (e.g. closeSession already ran) —
       // no reconnect is coming, so clear the resume state too.
       _reconnectAttempts.delete(id);
-      _connectedIds.delete(id);
       _decoders.delete(id);
       _received.delete(id);
       _pendingReplay.delete(id);
@@ -338,14 +364,50 @@ function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSoc
 
 let _wakeListenersRegistered = false;
 
-/** Immediately re-attach any active session whose socket isn't OPEN, resetting backoff to instant. */
+/**
+ * Re-attach active sessions whose socket is down, STAGGERED so a wake doesn't
+ * stampede the server: exactly one session (the first in iteration order that
+ * needs it) reconnects immediately for foreground promptness; the rest are
+ * spread over deterministic slots (STAGGER_STEP_MS apart, capped at
+ * MAX_STAGGER_MS, plus bounded jitter). A session already OPEN or CONNECTING is
+ * skipped, and a session that a PRIOR wake already staggered is left on its
+ * existing timer — so repeated wakes never duplicate a socket or a timer.
+ */
 function _reattachActiveSockets(): void {
+  let immediateUsed = false;
+  let staggerCount = 0;
   for (const id of _activeSessions) {
     const ws = _sockets.get(id);
-    if (ws && ws.readyState === WebSocket.OPEN) continue;
+    // Already connected or mid-connect — nothing to reattach.
+    if (ws && ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) continue;
+    // A previous wake already scheduled this session; don't duplicate or promote.
+    if (_wakeStaggered.has(id)) continue;
+
+    // Supersede any slow backoff timer with the wake response, and reset backoff
+    // so the reconnect (immediate or staggered) starts fresh.
     _clearReconnectTimer(id);
     _reconnectAttempts.set(id, 0);
-    _ensureSocket(id, { isReconnect: true });
+
+    if (!immediateUsed) {
+      immediateUsed = true;
+      _ensureSocket(id);
+      continue;
+    }
+
+    staggerCount += 1;
+    const delay =
+      Math.min(staggerCount * STAGGER_STEP_MS, MAX_STAGGER_MS) + Math.random() * STAGGER_STEP_MS;
+    _wakeStaggered.add(id);
+    const timer = window.setTimeout(() => {
+      _reconnectTimers.delete(id);
+      _wakeStaggered.delete(id);
+      if (!_activeSessions.has(id)) return;
+      const cur = _sockets.get(id);
+      // Re-check: the session may have reconnected (or been closed) while waiting.
+      if (cur && cur.readyState !== WebSocket.CLOSED && cur.readyState !== WebSocket.CLOSING) return;
+      _ensureSocket(id);
+    }, delay);
+    _reconnectTimers.set(id, timer);
   }
 }
 
@@ -366,16 +428,50 @@ function _registerWakeListeners(): void {
   window.addEventListener('online', _reattachActiveSockets);
 }
 
+/** Byte size of a queued frame in the same units the byte cap is expressed in. */
+function _frameSize(frame: string | Uint8Array): number {
+  return typeof frame === 'string' ? frame.length : frame.byteLength;
+}
+
+/**
+ * Append a frame to a session's pending-send queue, enforcing the deterministic
+ * byte + entry caps with a drop-OLDEST (FIFO) overflow policy. The just-queued
+ * frame is never the one dropped, so a single oversized paste is retained alone
+ * rather than silently discarded. Any drop is reported via console.warn so the
+ * overflow is observable rather than a silent data loss.
+ */
+function _enqueuePending(id: string, frame: string | Uint8Array): void {
+  const entry = _pendingSends.get(id) ?? { frames: [], bytes: 0 };
+  entry.frames.push(frame);
+  entry.bytes += _frameSize(frame);
+
+  let dropped = 0;
+  while (
+    entry.frames.length > 1 &&
+    (entry.bytes > MAX_PENDING_BYTES || entry.frames.length > MAX_PENDING_ENTRIES)
+  ) {
+    const removed = entry.frames.shift() as string | Uint8Array;
+    entry.bytes -= _frameSize(removed);
+    dropped += 1;
+  }
+  if (dropped > 0) {
+    console.warn(
+      `[webTerminal] pending input overflow for ${id}: dropped ${dropped} oldest frame(s) ` +
+        `(cap ${MAX_PENDING_BYTES}B / ${MAX_PENDING_ENTRIES} entries)`,
+    );
+  }
+  _pendingSends.set(id, entry);
+}
+
 function _sendFrame(id: string, frame: string | Uint8Array): void {
   const ws = _sockets.get(id);
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(frame);
     return;
   }
-  // Queue for when the socket opens (resize may arrive before onopen fires)
-  const queue = _pendingSends.get(id) ?? [];
-  queue.push(frame);
-  _pendingSends.set(id, queue);
+  // Queue for when the socket opens (resize may arrive before onopen fires, and
+  // input typed during a reconnect must survive until the socket is back).
+  _enqueuePending(id, frame);
 }
 
 export const webTerminal: TerminalTransport = {
@@ -441,7 +537,6 @@ export const webTerminal: TerminalTransport = {
     _activeSessions.delete(id);
     _clearReconnectTimer(id);
     _reconnectAttempts.delete(id);
-    _connectedIds.delete(id);
     _exitedSessions.delete(id);
     const ws = _sockets.get(id);
     if (ws) {
