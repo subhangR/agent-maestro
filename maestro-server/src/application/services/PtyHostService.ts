@@ -36,6 +36,90 @@ const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 const RING_CAP_BYTES = 256 * 1024;
 
+const ESC = 0x1b;
+const CSI_INTRO = 0x5b; // '['
+const QUESTION = 0x3f; // '?'
+
+/**
+ * Remove terminal device-query / device-report control sequences from a chunk
+ * of HISTORICAL scrollback before it is replayed to a late-joining client.
+ *
+ * Why: xterm answers device QUERIES it parses. When the scrollback ring is
+ * replayed on (re)attach, the browser feeds these historical queries — DSR
+ * cursor-position `ESC[6n`, Device Attributes `ESC[c` / `ESC[>c` — back into
+ * xterm, which generates the REPLIES (`ESC[27;3R`, `ESC[?1;2c`) and forwards
+ * them to the PTY as if the user typed them, corrupting the shell prompt after
+ * the agent has exited. Reconnect amplification also leaves the raw reply bytes
+ * (CPR `ESC[27;3R`, DA reply `ESC[?...c`) accumulated in the ring; those stale
+ * artifacts are stripped too so they do not linger on replay.
+ *
+ * Scope is deliberately narrow — only the query/report protocol set, which has
+ * no visible glyph, so stripping it from scrollback is lossless:
+ *   - CSI … `c`  → Device Attributes (request or reply). `c` is DA-only.
+ *   - CSI … `n`  → Device Status Report request (DSR, incl. DEC `?…n`). `n`-only.
+ *   - CSI … `R`  → Cursor Position Report, but ONLY the `row;col` reply shape
+ *                  (`\??\d+;\d+`) so ordinary output is never touched.
+ *   - CSI `?` … `u` → kitty keyboard query/reply. Plain `CSI …u` (key encoding)
+ *                     and `CSI >…u` / `CSI <…u` (mode push/pop) are preserved.
+ *
+ * Any other CSI (SGR colours, cursor motion, DEC private modes like `?25h`),
+ * OSC, and plain text pass through untouched. This runs on the replay copy
+ * only; the live output path is never sanitized, so a running program's
+ * real-time queries still reach the client and get answered.
+ */
+export function stripScrollbackDeviceQueries(data: Buffer): Buffer {
+  const out = Buffer.allocUnsafe(data.length);
+  let w = 0;
+  const len = data.length;
+  let i = 0;
+  while (i < len) {
+    if (data[i] === ESC && i + 1 < len && data[i + 1] === CSI_INTRO) {
+      // Consume CSI parameter/intermediate bytes (0x20–0x3f) up to the final
+      // byte (0x40–0x7e).
+      let j = i + 2;
+      while (j < len && data[j] >= 0x20 && data[j] <= 0x3f) j++;
+      if (j < len && data[j] >= 0x40 && data[j] <= 0x7e) {
+        const final = data[j];
+        const params = data.subarray(i + 2, j);
+        if (shouldStripCsi(final, params)) {
+          i = j + 1; // drop the whole sequence
+          continue;
+        }
+        // keep the whole sequence verbatim
+        data.copy(out, w, i, j + 1);
+        w += j + 1 - i;
+        i = j + 1;
+        continue;
+      }
+      // Incomplete CSI at the tail (no final byte yet): copy the remainder
+      // verbatim. On the concatenated ring this only happens at the very end.
+      data.copy(out, w, i, len);
+      w += len - i;
+      break;
+    }
+    out[w++] = data[i++];
+  }
+  return out.subarray(0, w);
+}
+
+function shouldStripCsi(finalByte: number, params: Buffer): boolean {
+  switch (finalByte) {
+    case 0x63: // 'c' — Device Attributes (request or reply)
+      return true;
+    case 0x6e: // 'n' — Device Status Report request
+      return true;
+    case 0x75: // 'u' — strip ONLY the kitty query/reply (`?` prefix)
+      return params.length > 0 && params[0] === QUESTION;
+    case 0x52: {
+      // 'R' — Cursor Position Report reply, only the `row;col` numeric shape
+      // (optionally DEC `?row;col`). Never strip other `…R`.
+      return /^\??[0-9]+;[0-9]+$/.test(params.toString('latin1'));
+    }
+    default:
+      return false;
+  }
+}
+
 /**
  * Owns agent PTYs server-side (replacing the Tauri-hosted PTY for headless/web
  * deployments). Spawns processes with node-pty, keeps a scrollback ring buffer
@@ -236,9 +320,17 @@ export class PtyHostService {
   addSubscriber(sessionId: string, ws: WebSocket): boolean {
     const entry = this.sessions.get(sessionId);
     if (!entry) return false;
-    // Replay scrollback before attaching to the live stream.
-    for (const chunk of entry.ring) {
-      this.safeSend(ws, chunk);
+    // Replay scrollback before attaching to the live stream. Concatenate the
+    // ring and strip terminal device QUERIES/REPORTS first: replaying a
+    // historical `ESC[6n`/`ESC[c` makes the client's xterm answer it and post
+    // the reply back to the PTY as fake keystrokes ('27;3R'/'1;2c' garbage on
+    // the shell prompt). Concatenating before stripping also catches a query
+    // split across two ring chunks. The live stream (proc.onData → safeSend) is
+    // never sanitized, so a running program's real-time queries still reach the
+    // client and get answered.
+    if (entry.ring.length > 0) {
+      const scrollback = stripScrollbackDeviceQueries(Buffer.concat(entry.ring));
+      if (scrollback.length > 0) this.safeSend(ws, scrollback);
     }
     entry.subscribers.add(ws);
     return true;
