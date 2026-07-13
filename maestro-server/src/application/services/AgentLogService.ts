@@ -60,7 +60,7 @@ async function readPrefix(filePath: string, bytes: number): Promise<string> {
   }
 }
 
-async function extractMaestroSessionId(filePath: string, prefixBytes: number): Promise<string | null> {
+export async function extractMaestroSessionId(filePath: string, prefixBytes: number): Promise<string | null> {
   try {
     const text = await readPrefix(filePath, prefixBytes);
     const m = text.match(SESSION_ID_RE);
@@ -72,7 +72,12 @@ async function extractMaestroSessionId(filePath: string, prefixBytes: number): P
 
 // ── Claude ───────────────────────────────────────────────────────────────────
 
-const CLAUDE_PREFIX_BYTES = 8 * 1024; // 8KB
+// Scan generously: the maestro <session_id> tag is embedded in the first user
+// message, which now runs ~20KB+ (CLAUDE.md + skills list + MCP instructions +
+// the maestro prompt). An 8KB window missed it, so extraction returned null and
+// the session log strip never rendered for Claude sessions. Matches the Codex
+// sibling below and claude_logs.rs SESSION_ID_PREFIX_BYTES.
+export const CLAUDE_PREFIX_BYTES = 256 * 1024; // 256KB
 
 function claudeProjectsDir(): string {
   return path.join(homeDir(), '.claude', 'projects');
