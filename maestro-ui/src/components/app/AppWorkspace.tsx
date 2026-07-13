@@ -433,7 +433,23 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         onDragLeave={handleTerminalDragLeave}
         onDrop={handleTerminalDrop}
       >
-        {/* Mode chip — shows current session role (coordinator / worker) */}
+        {/* Fused terminal strip — log toggle + stats + model + actions. A
+            horizontal row in normal flow ABOVE the terminal deck (never an
+            overlay pinned to the terminal's edge). */}
+        {active?.maestroSessionId && active?.cwd && (
+          <TerminalStrip
+            key={active.id}
+            cwd={active.cwd}
+            maestroSessionId={active.maestroSessionId}
+            agentTool={activeLogAgentTool}
+            onAttach={handleAttach}
+            onDraw={handleDraw}
+          />
+        )}
+        <div className="terminalDeck">
+        {/* Mode chip — shows current session role (coordinator / worker).
+            Lives inside the deck so it overlays only the terminal content, not
+            the session-log strip above it. */}
         {activeMaestroSession && (
           <ModeChip mode={activeMaestroSession.mode} />
         )}
@@ -527,18 +543,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                 </TerminalRingContainer>
               );
             })}
-
-        {/* Fused terminal strip — log toggle + stats + model + actions, pinned at the foot */}
-        {active?.maestroSessionId && active?.cwd && (
-          <TerminalStrip
-            key={active.id}
-            cwd={active.cwd}
-            maestroSessionId={active.maestroSessionId}
-            agentTool={activeLogAgentTool}
-            onAttach={handleAttach}
-            onDraw={handleDraw}
-          />
-        )}
+        </div>
       </div>
 
       {activeWorkspaceView.codeEditorOpen &&

@@ -177,6 +177,11 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // Fully hide the strip from the layout. When hidden the strip renders no
+  // content and leaves no footprint (the terminal deck reclaims the row); only
+  // the compact floating restore control below remains, so the user can bring
+  // the strip back without reloading the view.
+  const [hidden, setHidden] = useState(false);
   const offsetRef = useRef(0);
   const bodyRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -306,9 +311,29 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   // Don't render until we've found the log file
   if (!ready || !selectedFile) return null;
 
+  // Hidden: no strip content, no layout footprint — just a compact, labelled,
+  // keyboard-reachable restore control floating in the terminal's top corner.
+  if (hidden) {
+    return (
+      <button
+        type="button"
+        className="termStripRestore"
+        onClick={() => setHidden(false)}
+        title="Show session log"
+        aria-label="Show session log"
+      >
+        <span className="termStripChevron" aria-hidden="true">▾</span>
+        <span className="termStripRestoreLabel">Session Log</span>
+        {isOngoing && <span className="termStripLiveDot" />}
+      </button>
+    );
+  }
+
   return (
     <div className={`termStrip ${expanded ? 'termStrip--expanded' : ''}`}>
-      {/* The fused vertical strip — pinned to the left edge of the terminal */}
+      {/* The fused strip — a horizontal row above the terminal. The bar sits on
+          top; the expanded transcript drops down below it (both in normal flow,
+          never overlaying the terminal). */}
       <div className="termStripBar">
         {/* 1. Session Log toggle */}
         <button
@@ -385,10 +410,19 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
           >
             <span className="termStripActionGlyph">✦</span>
           </button>
+          <button
+            type="button"
+            className="termStripActionBtn"
+            onClick={() => setHidden(true)}
+            title="Hide session log"
+            aria-label="Hide session log"
+          >
+            <span className="termStripActionGlyph">×</span>
+          </button>
         </div>
       </div>
 
-      {/* Expanded: full log transcript — opens to the RIGHT of the strip */}
+      {/* Expanded: full log transcript — drops down below the bar */}
       {expanded && (
         <div className="termStripOverlay" ref={bodyRef} onScroll={handleScroll}>
           {allMessages.length === 0 ? (
