@@ -13,6 +13,14 @@
     "strict": true,
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "//": "Tests are compiled/run by Vitest (see vitest.config.ts), not the app build. Exclude them from `tsc -b` so test-only imports of node builtins (node:fs/path/url) don't break the browser build, and so app code stays guarded against accidental node imports (types omits @types/node).",
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/__tests__/**"
+  ]
 }
 
