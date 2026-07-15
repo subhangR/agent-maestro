@@ -1,24 +1,25 @@
 /**
- * PtyHostService.addSubscriber — scrollback replay must not re-inject terminal
+ * PtyHostService.getReplay — scrollback replay must not re-inject terminal
  * device-query REPLIES into the session.
  *
  * Root cause of the "garbage on the shell prompt after Claude exits" bug:
  *   1. Claude / the shell emit terminal capability QUERIES on stdout — DSR
  *      cursor-position `ESC[6n`, Primary DA `ESC[c`, Secondary DA `ESC[>c`.
- *      These are ordinary PTY output bytes and land in the scrollback ring.
- *   2. On every attach (first connect AND reconnect) addSubscriber replays the
- *      full ring to the new WebSocket.
+ *      These are ordinary PTY output bytes and land in the output buffer.
+ *   2. On every attach (first connect AND reconnect) the client is replayed the
+ *      retained scrollback — computed by getReplay, sent by PtyWebSocketServer.
  *   3. The browser feeds those HISTORICAL queries into xterm's parser, which
  *      dutifully generates the REPLIES (`ESC[27;3R`, `ESC[?1;2c`) and forwards
  *      them back to the PTY via onData — as if the user typed them. Claude has
  *      exited, so they corrupt the zsh prompt (`27;3R`, `1;2c`).
- *   4. Reconnect resets xterm and replays the full ring again → amplification;
- *      the echoed reply bytes themselves accumulate in the ring as stale
- *      artifacts.
+ *   4. Reconnect resets xterm and replays again → amplification; the echoed
+ *      reply bytes themselves accumulate in the buffer as stale artifacts.
  *
  * Fix contract: the scrollback REPLAY strips the device query/report protocol
  * set (DSR/CPR/DA/kitty-query) so xterm never sees a stale query to answer and
- * stale reply artifacts do not linger. The LIVE output path is untouched, so a
+ * stale reply artifacts do not linger. Stripping happens in getReplay, on the
+ * replay slice only — the offsets it returns stay RAW (see pty-host-service
+ * tests). The LIVE output path (proc.onData → subscriber) is untouched, so a
  * running program's real-time queries still reach xterm and get answered.
  */
 
@@ -112,6 +113,13 @@ const spawnParams = (sessionId: string) => ({
 
 const ESC = '\x1b';
 
+/** The sanitized scrollback bytes a fresh client (offset 0) would be replayed. */
+function replayData(svc: PtyHostService, sessionId: string): Buffer {
+  const slice = svc.getReplay(sessionId, 0);
+  if (!slice) throw new Error(`expected a replay slice for ${sessionId}`);
+  return slice.data;
+}
+
 describe('PtyHostService scrollback replay — device-query stripping', () => {
   beforeEach(() => {
     spawnedPtys.length = 0;
@@ -127,10 +135,7 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     // before DSR(6n) DA(c) mid DA-secondary(>0c) after
     proc.emitData(Buffer.from(`before${ESC}[6n${ESC}[cmid${ESC}[>0cafter`));
 
-    const ws = makeFakeWs();
-    expect(svc.addSubscriber('s1', ws as any)).toBe(true);
-
-    expect(received(ws)).toBe('beforemidafter');
+    expect(replayData(svc, 's1').toString('utf8')).toBe('beforemidafter');
   });
 
   it('strips stale CPR (ESC[27;3R) and DA-reply (ESC[?1;2c) artifacts left by prior amplification', () => {
@@ -138,17 +143,14 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     svc.spawn(spawnParams('s1'));
     const proc = spawnedPtys[0];
 
-    // These are echoed device RESPONSES that accumulated in the ring across
+    // These are echoed device RESPONSES that accumulated in the buffer across
     // reconnect amplification — the exact fragments QA observed.
     proc.emitData(Buffer.from(`A${ESC}[27;3RB${ESC}[?1;2cC${ESC}[>0;276;0cD`));
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
-    expect(received(ws)).toBe('ABCD');
+    expect(replayData(svc, 's1').toString('utf8')).toBe('ABCD');
   });
 
-  it('strips a query split across two ring chunks (concat-then-strip)', () => {
+  it('strips a query split across two output chunks (concat-then-strip)', () => {
     const svc = makeService();
     svc.spawn(spawnParams('s1'));
     const proc = spawnedPtys[0];
@@ -156,10 +158,7 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     proc.emitData(Buffer.from(`foo${ESC}[`));
     proc.emitData(Buffer.from('6nbar'));
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
-    expect(received(ws)).toBe('foobar');
+    expect(replayData(svc, 's1').toString('utf8')).toBe('foobar');
   });
 
   it('preserves SGR colours, screen/cursor control, and DEC private modes not in the protocol set', () => {
@@ -170,10 +169,7 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     const payload = `${ESC}[31mred${ESC}[0m${ESC}[2J${ESC}[H${ESC}[?25h${ESC}[?2004hok`;
     proc.emitData(Buffer.from(payload));
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
-    expect(received(ws)).toBe(payload);
+    expect(replayData(svc, 's1').toString('utf8')).toBe(payload);
   });
 
   it('is conservative with final byte u: strips only the kitty QUERY (CSI ? u), not key-encoding or push/pop', () => {
@@ -185,10 +181,7 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     // ?1u = kitty query (the only reply-generating one → strip).
     proc.emitData(Buffer.from(`${ESC}[13;2u${ESC}[>1u${ESC}[?1uX${ESC}[<1uY`));
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
-    expect(received(ws)).toBe(`${ESC}[13;2u${ESC}[>1uX${ESC}[<1uY`);
+    expect(replayData(svc, 's1').toString('utf8')).toBe(`${ESC}[13;2u${ESC}[>1uX${ESC}[<1uY`);
   });
 
   it('resumes scanning after a malformed CSI interrupted by a C0 control, still stripping a later DSR', () => {
@@ -202,10 +195,7 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     // later, well-formed `ESC[6n` DSR still has to be stripped.
     proc.emitData(Buffer.from(`X${ESC}[\nY${ESC}[6nZ`));
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
-    expect(received(ws)).toBe(`X${ESC}[\nYZ`);
+    expect(replayData(svc, 's1').toString('utf8')).toBe(`X${ESC}[\nYZ`);
   });
 
   it('resumes scanning after a malformed CSI interrupted by a high byte, still stripping a later DA', () => {
@@ -225,26 +215,20 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
       ]),
     );
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
     const expected = Buffer.concat([Buffer.from(`${ESC}[`), Buffer.from([0xff]), Buffer.from('MN')]);
-    expect(receivedBytes(ws).equals(expected)).toBe(true);
+    expect(replayData(svc, 's1').equals(expected)).toBe(true);
   });
 
-  it('preserves a genuinely truncated CSI at the very end of the ring', () => {
+  it('preserves a genuinely truncated CSI at the very end of the buffer', () => {
     const svc = makeService();
     svc.spawn(spawnParams('s1'));
     const proc = spawnedPtys[0];
 
-    // The ring ends mid-CSI with no final byte and nothing follows — a real
+    // The buffer ends mid-CSI with no final byte and nothing follows — a real
     // partial sequence, not a leak risk, so it must pass through verbatim.
     proc.emitData(Buffer.from(`tail${ESC}[6`));
 
-    const ws = makeFakeWs();
-    svc.addSubscriber('s1', ws as any);
-
-    expect(received(ws)).toBe(`tail${ESC}[6`);
+    expect(replayData(svc, 's1').toString('utf8')).toBe(`tail${ESC}[6`);
   });
 
   it('leaves the LIVE output stream untouched so real-time terminal queries still reach the client', () => {
@@ -252,6 +236,8 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     svc.spawn(spawnParams('s1'));
     const proc = spawnedPtys[0];
 
+    // Join the live stream (join-only; scrollback replay is a separate getReplay
+    // concern and is not exercised here).
     const ws = makeFakeWs();
     svc.addSubscriber('s1', ws as any);
     ws.send.mockClear();

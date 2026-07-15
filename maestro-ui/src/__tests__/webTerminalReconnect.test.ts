@@ -16,13 +16,13 @@ import type { TerminalTransport } from '../platform/types';
  *    still "active" (createSession called, closeSession not yet called) MUST
  *    reconnect, with exponential backoff that resets after a successful open.
  *  - closeSession() must permanently stop any further reconnect attempts.
- *  - A RECONNECT (not the session's first-ever connect) must fire the
- *    onReattach signal so the UI layer can reset the xterm buffer before the
- *    fresh socket replays the server's full scrollback ring — otherwise the
- *    replay duplicates whatever was already on screen.
- *  - The per-session TextDecoder is dropped on every close so a dangling
- *    partial multi-byte sequence from the dead socket cannot corrupt the
- *    first frame of the next connection's decode.
+ *
+ * NOTE: the reattach REPAINT model (whether a reconnect resets xterm / drops the
+ * streaming decoder) moved to the byte-offset resume layer — it is now driven by
+ * the server's `attached{gap,next}` ack rather than fired eagerly on every
+ * reconnect. Those behaviors are pinned in webTerminalOffsetResume.test.ts. This
+ * suite only asserts that a bare reconnect does NOT eagerly reset (see the
+ * onReattach case below).
  */
 
 const OPEN = 1;
@@ -234,7 +234,7 @@ describe('webTerminal reconnect on transport drop', () => {
     expect(MockWebSocket.instances).toHaveLength(1);
   });
 
-  it('fires onReattach on a reconnect but not on the session\'s first-ever connect', async () => {
+  it('does not eagerly fire onReattach on a bare reconnect (the repaint decision is deferred to the attached ack)', async () => {
     const onReattach = vi.fn();
     await webTerminal.onReattach?.(onReattach);
     await webTerminal.createSession({
@@ -254,42 +254,11 @@ describe('webTerminal reconnect on transport drop', () => {
     ws0.triggerClose(1006);
     await vi.advanceTimersByTimeAsync(1000);
 
+    // The socket reconnects, but onReattach is NOT fired just because a reconnect
+    // happened. Under offset resume the terminal is only reset when the server's
+    // `attached` ack reports a gap/rewind — see webTerminalOffsetResume.test.ts.
     expect(MockWebSocket.instances).toHaveLength(2);
-    expect(onReattach).toHaveBeenCalledTimes(1);
-    expect(onReattach).toHaveBeenCalledWith('sess-reattach');
-  });
-
-  it('resets the streaming decoder on reconnect so a dangling partial multibyte sequence cannot corrupt the next frame', async () => {
-    const onOutput = vi.fn();
-    await webTerminal.onOutput(onOutput);
-    await webTerminal.createSession({
-      name: null,
-      command: null,
-      cwd: null,
-      envVars: null,
-      persistent: true,
-      persistId: 'p6',
-      maestroSessionId: 'sess-decoder',
-    });
-
-    const ws0 = firstSocket();
-    ws0.triggerOpen();
-    // Lead byte of a 2-byte UTF-8 sequence (e.g. 0xC2 0xA9 = "©"), with the
-    // trailing byte never arriving before the socket dies.
-    ws0.triggerMessage(bytes(0xc2));
-    ws0.triggerClose(1006); // transport drop -> should reconnect
-
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(MockWebSocket.instances).toHaveLength(2);
-    const ws1 = MockWebSocket.instances[1];
-    ws1.triggerOpen();
-    // Plain ASCII on the new socket. If the old decoder's dangling lead byte
-    // survived, this would decode corrupted (e.g. prefixed with U+FFFD).
-    ws1.triggerMessage(textBytes('hello'));
-
-    const outputs = onOutput.mock.calls.map((call) => call[1]);
-    expect(outputs).toContain('hello');
-    expect(outputs.join('')).not.toContain('�');
+    expect(onReattach).not.toHaveBeenCalled();
   });
 
   it('registers the visibilitychange/online wake listeners exactly once, and immediately re-attaches a non-open active socket on wake', async () => {

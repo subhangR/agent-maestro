@@ -3,6 +3,7 @@ import type { IPty } from 'node-pty';
 import type { WebSocket } from 'ws';
 import { ILogger } from '../../domain/common/ILogger';
 import { SessionService } from './SessionService';
+import { OutputBuffer, ReplaySlice } from './OutputBuffer';
 
 /**
  * Parameters for spawning a server-hosted PTY.
@@ -19,9 +20,10 @@ export interface PtySpawnParams {
 
 interface PtyEntry {
   proc: IPty;
-  /** Recent output chunks for scrollback replay to late-joining clients. */
-  ring: Buffer[];
-  ringBytes: number;
+  /** Offset-tracked scrollback buffer: counts every raw byte the PTY has ever
+   *  produced and retains a bounded tail, so a reconnecting client can resume
+   *  from the exact byte offset it last saw (see {@link PtyHostService.getReplay}). */
+  output: OutputBuffer;
   subscribers: Set<WebSocket>;
   exited: boolean;
   exitCode: number | null;
@@ -34,7 +36,6 @@ interface PtyEntry {
 
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
-const RING_CAP_BYTES = 256 * 1024;
 
 const ESC = 0x1b;
 const CSI_INTRO = 0x5b; // '['
@@ -132,8 +133,9 @@ function shouldStripCsi(finalByte: number, params: Buffer): boolean {
 
 /**
  * Owns agent PTYs server-side (replacing the Tauri-hosted PTY for headless/web
- * deployments). Spawns processes with node-pty, keeps a scrollback ring buffer
- * per session, and fans live output out to subscribed WebSocket clients.
+ * deployments). Spawns processes with node-pty, keeps an offset-tracked output
+ * buffer per session (for byte-accurate scrollback resume), and fans live
+ * output out to subscribed WebSocket clients.
  *
  * The actual WS framing lives in PtyWebSocketServer; this service is transport
  * agnostic beyond writing raw bytes to subscriber sockets.
@@ -154,7 +156,12 @@ export class PtyHostService {
 
     if (this.sessions.has(sessionId)) {
       this.logger.warn('PtyHostService: replacing existing PTY for session', { sessionId });
-      this.kill(sessionId);
+      // Replace, don't stop: close the old subscribers' sockets WITHOUT sending a
+      // terminal exit frame (notify=false). The new PTY restarts output at
+      // offset 0, so an attached web client must reconnect and resume onto the
+      // fresh stream — sending an exit frame here would make it finalize the
+      // terminal and never come back, stranding the new process.
+      this.kill(sessionId, false);
     }
 
     const shell = env.SHELL || process.env.SHELL || '/bin/bash';
@@ -175,8 +182,7 @@ export class PtyHostService {
 
     const entry: PtyEntry = {
       proc,
-      ring: [],
-      ringBytes: 0,
+      output: new OutputBuffer(),
       subscribers: new Set(),
       exited: false,
       exitCode: null,
@@ -187,13 +193,20 @@ export class PtyHostService {
 
     proc.onData((data: string | Buffer) => {
       const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8');
-      this.appendToRing(entry, chunk);
+      entry.output.append(chunk);
       for (const ws of entry.subscribers) {
         this.safeSend(ws, chunk);
       }
     });
 
     proc.onExit(({ exitCode }) => {
+      // node-pty fires onExit ASYNCHRONOUSLY, and killing a PTY still produces
+      // this event later. If this session's slot was already replaced (respawn
+      // installs a new entry) or removed (explicit kill), this is the OLD
+      // process's late exit — it must not delete the freshly-installed entry or
+      // stomp a status the stop path already set. Identity-check the live entry
+      // before touching any shared state.
+      if (this.sessions.get(sessionId) !== entry) return;
       entry.exited = true;
       entry.exitCode = exitCode;
       this.logger.info('PtyHostService: session PTY exited', { sessionId, exitCode });
@@ -210,26 +223,8 @@ export class PtyHostService {
       // Signal a REAL process exit to subscribers before closing their sockets,
       // so clients can distinguish "the agent finished/crashed" from a plain
       // socket drop (tab close, reload, network blip — those only detach). The
-      // web adapter listens for this {type:'exit'} text frame. kill() does NOT
-      // emit this: an explicit user stop is initiated by the UI, which already
-      // knows the session ended.
-      for (const ws of entry.subscribers) {
-        try {
-          if (ws.readyState === 1) {
-            ws.send(JSON.stringify({ type: 'exit', exitCode: exitCode ?? null }));
-          }
-        } catch {
-          // best effort
-        }
-      }
-      for (const ws of entry.subscribers) {
-        try {
-          ws.close();
-        } catch {
-          // ignore
-        }
-      }
-      entry.subscribers.clear();
+      // web adapter listens for this {type:'exit'} text frame.
+      this.notifyExit(entry, exitCode ?? null);
       this.sessions.delete(sessionId);
     });
 
@@ -302,46 +297,67 @@ export class PtyHostService {
     }
   }
 
-  /** Kill the PTY for a session. */
-  kill(sessionId: string): void {
+  /**
+   * Kill the PTY for a session.
+   *
+   * @param notify When true (the default, an explicit user stop), send a
+   *   terminal {type:'exit'} frame so the client finalizes the terminal. When
+   *   false (an internal replace/respawn), only close the sockets — the client
+   *   reconnects and resumes onto the new PTY instead of finalizing.
+   */
+  kill(sessionId: string, notify = true): void {
     const entry = this.sessions.get(sessionId);
     if (!entry) return;
     try {
       entry.proc.kill();
-    } catch {
-      // ignore
+    } catch (error) {
+      // A PTY whose process already died (ESRCH) throws here; that is not fatal
+      // — the session must still be finalized and its subscribers detached.
+      this.logger.warn('PtyHostService: kill failed', {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
-    for (const ws of entry.subscribers) {
-      try {
-        ws.close();
-      } catch {
-        // ignore
-      }
+    if (notify) {
+      this.notifyExit(entry, null);
+    } else {
+      this.closeSubscribers(entry);
     }
-    entry.subscribers.clear();
     this.sessions.delete(sessionId);
   }
 
   /**
-   * Subscribe a WebSocket to a session's output. Replays the scrollback ring
-   * buffer immediately so the client sees recent history. Returns false if no
-   * such session exists.
+   * Compute the scrollback to replay to a client resuming from raw byte
+   * `fromOffset`, or null if there is no live PTY for the session (the caller
+   * uses null as the "no such session, close 1011" signal).
+   *
+   * The returned slice's `base`, `gap`, and `next` are RAW byte offsets — the
+   * same coordinate space as the live stream and the client's receive counter.
+   * Only `data` is sanitized here: device QUERY/REPORT sequences are stripped so
+   * replaying historical `ESC[6n`/`ESC[c` cannot make the client's xterm answer
+   * them and post the replies back to the PTY as fake keystrokes. Stripping
+   * SHORTENS `data` but MUST NOT move the offsets — the client snaps its receive
+   * counter to `next` (raw), never to `base + data.length`, so sanitizing can
+   * neither duplicate nor skip bytes on the next reconnect. The live stream
+   * (proc.onData → safeSend) is never sanitized, so a running program's
+   * real-time queries still reach the client and get answered.
+   */
+  getReplay(sessionId: string, fromOffset: number): ReplaySlice | null {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return null;
+    const slice = entry.output.replayFrom(fromOffset);
+    return { ...slice, data: stripScrollbackDeviceQueries(slice.data) };
+  }
+
+  /**
+   * Subscribe a WebSocket to a session's LIVE output. Join-only: scrollback
+   * replay is handled separately by {@link getReplay} + the PtyWebSocketServer
+   * attach handshake, which keeps offset accounting outside the live fan-out.
+   * Returns false if no such session exists.
    */
   addSubscriber(sessionId: string, ws: WebSocket): boolean {
     const entry = this.sessions.get(sessionId);
     if (!entry) return false;
-    // Replay scrollback before attaching to the live stream. Concatenate the
-    // ring and strip terminal device QUERIES/REPORTS first: replaying a
-    // historical `ESC[6n`/`ESC[c` makes the client's xterm answer it and post
-    // the reply back to the PTY as fake keystrokes ('27;3R'/'1;2c' garbage on
-    // the shell prompt). Concatenating before stripping also catches a query
-    // split across two ring chunks. The live stream (proc.onData → safeSend) is
-    // never sanitized, so a running program's real-time queries still reach the
-    // client and get answered.
-    if (entry.ring.length > 0) {
-      const scrollback = stripScrollbackDeviceQueries(Buffer.concat(entry.ring));
-      if (scrollback.length > 0) this.safeSend(ws, scrollback);
-    }
     entry.subscribers.add(ws);
     return true;
   }
@@ -360,20 +376,36 @@ export class PtyHostService {
     }
   }
 
-  private appendToRing(entry: PtyEntry, chunk: Buffer): void {
-    entry.ring.push(chunk);
-    entry.ringBytes += chunk.length;
-    while (entry.ringBytes > RING_CAP_BYTES && entry.ring.length > 1) {
-      const dropped = entry.ring.shift()!;
-      entry.ringBytes -= dropped.length;
+  /**
+   * Send a terminal {type:'exit'} frame to every subscriber, then close and
+   * detach them. Used by the natural-exit path and by an explicit kill(); the
+   * replace/respawn path calls {@link closeSubscribers} directly so the client
+   * only sees a socket close and reconnects onto the new PTY.
+   */
+  private notifyExit(entry: PtyEntry, exitCode: number | null): void {
+    for (const ws of entry.subscribers) {
+      this.safeSend(ws, JSON.stringify({ type: 'exit', exitCode }));
     }
+    this.closeSubscribers(entry);
   }
 
-  private safeSend(ws: WebSocket, chunk: Buffer): void {
+  /** Close every subscriber socket and clear the set (no exit frame). */
+  private closeSubscribers(entry: PtyEntry): void {
+    for (const ws of entry.subscribers) {
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+    }
+    entry.subscribers.clear();
+  }
+
+  private safeSend(ws: WebSocket, data: string | Buffer): void {
     // 1 === WebSocket.OPEN
     if (ws.readyState !== 1) return;
     try {
-      ws.send(chunk);
+      ws.send(data);
     } catch {
       // best effort; the socket's own close handler will detach it
     }
