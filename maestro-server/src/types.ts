@@ -245,6 +245,7 @@ export interface Project {
   name: string;
   workingDir: string;
   description?: string;
+  githubUrl?: string;        // Canonical per-project GitHub repository URL (https://github.com/owner/repo); optional for backward compatibility
   isMaster?: boolean;        // Marks this as a master project with cross-project access
   createdAt: number;
   updatedAt: number;

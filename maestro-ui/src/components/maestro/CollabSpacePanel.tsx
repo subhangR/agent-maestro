@@ -1,18 +1,37 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useFirebaseAuthStore } from "../../stores/useFirebaseAuthStore";
 import { useCollabSpaceStore } from "../../stores/useCollabSpaceStore";
+import { useProjectStore } from "../../stores/useProjectStore";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { CollabSpace, CollabSpaceVisibility } from "../../firebase/collabSpaceTypes";
-import { ParsedGitRemote } from "../../utils/parseGitRemote";
+import { ParsedGitRemote, parseManualGithubRemote } from "../../utils/parseGitRemote";
 import { makeCollabActiveId } from "../../app/types/space";
+
+/**
+ * Classifies a failed `setProjectGithubUrl` PUT so the UI can tell a
+ * rejected repository URL (a 4xx from the server's validation contract)
+ * apart from an actual network/connectivity failure. Exported for direct
+ * unit coverage — mounting the full signed-in Collab tree (Firebase auth +
+ * three stores) just to exercise this branch would be brittle for no extra
+ * signal; `MaestroClient`'s fetch wrapper already throws
+ * `Error("HTTP <status>: ...")` for non-2xx responses (see
+ * `MaestroClient.ts#fetch`) and lets a raw fetch rejection (e.g. a dropped
+ * connection) propagate as-is, so that existing shape is all this needs.
+ */
+export function classifyGithubUrlSaveError(err: unknown): 'invalid-url' | 'network' {
+  const status = err instanceof Error ? err.message.match(/^HTTP (\d\d\d):/)?.[1] : undefined;
+  return status && status.startsWith('4') ? 'invalid-url' : 'network';
+}
 
 type CollabSpacePanelProps = {
   projectId: string;
   workingDir: string;
   projectName: string;
+  /** Persisted canonical GitHub URL for this project; hydrated before git detection. */
+  savedGithubUrl?: string;
 };
 
-export function CollabSpacePanel({ projectId, workingDir, projectName }: CollabSpacePanelProps) {
+export function CollabSpacePanel({ projectId, workingDir, projectName, savedGithubUrl }: CollabSpacePanelProps) {
   const configured = useFirebaseAuthStore((s) => s.configured);
   const initAuth = useFirebaseAuthStore((s) => s.initAuth);
   const initialized = useFirebaseAuthStore((s) => s.initialized);
@@ -32,7 +51,12 @@ export function CollabSpacePanel({ projectId, workingDir, projectName }: CollabS
     return <SignInView />;
   }
   return (
-    <SignedInView projectId={projectId} workingDir={workingDir} projectName={projectName} />
+    <SignedInView
+      projectId={projectId}
+      workingDir={workingDir}
+      projectName={projectName}
+      savedGithubUrl={savedGithubUrl}
+    />
   );
 }
 
@@ -44,10 +68,12 @@ function SignedInView({
   projectId,
   workingDir,
   projectName,
+  savedGithubUrl,
 }: {
   projectId: string;
   workingDir: string;
   projectName: string;
+  savedGithubUrl?: string;
 }) {
   const user = useFirebaseAuthStore((s) => s.user)!;
   const signOut = useFirebaseAuthStore((s) => s.signOut);
@@ -55,7 +81,9 @@ function SignedInView({
   const detectedRemote = useCollabSpaceStore((s) => s.detectedRemoteByProject[projectId]);
   const detectionLoading = useCollabSpaceStore((s) => s.detectionLoading[projectId]);
   const detectRemote = useCollabSpaceStore((s) => s.detectRemote);
-  const setManualRemote = useCollabSpaceStore((s) => s.setManualRemote);
+  const setDetectedRemote = useCollabSpaceStore((s) => s.setDetectedRemote);
+  const hydrateRemoteFromProject = useCollabSpaceStore((s) => s.hydrateRemoteFromProject);
+  const setProjectGithubUrl = useProjectStore((s) => s.setProjectGithubUrl);
 
   const subscribeForRepo = useCollabSpaceStore((s) => s.subscribeForRepo);
   const unsubscribeForRepo = useCollabSpaceStore((s) => s.unsubscribeForRepo);
@@ -68,13 +96,64 @@ function SignedInView({
   const [showCreate, setShowCreate] = useState(false);
   const [editingRemote, setEditingRemote] = useState(false);
   const [manualRemote, setManualRemoteInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Auto-detect git remote on mount / project change
+  // Resolve the repo: seed the persisted project.githubUrl first, then fall
+  // back to local git detection only when the project has no saved URL.
   useEffect(() => {
-    if (detectedRemote === undefined) {
-      void detectRemote(projectId, workingDir);
+    if (detectedRemote !== undefined) return;
+    if (savedGithubUrl) {
+      hydrateRemoteFromProject(projectId, savedGithubUrl);
+      return;
     }
-  }, [projectId, workingDir, detectedRemote, detectRemote]);
+    void detectRemote(projectId, workingDir);
+  }, [
+    projectId,
+    workingDir,
+    savedGithubUrl,
+    detectedRemote,
+    hydrateRemoteFromProject,
+    detectRemote,
+  ]);
+
+  const handleSaveRemote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = manualRemote.trim();
+    if (!raw) {
+      setEditingRemote(false);
+      return;
+    }
+    const parsed = parseManualGithubRemote(raw);
+    if (!parsed) {
+      setSaveError(
+        "Enter a canonical GitHub repository URL (e.g. github.com/owner/repo or https://github.com/owner/repo)."
+      );
+      return;
+    }
+    const githubUrl = `https://${parsed.canonical}`;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // Persist through the Project API first; only update the parsed cache on
+      // success so a failed save never silently "sticks" in the UI.
+      await setProjectGithubUrl(projectId, githubUrl);
+      setDetectedRemote(projectId, parsed);
+      setEditingRemote(false);
+    } catch (err) {
+      // Tell a rejected repository URL apart from a real connectivity problem;
+      // either way the parsed remote cache is left untouched (see comment above).
+      if (classifyGithubUrlSaveError(err) === 'invalid-url') {
+        setSaveError(
+          "That repository URL was rejected by the server. Use the canonical form https://github.com/owner/repo."
+        );
+      } else {
+        setSaveError("Couldn't save the repository. Check your connection and try again.");
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   // Subscribe to space lists for the current repo
   useEffect(() => {
@@ -124,6 +203,7 @@ function SignedInView({
                 className="collabSpaceTextButton"
                 onClick={() => {
                   setManualRemoteInput(detectedRemote?.canonical ?? "");
+                  setSaveError(null);
                   setEditingRemote(true);
                 }}
               >
@@ -131,35 +211,38 @@ function SignedInView({
               </button>
             </>
           ) : (
-            <form
-              className="collabSpaceRepoEdit"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (manualRemote.trim()) {
-                  setManualRemote(projectId, manualRemote.trim());
-                }
-                setEditingRemote(false);
-              }}
-            >
+            <form className="collabSpaceRepoEdit" onSubmit={handleSaveRemote}>
               <input
                 type="text"
                 className="collabSpaceInput"
                 placeholder="github.com/owner/repo or https://github.com/owner/repo"
                 value={manualRemote}
                 onChange={(e) => setManualRemoteInput(e.target.value)}
+                disabled={saving}
                 autoFocus
               />
-              <button type="submit" className="collabSpaceButton">Save</button>
+              <button type="submit" className="collabSpaceButton" disabled={saving}>
+                {saving ? "Saving…" : "Save"}
+              </button>
               <button
                 type="button"
                 className="collabSpaceTextButton"
-                onClick={() => setEditingRemote(false)}
+                onClick={() => {
+                  setSaveError(null);
+                  setEditingRemote(false);
+                }}
+                disabled={saving}
               >
                 Cancel
               </button>
             </form>
           )}
         </div>
+        {saveError && (
+          <div className="collabSpaceError" role="alert">
+            {saveError}
+          </div>
+        )}
       </div>
 
       {!detectedRemote && !detectionLoading && !editingRemote && (

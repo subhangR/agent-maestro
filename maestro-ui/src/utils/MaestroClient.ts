@@ -137,7 +137,7 @@ class MaestroClient {
     /**
      * Create a new project
      */
-    async createProject(data: { name: string; workingDir?: string; description?: string; createdAt?: number; updatedAt?: number }): Promise<MaestroProject> {
+    async createProject(data: { name: string; workingDir?: string; description?: string; githubUrl?: string; createdAt?: number; updatedAt?: number }): Promise<MaestroProject> {
         return this.fetch<MaestroProject>('/projects', {
             method: 'POST',
             body: JSON.stringify(data),
@@ -147,7 +147,7 @@ class MaestroClient {
     /**
      * Update an existing project
      */
-    async updateProject(id: string, data: { name?: string; workingDir?: string; description?: string; createdAt?: number; updatedAt?: number }): Promise<MaestroProject> {
+    async updateProject(id: string, data: { name?: string; workingDir?: string; description?: string; githubUrl?: string; createdAt?: number; updatedAt?: number }): Promise<MaestroProject> {
         return this.fetch<MaestroProject>(`/projects/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
