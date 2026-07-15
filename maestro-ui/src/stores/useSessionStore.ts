@@ -131,6 +131,22 @@ export function initSessionStoreRefs(
       pendingDataRef.current.set(id, buffer);
     });
 
+    void platform.terminal.onReattach?.((id) => {
+      // The transport is about to replay the server's full scrollback ring
+      // buffer on the fresh socket (see PtyHostService.addSubscriber). The
+      // terminal already rendered some/all of that history pre-drop, so wipe
+      // it first or the replay would duplicate it. Also drop any buffered
+      // pre-mount output — it belongs to the stale connection.
+      pendingDataRef?.current.delete(id);
+      const entry = registryRef?.current.get(id);
+      if (!entry) return;
+      try {
+        entry.term.reset();
+      } catch {
+        // ignore — terminal mid-disposal
+      }
+    });
+
     void platform.terminal.onSize?.((id, size) => {
       if (!size.cols || !size.rows) return;
       // Once the client owns the size (has fit + shipped), the server's stale

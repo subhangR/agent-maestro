@@ -591,12 +591,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       return res.status(400).json({ error: 'server PTY host not enabled' });
     }
     const sessionId = req.body.sessionId as string;
-    // Idempotent: the client may have raced an attach, or double-fired the
-    // request. If a PTY already exists, treat the spawn as a no-op success so we
-    // never kill+replace a live, attached terminal.
-    if (ptyHostService.hasSession(sessionId)) {
-      return res.status(201).json({ ok: true, sessionId });
-    }
     const shell = process.env.SHELL || '/bin/bash';
     const rawCommand = typeof req.body.command === 'string' ? req.body.command : '';
     // PtyHostService runs `shell -c "<command>"`, so an empty command makes the
@@ -609,7 +603,11 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       : `${shell} -i`;
     const cwd = typeof req.body.cwd === 'string' && req.body.cwd.trim() ? req.body.cwd : homedir();
     try {
-      ptyHostService.spawn({
+      // Idempotent reattach: the client may have raced an attach, double-fired
+      // the request, or — on a browser reload — be re-creating a persisted
+      // standalone terminal. If a live PTY already exists we reattach to it and
+      // never kill+replace an attached terminal; a dead one is recreated.
+      const { reused } = ptyHostService.spawnIfAbsent({
         sessionId,
         command: finalCommand,
         cwd,
@@ -617,7 +615,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         cols: req.body.cols,
         rows: req.body.rows,
       });
-      return res.status(201).json({ ok: true, sessionId });
+      return res.status(201).json({ ok: true, sessionId, reused });
     } catch (err) {
       console.error('[pty/spawn] Failed to spawn server PTY:', err instanceof Error ? err.message : err);
       return res.status(500).json({

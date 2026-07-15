@@ -3,6 +3,11 @@ import type { IncomingMessage } from 'http';
 import { ILogger } from '../../domain/common/ILogger';
 import { PtyHostService } from '../../application/services/PtyHostService';
 
+/** WebSocket protocol-level heartbeat cadence (ws library ping/pong, not a JSON frame). */
+const HEARTBEAT_INTERVAL_MS = 30_000;
+
+type TrackedWebSocket = WebSocket & { isAlive?: boolean };
+
 /**
  * Dedicated WebSocket channel for live PTY streaming, separate from the main
  * WebSocketBridge so terminal bytes never hit its JSON framing, 50ms batching,
@@ -16,14 +21,53 @@ import { PtyHostService } from '../../application/services/PtyHostService';
  *  - client -> server: binary frame  = keystroke bytes (written to the PTY)
  *                      text frame     = JSON control message, currently:
  *                        { "type": "resize", "cols": <n>, "rows": <n> }
+ *
+ * A protocol-level ping/pong heartbeat (not a data frame — invisible to the
+ * message handlers above) runs every HEARTBEAT_INTERVAL_MS so a browser tab
+ * that vanished without a clean close (laptop sleep, killed process, dropped
+ * wifi) gets reaped instead of lingering as a phantom subscriber until TCP
+ * eventually notices. Browsers answer protocol pings automatically; no
+ * client-side change is required.
  */
 export class PtyWebSocketServer {
+  private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+
   constructor(
     private readonly wss: WebSocketServer,
     private readonly ptyHostService: PtyHostService,
     private readonly logger: ILogger,
   ) {
     this.wss.on('connection', (ws, req) => this.handleConnection(ws, req));
+    this.startHeartbeat();
+  }
+
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(() => {
+      for (const ws of this.wss.clients) {
+        const client = ws as TrackedWebSocket;
+        if (client.isAlive === false) {
+          this.logger.info('PtyWebSocketServer: terminating unresponsive client');
+          client.terminate();
+          continue;
+        }
+        client.isAlive = false;
+        try {
+          client.ping();
+        } catch {
+          // best effort
+        }
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+    // Don't keep the process alive solely for the heartbeat timer.
+    this.heartbeatInterval.unref?.();
+  }
+
+  /** Stop the heartbeat timer (graceful shutdown). */
+  shutdown(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
   }
 
   private handleConnection(ws: WebSocket, req: IncomingMessage): void {
@@ -34,6 +78,11 @@ export class PtyWebSocketServer {
     }
 
     ws.binaryType = 'nodebuffer';
+    const tracked = ws as TrackedWebSocket;
+    tracked.isAlive = true;
+    ws.on('pong', () => {
+      tracked.isAlive = true;
+    });
 
     // Tell the client the PTY's current dimensions BEFORE the scrollback replay
     // so it can size its terminal to the width the buffered output was authored

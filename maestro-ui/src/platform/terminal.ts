@@ -61,6 +61,27 @@ const _pendingSends = new Map<string, Array<string | Uint8Array>>();
 const _outputHandlers: Array<(id: string, data: string) => void> = [];
 const _exitHandlers: Array<(id: string, exitCode?: number | null) => void> = [];
 const _sizeHandlers: Array<(id: string, size: { cols: number; rows: number }) => void> = [];
+const _reattachHandlers: Array<(id: string) => void> = [];
+
+// Session ids the app currently wants attached (added in createSession, removed
+// in closeSession). Only these are auto-reconnected after a transport drop —
+// a socket that closes for a session we've since detached from must NOT come
+// back to life.
+const _activeSessions = new Set<string>();
+// Ids that have connected at least once. Distinguishes a session's FIRST-EVER
+// connect (nothing to reset, no scrollback yet on screen) from a RECONNECT
+// (the client already rendered some of this PTY's ring buffer, so replaying it
+// again would duplicate history — see _reattachHandlers).
+const _connectedIds = new Set<string>();
+// Ids for which a real {type:'exit'} frame has already fired onExit, so the
+// close event that follows it (the server always closes subscriber sockets
+// right after sending that frame — see PtyHostService) does not fire again or
+// get mistaken for a transport drop worth reconnecting.
+const _exitedSessions = new Set<string>();
+// Per-session reconnect backoff bookkeeping (mirrors useMaestroStore's
+// connectGlobal: exponential backoff + jitter, reset on successful open).
+const _reconnectAttempts = new Map<string, number>();
+const _reconnectTimers = new Map<string, number>();
 
 // One streaming decoder per session. PTY output arrives as raw bytes split on
 // arbitrary boundaries, so a multi-byte UTF-8 glyph (box-drawing chars, emoji,
@@ -79,7 +100,32 @@ function _decodeFor(id: string, bytes: Uint8Array): string {
   return dec.decode(bytes, { stream: true });
 }
 
-function _ensureSocket(id: string): WebSocket {
+function _clearReconnectTimer(id: string): void {
+  const timer = _reconnectTimers.get(id);
+  if (timer !== undefined) {
+    window.clearTimeout(timer);
+    _reconnectTimers.delete(id);
+  }
+}
+
+/** Exponential backoff + jitter, mirroring useMaestroStore's connectGlobal. */
+function _scheduleReconnect(id: string): void {
+  if (!_activeSessions.has(id)) return;
+  _clearReconnectTimer(id);
+  const attempts = _reconnectAttempts.get(id) ?? 0;
+  const baseDelay = Math.min(1000 * Math.pow(2, attempts), 30000);
+  const jitter = Math.random() * baseDelay * 0.5; // 0-50% jitter
+  const delay = baseDelay + jitter;
+  _reconnectAttempts.set(id, attempts + 1);
+  const timer = window.setTimeout(() => {
+    _reconnectTimers.delete(id);
+    if (!_activeSessions.has(id)) return;
+    _ensureSocket(id, { isReconnect: true });
+  }, delay);
+  _reconnectTimers.set(id, timer);
+}
+
+function _ensureSocket(id: string, opts: { isReconnect?: boolean } = {}): WebSocket {
   const existing = _sockets.get(id);
   if (
     existing &&
@@ -89,10 +135,23 @@ function _ensureSocket(id: string): WebSocket {
     return existing;
   }
 
+  // A RECONNECT (as opposed to the session's first-ever connect) means the
+  // browser already rendered some of this PTY's scrollback. The fresh socket is
+  // about to replay the FULL ring buffer from the top (PtyWebSocketServer /
+  // PtyHostService.addSubscriber), which would duplicate everything already on
+  // screen unless the xterm buffer is reset first. Tell subscribers (wired via
+  // useSessionStore -> SessionTerminal) to reset before any bytes arrive.
+  const isReconnect = opts.isReconnect ?? _connectedIds.has(id);
+  _connectedIds.add(id);
+  if (isReconnect) {
+    for (const h of _reattachHandlers) h(id);
+  }
+
   const ws = new WebSocket(`${PTY_WS_URL}?sessionId=${encodeURIComponent(id)}`);
   ws.binaryType = 'arraybuffer';
 
   ws.onopen = () => {
+    _reconnectAttempts.set(id, 0);
     const pending = _pendingSends.get(id);
     if (pending) {
       for (const frame of pending) ws.send(frame);
@@ -110,6 +169,11 @@ function _ensureSocket(id: string): WebSocket {
           rows?: number;
         };
         if (msg.type === 'exit') {
+          // A real process exit — mark it so the close event that follows
+          // (PtyHostService closes every subscriber right after this frame)
+          // is recognized as a logical end, not a transport drop to reconnect.
+          _exitedSessions.add(id);
+          _activeSessions.delete(id);
           for (const h of _exitHandlers) h(id, msg.exitCode ?? null);
           return;
         }
@@ -132,20 +196,75 @@ function _ensureSocket(id: string): WebSocket {
   };
 
   ws.onclose = (ev) => {
-    _sockets.delete(id);
+    if (_sockets.get(id) === ws) _sockets.delete(id);
+    // Drop the streaming decoder on EVERY close, not just a logical end: its
+    // partial multi-byte state belongs to the dead connection, so a reconnect's
+    // first frame decodes standalone instead of risking a split glyph from the
+    // old socket corrupting the start of the replay.
     _decoders.delete(id);
-    // A plain close (reload, tab switch, network blip) is NOT a process exit —
-    // the server-hosted PTY keeps running and we simply detached, so do not fire
-    // onExit. The exceptions: 1011 means the server has no live PTY for this
-    // session (reattach to a dead/gone session), and a real process exit arrives
-    // as a {type:'exit'} text frame handled above. Both mean the session is over.
-    if (ev.code === 1011) {
-      for (const h of _exitHandlers) h(id, null);
+    _clearReconnectTimer(id);
+
+    const alreadyExited = _exitedSessions.has(id);
+    _exitedSessions.delete(id);
+
+    // LOGICAL END: 1011 means the server has no live PTY for this session
+    // (reattach to a dead/gone session); alreadyExited means a real process
+    // exit already arrived as a {type:'exit'} frame (handled above). Either way
+    // the session is truly over — do not reconnect.
+    if (ev.code === 1011 || alreadyExited) {
+      _activeSessions.delete(id);
+      _reconnectAttempts.delete(id);
+      _connectedIds.delete(id);
+      if (!alreadyExited) {
+        for (const h of _exitHandlers) h(id, null);
+      }
+      return;
+    }
+
+    // TRANSPORT DROP: reload, tab switch, network blip, or (the motivating case)
+    // the laptop lid closing and macOS suspending the socket. The server-hosted
+    // PTY is still alive, so reconnect with backoff as long as the app still
+    // wants this session attached.
+    if (_activeSessions.has(id)) {
+      _scheduleReconnect(id);
+    } else {
+      _reconnectAttempts.delete(id);
+      _connectedIds.delete(id);
     }
   };
 
   _sockets.set(id, ws);
   return ws;
+}
+
+let _wakeListenersRegistered = false;
+
+/** Immediately re-attach any active session whose socket isn't OPEN, resetting backoff to instant. */
+function _reattachActiveSockets(): void {
+  for (const id of _activeSessions) {
+    const ws = _sockets.get(id);
+    if (ws && ws.readyState === WebSocket.OPEN) continue;
+    _clearReconnectTimer(id);
+    _reconnectAttempts.set(id, 0);
+    _ensureSocket(id, { isReconnect: true });
+  }
+}
+
+/**
+ * Wake/network-regain detection: a backgrounded tab's timers get throttled (or,
+ * on macOS lid-close, the whole process is suspended), so a scheduled backoff
+ * reconnect can sit unfired for a long time after the machine is actually back.
+ * Firing an immediate reattach on `visibilitychange`/`online` closes that gap.
+ * Registered exactly once regardless of how many sessions get created.
+ */
+function _registerWakeListeners(): void {
+  if (_wakeListenersRegistered) return;
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  _wakeListenersRegistered = true;
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _reattachActiveSockets();
+  });
+  window.addEventListener('online', _reattachActiveSockets);
 }
 
 function _sendFrame(id: string, frame: string | Uint8Array): void {
@@ -163,6 +282,13 @@ function _sendFrame(id: string, frame: string | Uint8Array): void {
 export const webTerminal: TerminalTransport = {
   async createSession(opts: CreateSessionOpts): Promise<TerminalSessionInfo> {
     const id = opts.maestroSessionId ?? opts.persistId;
+    // Registered once regardless of how many sessions get created (guarded
+    // internally); wires visibilitychange/online to instantly re-attach any
+    // session this transport still wants connected.
+    _registerWakeListeners();
+    // Track this id as one the app wants to stay attached — drives whether a
+    // future socket close auto-reconnects (see _ensureSocket's onclose).
+    _activeSessions.add(id);
     // Plain terminals (no maestroSessionId) have no server-side PTY yet — the
     // server only spawns one for maestro sessions during session spawn. Ask the
     // server to spawn a PTY BEFORE attaching the socket; otherwise the attach
@@ -205,6 +331,14 @@ export const webTerminal: TerminalTransport = {
   },
 
   closeSession(id: string): Promise<void> {
+    // Remove from the "should stay attached" set FIRST — ws.close() below
+    // synchronously fires onclose in some environments, and that handler must
+    // see this id as no-longer-active so it does not schedule a reconnect.
+    _activeSessions.delete(id);
+    _clearReconnectTimer(id);
+    _reconnectAttempts.delete(id);
+    _connectedIds.delete(id);
+    _exitedSessions.delete(id);
     const ws = _sockets.get(id);
     if (ws) {
       ws.close();
@@ -236,6 +370,14 @@ export const webTerminal: TerminalTransport = {
     return Promise.resolve(() => {
       const idx = _exitHandlers.indexOf(handler);
       if (idx >= 0) _exitHandlers.splice(idx, 1);
+    });
+  },
+
+  onReattach(handler: (id: string) => void): Promise<Unlisten> {
+    _reattachHandlers.push(handler);
+    return Promise.resolve(() => {
+      const idx = _reattachHandlers.indexOf(handler);
+      if (idx >= 0) _reattachHandlers.splice(idx, 1);
     });
   },
 };

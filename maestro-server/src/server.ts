@@ -318,7 +318,7 @@ async function startServer() {
   });
 
   wsBridge = new WebSocketBridge(wss, eventBus, logger);
-  new PtyWebSocketServer(ptyWss, ptyHostService, logger);
+  const ptyWsServer = new PtyWebSocketServer(ptyWss, ptyHostService, logger);
 
   // Graceful shutdown handler
   let isShuttingDown = false;
@@ -344,6 +344,7 @@ async function startServer() {
 
       // Clean up WebSocket bridge event listeners
       wsBridge.shutdown();
+      ptyWsServer.shutdown();
 
       wss.close(() => {});
       ptyWss.close(() => {});

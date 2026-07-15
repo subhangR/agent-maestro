@@ -38,4 +38,14 @@ export interface TerminalTransport {
    * the window's own FitAddon, so there is no late-join width mismatch).
    */
   onSize?(handler: (id: string, size: { cols: number; rows: number }) => void): Promise<Unlisten>;
+  /**
+   * Web: register a handler fired right before a session's `/pty` socket is
+   * RE-established after a transport drop (sleep/wake, network blip) — i.e. a
+   * genuine reconnect, not the session's first-ever connect. The fresh socket is
+   * about to replay the server's full scrollback ring buffer, which would
+   * duplicate whatever the terminal already rendered pre-drop unless its buffer
+   * is reset first. Absent in Tauri (the desktop PTY lives in-process and never
+   * needs a transport reconnect).
+   */
+  onReattach?(handler: (id: string) => void): Promise<Unlisten>;
 }
