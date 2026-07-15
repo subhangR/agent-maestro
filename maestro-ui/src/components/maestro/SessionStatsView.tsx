@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "../../platform";
 import { useMaestroStore } from "../../stores/useMaestroStore";
-import { getModelDisplayLabel } from "../../app/constants/agentTools";
+import { getModelDisplayLabel, isAgentToolResumable } from "../../app/constants/agentTools";
 import { useProjectStore } from "../../stores/useProjectStore";
 import type {
   MaestroSession,
@@ -495,7 +495,7 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
     permissionMode?: string;
   };
   const agentTool = metadata.agentTool ?? "claude-code";
-  const canResume = agentTool === "claude-code";
+  const canResume = isAgentToolResumable(agentTool);
   const isResuming = resumingSessionId === session.id;
   const isArchived = Boolean(session.archivedAt);
 
@@ -840,7 +840,7 @@ export function SessionStatsView({ session: rootSession }: SessionStatsViewProps
                     ? isResuming
                       ? "Resuming…"
                       : "Resume this session (revives its terminal)"
-                    : "Resume is only available for Claude Code sessions"
+                    : "Resume isn't available for this agent tool"
                 }
               >
                 <StatIcon name="play" size={14} /> {isResuming ? "Resuming…" : "Resume session"}

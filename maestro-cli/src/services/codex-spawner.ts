@@ -195,6 +195,49 @@ export class CodexSpawner {
     return args;
   }
 
+  /**
+   * Build Codex CLI arguments for resuming an existing session:
+   * `codex resume [OPTIONS] <SESSION_ID>` (verified against `codex resume --help`,
+   * CLI 0.144.x). Unlike Claude — which lets Maestro pre-seed the session id via
+   * `--session-id` and resume with `--resume <id>` — the Codex CLI generates its
+   * own rollout id and cannot be pre-seeded, so resume requires the captured
+   * native id. The launch config (model, sandbox, approval policy, cwd) is
+   * reapplied so the resumed session keeps its settings.
+   *
+   * The Maestro role/system prompt IS re-injected via Codex's official
+   * `developer_instructions` config key — documented as "additional user
+   * instructions injected per session (before AGENTS.md)", i.e. it ADDS to
+   * Codex's built-in base prompt rather than replacing it (the provider-specific
+   * analog of Claude's `--append-system-prompt`). Because it is applied per
+   * invocation, resume must pass it again — exactly like a fresh spawn — so the
+   * agent keeps its Maestro identity, permissions, and task framing. The dynamic
+   * task context is NOT re-passed: `codex resume <id>` restores the prior
+   * conversation, so the original task turn is already present and re-passing it
+   * would duplicate it.
+   *
+   * There is deliberately no `--last` fallback: it resumes the most recent
+   * cwd-scoped session and would restore the WRONG thread when multiple Codex
+   * sessions share a cwd. Callers without a native id fresh-start with full
+   * context instead.
+   *
+   * @param manifest - The manifest (source of the launch-config flags + prompt).
+   * @param sessionId - The Maestro session id (used to compose the system prompt).
+   * @param codexSessionId - The captured native Codex rollout id (UUID or thread
+   *   name). Required — resume is only safe against a positively-identified thread.
+   */
+  buildResumeArgs(manifest: MaestroManifest, sessionId: string, codexSessionId: string): string[] {
+    const args = ['resume', ...this.buildCodexArgs(manifest)];
+
+    // Re-inject the Maestro role/system prompt via Codex's per-session
+    // developer-instructions channel (adds to, does not replace, the base prompt).
+    const systemPrompt = this.buildPromptEnvelope(manifest, sessionId).system;
+    args.push('-c', `developer_instructions=${JSON.stringify(systemPrompt)}`);
+
+    // Resume the exact rollout thread by its native id (no `--last` guess).
+    args.push(codexSessionId);
+    return args;
+  }
+
   buildPromptEnvelope(
     manifest: MaestroManifest,
     sessionId: string,

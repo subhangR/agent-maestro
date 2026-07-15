@@ -2302,24 +2302,20 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // on it stranded ~24% of sessions. The terminal-exited state (UI) is the real
       // liveness signal; the server should never block a resume on stale status.
 
-      // Generate claudeSessionId if missing (pre-feature sessions get a fresh spawn)
-      const hadClaudeSessionId = !!session.claudeSessionId;
-      if (!hadClaudeSessionId) {
-        session.claudeSessionId = randomUUID();
-        await sessionService.updateSession(session.id, {
-          env: { ...session.env, MAESTRO_CLAUDE_SESSION_ID: session.claudeSessionId },
-        });
-      }
-
-      // Validate agent tool is claude-code
+      // Only agent tools with a real resume contract may be resumed. Claude
+      // restores via a server-minted --session-id (pre-seeded at spawn); Codex
+      // restores its own rollout thread (recovered below). Every other tool has
+      // no resume path yet, so it is rejected rather than silently fresh-started.
       const agentTool = session.metadata?.agentTool || 'claude-code';
-      if (agentTool !== 'claude-code') {
+      const RESUMABLE_AGENT_TOOLS = ['claude-code', 'codex'];
+      if (!RESUMABLE_AGENT_TOOLS.includes(agentTool)) {
         return res.status(400).json({
           error: true,
           code: 'agent_tool_not_resumable',
-          message: `Agent tool '${agentTool}' does not support resume. Only 'claude-code' sessions can be resumed.`
+          message: `Agent tool '${agentTool}' does not support resume. Only ${RESUMABLE_AGENT_TOOLS.map(t => `'${t}'`).join(' and ')} sessions can be resumed.`
         });
       }
+      const isCodex = agentTool === 'codex';
 
       // Load project for workingDir
       const project = await projectRepo.findById(session.projectId);
@@ -2339,6 +2335,52 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           code: 'maestro_cli_not_found',
           message: `Resolved maestro CLI path does not exist: ${maestroBin}. Set MAESTRO_CLI_PATH to a valid Node-executable CLI entry point, or rebuild the CLI (cd maestro-cli && bun run build).`,
         });
+      }
+
+      // Resolve the provider-native id used to restore the prior conversation.
+      // Claude uses a server-minted UUID (pre-seeded via --session-id at spawn);
+      // Codex assigns its own rollout id, which we recover from the rollout file
+      // and cache on the session. A Codex agent must NEVER receive the Claude id.
+      let hadClaudeSessionId = false;
+      let codexSessionId: string | undefined;
+      if (isCodex) {
+        codexSessionId = (session.metadata?.codexSessionId as string | undefined) || undefined;
+        if (!codexSessionId) {
+          try {
+            const resolved = await logDigestService.resolveCodexSessionId(session.id, cwd);
+            if (resolved) {
+              codexSessionId = resolved;
+              // Cache the recovered id so later resumes skip the rollout scan.
+              await sessionService.updateSession(session.id, {
+                metadata: { ...session.metadata, codexSessionId: resolved },
+              });
+            }
+          } catch (resolveErr) {
+            console.warn(
+              `[resume] Failed to resolve Codex rollout id for session ${session.id}:`,
+              resolveErr instanceof Error ? resolveErr.message : resolveErr,
+            );
+          }
+        }
+        if (!codexSessionId) {
+          // No rollout id recoverable yet. There is deliberately no `--last`
+          // fallback (it could target the WRONG thread when multiple Codex
+          // sessions share this cwd); instead the CLI fresh-starts with full
+          // context (system prompt + task + env) under the same session id.
+          console.warn(
+            `[resume] No Codex rollout id for session ${session.id}; CLI will fresh-start with full context (no --last guess).`,
+          );
+        }
+      } else {
+        // Claude: mint a session id when missing so pre-feature sessions get a
+        // fresh spawn rather than a resume against a non-existent thread.
+        hadClaudeSessionId = !!session.claudeSessionId;
+        if (!hadClaudeSessionId) {
+          session.claudeSessionId = randomUUID();
+          await sessionService.updateSession(session.id, {
+            env: { ...session.env, MAESTRO_CLAUDE_SESSION_ID: session.claudeSessionId },
+          });
+        }
       }
 
       // Regenerate manifest so MAESTRO_MANIFEST_PATH points to a valid file
@@ -2418,9 +2460,11 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         authEnvVars['GOOGLE_GENAI_USE_GCA'] = 'true';
       }
 
-      // Determine command: resume if session had a Claude session ID, fresh spawn otherwise
+      // Determine command: Codex always resumes its rollout (explicit id when
+      // known, else `--last`); Claude resumes only when it already had a session
+      // id, otherwise it falls back to a fresh init.
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
-      const subcommand = hadClaudeSessionId ? 'resume' : 'init';
+      const subcommand = isCodex || hadClaudeSessionId ? 'resume' : 'init';
       // Invoke the resolved CLI directly on all platforms (see the spawn path above); fall back to
       // bare `maestro` only when maestroBin couldn't be resolved to a path.
       const command = buildMaestroSpawnCommand(maestroBin, initCommand, subcommand);
@@ -2429,15 +2473,40 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const finalEnvVars: Record<string, string> = {
         ...session.env,
         MAESTRO_SESSION_ID: session.id,
-        MAESTRO_CLAUDE_SESSION_ID: session.claudeSessionId!,
         MAESTRO_SERVER_URL: config.serverUrl,
         MAESTRO_MODE: mode,
+        // Provider-aware: lets the CLI worker-resume path branch Claude vs Codex.
+        MAESTRO_AGENT_TOOL: agentTool,
         DATA_DIR: config.dataDir,
         SESSION_DIR: config.sessionDir,
         // Carry the stored permission mode forward so resumed agents keep their access level.
         ...(resumePermissionMode ? { MAESTRO_PERMISSION_MODE: resumePermissionMode } : {}),
         ...authEnvVars,
       };
+
+      // Wire the provider-native resume id. For Codex, the Claude id (minted at
+      // spawn and still present in `session.env`) must never leak through — Codex
+      // resumes by rollout id, or by `--last` when none was recoverable.
+      //
+      // Keys deleted from the outgoing env are also collected in `removeEnvKeys`:
+      // the repository MERGES env updates, so without an explicit deletion list the
+      // stale Claude id would be re-introduced into the persisted Codex session.env
+      // on reload (the emitted event would be correct but the stored record stale).
+      // Scoped to the Codex path — the Claude branch is left untouched.
+      const removeEnvKeys: string[] = [];
+      if (isCodex) {
+        delete finalEnvVars.MAESTRO_CLAUDE_SESSION_ID;
+        removeEnvKeys.push('MAESTRO_CLAUDE_SESSION_ID');
+        if (codexSessionId) {
+          finalEnvVars.MAESTRO_CODEX_SESSION_ID = codexSessionId;
+        } else {
+          delete finalEnvVars.MAESTRO_CODEX_SESSION_ID;
+          removeEnvKeys.push('MAESTRO_CODEX_SESSION_ID');
+        }
+      } else {
+        finalEnvVars.MAESTRO_CLAUDE_SESSION_ID = session.claudeSessionId!;
+        delete finalEnvVars.MAESTRO_CODEX_SESSION_ID;
+      }
 
       // Ensure CLI runtime path is correct
       const runtimePath = buildRuntimePath(process.env.PATH, monorepoRoot);
@@ -2466,6 +2535,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       await sessionService.updateSession(session.id, {
         status: 'spawning',
         env: finalEnvVars,
+        // Only present on the Codex path; keeps merge semantics for every other caller.
+        ...(removeEnvKeys.length > 0 ? { removeEnvKeys } : {}),
         timeline: [
           ...(session.timeline || []),
           {
@@ -2483,6 +2554,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         command,
         cwd,
         envVars: finalEnvVars,
+        // Provider-aware context for event consumers (UI/PTY host) so they can
+        // apply the correct resume semantics without re-deriving the tool.
+        agentTool: agentTool as AgentTool,
         projectId: session.projectId,
         taskIds: session.taskIds,
         spawnSource: 'ui' as const,
@@ -2528,7 +2602,12 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       res.json({
         success: true,
         sessionId: session.id,
-        claudeSessionId: session.claudeSessionId,
+        agentTool,
+        // Echo only the provider-native id that actually applies. `codexSessionId`
+        // is undefined on the `--last` fallback, which is intentional.
+        ...(isCodex
+          ? { codexSessionId }
+          : { claudeSessionId: session.claudeSessionId }),
         message: 'Resume request sent to Agent Maestro',
       });
     } catch (err: unknown) {

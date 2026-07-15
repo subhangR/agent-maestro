@@ -155,6 +155,26 @@ export const AGENT_TOOL_SYMBOLS: Record<AgentTool, string> = {
 
 export const AGENT_TOOLS: AgentTool[] = ["claude-code", "codex", "hermes", "gemini"];
 
+/**
+ * Agent tools whose sessions can be resumed. Resume replays the provider's
+ * native session id — Claude via `claude --resume <MAESTRO_CLAUDE_SESSION_ID>`,
+ * Codex via `codex resume <native-id>` (falling back to `codex resume --last`).
+ * Gemini/Hermes have no proven native-id resume path yet, so resume is not
+ * offered for them. The UI never assembles these commands itself; it only
+ * decides whether to *offer* resume — the server emits the actual command.
+ */
+export const RESUMABLE_AGENT_TOOLS: readonly AgentTool[] = ["claude-code", "codex"];
+
+/**
+ * Single source of truth for every "Resume" affordance in the UI. A missing or
+ * legacy `agentTool` defaults to `claude-code` (the original single-agent
+ * behavior). Keep all resume buttons wired to this predicate so their gating can
+ * never drift apart.
+ */
+export function isAgentToolResumable(agentTool?: string | null): boolean {
+  return RESUMABLE_AGENT_TOOLS.includes((agentTool || "claude-code") as AgentTool);
+}
+
 export const AGENT_TOOL_TO_PROVIDER: Record<AgentTool, LaunchProvider> = {
   "claude-code": "claude",
   codex: "openai",

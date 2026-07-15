@@ -1054,7 +1054,14 @@ export interface UpdateSessionPayload {
   taskIds?: string[];          // PHASE IV-A: Update tasks
   status?: SessionStatus;
   agentId?: string;
-  env?: Record<string, string>;  // Environment variables
+  env?: Record<string, string>;  // Environment variables (shallow-MERGED into session.env)
+  /**
+   * Keys to DELETE from the persisted session.env, applied AFTER the `env` merge.
+   * Scoped escape hatch for callers that must remove a key rather than add one —
+   * the merge above cannot express deletion (an omitted key is retained, not dropped).
+   * Merge semantics stay intact for every caller that omits this field.
+   */
+  removeEnvKeys?: string[];
   events?: SessionEvent[];
   timeline?: SessionTimelineEvent[];  // Append timeline events
   needsInput?: {
@@ -1119,6 +1126,7 @@ export interface SpawnRequestEvent {
   cwd: string;
   envVars: Record<string, string>;
   manifest?: any;
+  agentTool?: AgentTool;                 // Provider tool for the run (claude-code | codex | …); set on resume so consumers apply provider-aware semantics
   spawnSource: 'ui' | 'session';        // Who initiated the spawn
   parentSessionId?: string;              // Parent session ID if session-initiated
   rootSessionId?: string;                // Top-most session ID in the spawn chain
