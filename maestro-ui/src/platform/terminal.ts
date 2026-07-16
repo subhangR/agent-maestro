@@ -353,6 +353,12 @@ function _ensureSocket(id: string): WebSocket {
       _received.delete(id);
       _pendingReplay.delete(id);
       _epochs.delete(id);
+      // Queued input belongs to the PTY it was typed for. That process is gone,
+      // so the queue must die with it: an under-cap queue never overflows, so
+      // nothing else would ever discard it, and it would flush into whatever
+      // next opens a socket for this id (a re-created shell reusing persistId).
+      // A queued trailing newline would EXECUTE there. Mirrors closeSession.
+      _pendingSends.delete(id);
       // Session is over — no reconnect will clear the latch, so clear it here to
       // avoid leaking a latched id for a session that will never reopen.
       _overflowLatched.delete(id);
@@ -518,6 +524,13 @@ export const webTerminal: TerminalTransport = {
     _received.delete(id);
     _pendingReplay.delete(id);
     _epochs.delete(id);
+    // Drop any input still queued against a PRIOR use of this id, before
+    // _ensureSocket below can flush it into this session's shell. Not merely a
+    // belt to the logical-end teardown's braces: it covers a window that
+    // teardown cannot, since input typed into an already-ended terminal is
+    // queued AFTER teardown ran and nothing reconnects a dead id to drain it.
+    // A fresh session must never inherit a dead one's keystrokes.
+    _pendingSends.delete(id);
     // Plain terminals (no maestroSessionId) have no server-side PTY yet — the
     // server only spawns one for maestro sessions during session spawn. Ask the
     // server to spawn a PTY BEFORE attaching the socket; otherwise the attach

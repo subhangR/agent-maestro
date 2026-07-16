@@ -305,6 +305,101 @@ describe('webTerminal input & wake hardening (#152)', () => {
     expect(ws1.sent.map(decode)).toEqual(['hi']);
   });
 
+  // ── 1b. Queued input must not outlive the PTY it was typed for ────────────
+  //
+  // The overflow tests above prove the FAIL-CLOSED path: once a queue overflows,
+  // _enqueuePending has already discarded it, so nothing can replay. That leaves
+  // the common case unproven — a few UNDER-CAP keystrokes never overflow, so the
+  // queue survives whatever tears the session down. If that queue outlives the
+  // PTY and the id is later reused by a new shell, the dead session's keystrokes
+  // flush into it on open — and a queued trailing newline EXECUTES them.
+  //
+  // The two tests below pin the two distinct windows in which input can be
+  // queued against a PTY that is (or is about to be) gone.
+
+  it('discards UNDER-CAP input queued BEFORE a logical end (1011) instead of replaying it into a new PTY reusing the id', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await create('sess-stale-pre');
+    const ws0 = MockWebSocket.instances[0];
+
+    // Socket never opened — these keystrokes queue under BOTH caps, so the
+    // fail-closed overflow path never engages and the queue survives intact.
+    webTerminal.write('sess-stale-pre', 'rm -rf ~/important\n');
+    expect(warn).not.toHaveBeenCalled(); // under cap: no overflow, queue is live
+
+    // Logical end: the server has no live PTY for this session. The process the
+    // input was typed for is gone, so the input must die with it.
+    ws0.triggerClose(1011);
+
+    // The id is reused by a brand-new shell (a re-created terminal).
+    await create('sess-stale-pre');
+    const ws1 = MockWebSocket.instances[1];
+    expect(ws1).toBeDefined();
+    ws1.triggerOpen(); // the flush point: a stale queue would drain here
+
+    expect(ws1.sent).toHaveLength(0);
+    expect(ws1.sent.map(decode).join('')).not.toContain('rm -rf');
+  });
+
+  it('discards UNDER-CAP input typed AFTER the session already ended instead of replaying it into a new PTY reusing the id', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await create('sess-stale-post');
+    const ws0 = MockWebSocket.instances[0];
+    ws0.triggerOpen();
+
+    // A real process exit, then the close the server always sends after it.
+    ws0.triggerMessage(JSON.stringify({ type: 'exit', exitCode: 0 }));
+    ws0.triggerClose(1000);
+
+    // The pane is still on screen and still accepts keys. With no socket these
+    // keystrokes queue — against a PTY that no longer exists. Nothing will ever
+    // reconnect this id (it is no longer active), so they sit here indefinitely.
+    webTerminal.write('sess-stale-post', 'rm -rf ~/important\n');
+    expect(warn).not.toHaveBeenCalled(); // under cap: queued, not dropped
+
+    // The id is reused by a brand-new shell.
+    await create('sess-stale-post');
+    const ws1 = MockWebSocket.instances[1];
+    expect(ws1).toBeDefined();
+    ws1.triggerOpen();
+
+    expect(ws1.sent).toHaveLength(0);
+    expect(ws1.sent.map(decode).join('')).not.toContain('rm -rf');
+  });
+
+  it('discards UNDER-CAP queued input on explicit close so a reused id never inherits it', async () => {
+    await create('sess-stale-close');
+    const ws0 = MockWebSocket.instances[0];
+    webTerminal.write('sess-stale-close', 'rm -rf ~/important\n'); // queued under cap
+
+    await webTerminal.closeSession('sess-stale-close');
+
+    await create('sess-stale-close');
+    const ws1 = MockWebSocket.instances[1];
+    ws1.triggerOpen();
+
+    expect(ws1.sent).toHaveLength(0);
+    expect(ws1.sent.map(decode).join('')).not.toContain('rm -rf');
+  });
+
+  it('still flushes UNDER-CAP queued input across an ordinary transport drop (the PTY is alive — input must survive)', async () => {
+    await create('sess-live-drop');
+    const ws0 = MockWebSocket.instances[0];
+
+    // A transport drop (not a logical end): the server-hosted PTY is still alive,
+    // so a reconnect is scheduled and queued input MUST still be delivered. This
+    // is the behavior the stale-queue fix must not overreach and break.
+    ws0.triggerClose(1006);
+    webTerminal.write('sess-live-drop', 'echo alive\n');
+
+    await vi.advanceTimersByTimeAsync(1000); // backoff reconnect (jitter stubbed to 0)
+    const ws1 = MockWebSocket.instances[1];
+    expect(ws1).toBeDefined();
+    ws1.triggerOpen();
+
+    expect(ws1.sent.map(decode)).toEqual(['echo alive\n']);
+  });
+
   // ── 2. Staggered wake reconnects ──────────────────────────────────────────
 
   it('staggers wake reconnects: first is immediate, the rest are deterministically delayed', async () => {
