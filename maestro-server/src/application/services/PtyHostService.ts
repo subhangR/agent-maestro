@@ -1,6 +1,7 @@
 import * as pty from 'node-pty';
 import type { IPty } from 'node-pty';
 import type { WebSocket } from 'ws';
+import { randomUUID } from 'crypto';
 import { ILogger } from '../../domain/common/ILogger';
 import { SessionService } from './SessionService';
 import { OutputBuffer, ReplaySlice } from './OutputBuffer';
@@ -18,6 +19,27 @@ export interface PtySpawnParams {
   rows?: number;
 }
 
+/**
+ * Outcome of {@link PtyHostService.kill}, so an EXPLICIT caller (the /pty/stop
+ * route) can distinguish the three cases it must report differently:
+ *   - `killed`    a tracked PTY entry existed and the process is now gone; entry
+ *                 finalized. This covers both proc.kill() succeeding AND the
+ *                 already-exited race (proc.kill() throwing ESRCH — the process
+ *                 had already died between our map lookup and the signal), because
+ *                 both reach the same intended end-state and are idempotent success.
+ *   - `not_found` no tracked PTY entry for the id; nothing to kill (a no-op).
+ *   - `error`     a tracked PTY entry existed but proc.kill() threw a GENUINE
+ *                 failure (e.g. EPERM). The entry is STILL finalized (cleanup is
+ *                 unconditional), but the kill signal really failed and the caller
+ *                 may surface a non-2xx.
+ * The `killed`/`not_found` split is strictly "did a tracked entry exist?" — an
+ * ESRCH race stays `killed` (an entry existed and we finalized it) rather than
+ * collapsing to `not_found`, keeping the two outcomes orthogonal.
+ * Internal callers (spawn-replace, shutdownAll) ignore this and rely only on the
+ * unconditional finalization, so their behavior is unchanged.
+ */
+export type PtyKillOutcome = 'killed' | 'not_found' | 'error';
+
 interface PtyEntry {
   proc: IPty;
   /** Offset-tracked scrollback buffer: counts every raw byte the PTY has ever
@@ -32,6 +54,12 @@ interface PtyEntry {
    *  authored at (otherwise replayed output wraps at the wrong column). */
   cols: number;
   rows: number;
+  /** Opaque stream identity for THIS spawn (see {@link PtyHostService.newEpoch}).
+   *  Minted once per spawn and never mutated, so it is stable for the life of one
+   *  stream; a kill+respawn under the same sessionId installs a fresh entry with a
+   *  new epoch. The client compares it by equality only (a change ⇒ authoritative
+   *  reset) and never infers ordering. Echoed to clients in the `attached` frame. */
+  epoch: string;
 }
 
 const DEFAULT_COLS = 80;
@@ -143,10 +171,31 @@ function shouldStripCsi(finalByte: number, params: Buffer): boolean {
 export class PtyHostService {
   private readonly sessions = new Map<string, PtyEntry>();
 
+  /**
+   * Per-INSTANCE boot nonce for stream epochs (#151). Minted once when the
+   * service is constructed, so every PTY spawned by this process shares this
+   * prefix, and a NEW process (server restart) — a new PtyHostService instance —
+   * gets a fresh nonce. That is what makes two service instances mint disjoint
+   * epochs even for the very first spawn (where a bare per-instance counter would
+   * collide at the same value). Combined with {@link epochCounter}, the full
+   * epoch is unique per spawn AND across restarts.
+   */
+  private readonly bootNonce = randomUUID();
+  /** Monotonic per-spawn counter; makes each respawn within THIS process
+   *  distinct even under the same sessionId. */
+  private epochCounter = 0;
+
   constructor(
     private readonly sessionService: SessionService,
     private readonly logger: ILogger,
   ) {}
+
+  /** Mint the next opaque stream epoch: a per-instance boot nonce (restart
+   *  distinctness) plus a monotonic counter (per-spawn distinctness). Opaque and
+   *  equality-only on the wire — the client never parses these parts. */
+  private newEpoch(): string {
+    return `${this.bootNonce}-${++this.epochCounter}`;
+  }
 
   /**
    * Spawn a PTY for a session. If one already exists it is killed first.
@@ -188,6 +237,7 @@ export class PtyHostService {
       exitCode: null,
       cols: initialCols,
       rows: initialRows,
+      epoch: this.newEpoch(),
     };
     this.sessions.set(sessionId, entry);
 
@@ -271,6 +321,19 @@ export class PtyHostService {
     return { cols: entry.cols, rows: entry.rows };
   }
 
+  /**
+   * The opaque stream epoch for a session's LIVE PTY, or null if none exists
+   * (#151). Stable for the life of one stream and distinct across respawns and
+   * server restarts. The PtyWebSocketServer echoes it in the `attached` frame so
+   * a reconnecting client can tell "same stream, resume" from "new stream, reset"
+   * by equality alone — no offset/byte-count inference.
+   */
+  getEpoch(sessionId: string): string | null {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return null;
+    return entry.epoch;
+  }
+
   /** Write input (keystrokes) to the PTY. */
   write(sessionId: string, data: string | Buffer): void {
     const entry = this.sessions.get(sessionId);
@@ -304,19 +367,40 @@ export class PtyHostService {
    *   terminal {type:'exit'} frame so the client finalizes the terminal. When
    *   false (an internal replace/respawn), only close the sockets — the client
    *   reconnects and resumes onto the new PTY instead of finalizing.
+   * @returns a {@link PtyKillOutcome} the explicit /pty/stop caller uses to
+   *   distinguish a clean kill from "nothing to kill" and from a genuine kill
+   *   failure. Finalization (notify/close + delete) is UNCONDITIONAL regardless
+   *   of the outcome, so internal callers can keep ignoring the return.
    */
-  kill(sessionId: string, notify = true): void {
+  kill(sessionId: string, notify = true): PtyKillOutcome {
     const entry = this.sessions.get(sessionId);
-    if (!entry) return;
+    if (!entry) return 'not_found';
+    let outcome: PtyKillOutcome = 'killed';
     try {
       entry.proc.kill();
     } catch (error) {
-      // A PTY whose process already died (ESRCH) throws here; that is not fatal
-      // — the session must still be finalized and its subscribers detached.
-      this.logger.warn('PtyHostService: kill failed', {
-        sessionId,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      const code = (error as NodeJS.ErrnoException | null)?.code;
+      if (code === 'ESRCH') {
+        // ESRCH ("no such process"): the PTY had already exited between our map
+        // lookup and this signal (its async onExit had not fired yet to remove the
+        // entry). Signalling an already-dead process reaches the exact end-state a
+        // kill intends, so this is IDEMPOTENT SUCCESS — keep the 'killed' outcome
+        // (the explicit /pty/stop caller returns 2xx) and log it as a benign race,
+        // NOT a warning. Finalization below is unconditional either way.
+        this.logger.debug('PtyHostService: PTY already exited before kill (ESRCH)', {
+          sessionId,
+        });
+      } else {
+        // A GENUINE kill-signal failure (e.g. EPERM). Cleanup below still runs, but
+        // the signal really failed, so report 'error' — the explicit /pty/stop
+        // caller surfaces it as a distinguishable non-2xx (internal callers ignore
+        // the outcome).
+        this.logger.warn('PtyHostService: kill failed', {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        outcome = 'error';
+      }
     }
     if (notify) {
       this.notifyExit(entry, null);
@@ -324,6 +408,7 @@ export class PtyHostService {
       this.closeSubscribers(entry);
     }
     this.sessions.delete(sessionId);
+    return outcome;
   }
 
   /**

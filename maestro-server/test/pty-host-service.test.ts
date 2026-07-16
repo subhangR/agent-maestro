@@ -60,6 +60,22 @@ function receivedExitFrame(ws: { send: jest.Mock }): boolean {
   );
 }
 
+/** Build the kind of errno error node-pty's kill() surfaces from the OS: an
+ *  Error carrying a `.code` (e.g. 'ESRCH' no-such-process, 'EPERM' not-permitted). */
+function errnoError(code: string): NodeJS.ErrnoException {
+  const err: NodeJS.ErrnoException = new Error(`kill ${code}`);
+  err.code = code;
+  return err;
+}
+
+/** Did the logger warn about a kill FAILURE (used to prove a benign
+ *  already-exited race is NOT logged as noise)? */
+function warnedKillFailed(logger: { warn: jest.Mock }): boolean {
+  return logger.warn.mock.calls.some(
+    ([msg]: [unknown]) => typeof msg === 'string' && msg.includes('kill failed'),
+  );
+}
+
 describe('PtyHostService stale-exit identity guard', () => {
   beforeEach(() => {
     mockSpawnedProcs.length = 0;
@@ -159,11 +175,11 @@ describe('PtyHostService kill/replace notification semantics', () => {
     expect(svc.hasSession('s2')).toBe(false);
   });
 
-  it('kill() still finalizes the session and logs when proc.kill() throws', () => {
+  it('kill() still finalizes the session and logs when proc.kill() genuinely fails', () => {
     const { svc, logger } = makeService();
     svc.spawn({ sessionId: 's3', ...baseParams });
     mockSpawnedProcs[0].kill = jest.fn(() => {
-      throw new Error('ESRCH');
+      throw errnoError('EPERM');
     });
 
     svc.kill('s3');
@@ -173,6 +189,88 @@ describe('PtyHostService kill/replace notification semantics', () => {
       expect.stringContaining('kill failed'),
       expect.objectContaining({ sessionId: 's3' }),
     );
+  });
+
+  // #154 — kill() reports a discriminated outcome so the explicit /pty/stop route
+  // can tell "killed a live PTY", "nothing to kill", and "kill signal failed"
+  // apart. Internal callers (spawn-replace, shutdownAll) ignore it and finalize
+  // unconditionally, so their behavior is unchanged.
+  it("kill() returns 'not_found' when there is no live PTY for the id (a no-op)", () => {
+    const { svc } = makeService();
+    expect(svc.kill('never-spawned')).toBe('not_found');
+  });
+
+  it("kill() returns 'killed' when it terminates a live PTY cleanly", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's6', ...baseParams });
+    expect(svc.kill('s6')).toBe('killed');
+    expect(svc.hasSession('s6')).toBe(false);
+  });
+
+  it("kill() returns 'error' when proc.kill() genuinely fails (EPERM), but STILL finalizes the entry", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's7', ...baseParams });
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('EPERM');
+    });
+    expect(svc.kill('s7')).toBe('error');
+    expect(svc.hasSession('s7')).toBe(false); // cleanup still happens
+  });
+
+  // #154 hardening — an ESRCH is the already-EXITED race: the PTY entry was still
+  // in the map (its async onExit had not fired yet) but the OS process had already
+  // died, so proc.kill() throws ESRCH. Killing something already dead achieves the
+  // desired end-state, so it is IDEMPOTENT SUCCESS ('killed'), NOT 'error' — the
+  // /pty/stop route must then return 2xx, not 500. Only a GENUINE failure (EPERM,
+  // etc.) is 'error'.
+  it("kill() treats an already-exited race (proc.kill() throws ESRCH) as idempotent 'killed', not 'error'", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's9', ...baseParams });
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('ESRCH');
+    });
+
+    expect(svc.kill('s9')).toBe('killed');
+    expect(svc.hasSession('s9')).toBe(false); // still finalized
+  });
+
+  it('kill() does NOT log an already-exited (ESRCH) race as a kill failure', () => {
+    const { svc, logger } = makeService();
+    svc.spawn({ sessionId: 's10', ...baseParams });
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('ESRCH');
+    });
+
+    svc.kill('s10');
+
+    // A benign race is not a failure; it must not surface as warn-level noise.
+    expect(warnedKillFailed(logger)).toBe(false);
+  });
+
+  it('an explicit kill() on an already-exited race still sends the exit frame and finalizes', () => {
+    // notify defaults to true (explicit stop): even though the process was already
+    // gone, the client must still get its terminal {type:'exit'} frame so it
+    // finalizes the terminal rather than hanging attached.
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's11', ...baseParams });
+    const ws = fakeWs();
+    svc.addSubscriber('s11', ws);
+    mockSpawnedProcs[0].kill = jest.fn(() => {
+      throw errnoError('ESRCH');
+    });
+
+    expect(svc.kill('s11')).toBe('killed');
+    expect(receivedExitFrame(ws)).toBe(true);
+    expect(ws.close).toHaveBeenCalled();
+    expect(svc.hasSession('s11')).toBe(false);
+  });
+
+  it("kill() from an internal replace path (notify=false) still reports 'killed'", () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's8', ...baseParams });
+    // Same call shape spawn()/shutdownAll use; the outcome is available but ignored
+    // by those callers.
+    expect(svc.kill('s8', false)).toBe('killed');
   });
 
   it('a reconnect with a stale offset after respawn gets a full replay of the new stream', () => {
@@ -255,5 +353,88 @@ describe('PtyHostService.getReplay — sanitized display bytes, raw offsets', ()
     expect(replay.base).toBe(0);
     expect(replay.next).toBe(2 + 4 + 5); // raw total = 11
     expect(replay.data.toString('latin1')).toBe('hithere');
+  });
+});
+
+/**
+ * #150 — the replay→subscribe ordering seam.
+ *
+ * The WS attach handshake takes a scrollback SNAPSHOT (getReplay, which freezes
+ * the raw boundary `next`) and then joins the live stream (addSubscriber). node-pty
+ * output arrives on a SEPARATE event-loop task (proc.onData), so as long as those
+ * two steps run with nothing awaited between them, no live chunk can interleave in
+ * the window: every byte < next is in the replay, every byte >= next is delivered
+ * live, and the two partitions cover the stream with no overlap and no hole.
+ *
+ * These tests pin that exactly-once property at the service seam the WS server
+ * depends on. They are the regression guard behind the "keep it synchronous"
+ * invariant documented in PtyWebSocketServer.handleConnection: were an await ever
+ * inserted between the snapshot and the join, a chunk emitted in that window would
+ * be lost (in neither the replay nor the live feed), and this accounting would stop
+ * closing.
+ */
+describe('PtyHostService replay→subscribe ordering seam (#150)', () => {
+  beforeEach(() => {
+    mockSpawnedProcs.length = 0;
+    jest.clearAllMocks();
+  });
+
+  /** Concatenate every binary (Buffer) frame this socket received live. */
+  function liveBytes(ws: { send: jest.Mock }): Buffer {
+    return Buffer.concat(
+      ws.send.mock.calls
+        .map(([d]: [unknown]) => d)
+        .filter((d: unknown): d is Buffer => Buffer.isBuffer(d)),
+    );
+  }
+
+  it('delivers each post-snapshot byte exactly once when a subscriber joins right after the snapshot (no gap, no duplicate)', () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's1', ...baseParams });
+
+    // Pre-snapshot output — this belongs to the replay, not the live feed.
+    mockSpawnedProcs[0]._onData(Buffer.from('AAAA', 'utf8'));
+
+    // 1) SNAPSHOT: the attach handshake reads the replay first. `next` freezes the
+    //    boundary between "already replayed" and "arrives live from here on".
+    const replay = svc.getReplay('s1', 0)!;
+    expect(replay.next).toBe(4);
+    expect(replay.data.toString('utf8')).toBe('AAAA');
+
+    // 2) JOIN: subscribe SYNCHRONOUSLY after the snapshot (as the WS server does).
+    const ws = fakeWs();
+    svc.addSubscriber('s1', ws);
+
+    // 3) Live output produced AFTER the join.
+    mockSpawnedProcs[0]._onData(Buffer.from('BBBB', 'utf8'));
+
+    // The subscriber saw ONLY the post-snapshot bytes: the replayed bytes are NOT
+    // re-sent live (no duplicate) and the live bytes are NOT missing (no gap).
+    expect(liveBytes(ws).toString('utf8')).toBe('BBBB');
+
+    // Replay ++ live reconstructs the whole stream, each byte once, in order, and
+    // the offset accounting closes: next(4) + live(4) == raw total(8).
+    const clientView = Buffer.concat([replay.data, liveBytes(ws)]);
+    expect(clientView.toString('utf8')).toBe('AAAABBBB');
+    expect(replay.next + liveBytes(ws).length).toBe(svc.getReplay('s1', 0)!.next);
+  });
+
+  it('partitions the stream with no overlap: snapshot bytes and post-join bytes are disjoint and together cover the total', () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 's7', ...baseParams });
+    mockSpawnedProcs[0]._onData(Buffer.from('HEAD', 'utf8'));
+
+    const replay = svc.getReplay('s7', 0)!; // snapshot at next=4
+    const ws = fakeWs();
+    svc.addSubscriber('s7', ws); // join — still synchronous, no await between
+    mockSpawnedProcs[0]._onData(Buffer.from('TAIL', 'utf8'));
+
+    const total = svc.getReplay('s7', 0)!.next;
+    expect(total).toBe(8);
+    // Every byte accounted for exactly once: |replay| + |live| == total, and the
+    // two halves share no byte.
+    expect(replay.data.length + liveBytes(ws).length).toBe(total);
+    expect(replay.data.toString('utf8')).toBe('HEAD');
+    expect(liveBytes(ws).toString('utf8')).toBe('TAIL');
   });
 });
