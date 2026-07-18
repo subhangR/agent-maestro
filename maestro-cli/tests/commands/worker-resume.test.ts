@@ -47,16 +47,12 @@ describe('WorkerResumeCommand.resolveResumeInvocation', () => {
     expect(invocation!.args).toContain('--model');
   });
 
-  it('returns null (→ fresh-start with full context) when no native Codex id was captured', async () => {
-    // No `--last` fallback: it could resume the WRONG thread for concurrent
-    // same-cwd sessions. A null invocation makes execute() fresh-start instead.
-    const invocation = await new WorkerResumeCommand().resolveResumeInvocation({
+  it('fails closed when no native Codex id was captured', async () => {
+    await expect(new WorkerResumeCommand().resolveResumeInvocation({
       agentTool: 'codex',
       sessionId: 'sess_abc',
       manifest: codexManifest(),
-    });
-
-    expect(invocation).toBeNull();
+    })).rejects.toThrow(/refusing to fresh-start/i);
   });
 
   it('resumes a Codex session even when the manifest could not be read', async () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { exec } from 'child_process';
 import { createServer, Server } from 'http';
 import { promisify } from 'util';
@@ -10,6 +10,7 @@ const CLI_PATH = path.resolve(process.cwd(), 'bin/maestro.js');
 describe('CLI Integration', () => {
     let server: Server;
     let port: number;
+    let logDigestRequests: string[] = [];
 
     beforeAll(async () => {
         // Start a mock server
@@ -26,6 +27,15 @@ describe('CLI Integration', () => {
                     const data = JSON.parse(body);
                     res.end(JSON.stringify({ id: 't2', ...data }));
                 });
+            } else if (req.url?.startsWith('/api/sessions/log-digests') && req.method === 'GET') {
+                const url = new URL(req.url, 'http://localhost');
+                const sessionIds = url.searchParams.get('sessionIds')?.split(',') ?? [];
+                logDigestRequests.push(...sessionIds);
+                res.end(JSON.stringify(sessionIds.map(sessionId => ({
+                    sessionId,
+                    state: 'active',
+                    entries: [],
+                }))));
             } else {
                 res.statusCode = 404;
                 res.end(JSON.stringify({ error: 'Not found' }));
@@ -38,6 +48,10 @@ describe('CLI Integration', () => {
                 resolve();
             });
         });
+    });
+
+    beforeEach(() => {
+        logDigestRequests = [];
     });
 
     afterAll(() => {
@@ -60,5 +74,34 @@ describe('CLI Integration', () => {
         expect(result.success).toBe(true);
         expect(result.data.title).toBe('New Task');
         expect(result.data.projectId).toBe('p1');
+    });
+
+    it('should preserve every space-separated session log ID', async () => {
+        const { stdout } = await execAsync(
+            `node ${CLI_PATH} session logs sess_alpha sess_beta --server http://localhost:${port} --json`
+        );
+        const result = JSON.parse(stdout);
+
+        expect(logDigestRequests).toEqual(['sess_alpha', 'sess_beta']);
+        expect(result.data.map((digest: { sessionId: string }) => digest.sessionId))
+            .toEqual(['sess_alpha', 'sess_beta']);
+    });
+
+    it('should preserve comma-separated session log IDs for compatibility', async () => {
+        const { stdout } = await execAsync(
+            `node ${CLI_PATH} session logs sess_alpha,sess_beta --server http://localhost:${port} --json`
+        );
+        const result = JSON.parse(stdout);
+
+        expect(logDigestRequests).toEqual(['sess_alpha', 'sess_beta']);
+        expect(result.data.map((digest: { sessionId: string }) => digest.sessionId))
+            .toEqual(['sess_alpha', 'sess_beta']);
+    });
+
+    it('should document both supported session log ID separators', async () => {
+        const { stdout } = await execAsync(`node ${CLI_PATH} session logs --help`);
+
+        expect(stdout).toContain('Usage: maestro session logs [options] [ids...]');
+        expect(stdout).toContain('Session IDs separated by spaces and/or commas');
     });
 });

@@ -9,6 +9,8 @@
  * non-existent thread.
  *
  * These tests pin the SERVER-owned half of the fix:
+ *   - Fresh Codex sessions never receive or persist a Claude-native session id;
+ *     fresh Claude sessions still pre-seed one for deterministic resume.
  *   - Codex sessions are resumable (no 400 agent_tool_not_resumable).
  *   - The session:resume event/env is provider-aware: it carries
  *     MAESTRO_AGENT_TOOL, and for Codex it drops MAESTRO_CLAUDE_SESSION_ID and
@@ -31,7 +33,11 @@ import { EventEmitter } from 'events';
 
 import { TestDataDir, createTestContainer, createTestProject, createTestTask, silentLogger } from './helpers';
 import { createSessionRoutes } from '../src/api/sessionRoutes';
-import { LogDigestService, extractCodexSessionIdFromRolloutHead } from '../src/application/services/LogDigestService';
+import {
+  LogDigestService,
+  extractCodexRolloutIdentityFromHead,
+  extractCodexSessionIdFromRolloutHead,
+} from '../src/application/services/LogDigestService';
 import { PtyHostService } from '../src/application/services/PtyHostService';
 
 jest.mock('child_process', () => ({
@@ -105,7 +111,7 @@ async function buildApp(dataDir: string) {
   const app = express();
   app.use(express.json());
   app.use('/api', sessionRoutes);
-  return { app, container };
+  return { app, container, logDigestService };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,6 +133,45 @@ describe('extractCodexSessionIdFromRolloutHead', () => {
   it('skips a truncated/partial session_meta line without throwing', () => {
     const truncated = '{"type":"session_meta","payload":{"id":"019ec96a-b3b3-7710-a3';
     expect(extractCodexSessionIdFromRolloutHead(truncated)).toBeNull();
+  });
+});
+
+describe('extractCodexRolloutIdentityFromHead', () => {
+  const meta = (id: string, cwd = '/repo', timestamp = '2026-07-18T10:44:42.848Z') =>
+    JSON.stringify({ timestamp, type: 'session_meta', payload: { id, cwd } });
+  const userEnvelope = (sessionId: string) => JSON.stringify({
+    type: 'response_item',
+    payload: {
+      type: 'message',
+      role: 'user',
+      content: [{ type: 'input_text', text: `<session_context><session_id>${sessionId}</session_id></session_context>` }],
+    },
+  });
+
+  it('pairs the native id only with the user task envelope that owns the rollout', () => {
+    const head = `${meta(KNOWN_CODEX_ID)}\n${userEnvelope('sess_owner')}\n`;
+    expect(extractCodexRolloutIdentityFromHead(head)).toEqual({
+      codexSessionId: KNOWN_CODEX_ID,
+      maestroSessionId: 'sess_owner',
+      cwd: '/repo',
+      timestamp: new Date('2026-07-18T10:44:42.848Z').getTime(),
+    });
+  });
+
+  it('ignores session ids mentioned only in coordinator tool output', () => {
+    const head = [
+      meta('coordinator-native-id'),
+      userEnvelope('sess_coordinator'),
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'function_call_output',
+          output: 'inspected <session_id>sess_target_child</session_id>',
+        },
+      }),
+    ].join('\n');
+
+    expect(extractCodexRolloutIdentityFromHead(head)?.maestroSessionId).toBe('sess_coordinator');
   });
 });
 
@@ -172,12 +217,12 @@ describe('LogDigestService eager Codex id capture', () => {
     expect(persisted.metadata.codexSessionId).toBe('019ec96a-b3b3-7710-a375-cc969f90615f');
   });
 
-  it('does not overwrite an already-captured id (write-once)', async () => {
+  it('repairs an id captured by the legacy raw-substring resolver', async () => {
     const sessionId = await makeSession({ codexSessionId: 'existing-id' });
     await (svc as any).captureCodexSessionId(sessionId, ROLLOUT_HEAD);
 
     const persisted = await container.sessionService.getSession(sessionId);
-    expect(persisted.metadata.codexSessionId).toBe('existing-id');
+    expect(persisted.metadata.codexSessionId).toBe('019ec96a-b3b3-7710-a375-cc969f90615f');
   });
 
   it('no-ops (does not throw) when the head has no session_meta id', async () => {
@@ -188,6 +233,35 @@ describe('LogDigestService eager Codex id capture', () => {
 
     const persisted = await container.sessionService.getSession(sessionId);
     expect(persisted.metadata.codexSessionId).toBeUndefined();
+  });
+
+  it('selects the owned rollout instead of an earlier coordinator reference', async () => {
+    const sessionId = await makeSession({ codexSessionId: 'stale-wrong-id' });
+    const decoyPath = path.join(testDataDir.getPath(), 'decoy.jsonl');
+    const ownedPath = path.join(testDataDir.getPath(), 'owned.jsonl');
+    const decoy = [
+      '{"timestamp":"2026-07-18T10:43:29.518Z","type":"session_meta","payload":{"id":"coordinator-native","cwd":"/x"}}',
+      '{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<session_id>sess_coordinator</session_id>"}]}}',
+      `{"type":"response_item","payload":{"type":"function_call_output","output":"looked up <session_id>${sessionId}</session_id>"}}`,
+    ].join('\n');
+    const owned = [
+      ROLLOUT_HEAD.trim(),
+      `{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<session_context><session_id>${sessionId}</session_id></session_context>"}]}}`,
+    ].join('\n');
+    await fs.writeFile(decoyPath, decoy);
+    await fs.writeFile(ownedPath, owned);
+    (svc as any).pathCache.set(sessionId, {
+      path: decoyPath,
+      source: 'codex',
+      resolvedAt: Date.now(),
+    });
+    jest.spyOn(svc as any, 'getCodexSessionFiles').mockResolvedValue([decoyPath, ownedPath]);
+
+    await expect(svc.resolveCodexSessionId(sessionId, '/x')).resolves.toBe(
+      '019ec96a-b3b3-7710-a375-cc969f90615f',
+    );
+    const persisted = await container.sessionService.getSession(sessionId);
+    expect(persisted.metadata.codexSessionId).toBe('019ec96a-b3b3-7710-a375-cc969f90615f');
   });
 });
 
@@ -203,12 +277,14 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
   let testDataDir: TestDataDir;
   let app: express.Application;
   let container: any;
+  let logDigestService: LogDigestService;
   let projectId: string;
   let taskId: string;
 
   beforeEach(async () => {
     testDataDir = new TestDataDir();
-    ({ app, container } = await buildApp(testDataDir.getPath()));
+    ({ app, container, logDigestService } = await buildApp(testDataDir.getPath()));
+    jest.spyOn(logDigestService, 'resolveCodexSessionId').mockResolvedValue(KNOWN_CODEX_ID);
     const project = await container.projectService.createProject(createTestProject());
     projectId = project.id;
     const task = await container.taskService.createTask(createTestTask(projectId));
@@ -235,6 +311,50 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
     return { get: () => evt };
   }
 
+  function captureSpawn(): { get: () => any } {
+    let evt: any;
+    container.eventBus.on('session:spawn', (e: any) => { evt = e; });
+    return { get: () => evt };
+  }
+
+  it('keeps a fresh Codex spawn free of Claude-native ids in its payload, event, and persisted record', async () => {
+    const cap = captureSpawn();
+    const res = await supertest(app)
+      .post('/api/sessions/spawn')
+      .send({ projectId, taskIds: [taskId], spawnSource: 'ui', mode: 'worker', launchConfig: CODEX_LAUNCH });
+    expect(res.status).toBe(201);
+
+    expect(res.body.session.metadata.agentTool).toBe('codex');
+    expect(res.body.session.claudeSessionId).toBeUndefined();
+    expect(res.body.session.env.MAESTRO_AGENT_TOOL).toBe('codex');
+    expect(res.body.session.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+
+    const evt = cap.get();
+    expect(evt).toBeDefined();
+    expect(evt.envVars.MAESTRO_AGENT_TOOL).toBe('codex');
+    expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    expect(evt.session.claudeSessionId).toBeUndefined();
+
+    const persisted = await reloadFromDisk(res.body.sessionId);
+    expect(persisted.metadata.agentTool).toBe('codex');
+    expect(persisted.claudeSessionId).toBeUndefined();
+    expect(persisted.env.MAESTRO_AGENT_TOOL).toBe('codex');
+    expect(persisted.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+  });
+
+  it('continues pre-seeding the Claude-native id for a fresh Claude spawn', async () => {
+    const cap = captureSpawn();
+    const sessionId = await spawnSession();
+    const persisted = await container.sessionService.getSession(sessionId);
+    const evt = cap.get();
+
+    expect(persisted.metadata.agentTool).toBe('claude-code');
+    expect(persisted.env.MAESTRO_AGENT_TOOL).toBe('claude-code');
+    expect(typeof persisted.claudeSessionId).toBe('string');
+    expect(persisted.env.MAESTRO_CLAUDE_SESSION_ID).toBe(persisted.claudeSessionId);
+    expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBe(persisted.claudeSessionId);
+  });
+
   it('does NOT hard-block a Codex session (regression: used to 400 agent_tool_not_resumable)', async () => {
     const sessionId = await spawnSession(CODEX_LAUNCH);
     // Sanity: spawn persisted agentTool=codex.
@@ -248,8 +368,9 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
 
   it('forwards the real Codex rollout id and never the Claude id', async () => {
     const sessionId = await spawnSession(CODEX_LAUNCH);
-    // Simulate the rollout id already recovered/persisted for this session.
-    await container.sessionService.updateSession(sessionId, { metadata: { codexSessionId: KNOWN_CODEX_ID } });
+    // Simulate metadata poisoned by the legacy raw-substring resolver. The
+    // authoritative task-envelope scan mocked in beforeEach returns KNOWN_CODEX_ID.
+    await container.sessionService.updateSession(sessionId, { metadata: { codexSessionId: 'stale-wrong-id' } });
 
     const cap = captureResume();
     const res = await supertest(app).post(`/api/sessions/${sessionId}/resume`).send({});
@@ -260,23 +381,25 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
     expect(evt.agentTool).toBe('codex');
     expect(evt.envVars.MAESTRO_AGENT_TOOL).toBe('codex');
     expect(evt.envVars.MAESTRO_CODEX_SESSION_ID).toBe(KNOWN_CODEX_ID);
-    // The Claude-only id (minted at spawn, carried in session.env) must be dropped.
+    // The Claude-only id must never be present on the Codex resume path.
     expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    const repaired = await container.sessionService.getSession(sessionId);
+    expect(repaired.metadata.codexSessionId).toBe(KNOWN_CODEX_ID);
   });
 
-  it('omits the Codex id (no fabricated UUID) when no rollout can be recovered', async () => {
+  it('fails closed without emitting resume when no exact Codex rollout can be recovered', async () => {
     const sessionId = await spawnSession(CODEX_LAUNCH);
-    // No codexSessionId persisted and the fresh sess_ marker matches no real
-    // rollout under ~/.codex/sessions, so resolution returns null.
+    const beforeResume = await container.sessionService.getSession(sessionId);
+    jest.mocked(logDigestService.resolveCodexSessionId).mockResolvedValueOnce(null);
 
     const cap = captureResume();
     const res = await supertest(app).post(`/api/sessions/${sessionId}/resume`).send({});
-    expect(res.status).toBe(200);
-
-    const evt = cap.get();
-    expect(evt.envVars.MAESTRO_AGENT_TOOL).toBe('codex');
-    expect(evt.envVars.MAESTRO_CODEX_SESSION_ID).toBeUndefined();
-    expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('codex_resume_id_unavailable');
+    expect(cap.get()).toBeUndefined();
+    const persisted = await container.sessionService.getSession(sessionId);
+    expect(persisted.status).toBe(beforeResume.status);
+    expect(persisted.timeline.filter((event: any) => event.message === 'Session resumed')).toHaveLength(0);
   });
 
   it('preserves Claude resume behavior (regression guard)', async () => {
@@ -298,13 +421,11 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
   });
 
   // ── PERSISTED-state regressions (parent-bug tail) ──────────────────────────
-  // The emitted event was already provider-correct, but FileSystemSessionRepository
-  // MERGES env updates ({ ...session.env, ...updates.env }). The Codex resume path
-  // *deletes* MAESTRO_CLAUDE_SESSION_ID from the outgoing env — but deletion is not
-  // omission: the stale Claude id (minted for EVERY session at spawn) survived the
-  // merge and stayed in the persisted Codex session JSON. These reload the session
-  // through a brand-new container so the assertion reflects on-disk truth, not the
-  // in-memory object that the route already mutated.
+  // FileSystemSessionRepository MERGES env updates
+  // ({ ...session.env, ...updates.env }). The Codex resume path therefore still
+  // needs explicit deletion semantics for legacy sessions created before fresh
+  // spawn became provider-aware. These reload through a new container so the
+  // assertion reflects on-disk truth, not the cached in-memory Session.
   async function reloadFromDisk(sessionId: string): Promise<any> {
     // Flush the live repo's batched writes to disk, then read through a fresh
     // container so we assert persisted JSON, not the cached in-memory Session.
@@ -317,11 +438,16 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
 
   it('drops MAESTRO_CLAUDE_SESSION_ID from the PERSISTED Codex session while keeping unrelated keys and the Codex id', async () => {
     const sessionId = await spawnSession(CODEX_LAUNCH);
-    // Spawn mints a Claude id into session.env for every session. Sanity-check it,
-    // then add an unrelated key that MUST survive the resume.
+    // Simulate a legacy Codex record created before fresh spawns became
+    // provider-aware, and add an unrelated key that MUST survive the resume.
     const afterSpawn = await container.sessionService.getSession(sessionId);
-    expect(afterSpawn.env.MAESTRO_CLAUDE_SESSION_ID).toBeDefined();
-    await container.sessionService.updateSession(sessionId, { env: { CUSTOM_KEEP_ME: 'keep' } });
+    expect(afterSpawn.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    await container.sessionService.updateSession(sessionId, {
+      env: {
+        CUSTOM_KEEP_ME: 'keep',
+        MAESTRO_CLAUDE_SESSION_ID: '11111111-2222-3333-4444-555555555555',
+      },
+    });
     // A real rollout id is known → MAESTRO_CODEX_SESSION_ID must be retained on reload.
     await container.sessionService.updateSession(sessionId, { metadata: { codexSessionId: KNOWN_CODEX_ID } });
 
