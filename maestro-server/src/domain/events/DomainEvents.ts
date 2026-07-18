@@ -1,5 +1,7 @@
 import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell, Ensemble } from '../../types';
 
+export type PromptDeliveryOwner = 'server' | 'ui';
+
 /**
  * Type-safe domain event definitions.
  * These match the events currently emitted by the Storage class.
@@ -203,6 +205,12 @@ export interface SessionPromptSendEvent {
     senderSessionId: string | null;
     senderProjectId: string | null;
     targetProjectId: string | null;
+    /**
+     * Explicit terminal-injection owner, added by the WebSocket bridge from the
+     * configured PTY host. Older servers omit it, so clients must default to
+     * UI-owned delivery for backward compatibility.
+     */
+    promptDeliveryOwner?: PromptDeliveryOwner;
     timestamp: number;
   };
 }
@@ -495,6 +503,8 @@ export interface TypedEventMap {
     senderProjectId?: string | null;
     /** Project the target session lives in. */
     targetProjectId?: string | null;
+    /** Terminal injection owner stamped onto the outward WebSocket payload. */
+    promptDeliveryOwner?: PromptDeliveryOwner;
     timestamp: number;
   };
   // Team member events

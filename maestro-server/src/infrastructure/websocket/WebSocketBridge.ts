@@ -1,7 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { IEventBus } from '../../domain/events/IEventBus';
 import { ILogger } from '../../domain/common/ILogger';
-import { EventName, TypedEventMap } from '../../domain/events/DomainEvents';
+import {
+  EventName,
+  PromptDeliveryOwner,
+  TypedEventMap,
+} from '../../domain/events/DomainEvents';
 
 /**
  * Maximum send buffer size before a client is considered backpressured.
@@ -78,7 +82,8 @@ export class WebSocketBridge {
   constructor(
     private wss: WebSocketServer,
     private eventBus: IEventBus,
-    logger: ILogger
+    logger: ILogger,
+    private readonly promptDeliveryOwner: PromptDeliveryOwner = 'ui',
   ) {
     this.logger = logger;
     this.setupEventHandlers();
@@ -338,10 +343,17 @@ export class WebSocketBridge {
   private broadcastImmediate(event: string, data: any): void {
     if (this.wss.clients.size === 0) return;
 
+    // Terminal input ownership is a deployment fact, not a UI-platform guess.
+    // Every subscriber still receives the event for animation/persistence, but
+    // server-hosted clients must not each forward it into the shared PTY.
+    const outwardData =
+      event === 'session:prompt_send'
+        ? { ...data, promptDeliveryOwner: this.promptDeliveryOwner }
+        : data;
     const message = JSON.stringify({
       type: event,
       event,
-      data,
+      data: outwardData,
       timestamp: Date.now(),
     });
 
@@ -355,7 +367,7 @@ export class WebSocketBridge {
       if ((client as any).bufferedAmount > MAX_BUFFER_BYTES) return;
 
       const sub = this.subscriptions.get(client);
-      if (sub && this.shouldFilterOut(event, data, sub)) return;
+      if (sub && this.shouldFilterOut(event, outwardData, sub)) return;
 
       client.send(message);
     });

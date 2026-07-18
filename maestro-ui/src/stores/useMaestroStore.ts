@@ -500,6 +500,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           senderSessionId,
           senderProjectId,
           targetProjectId,
+          promptDeliveryOwner,
         } = message.data;
 
         // Trigger the travel animation (cosmetic, best-effort — never blocks PTY write below).
@@ -525,6 +526,14 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           direction: 'forward',
           ...meta,
         });
+
+        // Server-hosted PTYs have one process shared by every connected UI. The
+        // server injects this event exactly once; clients still animate it but
+        // must not multiply terminal input. Missing owner means an older server,
+        // so default to the established UI-owned/Tauri delivery path.
+        if (promptDeliveryOwner === 'server') {
+          break;
+        }
 
         const sessions = useSessionStore.getState().sessions;
         const terminalSession = sessions.find(

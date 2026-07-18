@@ -2622,6 +2622,12 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           });
         }
       }
+      // If resume reused an already-live server PTY, no spawn call exists to
+      // finish the event→PTY handoff. Release and drain prompts accepted after
+      // session:resume now that the reuse decision is authoritative.
+      if (config.ptyHost === 'server') {
+        ptyHostService.completePromptHandoff(session.id);
+      }
 
       res.json({
         success: true,
