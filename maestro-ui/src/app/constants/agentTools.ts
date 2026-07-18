@@ -158,7 +158,8 @@ export const AGENT_TOOLS: AgentTool[] = ["claude-code", "codex", "hermes", "gemi
 /**
  * Agent tools whose sessions can be resumed. Resume replays the provider's
  * native session id — Claude via `claude --resume <MAESTRO_CLAUDE_SESSION_ID>`,
- * Codex via `codex resume <native-id>` (falling back to `codex resume --last`).
+ * Codex via `codex resume <native-id>` (failing closed when the exact id cannot
+ * be proven).
  * Gemini/Hermes have no proven native-id resume path yet, so resume is not
  * offered for them. The UI never assembles these commands itself; it only
  * decides whether to *offer* resume — the server emits the actual command.

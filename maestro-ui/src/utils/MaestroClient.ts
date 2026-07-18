@@ -435,7 +435,13 @@ class MaestroClient {
         });
     }
 
-    async resumeSession(sessionId: string): Promise<{ success: boolean; sessionId: string; claudeSessionId: string }> {
+    async resumeSession(sessionId: string): Promise<{
+        success: boolean;
+        sessionId: string;
+        agentTool: string;
+        claudeSessionId?: string;
+        codexSessionId?: string;
+    }> {
         return this.fetch(`/sessions/${sessionId}/resume`, {
             method: 'POST',
             body: JSON.stringify(measureSpawnTerminalSize()),

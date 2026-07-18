@@ -222,8 +222,7 @@ export class CodexSpawner {
    *
    * There is deliberately no `--last` fallback: it resumes the most recent
    * cwd-scoped session and would restore the WRONG thread when multiple Codex
-   * sessions share a cwd. Callers without a native id fresh-start with full
-   * context instead.
+   * sessions share a cwd. Callers without a native id must fail closed.
    *
    * @param manifest - The manifest (source of the launch-config flags + prompt).
    * @param sessionId - The Maestro session id (used to compose the system prompt).
