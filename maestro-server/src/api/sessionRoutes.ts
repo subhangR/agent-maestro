@@ -1895,6 +1895,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const resolvedAgentToolFromMember = resolvedLaunchConfig
         ? agentToolForProvider(resolvedLaunchConfig.provider)
         : teamMemberDefaults.agentTool;
+      const resolvedAgentTool = resolvedAgentToolFromMember || 'claude-code';
 
       // Get project
       const project = await projectRepo.findById(projectId);
@@ -1928,8 +1929,13 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Coordinator gets teamSessionId = its own ID (set after creation).
       const isSessionSpawned = !!resolvedParentSessionId;
 
-      // Pre-generate Claude session ID for resume support
-      const claudeSessionId = randomUUID();
+      // Claude lets Maestro pre-seed its native session id for deterministic
+      // resume. Other providers own their native ids (Codex writes its rollout
+      // id after launch), so minting a Claude id for them creates unusable and
+      // misleading persisted state.
+      const claudeSessionId = resolvedAgentTool === 'claude-code'
+        ? randomUUID()
+        : undefined;
 
       // Resolve the saved team this session belongs to so the whole spawn tree stays
       // team-bound. An explicit request always wins (passing teamId: null clears it);
@@ -1964,7 +1970,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         projectId,
         taskIds,
         name: sessionName || `${modeLabel} for ${taskIds[0]}`,
-        claudeSessionId,
+        ...(claudeSessionId ? { claudeSessionId } : {}),
         status: 'spawning',
         env: {},
         teamId: effectiveTeamId,
@@ -1973,7 +1979,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           spawnedBy: resolvedParentSessionId,
           spawnSource,
           mode: resolvedMode,
-          agentTool: resolvedAgentToolFromMember || 'claude-code',
+          agentTool: resolvedAgentTool,
           model: resolvedModel || null,
           launchConfig: resolvedLaunchConfig || null,
           teamMemberId: effectiveTeamMemberIds.length === 1 ? effectiveTeamMemberIds[0] : null,
@@ -2164,7 +2170,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       }
 
       // Prepare spawn data
-      const resolvedAgentTool = resolvedAgentToolFromMember || 'claude-code';
       const initCommand = isCoordinatorMode(resolvedMode) ? 'orchestrator' : 'worker';
       const cwd = worktreeResult?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
@@ -2206,7 +2211,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       const finalEnvVars: Record<string, string> = {
         MAESTRO_SESSION_ID: session.id,
-        MAESTRO_CLAUDE_SESSION_ID: claudeSessionId,
+        MAESTRO_AGENT_TOOL: resolvedAgentTool,
         MAESTRO_MANIFEST_PATH: manifestPath,
         MAESTRO_SERVER_URL: config.serverUrl,
         MAESTRO_MODE: resolvedMode,
@@ -2218,6 +2223,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         // Pass through auth API keys so spawned agents can authenticate
         ...authEnvVars,
       };
+      if (claudeSessionId) {
+        finalEnvVars.MAESTRO_CLAUDE_SESSION_ID = claudeSessionId;
+      }
 
       // Add worktree env vars if worktree was created
       if (worktreeResult) {
@@ -2484,8 +2492,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         authEnvVars['GOOGLE_GENAI_USE_GCA'] = 'true';
       }
 
-      // Determine command: Codex always resumes its rollout (explicit id when
-      // known, else `--last`); Claude resumes only when it already had a session
+      // Codex enters the provider-aware resume command even when no native id
+      // was recoverable; the CLI then fresh-starts with full context rather than
+      // guessing via `--last`. Claude resumes only when it already had a session
       // id, otherwise it falls back to a fresh init.
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
       const subcommand = isCodex || hadClaudeSessionId ? 'resume' : 'init';
@@ -2508,9 +2517,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         ...authEnvVars,
       };
 
-      // Wire the provider-native resume id. For Codex, the Claude id (minted at
-      // spawn and still present in `session.env`) must never leak through — Codex
-      // resumes by rollout id, or by `--last` when none was recoverable.
+      // Wire the provider-native resume id. A legacy Codex record may still
+      // contain the Claude id that older fresh-spawn code minted for every
+      // provider; it must never leak through. Codex resumes only by a captured
+      // rollout id and otherwise fresh-starts with full context.
       //
       // Keys deleted from the outgoing env are also collected in `removeEnvKeys`:
       // the repository MERGES env updates, so without an explicit deletion list the
@@ -2628,7 +2638,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         sessionId: session.id,
         agentTool,
         // Echo only the provider-native id that actually applies. `codexSessionId`
-        // is undefined on the `--last` fallback, which is intentional.
+        // is undefined on the safe fresh-start fallback, which is intentional.
         ...(isCodex
           ? { codexSessionId }
           : { claudeSessionId: session.claudeSessionId }),
