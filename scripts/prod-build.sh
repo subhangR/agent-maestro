@@ -30,11 +30,17 @@ if [ -n "$DUPES" ]; then
   done
 fi
 
-# 3. Build server + binary
+# 3. Build server + CLI runtime
 echo ""
-echo "[3/5] Building server..."
+echo "[3/5] Building server + pinned CLI runtime..."
 bun run build:server
 cd maestro-server && bun run build:binary && cd ..
+cd maestro-cli && bun run build && bun run bundle && cd ..
+
+if [ ! -f "maestro-cli/dist/bundle.cjs" ]; then
+  echo "ERROR: CLI bundle not found at maestro-cli/dist/bundle.cjs"
+  exit 1
+fi
 
 # 4. Build Tauri app
 echo ""

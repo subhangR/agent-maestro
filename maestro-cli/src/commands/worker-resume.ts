@@ -1,19 +1,10 @@
 import { api } from '../api.js';
 import { ClaudeSpawner } from '../services/claude-spawner.js';
 import { CodexSpawner } from '../services/codex-spawner.js';
-import { AgentSpawner } from '../services/agent-spawner.js';
 import { spawnWithUlimit } from '../services/spawn-with-ulimit.js';
 import { readManifestFromEnv } from '../services/manifest-reader.js';
 import { getPermissionsFromManifest, setCachedPermissions } from '../services/command-permissions.js';
 import type { MaestroManifest, AgentTool } from '../types/manifest.js';
-
-/**
- * If a resume exits (non-zero) within this window, we assume the conversation
- * could not be restored — most commonly because the session never produced a
- * checkpoint (e.g. it was still spawning when it died). In that case we
- * transparently fall back to a fresh start that reuses the same session id.
- */
-const RESUME_FAILURE_WINDOW_MS = 4000;
 
 /** The concrete invocation the resume path will run. */
 export interface ResumeInvocation {
@@ -35,24 +26,15 @@ export interface ResumeInvocation {
  *  - `codex`: `codex resume <codexSessionId>` — only when a native Codex rollout
  *    id was captured. The Codex CLI generates its own session id and has no
  *    `--session-id`/`--resume` flag, so the id can only be captured after spawn.
- *    When no id is available there is NO `--last` fallback (it could resume the
- *    wrong thread for concurrent same-cwd sessions); the session fresh-starts
- *    with full context instead.
+ *    When no id is available there is NO `--last` or fresh-start fallback.
  *
  * Providers without a native resume-by-id surface (gemini/hermes), and Codex
- * sessions with no captured id, fall back to a fresh start using the same
- * session id (which re-injects the full system prompt + task context).
- *
- * Resume is idempotent across session states: if the conversation cannot be
- * resumed (no checkpoint yet — typical for sessions that died while spawning),
- * it falls back to a fresh init start using the same session id so the agent
- * still launches with its tasks and context.
+ * sessions with no captured id, fail closed. Reusing the same Maestro id for a
+ * fresh agent is user-visible data loss disguised as resume.
  */
 export class WorkerResumeCommand {
   private claudeSpawner = new ClaudeSpawner();
   private codexSpawner = new CodexSpawner();
-  private agentSpawner = new AgentSpawner();
-  private fellBack = false;
 
   private debug(message: string): void {
     if (process.env.MAESTRO_DEBUG === 'true') {
@@ -62,8 +44,7 @@ export class WorkerResumeCommand {
 
   /**
    * Resolve the exact binary + args for resuming a session, branching on the
-   * agent tool. Returns `null` when the tool has no native resume surface, so
-   * the caller performs a fresh start instead.
+   * agent tool. Throws when the provider-native conversation cannot be restored.
    *
    * Kept pure (no process spawning, no env reads) so the resume contract for
    * each provider is directly unit-testable.
@@ -75,7 +56,7 @@ export class WorkerResumeCommand {
     claudeSessionId?: string;
     codexSessionId?: string;
     mode?: string;
-  }): Promise<ResumeInvocation | null> {
+  }): Promise<ResumeInvocation> {
     const { agentTool, sessionId, manifest, claudeSessionId, codexSessionId, mode } = params;
 
     switch (agentTool) {
@@ -84,9 +65,8 @@ export class WorkerResumeCommand {
         // against a positively-captured native rollout id. There is NO `--last`
         // fallback: it resumes the most recent cwd-scoped session and would
         // restore the WRONG thread when multiple Codex sessions share a cwd.
-        // Returning null makes the caller fresh-start with full context instead.
         if (!codexSessionId) {
-          return null;
+          throw new Error('MAESTRO_CODEX_SESSION_ID environment variable not set; refusing to fresh-start a Codex resume');
         }
         if (manifest) {
           return {
@@ -115,9 +95,9 @@ export class WorkerResumeCommand {
         return { bin: 'claude', args };
       }
 
-      // gemini/hermes have no native resume-by-id — the caller performs a fresh start.
+      // gemini/hermes have no native resume-by-id.
       default:
-        return null;
+        throw new Error(`Cannot resume '${agentTool}' because it has no provider-native resume-by-id contract`);
     }
   }
 
@@ -138,8 +118,7 @@ export class WorkerResumeCommand {
         this.debug(`[worker-resume] Failed to update session status: ${err instanceof Error ? err.message : String(err)}`);
       }
 
-      // Read the manifest so we can reapply the full launch config on resume and
-      // have a real manifest available for the fresh-start fallback.
+      // Read the manifest so we can reapply the full launch config on resume.
       let manifest: MaestroManifest | null = null;
       const manifestResult = await readManifestFromEnv();
       if (manifestResult.success && manifestResult.manifest) {
@@ -169,32 +148,16 @@ export class WorkerResumeCommand {
         mode,
       });
 
-      // No native resume surface (gemini/hermes) — start fresh with the same id.
-      if (!invocation) {
-        if (!manifest) {
-          throw new Error(`Cannot resume '${agentTool}' session without a manifest`);
-        }
-        this.debug(`[worker-resume] '${agentTool}' has no native resume; starting fresh with the same session id`);
-        await this.freshStart(manifest, sessionId);
-        return;
-      }
-
-      const startedAt = Date.now();
       const agentProcess = spawnWithUlimit(invocation.bin, invocation.args, {
         env: { ...process.env } as Record<string, string>,
         stdio: 'inherit',
       });
 
       agentProcess.on('exit', (code) => {
-        const elapsedMs = Date.now() - startedAt;
-        this.debug(`[worker-resume] ${invocation.bin} (resume) exited with code ${code} after ${elapsedMs}ms`);
-
-        const resumeFailedFast = code !== 0 && elapsedMs < RESUME_FAILURE_WINDOW_MS;
-        if (resumeFailedFast && manifest && !this.fellBack) {
-          this.fellBack = true;
-          this.debug('[worker-resume] Resume failed fast; falling back to fresh start with same session id');
-          void this.freshStart(manifest, sessionId);
-        }
+        this.debug(`[worker-resume] ${invocation.bin} (resume) exited with code ${code}`);
+        // Never convert a provider resume failure into a second invocation with
+        // an empty conversation.
+        process.exitCode = code ?? 1;
       });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error || 'Unknown worker resume error');
@@ -208,23 +171,4 @@ export class WorkerResumeCommand {
     }
   }
 
-  /**
-   * Fall back to a fresh agent start that reuses the same session id. This
-   * re-injects the system prompt and task context so the agent resumes work even
-   * without a restorable conversation checkpoint. Dispatches through the
-   * agent-tool-aware factory so Codex/Gemini/Hermes fall back to their own CLI,
-   * not Claude.
-   */
-  private async freshStart(manifest: MaestroManifest, sessionId: string): Promise<void> {
-    try {
-      const spawnResult = await this.agentSpawner.spawn(manifest, sessionId, { interactive: true });
-      spawnResult.process.on('exit', (code: number | null) => {
-        this.debug(`[worker-resume] fresh start exited with code ${code}`);
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`Failed to start session: ${message}`);
-      process.exit(1);
-    }
-  }
 }

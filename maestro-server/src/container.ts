@@ -38,6 +38,7 @@ import { SpellService } from './application/services/SpellService';
 import { EnsembleService } from './application/services/EnsembleService';
 import { HookDispatcherService } from './application/services/HookDispatcherService';
 import { PtyHostService } from './application/services/PtyHostService';
+import { SessionPromptDeliveryService } from './application/services/SessionPromptDeliveryService';
 import { AnnouncementService } from './application/services/AnnouncementService';
 import { AlexaIngressService } from './application/services/AlexaIngressService';
 import { VoiceMonkeyClient } from './infrastructure/voicemonkey/VoiceMonkeyClient';
@@ -230,6 +231,7 @@ export interface Container {
   ensembleService: EnsembleService;
   hookDispatcherService: HookDispatcherService;
   ptyHostService: PtyHostService;
+  sessionPromptDeliveryService: SessionPromptDeliveryService;
   announcementService: AnnouncementService;
   alexaIngressService: AlexaIngressService;
 
@@ -321,6 +323,12 @@ export async function createContainer(): Promise<Container> {
     config,
   );
   const ptyHostService = new PtyHostService(sessionService, logger);
+  const sessionPromptDeliveryService = new SessionPromptDeliveryService(
+    eventBus,
+    ptyHostService,
+    config.ptyHost,
+    logger,
+  );
 
   // Voice / Alexa integration
   const voiceState: VoiceState = {};
@@ -389,6 +397,7 @@ export async function createContainer(): Promise<Container> {
     ensembleService,
     hookDispatcherService,
     ptyHostService,
+    sessionPromptDeliveryService,
     announcementService,
     alexaIngressService,
 
@@ -427,6 +436,7 @@ export async function createContainer(): Promise<Container> {
 
     async shutdown() {
       logger.info('Shutting down container...');
+      sessionPromptDeliveryService.shutdown();
       ptyHostService.shutdownAll();
       hookDispatcherService.shutdown(); // C5: kill any in-flight run-command children
       logDigestService.shutdown();

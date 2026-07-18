@@ -65,6 +65,8 @@ const PATH_CACHE_TTL_MS = 60_000; // 60s
 const TAIL_BYTES = 100 * 1024;    // 100KB tail
 const MAX_TAIL_BYTES = 1024 * 1024; // 1MB fallback tail for large tool outputs
 const MAX_TEXT_LENGTH = 150;
+const CODEX_IDENTITY_HEAD_BYTES = 256 * 1024;
+const CODEX_IDENTITY_EXTENDED_HEAD_BYTES = 1024 * 1024;
 
 // ── Tags & patterns to filter out ────────────────────────────
 
@@ -112,6 +114,73 @@ export function extractCodexSessionIdFromRolloutHead(head: string): string | nul
     }
   }
   return null;
+}
+
+export interface CodexRolloutIdentity {
+  codexSessionId: string;
+  maestroSessionId: string;
+  cwd: string | null;
+  timestamp: number | null;
+}
+
+/**
+ * Pair a Codex-native rollout id with the Maestro session that owns it.
+ *
+ * Ownership is accepted only from a user-message task envelope. Raw substring
+ * matching is unsafe because coordinator tool calls and command output routinely
+ * mention child session ids inside unrelated rollouts.
+ */
+export function extractCodexRolloutIdentityFromHead(head: string): CodexRolloutIdentity | null {
+  let codexSessionId: string | null = null;
+  let maestroSessionId: string | null = null;
+  let cwd: string | null = null;
+  let timestamp: number | null = null;
+
+  for (const raw of head.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      // A bounded head read can end with a partial JSONL record.
+      continue;
+    }
+
+    if (parsed?.type === 'session_meta' && !codexSessionId) {
+      const nativeId = parsed?.payload?.id;
+      if (typeof nativeId === 'string' && nativeId.trim()) {
+        codexSessionId = nativeId.trim();
+      }
+      const metaCwd = parsed?.payload?.cwd;
+      cwd = typeof metaCwd === 'string' && metaCwd.trim() ? metaCwd.trim() : null;
+      const parsedTimestamp = new Date(parsed?.timestamp ?? parsed?.payload?.timestamp ?? '').getTime();
+      timestamp = Number.isFinite(parsedTimestamp) ? parsedTimestamp : null;
+      continue;
+    }
+
+    const payload = parsed?.type === 'response_item' ? parsed?.payload : null;
+    if (payload?.type !== 'message' || payload?.role !== 'user') continue;
+
+    const content = payload.content;
+    const text = typeof content === 'string'
+      ? content
+      : Array.isArray(content)
+        ? content
+          .map((block: any) => typeof block?.text === 'string' ? block.text : '')
+          .filter(Boolean)
+          .join('\n')
+        : '';
+    const match = text.match(SESSION_ID_REGEX);
+    if (match) {
+      maestroSessionId = match[1];
+      break;
+    }
+  }
+
+  if (!codexSessionId || !maestroSessionId) return null;
+  return { codexSessionId, maestroSessionId, cwd, timestamp };
 }
 
 /**
@@ -459,53 +528,72 @@ export class LogDigestService {
       }
     }
 
-    // Scan Codex JSONL files
+    return this.resolveCodexJsonlPath(sessionId, workingDir);
+  }
+
+  /**
+   * Resolve a Codex rollout by authoritative task-envelope ownership.
+   *
+   * If the legacy fresh-start fallback produced several owned rollouts under
+   * one Maestro id, prefer the newest rollout in the session's actual cwd: that
+   * is the conversation that was active immediately before the next stop.
+   */
+  private async resolveCodexJsonlPath(
+    sessionId: string,
+    workingDir?: string | null,
+  ): Promise<string | null> {
+    const candidates: Array<{
+      path: string;
+      head: string;
+      identity: CodexRolloutIdentity;
+      cwdMatches: boolean;
+    }> = [];
     const codexFiles = await this.getCodexSessionFiles();
     for (const filePath of codexFiles) {
       try {
-        // Read first 256KB to find session ID
-        const header = await this.readHead(filePath, 256 * 1024);
-        let match = header.match(SESSION_ID_REGEX);
-
-        // New Codex sessions can contain long instruction payloads before session_id.
-        // If needed, retry with a larger header window.
-        if (!match && header.includes('"type":"session_meta"')) {
-          const extendedHeader = await this.readHead(filePath, 1024 * 1024);
-          match = extendedHeader.match(SESSION_ID_REGEX);
+        let head = await this.readHead(filePath, CODEX_IDENTITY_HEAD_BYTES);
+        let identity = extractCodexRolloutIdentityFromHead(head);
+        if (!identity && head.includes('"type":"session_meta"')) {
+          head = await this.readHead(filePath, CODEX_IDENTITY_EXTENDED_HEAD_BYTES);
+          identity = extractCodexRolloutIdentityFromHead(head);
         }
-
-        if (match && match[1] === sessionId) {
-          this.pathCache.set(sessionId, { path: filePath, source: 'codex', resolvedAt: Date.now() });
-          this.evictOldestIfOverLimit();
-          // Eagerly persist the native Codex rollout id the first time we locate
-          // the rollout (fires on every digest/stats poll for an active Codex
-          // session), so it is already cached when a resume is later requested —
-          // even if the session dies before the resume-time scan can run. The
-          // `session_meta` record is line 1, so the 256KB header always holds it.
-          void this.captureCodexSessionId(sessionId, header);
-          return filePath;
-        }
+        if (!identity || identity.maestroSessionId !== sessionId) continue;
+        candidates.push({
+          path: filePath,
+          head,
+          identity,
+          cwdMatches: !workingDir || identity.cwd === workingDir,
+        });
       } catch {
         // Skip unreadable files
       }
     }
 
-    return null;
+    const selected = candidates.sort((a, b) => {
+      if (a.cwdMatches !== b.cwdMatches) return a.cwdMatches ? -1 : 1;
+      const timestampDelta = (b.identity.timestamp ?? 0) - (a.identity.timestamp ?? 0);
+      if (timestampDelta !== 0) return timestampDelta;
+      return b.path.localeCompare(a.path);
+    })[0];
+    if (!selected) return null;
+
+    this.pathCache.set(sessionId, { path: selected.path, source: 'codex', resolvedAt: Date.now() });
+    this.evictOldestIfOverLimit();
+    await this.captureCodexSessionId(sessionId, selected.head);
+    return selected.path;
   }
 
   /**
    * Best-effort eager capture of the native Codex rollout id onto the session's
-   * metadata. Idempotent and write-once: no-ops when the id is already cached or
-   * cannot be parsed. Any failure is swallowed — the resume route's on-demand
-   * {@link resolveCodexSessionId} scan is the backstop, so this is purely an
-   * optimization that also survives sessions that die before resume.
+   * metadata. Idempotent and corrective: authoritative ownership may repair a
+   * value captured by the legacy raw-substring resolver.
    */
   private async captureCodexSessionId(sessionId: string, rolloutHead: string): Promise<void> {
     try {
       const codexId = extractCodexSessionIdFromRolloutHead(rolloutHead);
       if (!codexId) return;
       const session = await this.sessionService.getSession(sessionId);
-      if (!session || session.metadata?.codexSessionId) return;
+      if (!session || session.metadata?.codexSessionId === codexId) return;
       await this.sessionService.updateSession(sessionId, {
         metadata: { ...session.metadata, codexSessionId: codexId },
       });
@@ -524,12 +612,11 @@ export class LogDigestService {
    * Codex prompt, then its `session_meta` head record is parsed. Codex assigns
    * this id itself and it cannot be pre-seeded, so it only exists once Codex has
    * written a rollout for the session. Returns null when no matching rollout is
-   * found yet (e.g. the session died before Codex flushed one) — callers must
-   * then fresh-start with full context rather than fabricate an id or guess with
-   * `codex resume --last`.
+   * found. Callers must fail closed rather than fabricate an id, guess with
+   * `codex resume --last`, or silently fresh-start.
    */
   async resolveCodexSessionId(sessionId: string, workingDir?: string | null): Promise<string | null> {
-    const jsonlPath = await this.resolveJsonlPath(sessionId, workingDir);
+    const jsonlPath = await this.resolveCodexJsonlPath(sessionId, workingDir);
     if (!jsonlPath) return null;
     try {
       const head = await this.readHead(jsonlPath, 1024 * 1024);

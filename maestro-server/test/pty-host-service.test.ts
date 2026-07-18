@@ -356,6 +356,155 @@ describe('PtyHostService.getReplay — sanitized display bytes, raw offsets', ()
   });
 });
 
+describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () => {
+  beforeEach(() => {
+    mockSpawnedProcs.length = 0;
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('paste strips trailing newlines and does not press Enter', async () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'paste-target', ...baseParams });
+
+    await expect(
+      svc.deliverPrompt('paste-target', 'paste marker\r\n', 'paste'),
+    ).resolves.toBe(true);
+
+    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['paste marker']]);
+  });
+
+  it('queues prompt-before-PTY and flushes it when spawn completes', async () => {
+    const { svc } = makeService();
+
+    await expect(
+      svc.deliverPrompt('late-target', 'attach marker', 'paste'),
+    ).resolves.toBe(true);
+    expect(mockSpawnedProcs).toHaveLength(0);
+
+    svc.spawn({ sessionId: 'late-target', ...baseParams });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['attach marker']]);
+  });
+
+  it('pauses an existing PTY during handoff and flushes on spawnIfAbsent reuse', async () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'reuse-target', ...baseParams });
+
+    svc.beginPromptHandoff('reuse-target');
+    await expect(
+      svc.deliverPrompt('reuse-target', 'reuse marker', 'paste'),
+    ).resolves.toBe(true);
+    expect(mockSpawnedProcs[0].write).not.toHaveBeenCalled();
+
+    expect(
+      svc.spawnIfAbsent({ sessionId: 'reuse-target', ...baseParams }),
+    ).toEqual({ reused: true });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['reuse marker']]);
+  });
+
+  it('send writes the stripped body, waits, then presses Enter exactly once', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'send-target', ...baseParams });
+
+    const delivery = svc.deliverPrompt(
+      'send-target',
+      'send marker\n',
+      'send',
+    );
+    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['send marker']]);
+
+    await jest.advanceTimersByTimeAsync(200);
+    await expect(delivery).resolves.toBe(true);
+    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([
+      ['send marker'],
+      ['\r'],
+    ]);
+  });
+
+  it('preserves mixed paste/send FIFO order across prompt-before-PTY attach', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    await svc.deliverPrompt('fifo-target', 'first\n', 'paste');
+    await svc.deliverPrompt('fifo-target', 'second\r\n', 'send');
+    await svc.deliverPrompt('fifo-target', 'third', 'paste');
+
+    svc.spawn({ sessionId: 'fifo-target', ...baseParams });
+    await jest.runAllTimersAsync();
+
+    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([
+      ['first'],
+      ['second'],
+      ['\r'],
+      ['third'],
+    ]);
+  });
+
+  it('bounds prompt-before-PTY queues and preserves the accepted FIFO prefix', async () => {
+    const { svc, logger } = makeService();
+    const accepted: boolean[] = [];
+    for (let index = 0; index < 40; index += 1) {
+      accepted.push(
+        await svc.deliverPrompt(
+          'bounded-target',
+          `prompt-${index}`,
+          'paste',
+        ),
+      );
+    }
+
+    expect(accepted.slice(0, 32)).toEqual(Array(32).fill(true));
+    expect(accepted.slice(32)).toEqual(Array(8).fill(false));
+    expect(
+      logger.warn.mock.calls.filter(([message]: [string]) =>
+        message.includes('pending prompt queue overflowed'),
+      ),
+    ).toHaveLength(1);
+
+    svc.spawn({ sessionId: 'bounded-target', ...baseParams });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(
+      mockSpawnedProcs[0].write.mock.calls.map(([content]: [string]) => content),
+    ).toEqual(Array.from({ length: 32 }, (_, index) => `prompt-${index}`));
+  });
+
+  it('rejects one prompt larger than the byte cap without creating stale state', async () => {
+    const { svc } = makeService();
+    await expect(
+      svc.deliverPrompt('oversized-target', 'x'.repeat(256 * 1024 + 1), 'paste'),
+    ).resolves.toBe(false);
+
+    svc.spawn({ sessionId: 'oversized-target', ...baseParams });
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    expect(mockSpawnedProcs[0].write).not.toHaveBeenCalled();
+  });
+
+  it('never spills send-mode Enter into a replacement PTY', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'resume-target', ...baseParams });
+    const oldProc = mockSpawnedProcs[0];
+
+    const delivery = svc.deliverPrompt(
+      'resume-target',
+      'old process marker',
+      'send',
+    );
+    svc.spawn({ sessionId: 'resume-target', ...baseParams });
+    const replacementProc = mockSpawnedProcs[1];
+
+    await jest.advanceTimersByTimeAsync(200);
+    await expect(delivery).resolves.toBe(true);
+    expect(oldProc.write.mock.calls).toEqual([['old process marker']]);
+    expect(replacementProc.write).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * #150 — the replay→subscribe ordering seam.
  *

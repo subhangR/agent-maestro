@@ -42,7 +42,7 @@ async function startServer() {
   // Auth service — reads env vars; throws on misconfiguration before any port is bound
   const authService = new AuthService(container.config.dataDir);
 
-  const { config, logger, eventBus, projectService, taskService, taskListService, taskGraphService, sessionService, logDigestService, orderingService, teamMemberService, teamService, modelProfileService, sessionPromptService, huddleService, commandUsageService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, skillLoader, ptyHostService } = container;
+  const { config, logger, eventBus, projectService, taskService, taskListService, taskGraphService, sessionService, logDigestService, orderingService, teamMemberService, teamService, modelProfileService, sessionPromptService, huddleService, commandUsageService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, skillLoader, ptyHostService, sessionPromptDeliveryService } = container;
 
   // Create Express app
   const app = express();
@@ -317,7 +317,7 @@ async function startServer() {
     });
   });
 
-  wsBridge = new WebSocketBridge(wss, eventBus, logger);
+  wsBridge = new WebSocketBridge(wss, eventBus, logger, sessionPromptDeliveryService.owner);
   const ptyWsServer = new PtyWebSocketServer(ptyWss, ptyHostService, logger);
 
   // Graceful shutdown handler

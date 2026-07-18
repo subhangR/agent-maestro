@@ -127,6 +127,15 @@ fn main() {
                     .unwrap_or_else(|| std::env::var("HOME").unwrap_or_default());
                 let data_dir = format!("{home_dir}/.maestro/data");
                 let session_dir = format!("{home_dir}/.maestro/sessions");
+                // Ship the CLI bundle inside the same app build as the server.
+                // The packaged server must never fall back to an independently
+                // installed/stale `maestro` from PATH for spawn/resume.
+                let cli_path = app
+                    .path()
+                    .resource_dir()
+                    .expect("failed to resolve app resource directory")
+                    .join("cli")
+                    .join("bundle.cjs");
 
                 let sidecar_cmd = app.shell()
                     .sidecar("maestro-server")
@@ -134,6 +143,7 @@ fn main() {
                     .env("PORT", "2357")
                     .env("DATA_DIR", &data_dir)
                     .env("SESSION_DIR", &session_dir)
+                    .env("MAESTRO_CLI_PATH", cli_path)
                     .env("NODE_ENV", "production");
 
                 let (mut rx, child) = sidecar_cmd.spawn()
