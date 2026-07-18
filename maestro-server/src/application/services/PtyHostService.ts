@@ -62,8 +62,26 @@ interface PtyEntry {
   epoch: string;
 }
 
+interface PendingPromptDelivery {
+  content: string;
+  mode: 'send' | 'paste';
+  bytes: number;
+}
+
+interface PendingPromptQueue {
+  deliveries: PendingPromptDelivery[];
+  bytes: number;
+  draining: boolean;
+  overflowWarned: boolean;
+}
+
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
+// Keep server attach handoff bounds aligned with PR #163's client-side queue.
+// Overflow preserves the already-accepted FIFO prefix and rejects newer input.
+const MAX_PENDING_PROMPT_SESSIONS = 64;
+const MAX_PENDING_PROMPTS_PER_SESSION = 32;
+const MAX_PENDING_PROMPT_BYTES_PER_SESSION = 256 * 1024;
 
 const ESC = 0x1b;
 const CSI_INTRO = 0x5b; // '['
@@ -170,6 +188,10 @@ function shouldStripCsi(finalByte: number, params: Buffer): boolean {
  */
 export class PtyHostService {
   private readonly sessions = new Map<string, PtyEntry>();
+  private readonly pendingPrompts = new Map<string, PendingPromptQueue>();
+  /** Spawn/resume events pause draining until the PTY lifecycle decision is
+   * finished by spawn, spawnIfAbsent, or explicit reuse completion. */
+  private readonly promptHandoffs = new Set<string>();
 
   /**
    * Per-INSTANCE boot nonce for stream epochs (#151). Minted once when the
@@ -276,8 +298,11 @@ export class PtyHostService {
       // web adapter listens for this {type:'exit'} text frame.
       this.notifyExit(entry, exitCode ?? null);
       this.sessions.delete(sessionId);
+      this.pendingPrompts.delete(sessionId);
+      this.promptHandoffs.delete(sessionId);
     });
 
+    this.completePromptHandoff(sessionId);
     this.logger.info('PtyHostService: spawned session PTY', { sessionId, pid: proc.pid, cwd });
   }
 
@@ -303,6 +328,7 @@ export class PtyHostService {
       this.logger.info('PtyHostService: reattaching to existing PTY', {
         sessionId: params.sessionId,
       });
+      this.completePromptHandoff(params.sessionId);
       return { reused: true };
     }
     this.spawn(params);
@@ -342,6 +368,151 @@ export class PtyHostService {
     entry.proc.write(text);
   }
 
+  /** Pause prompt draining while a spawn/resume event hands off to the server
+   * PTY lifecycle. Prompts accepted in the gap remain in the bounded FIFO. */
+  beginPromptHandoff(sessionId: string): void {
+    this.promptHandoffs.add(sessionId);
+  }
+
+  /** Finish an attach/reuse decision and drain the accepted FIFO into the live
+   * PTY, if one exists. Idempotent so spawn paths may call it defensively. */
+  completePromptHandoff(sessionId: string): void {
+    this.promptHandoffs.delete(sessionId);
+    this.drainPendingPrompts(sessionId);
+  }
+
+  /**
+   * Accept one server-owned prompt into a bounded per-session FIFO.
+   *
+   * Every delivery, including steady-state delivery, passes through the same
+   * queue. That prevents rapid send-mode prompts from interleaving their
+   * body/Enter pairs. If no PTY exists yet (spawn/resume attach gap), the prompt
+   * stays queued and spawn/spawnIfAbsent flushes it deterministically.
+   *
+   * @returns false only when a queue bound rejects the new delivery.
+   */
+  async deliverPrompt(
+    sessionId: string,
+    content: string,
+    mode: 'send' | 'paste',
+  ): Promise<boolean> {
+    const bytes = Buffer.byteLength(content, 'utf8');
+    if (bytes > MAX_PENDING_PROMPT_BYTES_PER_SESSION) {
+      this.logger.warn('PtyHostService: dropping oversized pending prompt', {
+        sessionId,
+        bytes,
+      });
+      return false;
+    }
+
+    let queue = this.pendingPrompts.get(sessionId);
+    if (!queue) {
+      if (this.pendingPrompts.size >= MAX_PENDING_PROMPT_SESSIONS) {
+        this.logger.warn('PtyHostService: pending prompt session limit reached', {
+          sessionId,
+        });
+        return false;
+      }
+      queue = {
+        deliveries: [],
+        bytes: 0,
+        draining: false,
+        overflowWarned: false,
+      };
+      this.pendingPrompts.set(sessionId, queue);
+    }
+
+    if (
+      queue.deliveries.length >= MAX_PENDING_PROMPTS_PER_SESSION ||
+      queue.bytes + bytes > MAX_PENDING_PROMPT_BYTES_PER_SESSION
+    ) {
+      if (!queue.overflowWarned) {
+        queue.overflowWarned = true;
+        this.logger.warn('PtyHostService: pending prompt queue overflowed', {
+          sessionId,
+          prompts: queue.deliveries.length,
+          bytes: queue.bytes,
+        });
+      }
+      return false;
+    }
+
+    queue.deliveries.push({ content, mode, bytes });
+    queue.bytes += bytes;
+    this.drainPendingPrompts(sessionId);
+    return true;
+  }
+
+  private drainPendingPrompts(sessionId: string): void {
+    const queue = this.pendingPrompts.get(sessionId);
+    if (
+      !queue ||
+      queue.draining ||
+      this.promptHandoffs.has(sessionId) ||
+      !this.sessions.has(sessionId)
+    ) {
+      return;
+    }
+
+    queue.draining = true;
+    void (async () => {
+      try {
+        while (queue.deliveries.length > 0) {
+          // Explicit stop may discard the queue while an earlier send waits.
+          if (this.pendingPrompts.get(sessionId) !== queue) return;
+          // A resume event pauses the remaining FIFO before replacing/reusing.
+          if (this.promptHandoffs.has(sessionId)) return;
+          const entry = this.sessions.get(sessionId);
+          if (!entry || entry.exited) return;
+
+          const delivery = queue.deliveries.shift();
+          if (!delivery) return;
+          queue.bytes -= delivery.bytes;
+          await this.writePromptToEntry(sessionId, entry, delivery);
+        }
+      } catch (error) {
+        this.logger.error(
+          'PtyHostService: pending prompt delivery failed',
+          error instanceof Error ? error : new Error(String(error)),
+          { sessionId },
+        );
+      } finally {
+        queue.draining = false;
+        if (this.pendingPrompts.get(sessionId) !== queue) return;
+        if (queue.deliveries.length === 0) {
+          this.pendingPrompts.delete(sessionId);
+        } else if (
+          !this.promptHandoffs.has(sessionId) &&
+          this.sessions.has(sessionId)
+        ) {
+          this.drainPendingPrompts(sessionId);
+        }
+      }
+    })();
+  }
+
+  private async writePromptToEntry(
+    sessionId: string,
+    entry: PtyEntry,
+    delivery: PendingPromptDelivery,
+  ): Promise<void> {
+    const text = delivery.content.replace(/[\r\n]+$/, '');
+    if (delivery.mode === 'paste') {
+      entry.proc.write(text);
+      return;
+    }
+
+    if (text) {
+      entry.proc.write(text);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    // Resume/replace can happen during the send delay. Keep the complete prompt
+    // targeted to one process rather than pressing Enter in a fresh PTY.
+    if (this.sessions.get(sessionId) !== entry || entry.exited) return;
+    entry.proc.write('\r');
+  }
+
   /** Resize the PTY. */
   resize(sessionId: string, cols: number, rows: number): void {
     const entry = this.sessions.get(sessionId);
@@ -374,7 +545,13 @@ export class PtyHostService {
    */
   kill(sessionId: string, notify = true): PtyKillOutcome {
     const entry = this.sessions.get(sessionId);
-    if (!entry) return 'not_found';
+    if (!entry) {
+      if (notify) {
+        this.pendingPrompts.delete(sessionId);
+        this.promptHandoffs.delete(sessionId);
+      }
+      return 'not_found';
+    }
     let outcome: PtyKillOutcome = 'killed';
     try {
       entry.proc.kill();
@@ -404,6 +581,8 @@ export class PtyHostService {
     }
     if (notify) {
       this.notifyExit(entry, null);
+      this.pendingPrompts.delete(sessionId);
+      this.promptHandoffs.delete(sessionId);
     } else {
       this.closeSubscribers(entry);
     }
@@ -459,6 +638,8 @@ export class PtyHostService {
     for (const sessionId of Array.from(this.sessions.keys())) {
       this.kill(sessionId);
     }
+    this.pendingPrompts.clear();
+    this.promptHandoffs.clear();
   }
 
   /**
