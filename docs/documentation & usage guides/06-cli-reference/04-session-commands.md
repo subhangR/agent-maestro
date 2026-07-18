@@ -242,14 +242,14 @@ Read text output from session JSONL logs. Useful for coordinator observation of 
 ### Syntax
 
 ```
-maestro session logs [ids] [options]
+maestro session logs [ids...] [options]
 ```
 
 ### Arguments
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `ids` | No | Comma-separated session IDs (required unless `--my-workers` is used) |
+| `ids...` | No | One or more session IDs separated by spaces and/or commas (required unless `--my-workers` is used) |
 
 ### Flags
 
@@ -263,6 +263,8 @@ maestro session logs [ids] [options]
 ### Example
 
 ```bash
+maestro session logs sess_abc123 sess_def456
+maestro session logs sess_abc123,sess_def456
 maestro session logs --my-workers --last 3
 ```
 

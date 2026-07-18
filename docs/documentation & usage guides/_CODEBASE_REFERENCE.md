@@ -140,7 +140,7 @@ interface MaestroManifest {
 ### Session (16+)
 - `session spawn --task --tasks --mode --skill --team-member-id --agent-tool --model --permission-mode --name --context`
 - `session list --project --task --status`, `session siblings`, `session info [id]`
-- `session watch <ids> --timeout`, `session logs [ids] --format --tail --follow`
+- `session watch <ids> --timeout`, `session logs [ids...] --format --tail --follow` (log IDs accept spaces or commas)
 - `session prompt <targetId> --message`
 - `session register`, `session complete`, `session needs-input`, `session resume-working`
 - `session report {progress|complete|blocked|error} <message>`
