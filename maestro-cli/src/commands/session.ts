@@ -1019,13 +1019,14 @@ export function registerSessionCommands(program: Command) {
             }
         });
 
-    session.command('logs [ids]')
+    session.command('logs')
         .description('Read text output from session JSONL logs (for coordinator observation)')
+        .argument('[ids...]', 'Session IDs separated by spaces and/or commas (required unless --my-workers is used)')
         .option('--my-workers', 'Read logs for all workers under this coordinator session')
         .option('--last <n>', 'Number of text entries per session (default 5)', '5')
         .option('--full', 'Return full untruncated text entries')
         .option('--max-length <n>', 'Max character length per text entry (default 150)')
-        .action(async (ids: string | undefined, cmdOpts: { myWorkers?: boolean; last?: string; full?: boolean; maxLength?: string }) => {
+        .action(async (ids: string[], cmdOpts: { myWorkers?: boolean; last?: string; full?: boolean; maxLength?: string }) => {
             await guardCommand('session:logs');
             const globalOpts = program.opts();
             const isJson = globalOpts.json;
@@ -1048,8 +1049,11 @@ export function registerSessionCommands(program: Command) {
                         process.exit(1);
                     }
                     endpoint = `/api/sessions/log-digests?parentSessionId=${myId}&last=${last}${maxLengthParam}`;
-                } else if (ids) {
-                    const sessionIds = ids.split(',').map(s => s.trim()).filter(Boolean);
+                } else if (ids.length > 0) {
+                    const sessionIds = ids
+                        .flatMap(value => value.split(','))
+                        .map(value => value.trim())
+                        .filter(Boolean);
                     if (sessionIds.length === 1) {
                         // Single session — use the single endpoint
                         const digest = await api.get<LogDigestResponse>(`/api/sessions/${sessionIds[0]}/log-digest?last=${last}${maxLengthParam}`);

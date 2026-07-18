@@ -9,6 +9,8 @@
  * non-existent thread.
  *
  * These tests pin the SERVER-owned half of the fix:
+ *   - Fresh Codex sessions never receive or persist a Claude-native session id;
+ *     fresh Claude sessions still pre-seed one for deterministic resume.
  *   - Codex sessions are resumable (no 400 agent_tool_not_resumable).
  *   - The session:resume event/env is provider-aware: it carries
  *     MAESTRO_AGENT_TOOL, and for Codex it drops MAESTRO_CLAUDE_SESSION_ID and
@@ -309,6 +311,50 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
     return { get: () => evt };
   }
 
+  function captureSpawn(): { get: () => any } {
+    let evt: any;
+    container.eventBus.on('session:spawn', (e: any) => { evt = e; });
+    return { get: () => evt };
+  }
+
+  it('keeps a fresh Codex spawn free of Claude-native ids in its payload, event, and persisted record', async () => {
+    const cap = captureSpawn();
+    const res = await supertest(app)
+      .post('/api/sessions/spawn')
+      .send({ projectId, taskIds: [taskId], spawnSource: 'ui', mode: 'worker', launchConfig: CODEX_LAUNCH });
+    expect(res.status).toBe(201);
+
+    expect(res.body.session.metadata.agentTool).toBe('codex');
+    expect(res.body.session.claudeSessionId).toBeUndefined();
+    expect(res.body.session.env.MAESTRO_AGENT_TOOL).toBe('codex');
+    expect(res.body.session.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+
+    const evt = cap.get();
+    expect(evt).toBeDefined();
+    expect(evt.envVars.MAESTRO_AGENT_TOOL).toBe('codex');
+    expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    expect(evt.session.claudeSessionId).toBeUndefined();
+
+    const persisted = await reloadFromDisk(res.body.sessionId);
+    expect(persisted.metadata.agentTool).toBe('codex');
+    expect(persisted.claudeSessionId).toBeUndefined();
+    expect(persisted.env.MAESTRO_AGENT_TOOL).toBe('codex');
+    expect(persisted.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+  });
+
+  it('continues pre-seeding the Claude-native id for a fresh Claude spawn', async () => {
+    const cap = captureSpawn();
+    const sessionId = await spawnSession();
+    const persisted = await container.sessionService.getSession(sessionId);
+    const evt = cap.get();
+
+    expect(persisted.metadata.agentTool).toBe('claude-code');
+    expect(persisted.env.MAESTRO_AGENT_TOOL).toBe('claude-code');
+    expect(typeof persisted.claudeSessionId).toBe('string');
+    expect(persisted.env.MAESTRO_CLAUDE_SESSION_ID).toBe(persisted.claudeSessionId);
+    expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBe(persisted.claudeSessionId);
+  });
+
   it('does NOT hard-block a Codex session (regression: used to 400 agent_tool_not_resumable)', async () => {
     const sessionId = await spawnSession(CODEX_LAUNCH);
     // Sanity: spawn persisted agentTool=codex.
@@ -335,7 +381,7 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
     expect(evt.agentTool).toBe('codex');
     expect(evt.envVars.MAESTRO_AGENT_TOOL).toBe('codex');
     expect(evt.envVars.MAESTRO_CODEX_SESSION_ID).toBe(KNOWN_CODEX_ID);
-    // The Claude-only id (minted at spawn, carried in session.env) must be dropped.
+    // The Claude-only id must never be present on the Codex resume path.
     expect(evt.envVars.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
     const repaired = await container.sessionService.getSession(sessionId);
     expect(repaired.metadata.codexSessionId).toBe(KNOWN_CODEX_ID);
@@ -375,13 +421,11 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
   });
 
   // ── PERSISTED-state regressions (parent-bug tail) ──────────────────────────
-  // The emitted event was already provider-correct, but FileSystemSessionRepository
-  // MERGES env updates ({ ...session.env, ...updates.env }). The Codex resume path
-  // *deletes* MAESTRO_CLAUDE_SESSION_ID from the outgoing env — but deletion is not
-  // omission: the stale Claude id (minted for EVERY session at spawn) survived the
-  // merge and stayed in the persisted Codex session JSON. These reload the session
-  // through a brand-new container so the assertion reflects on-disk truth, not the
-  // in-memory object that the route already mutated.
+  // FileSystemSessionRepository MERGES env updates
+  // ({ ...session.env, ...updates.env }). The Codex resume path therefore still
+  // needs explicit deletion semantics for legacy sessions created before fresh
+  // spawn became provider-aware. These reload through a new container so the
+  // assertion reflects on-disk truth, not the cached in-memory Session.
   async function reloadFromDisk(sessionId: string): Promise<any> {
     // Flush the live repo's batched writes to disk, then read through a fresh
     // container so we assert persisted JSON, not the cached in-memory Session.
@@ -394,11 +438,16 @@ describe('POST /api/sessions/:id/resume — provider-aware payload', () => {
 
   it('drops MAESTRO_CLAUDE_SESSION_ID from the PERSISTED Codex session while keeping unrelated keys and the Codex id', async () => {
     const sessionId = await spawnSession(CODEX_LAUNCH);
-    // Spawn mints a Claude id into session.env for every session. Sanity-check it,
-    // then add an unrelated key that MUST survive the resume.
+    // Simulate a legacy Codex record created before fresh spawns became
+    // provider-aware, and add an unrelated key that MUST survive the resume.
     const afterSpawn = await container.sessionService.getSession(sessionId);
-    expect(afterSpawn.env.MAESTRO_CLAUDE_SESSION_ID).toBeDefined();
-    await container.sessionService.updateSession(sessionId, { env: { CUSTOM_KEEP_ME: 'keep' } });
+    expect(afterSpawn.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    await container.sessionService.updateSession(sessionId, {
+      env: {
+        CUSTOM_KEEP_ME: 'keep',
+        MAESTRO_CLAUDE_SESSION_ID: '11111111-2222-3333-4444-555555555555',
+      },
+    });
     // A real rollout id is known → MAESTRO_CODEX_SESSION_ID must be retained on reload.
     await container.sessionService.updateSession(sessionId, { metadata: { codexSessionId: KNOWN_CODEX_ID } });
 
