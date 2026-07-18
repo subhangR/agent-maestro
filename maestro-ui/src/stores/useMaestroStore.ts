@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import { platform } from '../platform';
 import { maestroClient } from '../utils/MaestroClient';
 import type {
   MaestroTask,
@@ -526,31 +525,13 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
           ...meta,
         });
 
-        const sessions = useSessionStore.getState().sessions;
-        const terminalSession = sessions.find(
-          (s) => s.maestroSessionId === maestroSessionId && !s.exited
-        );
-        if (!terminalSession) {
-          break;
-        }
-        // Write directly to PTY with 'system' source to distinguish programmatic input from user keyboard input
-        const ptyId = terminalSession.id;
-        const text = content.replace(/[\r\n]+$/, '');
-        (async () => {
-          try {
-            if (promptMode === 'paste') {
-              await platform.terminal.write(ptyId, text, 'system');
-            } else {
-              if (text) {
-                await platform.terminal.write(ptyId, text, 'system');
-                await new Promise(r => setTimeout(r, 200));
-              }
-              await platform.terminal.write(ptyId, '\r', 'system');
-            }
-          } catch {
-            // best-effort write to session – ignore failures
-          }
-        })();
+        useSessionStore
+          .getState()
+          .deliverPromptToMaestroSession(
+            maestroSessionId,
+            content,
+            promptMode,
+          );
         break;
       }
       case 'spell:invoked': {
