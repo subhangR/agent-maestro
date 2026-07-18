@@ -2368,32 +2368,33 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       let hadClaudeSessionId = false;
       let codexSessionId: string | undefined;
       if (isCodex) {
-        codexSessionId = (session.metadata?.codexSessionId as string | undefined) || undefined;
-        if (!codexSessionId) {
-          try {
-            const resolved = await logDigestService.resolveCodexSessionId(session.id, cwd);
-            if (resolved) {
-              codexSessionId = resolved;
-              // Cache the recovered id so later resumes skip the rollout scan.
+        try {
+          const resolved = await logDigestService.resolveCodexSessionId(session.id, cwd);
+          if (resolved) {
+            codexSessionId = resolved;
+            if (session.metadata?.codexSessionId !== resolved) {
+              // Correct legacy metadata that may have been captured from a
+              // coordinator/tool-output reference instead of the owned rollout.
               await sessionService.updateSession(session.id, {
                 metadata: { ...session.metadata, codexSessionId: resolved },
               });
             }
-          } catch (resolveErr) {
-            console.warn(
-              `[resume] Failed to resolve Codex rollout id for session ${session.id}:`,
-              resolveErr instanceof Error ? resolveErr.message : resolveErr,
-            );
           }
+        } catch (resolveErr) {
+          console.warn(
+            `[resume] Failed to resolve Codex rollout id for session ${session.id}:`,
+            resolveErr instanceof Error ? resolveErr.message : resolveErr,
+          );
         }
         if (!codexSessionId) {
-          // No rollout id recoverable yet. There is deliberately no `--last`
-          // fallback (it could target the WRONG thread when multiple Codex
-          // sessions share this cwd); instead the CLI fresh-starts with full
-          // context (system prompt + task + env) under the same session id.
-          console.warn(
-            `[resume] No Codex rollout id for session ${session.id}; CLI will fresh-start with full context (no --last guess).`,
-          );
+          // Resume means conversation continuity. Fail before changing status,
+          // emitting session:resume, or launching an agent when exact ownership
+          // cannot be proven.
+          return res.status(409).json({
+            error: true,
+            code: 'codex_resume_id_unavailable',
+            message: 'Cannot resume this Codex session because its exact native rollout id is unavailable. Maestro will not guess with --last or start a new conversation.',
+          });
         }
       } else {
         // Claude: mint a session id when missing so pre-feature sessions get a
@@ -2484,9 +2485,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         authEnvVars['GOOGLE_GENAI_USE_GCA'] = 'true';
       }
 
-      // Determine command: Codex always resumes its rollout (explicit id when
-      // known, else `--last`); Claude resumes only when it already had a session
-      // id, otherwise it falls back to a fresh init.
+      // Determine command: Codex reaches here only with an exact, verified
+      // rollout id. Claude resumes only when it already had a session id,
+      // otherwise it falls back to a fresh init for legacy sessions.
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
       const subcommand = isCodex || hadClaudeSessionId ? 'resume' : 'init';
       // Invoke the resolved CLI directly on all platforms (see the spawn path above); fall back to
@@ -2510,7 +2511,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       // Wire the provider-native resume id. For Codex, the Claude id (minted at
       // spawn and still present in `session.env`) must never leak through — Codex
-      // resumes by rollout id, or by `--last` when none was recoverable.
+      // resumes only by its verified rollout id.
       //
       // Keys deleted from the outgoing env are also collected in `removeEnvKeys`:
       // the repository MERGES env updates, so without an explicit deletion list the
@@ -2627,8 +2628,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         success: true,
         sessionId: session.id,
         agentTool,
-        // Echo only the provider-native id that actually applies. `codexSessionId`
-        // is undefined on the `--last` fallback, which is intentional.
+        // Echo only the provider-native id that actually applies.
         ...(isCodex
           ? { codexSessionId }
           : { claudeSessionId: session.claudeSessionId }),

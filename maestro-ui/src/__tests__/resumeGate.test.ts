@@ -9,7 +9,7 @@ import { isAgentToolResumable, RESUMABLE_AGENT_TOOLS } from "../app/constants/ag
 //
 // Contract (confirmed with CLI/server owners):
 //   - Claude Code  → `claude --resume <MAESTRO_CLAUDE_SESSION_ID>`
-//   - Codex        → `codex resume <native-id>` (fallback `codex resume --last`)
+//   - Codex        → `codex resume <native-id>` (fail closed without exact id)
 //   - Gemini/Hermes→ no proven native-id resume path yet → not resumable
 describe("isAgentToolResumable — shared resume gate", () => {
   it("offers resume for Claude Code sessions", () => {
