@@ -43,7 +43,7 @@ export const COMMANDS_REFERENCE_MODAL = 'maestro modal {events} — Modal intera
 // Coordinate-only commands
 export const COMMANDS_REFERENCE_SESSION_COORD = 'maestro session {list|spawn|logs} — Session coordination';
 export const COMMANDS_REFERENCE_SESSION_SPAWN = 'maestro session spawn --task <id> [--subject "<directive>"] [--message "<instructions>"] [--team-member-id <tmId>] [--launch-config <json>] — Spawn with initial directive';
-export const COMMANDS_REFERENCE_SESSION_LOGS = 'maestro session logs [ids] [--my-workers] [--last <n>] — Read worker text output from session logs';
+export const COMMANDS_REFERENCE_SESSION_LOGS = 'maestro session logs [ids...] [--my-workers] [--last <n>] — Read worker text output from session logs; IDs may be separated by spaces or commas';
 
 export const COMMANDS_REFERENCE_FOOTER = 'Run `maestro commands` for full syntax reference.';
 
@@ -190,7 +190,7 @@ export const CMD_SYNTAX: Record<string, string> = {
   'session:info': 'maestro session info [sessionId]',
   'session:watch': 'maestro session watch <sessionId1>,<sessionId2>,...',
   'session:spawn': 'maestro session spawn --task <id> [--team-member-id <tmId>] [--launch-config <json>]',
-  'session:logs': 'maestro session logs [ids] [--my-workers] [--last <n>] [--full] [--max-length <n>]',
+  'session:logs': 'maestro session logs [ids...] [--my-workers] [--last <n>] [--full] [--max-length <n>]',
   'session:prompt': 'maestro session prompt <targetSessionId> --message "<text>" [--mode send|paste]',
   'session:register': 'maestro session register',
   'session:complete': 'maestro session complete',

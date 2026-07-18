@@ -105,7 +105,7 @@ maestro session prompt <session-id> --message "Your message"
 maestro session watch <session-ids>
 
 # Read session logs
-maestro session logs <session-ids>
+maestro session logs <session-id> [<session-id> ...]  # spaces or commas
 
 # Report session progress
 maestro session report progress "Making good progress"
