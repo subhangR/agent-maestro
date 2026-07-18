@@ -586,4 +586,28 @@ describe('PtyHostService replay→subscribe ordering seam (#150)', () => {
     expect(replay.data.toString('utf8')).toBe('HEAD');
     expect(liveBytes(ws).toString('utf8')).toBe('TAIL');
   });
+
+  it('buffers output produced while a terminal-state snapshot is generated, then promotes it live in order', async () => {
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'snapshot-gap', ...baseParams });
+    mockSpawnedProcs[0]._onData(Buffer.from('HEAD', 'utf8'));
+
+    const ws = fakeWs();
+    expect(svc.addPendingSubscriber('snapshot-gap', ws)).toBe(true);
+    const snapshotPromise = svc.getStateSnapshot('snapshot-gap');
+    expect(snapshotPromise).not.toBeNull();
+
+    // This arrives after the snapshot boundary but before serialization finishes.
+    mockSpawnedProcs[0]._onData(Buffer.from('TAIL', 'utf8'));
+    const snapshot = await snapshotPromise!;
+    expect(snapshot.next).toBe(4);
+    expect(snapshot.data.toString('utf8')).toContain('HEAD');
+    expect(snapshot.data.toString('utf8')).not.toContain('TAIL');
+
+    expect(svc.activatePendingSubscriber('snapshot-gap', ws)).toBe(true);
+    expect(liveBytes(ws).toString('utf8')).toBe('TAIL');
+
+    mockSpawnedProcs[0]._onData(Buffer.from('LIVE', 'utf8'));
+    expect(liveBytes(ws).toString('utf8')).toBe('TAILLIVE');
+  });
 });

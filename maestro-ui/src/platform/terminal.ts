@@ -2,7 +2,12 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type { Event as TauriEvent } from '@tauri-apps/api/event';
-import type { TerminalTransport, CreateSessionOpts, Unlisten } from './types';
+import type {
+  TerminalTransport,
+  CreateSessionOpts,
+  TerminalReplayInfo,
+  Unlisten,
+} from './types';
 import type { TerminalSessionInfo } from '../app/types/session';
 
 export const tauriTerminal: TerminalTransport = {
@@ -73,6 +78,9 @@ const _pendingSends = new Map<string, { frames: Array<string | Uint8Array>; byte
 // real open).
 const _overflowLatched = new Set<string>();
 const _outputHandlers: Array<(id: string, data: string) => void> = [];
+const _replayHandlers: Array<
+  (id: string, data: string, info: TerminalReplayInfo) => void
+> = [];
 const _exitHandlers: Array<(id: string, exitCode?: number | null) => void> = [];
 const _sizeHandlers: Array<(id: string, size: { cols: number; rows: number }) => void> = [];
 const _reattachHandlers: Array<(id: string) => void> = [];
@@ -143,7 +151,7 @@ const _received = new Map<string, number>();
 // but NOT counted toward `_received` — `attached.next` already accounts for its
 // (raw) bytes, and the frame itself is a sanitized/shorter slice, so counting it
 // would desync the offset. A one-shot flag: consumed by the first binary frame.
-const _pendingReplay = new Set<string>();
+const _pendingReplay = new Map<string, TerminalReplayInfo['kind']>();
 // Per-session opaque stream epoch last seen on an `attached` ack (#151). Compared
 // by EQUALITY ONLY: a changed epoch is an authoritative respawn/restart that
 // resets the terminal regardless of byte counts, while the same epoch resumes and
@@ -189,7 +197,14 @@ function _decodeFor(id: string, bytes: Uint8Array): string {
  */
 function _handleAttached(
   id: string,
-  frame: { base: number; gap: number; next: number; hasReplay: boolean; epoch?: string },
+  frame: {
+    base: number;
+    gap: number;
+    next: number;
+    hasReplay: boolean;
+    replayKind?: TerminalReplayInfo['kind'];
+    epoch?: string;
+  },
 ): void {
   const prevReceived = _received.get(id) ?? 0;
 
@@ -217,7 +232,7 @@ function _handleAttached(
   // Replay expectation is fully (re)determined by THIS ack: if a prior
   // attached set hasReplay but its replay frame never arrived (socket dropped
   // first), a stale flag must not skip-count this connect's first live frame.
-  if (frame.hasReplay) _pendingReplay.add(id);
+  if (frame.hasReplay) _pendingReplay.set(id, frame.replayKind ?? 'delta');
   else _pendingReplay.delete(id);
 }
 
@@ -316,14 +331,24 @@ function _ensureSocket(id: string): WebSocket {
       for (const h of _outputHandlers) h(id, ev.data as string);
     } else {
       const buf = new Uint8Array(ev.data as ArrayBuffer);
-      const text = _decodeFor(id, buf);
-      for (const h of _outputHandlers) h(id, text);
-      if (_pendingReplay.has(id)) {
+      const replayKind = _pendingReplay.get(id);
+      const text =
+        replayKind === 'snapshot'
+          ? new TextDecoder().decode(buf)
+          : _decodeFor(id, buf);
+      if (replayKind) {
         // The single display-only replay frame following an `attached` ack:
-        // rendered above, but NOT counted — `attached.next` already accounts for
-        // these raw bytes, and this slice is sanitized/shorter than the window.
+        // delivered through the hydration channel and NOT counted —
+        // `attached.next` already accounts for the raw stream it represents.
         _pendingReplay.delete(id);
+        if (_replayHandlers.length > 0) {
+          for (const h of _replayHandlers) h(id, text, { kind: replayKind });
+        } else {
+          // Backward compatibility for consumers that only registered onOutput.
+          for (const h of _outputHandlers) h(id, text);
+        }
       } else {
+        for (const h of _outputHandlers) h(id, text);
         // A live frame — advance the offset by its RAW byte length.
         _received.set(id, (_received.get(id) ?? 0) + buf.byteLength);
       }
@@ -599,6 +624,16 @@ export const webTerminal: TerminalTransport = {
     return Promise.resolve(() => {
       const idx = _outputHandlers.indexOf(handler);
       if (idx >= 0) _outputHandlers.splice(idx, 1);
+    });
+  },
+
+  onReplay(
+    handler: (id: string, data: string, info: TerminalReplayInfo) => void,
+  ): Promise<Unlisten> {
+    _replayHandlers.push(handler);
+    return Promise.resolve(() => {
+      const idx = _replayHandlers.indexOf(handler);
+      if (idx >= 0) _replayHandlers.splice(idx, 1);
     });
   },
 

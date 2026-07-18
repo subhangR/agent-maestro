@@ -19,10 +19,13 @@ type TrackedWebSocket = WebSocket & { isAlive?: boolean };
  *                          size is known; lets the client match the width the scrollback
  *                          was authored at)
  *                        { "type": "attached", "base": <n>, "gap": <n>, "next": <n>,
- *                          "hasReplay": <bool>, "epoch"?: <string> }  (the resume handshake —
+ *                          "hasReplay": <bool>, "replayKind"?: "delta"|"snapshot",
+ *                          "epoch"?: <string> }  (the resume handshake —
  *                          all offsets RAW; `next` is the authoritative offset the client snaps
  *                          its receive counter to, `gap` counts evicted bytes it must surface as
  *                          a truncation, `hasReplay` says whether a replay binary frame follows.
+ *                          `replayKind:"snapshot"` means an evicted raw prefix was
+ *                          replaced by a coherent serialized terminal state.
  *                          `epoch` is the OPTIONAL opaque per-spawn stream identity (#151):
  *                          present only when known, compared by equality only — a changed epoch
  *                          means a respawn/restart and an authoritative client reset. Absent
@@ -98,6 +101,30 @@ export class PtyWebSocketServer {
       tracked.isAlive = true;
     });
 
+    // Register inbound/cleanup handlers before snapshot hydration. The gap path
+    // intentionally awaits the headless xterm mirror; input and socket-close
+    // events must remain observable during that short window.
+    ws.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
+      if (isBinary) {
+        const buf = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer);
+        this.ptyHostService.write(sessionId, buf);
+        return;
+      }
+      const text = Array.isArray(data)
+        ? Buffer.concat(data).toString('utf8')
+        : Buffer.from(data as ArrayBuffer).toString('utf8');
+      this.handleControl(sessionId, text);
+    });
+
+    ws.on('close', () => {
+      this.ptyHostService.removeSubscriber(sessionId, ws);
+      this.logger.info('PtyWebSocketServer: client detached', { sessionId });
+    });
+
+    ws.on('error', () => {
+      this.ptyHostService.removeSubscriber(sessionId, ws);
+    });
+
     // Resolve the resume point FIRST. A reconnecting client carries the raw byte
     // offset it last received as `?offset=`. getReplay both proves the PTY still
     // exists (null → nothing to attach to) and computes exactly the delta to
@@ -106,6 +133,26 @@ export class PtyWebSocketServer {
     const replay = this.ptyHostService.getReplay(sessionId, offset);
     if (!replay) {
       this.closeWith(ws, 1011, 'no live PTY for session');
+      return;
+    }
+
+    // An evicted raw prefix is not a valid terminal program: it can begin in
+    // the middle of a CSI sequence and omit the mode/alternate-screen setup
+    // Codex relies on. Buffer live output first, capture the headless mirror at
+    // this exact boundary, then replay that complete state and flush the buffer.
+    if (replay.gap > 0) {
+      if (!this.ptyHostService.addPendingSubscriber(sessionId, ws)) {
+        this.closeWith(ws, 1011, 'no live PTY for session');
+        return;
+      }
+      const snapshot = this.ptyHostService.getStateSnapshot(sessionId);
+      if (!snapshot) {
+        this.ptyHostService.removeSubscriber(sessionId, ws);
+        this.closeWith(ws, 1011, 'no live PTY for session');
+        return;
+      }
+      const epoch = this.ptyHostService.getEpoch(sessionId) ?? undefined;
+      void this.finishSnapshotAttach(ws, sessionId, offset, replay.gap, epoch, snapshot);
       return;
     }
 
@@ -141,15 +188,6 @@ export class PtyWebSocketServer {
     if (epoch) attachedFrame.epoch = epoch;
     this.send(ws, JSON.stringify(attachedFrame));
 
-    if (replay.gap > 0) {
-      // Honest, bounded loss: the client resumed from behind the retained window,
-      // so some scrollback is gone for good. Make it visible in the logs.
-      this.logger.warn(
-        'PtyWebSocketServer: replay gap (scrollback evicted before resume offset)',
-        { sessionId, gap: replay.gap },
-      );
-    }
-
     // One binary frame carrying the sanitized scrollback, iff there is any.
     if (hasReplay) {
       this.send(ws, replay.data);
@@ -179,28 +217,53 @@ export class PtyWebSocketServer {
     }
 
     this.logger.info('PtyWebSocketServer: client attached', { sessionId, offset });
+  }
 
-    ws.on('message', (data: Buffer | ArrayBuffer | Buffer[], isBinary: boolean) => {
-      if (isBinary) {
-        const buf = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data as ArrayBuffer);
-        this.ptyHostService.write(sessionId, buf);
+  private async finishSnapshotAttach(
+    ws: WebSocket,
+    sessionId: string,
+    offset: number,
+    gap: number,
+    epoch: string | undefined,
+    snapshotPromise: Promise<{ next: number; data: Buffer; cols: number; rows: number }>,
+  ): Promise<void> {
+    try {
+      const snapshot = await snapshotPromise;
+      this.send(
+        ws,
+        JSON.stringify({ type: 'size', cols: snapshot.cols, rows: snapshot.rows }),
+      );
+      const attachedFrame: Record<string, unknown> = {
+        type: 'attached',
+        base: snapshot.next,
+        gap,
+        next: snapshot.next,
+        hasReplay: snapshot.data.length > 0,
+        replayKind: 'snapshot',
+      };
+      if (epoch) attachedFrame.epoch = epoch;
+      this.send(ws, JSON.stringify(attachedFrame));
+      if (snapshot.data.length > 0) this.send(ws, snapshot.data);
+
+      if (!this.ptyHostService.activatePendingSubscriber(sessionId, ws)) {
+        this.closeWith(ws, 1011, 'PTY ended during terminal-state replay');
         return;
       }
-      // Text frame → control message
-      const text = Array.isArray(data)
-        ? Buffer.concat(data).toString('utf8')
-        : Buffer.from(data as ArrayBuffer).toString('utf8');
-      this.handleControl(sessionId, text);
-    });
 
-    ws.on('close', () => {
+      this.logger.warn(
+        'PtyWebSocketServer: replay gap restored from terminal-state snapshot',
+        { sessionId, gap },
+      );
+      this.logger.info('PtyWebSocketServer: client attached', { sessionId, offset });
+    } catch (error) {
       this.ptyHostService.removeSubscriber(sessionId, ws);
-      this.logger.info('PtyWebSocketServer: client detached', { sessionId });
-    });
-
-    ws.on('error', () => {
-      this.ptyHostService.removeSubscriber(sessionId, ws);
-    });
+      this.logger.error(
+        'PtyWebSocketServer: failed to serialize terminal-state replay',
+        error instanceof Error ? error : new Error(String(error)),
+        { sessionId },
+      );
+      this.closeWith(ws, 1011, 'failed to restore terminal state');
+    }
   }
 
   private handleControl(sessionId: string, text: string): void {

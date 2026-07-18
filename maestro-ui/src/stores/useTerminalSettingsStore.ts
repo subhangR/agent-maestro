@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ITheme } from 'xterm';
+import type { ITheme } from '@xterm/xterm';
 
 /**
  * User-configurable terminal appearance (font, cursor, colors, spacing),

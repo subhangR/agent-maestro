@@ -47,7 +47,15 @@ function makeHost(overrides: Partial<Record<string, any>> = {}) {
     // Absent stream epoch by default: the attached frame stays back-compatible
     // (no `epoch` key) so pre-#151 assertions hold. Epoch-aware tests override this.
     getEpoch: jest.fn().mockReturnValue(undefined),
+    getStateSnapshot: jest.fn().mockResolvedValue({
+      next: 0,
+      data: Buffer.from('\u001bc'),
+      cols: 80,
+      rows: 24,
+    }),
     addSubscriber: jest.fn().mockReturnValue(true),
+    addPendingSubscriber: jest.fn().mockReturnValue(true),
+    activatePendingSubscriber: jest.fn().mockReturnValue(true),
     removeSubscriber: jest.fn(),
     write: jest.fn(),
     resize: jest.fn(),
@@ -61,6 +69,8 @@ function connect(wss: FakeWss, url: string): FakeWs {
   wss.emit('connection', ws, { url });
   return ws;
 }
+
+const flushAsyncAttach = () => new Promise<void>((resolve) => setImmediate(resolve));
 
 describe('PtyWebSocketServer', () => {
   let wss: FakeWss;
@@ -134,20 +144,38 @@ describe('PtyWebSocketServer', () => {
     expect(host.addSubscriber).toHaveBeenCalledWith('s1', ws);
   });
 
-  it('surfaces an eviction gap in the attached frame and still replays retained bytes', () => {
+  it('replaces an evicted raw suffix with a coherent terminal-state snapshot', async () => {
     host = makeHost({
       getReplay: jest
         .fn()
         .mockReturnValue({ base: 100, gap: 40, next: 200, data: Buffer.from('x', 'utf8') }),
+      getStateSnapshot: jest.fn().mockResolvedValue({
+        next: 200,
+        data: Buffer.from('\u001bcsnapshot', 'utf8'),
+        cols: 120,
+        rows: 40,
+      }),
     });
     start(host);
     const ws = connect(wss, '/pty?sessionId=s1&offset=60');
+    await flushAsyncAttach();
     const attached = ws.textFrames().find((f) => f.type === 'attached');
-    expect(attached).toEqual({ type: 'attached', base: 100, gap: 40, next: 200, hasReplay: true });
-    expect(ws.binaryFrames()[0].toString('utf8')).toBe('x');
+    expect(attached).toEqual({
+      type: 'attached',
+      base: 200,
+      gap: 40,
+      next: 200,
+      hasReplay: true,
+      replayKind: 'snapshot',
+    });
+    expect(ws.textFrames()[0]).toEqual({ type: 'size', cols: 120, rows: 40 });
+    expect(ws.binaryFrames()[0].toString('utf8')).toBe('\u001bcsnapshot');
+    expect(host.addPendingSubscriber).toHaveBeenCalledWith('s1', ws);
+    expect(host.activatePendingSubscriber).toHaveBeenCalledWith('s1', ws);
+    expect(host.addSubscriber).not.toHaveBeenCalled();
   });
 
-  it('logs a warning when a replay has an eviction gap (data loss is visible)', () => {
+  it('logs a warning when an eviction gap is restored from a snapshot', async () => {
     const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
     host = makeHost({
       getReplay: jest
@@ -156,6 +184,7 @@ describe('PtyWebSocketServer', () => {
     });
     start(host, logger);
     connect(wss, '/pty?sessionId=s1&offset=60');
+    await flushAsyncAttach();
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining('replay gap'),
       expect.objectContaining({ sessionId: 's1', gap: 40 }),
