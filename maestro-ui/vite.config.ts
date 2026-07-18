@@ -27,7 +27,7 @@ export default defineConfig({
           'vendor-excalidraw': ['@excalidraw/excalidraw'],
           'vendor-mermaid': ['mermaid'],
           'vendor-recharts': ['recharts'],
-          'vendor-xterm': ['xterm', 'xterm-addon-fit'],
+          'vendor-xterm': ['@xterm/xterm', '@xterm/addon-fit'],
           'vendor-markdown': ['react-markdown', 'remark-gfm'],
           'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
         },
@@ -35,4 +35,3 @@ export default defineConfig({
     },
   },
 });
-

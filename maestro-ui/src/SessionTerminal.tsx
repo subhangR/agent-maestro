@@ -1,13 +1,21 @@
 import React, { useEffect, useRef } from "react";
 import { platform } from "./platform";
-import { Terminal } from "xterm";
-import { FitAddon } from "xterm-addon-fit";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
 import type { PendingDataBuffer } from "./app/types/app-state";
 import { useTerminalSettingsStore, buildITheme } from "./stores/useTerminalSettingsStore";
-import { serverPtySizes, clientFittedSessions, setLastFittedSize } from "./stores/useSessionStore";
+import {
+  serverPtySizes,
+  clientFittedSessions,
+  pendingReplayHydrations,
+  setLastFittedSize,
+} from "./stores/useSessionStore";
 import { measureSpawnTerminalSize } from "./utils/terminalSize";
 
-export type TerminalRegistry = Map<string, { term: Terminal; fit: FitAddon }>;
+export type TerminalRegistry = Map<
+  string,
+  { term: Terminal; fit: FitAddon; hydrateReplay: (data: string) => void }
+>;
 
 /* ---------------------------------------------------------------------------
    Terminal background follows the app light/dark toggle: it stays DARK in both
@@ -567,8 +575,34 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      void platform.terminal.resize(props.id, cols, rows).catch(() => {});
 	    }
 
-		    // Register BEFORE flushing to avoid race with incoming events
-		    props.registry.current.set(props.id, { term, fit });
+	    const finishReplayHydration = () => {
+	      window.requestAnimationFrame(() => {
+	        if (!term.element) return;
+	        try {
+	          term.scrollToBottom();
+	          term.refresh(0, term.rows - 1);
+	        } catch {
+	          // terminal may have been disposed between parse and paint
+	        }
+	        term.element.style.removeProperty("visibility");
+	      });
+	    };
+
+	    const hydrateReplay = (data: string) => {
+	      if (!term.element) return;
+	      // xterm parses writes asynchronously. Hide its imperative DOM node until
+	      // the replay callback reaches the final byte, so Codex's thousands of
+	      // cursor redraws never appear as a visible top-to-bottom jump.
+	      term.element.style.visibility = "hidden";
+	      try {
+	        term.write(data, finishReplayHydration);
+	      } catch {
+	        term.element.style.removeProperty("visibility");
+	      }
+	    };
+
+	    // Register BEFORE flushing to avoid a race with incoming events.
+	    props.registry.current.set(props.id, { term, fit, hydrateReplay });
 
 	    // Flush any buffered data that arrived before we were ready (but wait for renderer readiness)
 	    const flushPending = (attemptsLeft: number) => {
@@ -577,12 +611,19 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      const buffered = props.pendingData.current.get(props.id);
 	      if (!buffered || buffered.length === 0) {
 	        props.pendingData.current.delete(props.id);
+	        pendingReplayHydrations.delete(props.id);
 	        return;
 	      }
 	      if (!isXtermRendererReady(term)) {
 	        if (attemptsLeft > 0) {
 	          window.requestAnimationFrame(() => flushPending(attemptsLeft - 1));
 	        }
+	        return;
+	      }
+
+	      if (pendingReplayHydrations.delete(props.id)) {
+	        props.pendingData.current.delete(props.id);
+	        hydrateReplay(buffered.join(""));
 	        return;
 	      }
 
@@ -652,6 +693,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      }
 	      for (const d of oscDisposables) d.dispose();
 	      clientFittedSessions.delete(props.id);
+	      pendingReplayHydrations.delete(props.id);
 	      props.registry.current.delete(props.id);
 	      props.pendingData.current.delete(props.id);
 	      term.dispose();

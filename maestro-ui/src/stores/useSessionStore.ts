@@ -62,6 +62,13 @@ export const serverPtySizes = new Map<string, { cols: number; rows: number }>();
 export const clientFittedSessions = new Set<string>();
 
 /**
+ * Replay payloads that arrived before their xterm renderer mounted. The mount
+ * path consumes this flag and keeps xterm hidden until its write queue confirms
+ * that the final replay chunk has been parsed and painted.
+ */
+export const pendingReplayHydrations = new Set<string>();
+
+/**
  * Web mode only: the most recent cols/rows any terminal fit to. All session
  * terminals share one pane geometry, so this is the exact size the next spawned
  * terminal will fit to. We send it in the spawn/resume request so the server
@@ -104,16 +111,7 @@ export function initSessionStoreRefs(
   homeDirRef = homeDir;
 
   if (!IS_TAURI) {
-    void platform.terminal.onOutput((id, data) => {
-      if (closingSessions.has(id)) return;
-      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
-
-      const entry = registryRef?.current.get(id);
-      if (entry && _isRendererReady(entry.term)) {
-        entry.term.write(data);
-        return;
-      }
-
+    const bufferOutput = (id: string, data: string) => {
       if (!pendingDataRef?.current) return;
       if (
         !pendingDataRef.current.has(id) &&
@@ -129,6 +127,31 @@ export function initSessionStoreRefs(
       }
       pendingDataRef.current.delete(id);
       pendingDataRef.current.set(id, buffer);
+    };
+
+    void platform.terminal.onOutput((id, data) => {
+      if (closingSessions.has(id)) return;
+      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
+
+      const entry = registryRef?.current.get(id);
+      if (entry && _isRendererReady(entry.term)) {
+        entry.term.write(data);
+        return;
+      }
+      bufferOutput(id, data);
+    });
+
+    void platform.terminal.onReplay?.((id, data) => {
+      if (closingSessions.has(id)) return;
+      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
+
+      const entry = registryRef?.current.get(id);
+      if (entry && _isRendererReady(entry.term)) {
+        entry.hydrateReplay(data);
+        return;
+      }
+      pendingReplayHydrations.add(id);
+      bufferOutput(id, data);
     });
 
     void platform.terminal.onReattach?.((id) => {
@@ -138,6 +161,7 @@ export function initSessionStoreRefs(
       // it first or the replay would duplicate it. Also drop any buffered
       // pre-mount output — it belongs to the stale connection.
       pendingDataRef?.current.delete(id);
+      pendingReplayHydrations.delete(id);
       const entry = registryRef?.current.get(id);
       if (!entry) return;
       try {
@@ -171,6 +195,7 @@ export function initSessionStoreRefs(
       lastResizeAtRef.delete(id);
       serverPtySizes.delete(id);
       clientFittedSessions.delete(id);
+      pendingReplayHydrations.delete(id);
 
       if (closingSessions.has(id)) {
         const timeout = closingSessions.get(id);

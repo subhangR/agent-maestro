@@ -94,7 +94,13 @@ function textBytes(s: string): ArrayBuffer {
 }
 
 /** The `attached{...}` control frame the server sends first on every connect. */
-function attached(a: { base: number; gap: number; next: number; hasReplay: boolean }): string {
+function attached(a: {
+  base: number;
+  gap: number;
+  next: number;
+  hasReplay: boolean;
+  replayKind?: 'delta' | 'snapshot';
+}): string {
   return JSON.stringify({ type: 'attached', ...a });
 }
 
@@ -274,6 +280,34 @@ describe('webTerminal offset resume', () => {
     ws1.triggerClose(1006);
     await vi.advanceTimersByTimeAsync(1000);
     expect(offsetOf(MockWebSocket.instances[2])).toBe(1024);
+  });
+
+  it('routes a state snapshot through the atomic replay hydration channel', async () => {
+    const onOutput = vi.fn();
+    const onReplay = vi.fn();
+    await webTerminal.onOutput(onOutput);
+    await webTerminal.onReplay?.(onReplay);
+    await create('sess-snapshot');
+
+    const ws = MockWebSocket.instances[0];
+    ws.triggerOpen();
+    ws.triggerMessage(
+      attached({
+        base: 4096,
+        gap: 4096,
+        next: 8192,
+        hasReplay: true,
+        replayKind: 'snapshot',
+      }),
+    );
+    ws.triggerMessage(textBytes('\u001bcsnapshot'));
+
+    expect(onReplay).toHaveBeenCalledWith(
+      'sess-snapshot',
+      '\u001bcsnapshot',
+      { kind: 'snapshot' },
+    );
+    expect(onOutput).not.toHaveBeenCalled();
   });
 
   it('resets the decoder and fires onReattach on a base-rewind (cross-stream respawn)', async () => {

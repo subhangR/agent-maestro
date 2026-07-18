@@ -25,6 +25,8 @@
   "author": "",
   "license": "AGPL-3.0-only",
   "dependencies": {
+    "@xterm/addon-serialize": "^0.14.0",
+    "@xterm/headless": "^6.0.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",

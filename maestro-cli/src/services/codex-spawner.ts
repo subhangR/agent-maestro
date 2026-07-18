@@ -159,6 +159,14 @@ export class CodexSpawner {
   buildCodexArgs(manifest: MaestroManifest): string[] {
     const args: string[] = [];
 
+    // Server-hosted PTYs are consumed by reconnectable browser/mobile xterm
+    // clients. Keep Codex inline there so its transcript remains ordinary
+    // scrollback instead of a continuously redrawn alternate screen. Native
+    // Tauri terminals retain Codex's default auto behavior.
+    if (process.env.MAESTRO_PTY_HOST === 'server') {
+      args.push('--no-alt-screen');
+    }
+
     // Set model
     const launchConfig = manifest.session.launchConfig || manifest.launchConfig;
     const model = this.mapModel(launchConfig?.model || manifest.session.model);
