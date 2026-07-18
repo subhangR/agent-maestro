@@ -1,4 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const { spawnWithUlimitMock } = vi.hoisted(() => ({
+  spawnWithUlimitMock: vi.fn(() => ({ stdin: null })),
+}));
+
+vi.mock('../../src/services/spawn-with-ulimit.js', () => ({
+  spawnWithUlimit: spawnWithUlimitMock,
+}));
+
 import { CodexSpawner } from '../../src/services/codex-spawner.js';
 import type { MaestroManifest } from '../../src/types/manifest.js';
 
@@ -158,6 +167,32 @@ describe('CodexSpawner', () => {
     });
 
     expect(args).not.toContain('--max-turns');
+  });
+
+  it('never forwards a Claude-native session id to a fresh Codex process', async () => {
+    const previousClaudeSessionId = process.env.MAESTRO_CLAUDE_SESSION_ID;
+    process.env.MAESTRO_CLAUDE_SESSION_ID = 'stale-parent-claude-id';
+    spawnWithUlimitMock.mockClear();
+
+    try {
+      const spawner = new CodexSpawner();
+      const preparedEnv = spawner.prepareEnvironment(createManifest('gpt-5.5'), 'sess_abc');
+      expect(preparedEnv.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+
+      await spawner.spawn(createManifest('gpt-5.5'), 'sess_abc', {
+        env: { MAESTRO_CLAUDE_SESSION_ID: 'stale-override-claude-id' },
+      });
+
+      expect(spawnWithUlimitMock).toHaveBeenCalledOnce();
+      const spawnOptions = spawnWithUlimitMock.mock.calls[0][2];
+      expect(spawnOptions.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    } finally {
+      if (previousClaudeSessionId === undefined) {
+        delete process.env.MAESTRO_CLAUDE_SESSION_ID;
+      } else {
+        process.env.MAESTRO_CLAUDE_SESSION_ID = previousClaudeSessionId;
+      }
+    }
   });
 
   describe('buildResumeArgs', () => {

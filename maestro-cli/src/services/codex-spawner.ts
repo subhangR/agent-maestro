@@ -26,7 +26,12 @@ export class CodexSpawner {
     manifest: MaestroManifest,
     sessionId: string
   ): Record<string, string> {
-    return prepareSpawnerEnvironment(manifest, sessionId);
+    const env = prepareSpawnerEnvironment(manifest, sessionId);
+    // MAESTRO_CLAUDE_SESSION_ID is a provider-native id consumed only by
+    // Claude's --session-id/--resume flags. Do not inherit a stale value into a
+    // fresh Codex rollout, even when the calling process happens to contain one.
+    delete env.MAESTRO_CLAUDE_SESSION_ID;
+    return env;
   }
 
   /** All supported Codex models */
@@ -261,6 +266,9 @@ export class CodexSpawner {
       ...this.prepareEnvironment(manifest, sessionId),
       ...(options.env || {}),
     };
+    // Keep the provider boundary intact even if a direct caller supplies an
+    // override after the base environment has been sanitized.
+    delete env.MAESTRO_CLAUDE_SESSION_ID;
 
     const args = this.buildCodexArgs(manifest);
 
