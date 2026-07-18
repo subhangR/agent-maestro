@@ -30,6 +30,10 @@ export type PtyControlFrame =
        *               loss); `> 0` means the terminal must be reset.
        *  - `hasReplay` whether exactly one display-only binary replay frame
        *               follows this ack.
+       *  - `replayKind` OPTIONAL replay payload semantics. `delta` appends raw
+       *                 retained output; `snapshot` is a complete serialized
+       *                 terminal state that replaces an evicted stream prefix.
+       *                 Missing means `delta` for older servers.
        *  - `epoch`    OPTIONAL opaque per-spawn stream identity (#151). Present
        *               only when the server knows one; compared by EQUALITY ONLY
        *               (never ordered). A changed epoch means a respawn/restart and
@@ -42,6 +46,7 @@ export type PtyControlFrame =
       gap: number;
       next: number;
       hasReplay: boolean;
+      replayKind?: 'delta' | 'snapshot';
       epoch?: string;
     };
 
@@ -87,6 +92,9 @@ export function parseControlFrame(data: string): PtyControlFrame | null {
       // treated as absent so the client falls back to the legacy behavior rather
       // than acting on a bogus identity.
       if (typeof m.epoch === 'string') frame.epoch = m.epoch;
+      if (m.replayKind === 'delta' || m.replayKind === 'snapshot') {
+        frame.replayKind = m.replayKind;
+      }
       return frame;
     }
 

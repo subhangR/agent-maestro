@@ -195,6 +195,30 @@ describe('CodexSpawner', () => {
     }
   });
 
+  it('uses inline Codex rendering for reconnectable server-hosted terminals', () => {
+    const previous = process.env.MAESTRO_PTY_HOST;
+    process.env.MAESTRO_PTY_HOST = 'server';
+    try {
+      const args = new CodexSpawner().buildCodexArgs(createManifest('gpt-5.5'));
+      expect(args).toContain('--no-alt-screen');
+    } finally {
+      if (previous === undefined) delete process.env.MAESTRO_PTY_HOST;
+      else process.env.MAESTRO_PTY_HOST = previous;
+    }
+  });
+
+  it('keeps Codex alternate-screen auto detection for native terminals', () => {
+    const previous = process.env.MAESTRO_PTY_HOST;
+    process.env.MAESTRO_PTY_HOST = 'tauri';
+    try {
+      const args = new CodexSpawner().buildCodexArgs(createManifest('gpt-5.5'));
+      expect(args).not.toContain('--no-alt-screen');
+    } finally {
+      if (previous === undefined) delete process.env.MAESTRO_PTY_HOST;
+      else process.env.MAESTRO_PTY_HOST = previous;
+    }
+  });
+
   describe('buildResumeArgs', () => {
     const CODEX_ID = '019ec96a-b3b3-7710-a375-cc969f90615f';
 

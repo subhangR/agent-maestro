@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto';
 import { ILogger } from '../../domain/common/ILogger';
 import { SessionService } from './SessionService';
 import { OutputBuffer, ReplaySlice } from './OutputBuffer';
+import { TerminalStateMirror } from './TerminalStateMirror';
 
 /**
  * Parameters for spawning a server-hosted PTY.
@@ -40,13 +41,23 @@ export interface PtySpawnParams {
  */
 export type PtyKillOutcome = 'killed' | 'not_found' | 'error';
 
+interface PendingSubscriber {
+  chunks: Buffer[];
+  bytes: number;
+}
+
 interface PtyEntry {
   proc: IPty;
   /** Offset-tracked scrollback buffer: counts every raw byte the PTY has ever
    *  produced and retains a bounded tail, so a reconnecting client can resume
    *  from the exact byte offset it last saw (see {@link PtyHostService.getReplay}). */
   output: OutputBuffer;
+  /** Parsed terminal state used when the raw replay ring has evicted the
+   * client's resume point. */
+  state: TerminalStateMirror;
   subscribers: Set<WebSocket>;
+  /** Sockets waiting for an asynchronous state snapshot. */
+  pendingSubscribers: Map<WebSocket, PendingSubscriber>;
   exited: boolean;
   exitCode: number | null;
   /** Current PTY dimensions, kept in sync with spawn/resize so late-joining
@@ -82,6 +93,7 @@ const DEFAULT_ROWS = 24;
 const MAX_PENDING_PROMPT_SESSIONS = 64;
 const MAX_PENDING_PROMPTS_PER_SESSION = 32;
 const MAX_PENDING_PROMPT_BYTES_PER_SESSION = 256 * 1024;
+const MAX_PENDING_SNAPSHOT_BYTES = 4 * 1024 * 1024;
 
 const ESC = 0x1b;
 const CSI_INTRO = 0x5b; // '['
@@ -254,7 +266,9 @@ export class PtyHostService {
     const entry: PtyEntry = {
       proc,
       output: new OutputBuffer(),
+      state: new TerminalStateMirror(initialCols, initialRows),
       subscribers: new Set(),
+      pendingSubscribers: new Map(),
       exited: false,
       exitCode: null,
       cols: initialCols,
@@ -266,8 +280,25 @@ export class PtyHostService {
     proc.onData((data: string | Buffer) => {
       const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8');
       entry.output.append(chunk);
+      entry.state.append(chunk);
       for (const ws of entry.subscribers) {
         this.safeSend(ws, chunk);
+      }
+      for (const [ws, pending] of entry.pendingSubscribers) {
+        pending.chunks.push(chunk);
+        pending.bytes += chunk.length;
+        if (pending.bytes > MAX_PENDING_SNAPSHOT_BYTES) {
+          entry.pendingSubscribers.delete(ws);
+          this.logger.warn('PtyHostService: terminal snapshot backlog exceeded', {
+            sessionId,
+            bytes: pending.bytes,
+          });
+          try {
+            ws.close(1013, 'terminal replay backlog exceeded');
+          } catch {
+            // ignore
+          }
+        }
       }
     });
 
@@ -297,6 +328,7 @@ export class PtyHostService {
       // socket drop (tab close, reload, network blip — those only detach). The
       // web adapter listens for this {type:'exit'} text frame.
       this.notifyExit(entry, exitCode ?? null);
+      entry.state.dispose();
       this.sessions.delete(sessionId);
       this.pendingPrompts.delete(sessionId);
       this.promptHandoffs.delete(sessionId);
@@ -523,6 +555,7 @@ export class PtyHostService {
       entry.proc.resize(cols, rows);
       entry.cols = cols;
       entry.rows = rows;
+      entry.state.resize(cols, rows);
     } catch (err) {
       this.logger.warn('PtyHostService: resize failed', {
         sessionId,
@@ -586,6 +619,7 @@ export class PtyHostService {
     } else {
       this.closeSubscribers(entry);
     }
+    entry.state.dispose();
     this.sessions.delete(sessionId);
     return outcome;
   }
@@ -614,6 +648,23 @@ export class PtyHostService {
   }
 
   /**
+   * Capture a coherent terminal-state snapshot at the current raw output
+   * boundary. `next` and the mirror promise boundary are captured in the same
+   * synchronous turn, so later output belongs exclusively to pending/live
+   * delivery and cannot be duplicated in the snapshot.
+   */
+  getStateSnapshot(
+    sessionId: string,
+  ): Promise<{ next: number; data: Buffer; cols: number; rows: number }> | null {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return null;
+    const next = entry.output.totalBytes;
+    const cols = entry.cols;
+    const rows = entry.rows;
+    return entry.state.snapshot().then((data) => ({ next, data, cols, rows }));
+  }
+
+  /**
    * Subscribe a WebSocket to a session's LIVE output. Join-only: scrollback
    * replay is handled separately by {@link getReplay} + the PtyWebSocketServer
    * attach handshake, which keeps offset accounting outside the live fan-out.
@@ -626,11 +677,37 @@ export class PtyHostService {
     return true;
   }
 
+  /**
+   * Join in buffering mode before awaiting a state snapshot. Every output chunk
+   * produced after the snapshot boundary is retained until activation.
+   */
+  addPendingSubscriber(sessionId: string, ws: WebSocket): boolean {
+    const entry = this.sessions.get(sessionId);
+    if (!entry) return false;
+    entry.pendingSubscribers.set(ws, { chunks: [], bytes: 0 });
+    return true;
+  }
+
+  /**
+   * Flush output accumulated during snapshot generation and atomically promote
+   * the socket to the ordinary live fan-out set.
+   */
+  activatePendingSubscriber(sessionId: string, ws: WebSocket): boolean {
+    const entry = this.sessions.get(sessionId);
+    const pending = entry?.pendingSubscribers.get(ws);
+    if (!entry || !pending || ws.readyState !== 1) return false;
+    for (const chunk of pending.chunks) this.safeSend(ws, chunk);
+    entry.pendingSubscribers.delete(ws);
+    entry.subscribers.add(ws);
+    return true;
+  }
+
   /** Remove a WebSocket subscriber. */
   removeSubscriber(sessionId: string, ws: WebSocket): void {
     const entry = this.sessions.get(sessionId);
     if (!entry) return;
     entry.subscribers.delete(ws);
+    entry.pendingSubscribers.delete(ws);
   }
 
   /** Kill all PTYs (graceful shutdown). */
@@ -665,6 +742,14 @@ export class PtyHostService {
       }
     }
     entry.subscribers.clear();
+    for (const ws of entry.pendingSubscribers.keys()) {
+      try {
+        ws.close();
+      } catch {
+        // ignore
+      }
+    }
+    entry.pendingSubscribers.clear();
   }
 
   private safeSend(ws: WebSocket, data: string | Buffer): void {

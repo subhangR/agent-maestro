@@ -107,6 +107,33 @@ describe('parseControlFrame', () => {
     ).toEqual({ type: 'attached', base: 0, gap: 0, next: 0, hasReplay: false, epoch: 'boot-7:3' });
   });
 
+  it('parses snapshot replay semantics while leaving legacy frames additive', () => {
+    expect(
+      parseControlFrame(
+        JSON.stringify({
+          type: 'attached',
+          base: 5000,
+          gap: 4000,
+          next: 5000,
+          hasReplay: true,
+          replayKind: 'snapshot',
+        }),
+      ),
+    ).toEqual({
+      type: 'attached',
+      base: 5000,
+      gap: 4000,
+      next: 5000,
+      hasReplay: true,
+      replayKind: 'snapshot',
+    });
+
+    const legacy = parseControlFrame(
+      JSON.stringify({ type: 'attached', base: 0, gap: 0, next: 4, hasReplay: true }),
+    );
+    expect(legacy).not.toHaveProperty('replayKind');
+  });
+
   it('treats an absent or non-string epoch as legacy (no epoch surfaced)', () => {
     // Absent epoch → pre-#151 wire shape; the key is simply not present, so the
     // client falls back to the legacy offset-rewind behavior.
