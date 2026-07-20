@@ -88,6 +88,7 @@ interface PendingPromptQueue {
 
 const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
+const MAX_PENDING_SNAPSHOT_BYTES = 4 * 1024 * 1024;
 // Keep server attach handoff bounds aligned with PR #163's client-side queue.
 // Overflow preserves the already-accepted FIFO prefix and rejects newer input.
 const MAX_PENDING_PROMPT_SESSIONS = 64;
