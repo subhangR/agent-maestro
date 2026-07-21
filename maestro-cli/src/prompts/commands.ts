@@ -130,6 +130,8 @@ export const CMD_DESC = {
   'team-member:update-identity': 'Update own identity/persona (self-awareness)',
   'team-member:memory:append': 'Append an entry to team member memory',
   'team-member:memory:list': 'List team member memory entries',
+  'team-member:memory:edit': 'Edit a single team member memory entry in place',
+  'team-member:memory:remove': 'Remove a single team member memory entry',
   'team-member:memory:clear': 'Clear team member memory',
 
   // Team
@@ -224,6 +226,8 @@ export const CMD_SYNTAX: Record<string, string> = {
   'team-member:update-identity': 'maestro team-member update-identity <teamMemberId> --identity "<new instructions>"',
   'team-member:memory:append': 'maestro team-member memory append <teamMemberId> --entry "<text to remember>"',
   'team-member:memory:list': 'maestro team-member memory list <teamMemberId>',
+  'team-member:memory:edit': 'maestro team-member memory edit <teamMemberId> <index> --entry "<new text>"',
+  'team-member:memory:remove': 'maestro team-member memory remove <teamMemberId> <index>',
   'team-member:memory:clear': 'maestro team-member memory clear <teamMemberId>',
   // Team commands
   'team:list': 'maestro team list [--all] [--status <active|archived>]',

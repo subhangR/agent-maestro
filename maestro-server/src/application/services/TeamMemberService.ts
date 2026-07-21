@@ -311,6 +311,43 @@ export class TeamMemberService {
   }
 
   /**
+   * Atomically edit a single memory entry in place, addressed by its 0-based index.
+   * Performs the read-modify-write in one place to reduce the race window.
+   */
+  async editMemoryEntry(projectId: string, id: string, index: number, entry: string): Promise<TeamMember> {
+    const trimmed = entry.trim();
+    if (!trimmed) {
+      throw new ValidationError('Memory entry cannot be empty');
+    }
+
+    const current = await this.getTeamMember(projectId, id);
+    const memory = [...(current.memory ?? [])];
+
+    if (!Number.isInteger(index) || index < 0 || index >= memory.length) {
+      throw new NotFoundError('Memory entry', String(index));
+    }
+
+    memory[index] = trimmed;
+    return this.updateTeamMember(projectId, id, { memory });
+  }
+
+  /**
+   * Atomically remove a single memory entry, addressed by its 0-based index.
+   * Performs the read-modify-write in one place to reduce the race window.
+   */
+  async removeMemoryEntry(projectId: string, id: string, index: number): Promise<TeamMember> {
+    const current = await this.getTeamMember(projectId, id);
+    const memory = [...(current.memory ?? [])];
+
+    if (!Number.isInteger(index) || index < 0 || index >= memory.length) {
+      throw new NotFoundError('Memory entry', String(index));
+    }
+
+    memory.splice(index, 1);
+    return this.updateTeamMember(projectId, id, { memory });
+  }
+
+  /**
    * Get a lightweight snapshot of a team member for session metadata.
    */
   async getTeamMemberSnapshot(projectId: string, id: string): Promise<TeamMemberSnapshot> {

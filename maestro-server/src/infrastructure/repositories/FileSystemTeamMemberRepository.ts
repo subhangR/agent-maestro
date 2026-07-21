@@ -219,6 +219,8 @@ Summarize all changes made with a final roster overview.
       'team-member:delete': true,
       'team-member:memory:append': true,
       'team-member:memory:list': true,
+      'team-member:memory:edit': true,
+      'team-member:memory:remove': true,
       'team-member:memory:clear': true,
     },
   },

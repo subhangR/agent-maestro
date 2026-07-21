@@ -354,6 +354,19 @@ export const updateTeamMemberSchema = z.object({
   soundInstrument: z.string().max(100).optional(),
 }).strict();
 
+// Params for addressing a single memory entry by its 0-based index.
+// The index arrives as a URL string, so coerce and constrain to a non-negative integer.
+export const memoryEntryParamSchema = z.object({
+  id: safeId,
+  index: z.coerce.number().int().min(0),
+});
+
+// Body for editing a single memory entry in place.
+export const editMemoryEntrySchema = z.object({
+  projectId: safeId,
+  entry: z.string().trim().min(1, 'entry cannot be empty').max(500),
+}).strict();
+
 // --- Session schemas ---
 
 export const createSessionSchema = z.object({
