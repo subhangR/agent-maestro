@@ -21,6 +21,7 @@ import { getProcessEffectById, type ProcessEffect } from "../processEffects";
 import { shortenPathSmart, normalizeSeparators } from "../pathDisplay";
 import { Icon } from "./Icon";
 import { type MaestroTask, type MaestroSession as MaestroSession, type Team, type AgentTool } from "../app/types/maestro";
+import { isAgentToolResumable } from "../app/constants/agentTools";
 import { AgentLogo } from "./maestro/AgentChip";
 import { useMaestroStore } from "../stores/useMaestroStore";
 import { useUIStore } from "../stores/useUIStore";
@@ -230,7 +231,7 @@ function VirtualizedHistoryList({
       <div style={{ height: rowVirtualizer.getTotalSize(), position: 'relative' }}>
         {rowVirtualizer.getVirtualItems().map(virtualRow => {
           const hs = historySessions[virtualRow.index];
-          const canResume = ((hs.metadata as any)?.agentTool || 'claude-code') === 'claude-code';
+          const canResume = isAgentToolResumable((hs.metadata as any)?.agentTool);
           const isResuming = resumingSessionId === hs.id;
           const snap = hs.teamMemberSnapshot;
           const sec = Math.floor((Date.now() - hs.lastActivity) / 1000);
@@ -528,12 +529,12 @@ const SessionItem = React.memo(function SessionItem({
               <span>Logs</span>
             </button>
             {maestroSession
-              && (maestroSession.metadata?.agentTool || 'claude-code') === 'claude-code' && (
+              && isAgentToolResumable(maestroSession.metadata?.agentTool) && (
               <button type="button"
                 className="sessionItemBottomBtn sessionItemBottomBtn--resume"
                 disabled={isResuming}
                 onClick={(e) => { e.stopPropagation(); onResume(maestroSession.id); }}
-                title="Resume this Claude session"
+                title="Resume this session"
               >
                 <Icon name="refresh" size={12} />
                 <span>{isResuming ? 'Resuming...' : 'Resume'}</span>

@@ -206,11 +206,28 @@ export class ClaudeSpawner {
   /**
    * Build Claude CLI arguments for resuming an existing conversation.
    * Reapplies the full launch config (skills, model, permissions) and points
-   * Claude at the prior conversation via `--resume`. No system prompt or task
-   * prompt is appended — `--resume` restores the existing conversation.
+   * Claude at the prior conversation via `--resume`.
+   *
+   * The Maestro role/system prompt IS re-injected via `--append-system-prompt`
+   * (documented as "append custom text to the end of the default system prompt"),
+   * applied per invocation. `--resume` restores the conversation's message
+   * history, not the invocation's system prompt — so, exactly like a fresh spawn,
+   * resume must re-append the Maestro instructions to preserve the agent's
+   * identity, commands, and permissions. The dynamic task context is NOT
+   * re-appended: it is already in the restored conversation.
+   *
+   * @param manifest - The manifest (source of the launch-config flags + prompt).
+   * @param sessionId - The Maestro session id (used to compose the system prompt).
+   * @param claudeSessionId - The server-minted Claude session id to resume.
    */
-  async buildResumeArgs(manifest: MaestroManifest, claudeSessionId: string): Promise<string[]> {
+  async buildResumeArgs(manifest: MaestroManifest, sessionId: string, claudeSessionId: string): Promise<string[]> {
     const args = await this.buildBaseArgs(manifest);
+
+    // Re-append the Maestro role/system prompt (per-invocation; --resume does not
+    // restore it). Static role instructions only — the task turn is restored.
+    const systemPrompt = this.buildPromptEnvelope(manifest, sessionId).system;
+    args.push('--append-system-prompt', systemPrompt);
+
     args.push('--resume', claudeSessionId);
     return args;
   }

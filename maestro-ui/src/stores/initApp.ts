@@ -42,6 +42,7 @@ import { useWorkspaceStore } from './useWorkspaceStore';
 import { useSecureStorageStore } from './useSecureStorageStore';
 import { useMaestroStore } from './useMaestroStore';
 import { reconcileProjectsWithServer, resolveActiveProject, toMaestroProject } from './projectSync';
+import { restoreStandaloneTerminals } from './sessionRestore';
 import { IS_TAURI, platform } from '../platform';
 
 /**
@@ -592,13 +593,59 @@ export function initApp(
               projectId: ms.projectId || '',
             });
           }
+          // ──── BROWSER STANDALONE RESTORE ────
+          // Maestro sessions were reattached above from the server registry.
+          // Persisted STANDALONE terminals (no maestroSessionId) have no registry
+          // entry, so restore them here keyed by persistId: createSession re-opens
+          // the /pty socket and POSTs the idempotent /pty/spawn, reattaching a
+          // live server PTY instead of replacing it (a dead PTY is recreated).
+          // Terminals in projects pruned by server-authoritative reconciliation
+          // are skipped, and we dedup against terminals already in the store so a
+          // repeated init never produces duplicate tabs.
+          const existingProjectIds = new Set(state!.projects.map((p) => p.id));
+          const existingSessionKeys = new Set(
+            useSessionStore
+              .getState()
+              .sessions.flatMap((rs) =>
+                [rs.persistId, rs.id].filter((k): k is string => Boolean(k)),
+              ),
+          );
+          const restoredStandalone = await restoreStandaloneTerminals({
+            persistedSessions: state!.sessions,
+            existingProjectIds,
+            existingSessionKeys,
+            createSession,
+            envVarsForProject: (projectId) =>
+              envVarsForProjectId(projectId, state!.projects, state!.environments ?? []),
+            isCancelled: () => cancelled,
+            onError: (err) => {
+              if (!cancelled) s.ui.getState().reportError('Failed to restore terminal', err);
+            },
+          });
+          if (!cancelled && restoredStandalone.length) {
+            useSessionStore.getState().setSessions((prev) => {
+              const have = new Set(prev.map((p) => p.persistId));
+              const additions = restoredStandalone
+                .filter((rs) => !have.has(rs.persistId))
+                .map((rs) => useSessionStore.getState().applyPendingExit(rs));
+              return [...prev, ...additions];
+            });
+          }
+
           // Open a live terminal instead of the empty hero / a stale stats view.
           // Switch the active project to match, or the project-filtered sidebar
-          // wouldn't surface the session whose terminal we just focused.
+          // wouldn't surface the session whose terminal we just focused. Prefer a
+          // live maestro session; fall back to a restored standalone terminal.
           const focus = liveSessions[0];
           if (focus && !cancelled) {
             if (focus.projectId) useProjectStore.getState().setActiveProjectId(focus.projectId);
             useSessionStore.getState().setActiveId(focus.id);
+          } else if (!cancelled && restoredStandalone.length) {
+            const standaloneFocus = restoredStandalone[0];
+            if (standaloneFocus.projectId) {
+              useProjectStore.getState().setActiveProjectId(standaloneFocus.projectId);
+            }
+            useSessionStore.getState().setActiveId(standaloneFocus.id);
           }
         } catch {
           // best-effort reattach; live session:spawn events still populate tabs

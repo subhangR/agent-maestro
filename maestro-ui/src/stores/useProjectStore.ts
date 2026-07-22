@@ -38,6 +38,13 @@ interface ProjectState {
   fetchSavedProjects: () => Promise<MaestroProject[]>;
   reopenProject: (projectId: string) => Promise<void>;
   toggleMasterProject: (projectId: string) => Promise<void>;
+  /**
+   * Persists a project's canonical GitHub repository URL through
+   * `PUT /projects/:id` and mirrors the result into local state. Pass an empty
+   * string to clear. Rejects (and leaves local state untouched) on failure so
+   * callers can surface the error instead of pretending the save succeeded.
+   */
+  setProjectGithubUrl: (projectId: string, githubUrl: string) => Promise<void>;
 }
 
 /**
@@ -206,6 +213,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
           workingDir: serverProject.workingDir,
           createdAt: serverProject.createdAt,
           updatedAt: serverProject.updatedAt,
+          githubUrl: serverProject.githubUrl,
           basePath: serverProject.workingDir,
           environmentId,
           assetsEnabled: projectAssetsEnabled,
@@ -431,6 +439,8 @@ export const useProjectStore = create<ProjectState>((set, get) => {
           workingDir: serverProject.workingDir,
           createdAt: serverProject.createdAt,
           updatedAt: serverProject.updatedAt,
+          // Preserve the server's saved Collab repo URL across reopen.
+          githubUrl: serverProject.githubUrl,
           basePath: serverProject.workingDir,
           environmentId: null,
         };
@@ -472,6 +482,17 @@ export const useProjectStore = create<ProjectState>((set, get) => {
         }));
         useUIStore.getState().reportError('Failed to update master project status', err);
       }
+    },
+
+    setProjectGithubUrl: async (projectId, githubUrl) => {
+      // Persist first; only mirror locally on success. Rethrow so the caller
+      // can surface the failure (the parsed Collab cache is not touched here).
+      const updated = await maestroClient.updateProject(projectId, { githubUrl });
+      set((s) => ({
+        projects: s.projects.map((p) =>
+          p.id === projectId ? { ...p, githubUrl: updated.githubUrl } : p,
+        ),
+      }));
     },
   };
 });

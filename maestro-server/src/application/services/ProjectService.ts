@@ -36,7 +36,8 @@ export class ProjectService {
     const project = await this.projectRepo.create({
       name: input.name.trim(),
       workingDir,
-      description: input.description || ''
+      description: input.description || '',
+      ...(input.githubUrl ? { githubUrl: input.githubUrl } : {})
     });
 
     await this.eventBus.emit('project:created', project);

@@ -8,7 +8,7 @@ import {
   MaestroTask,
 } from "../../app/types/maestro";
 import { getWorktreeInfo } from "./WorktreeBadge";
-import { getModelDisplayLabel } from "../../app/constants/agentTools";
+import { getModelDisplayLabel, isAgentToolResumable } from "../../app/constants/agentTools";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useUIStore } from "../../stores/useUIStore";
 import { useSessionStore } from "../../stores/useSessionStore";
@@ -212,7 +212,7 @@ export const SessionListItem = React.memo(function SessionListItem({
     }
   }, [title, session.id]);
 
-  const canResume = (session.metadata?.agentTool || "claude-code") === "claude-code";
+  const canResume = isAgentToolResumable(session.metadata?.agentTool);
 
   // The dot is a *click-affordance* signal, not a raw PTY-alive signal. The
   // Resume button uses the same predicate — both come from a single helper so
@@ -414,7 +414,7 @@ export const SessionListItem = React.memo(function SessionListItem({
                   ? isResuming
                     ? "Resuming…"
                     : "Resume this session (revives its terminal)"
-                  : "Resume is only available for Claude Code sessions"
+                  : "Resume isn't available for this agent tool"
               }
             >
               <Icon name="refresh" /> {isResuming ? "Resuming…" : "Resume"}

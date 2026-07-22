@@ -18,7 +18,7 @@ import { IProjectRepository } from '../domain/repositories/IProjectRepository';
 import { ITaskRepository } from '../domain/repositories/ITaskRepository';
 import { IEventBus } from '../domain/events/IEventBus';
 import { Config } from '../infrastructure/config';
-import { AppError } from '../domain/common/Errors';
+import { AppError, NotFoundError } from '../domain/common/Errors';
 import { SessionStatus, AgentTool, AgentMode, TeamMember, TeamMemberSnapshot, MemberLaunchOverride, LaunchConfig, isCoordinatorMode, normalizeMode, normalizeModelId } from '../types';
 import { ITeamMemberRepository } from '../domain/repositories/ITeamMemberRepository';
 import { IModelProfileRepository } from '../domain/repositories/IModelProfileRepository';
@@ -568,11 +568,35 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       });
     }
     const id = req.params.id as string;
+
+    // Kill the live PTY first (if any). A GENUINE kill-signal failure gets its own
+    // distinguishable code and short-circuits — it must not be conflated with the
+    // "PTY-only id, no Session to persist" case handled below, nor be masked by a
+    // subsequent status write.
+    const killOutcome = ptyHostService.kill(id);
+    if (killOutcome === 'error') {
+      return res.status(500).json({
+        error: true,
+        code: 'pty_kill_failed',
+        message: 'Failed to kill server PTY',
+      });
+    }
+
+    // Persist the stopped status. A PTY-only id — a standalone web terminal
+    // spawned via /pty/spawn with no Session record — has nothing to update, and
+    // updateSession throws NotFoundError. That is NOT a failure: the PTY it named
+    // was already killed above (or there was none), so the terminal IS stopped.
+    // Only a NON-NotFound error (a real persistence fault) is surfaced as 500,
+    // keeping its original code so it stays distinct from a kill failure.
     try {
-      ptyHostService.kill(id);
       await sessionService.updateSession(id, { status: 'stopped' });
       return res.json({ success: true });
     } catch (err) {
+      if (err instanceof NotFoundError) {
+        // No Session backs this id (PTY-only, or an already-gone id). Stop is
+        // idempotent, so report success.
+        return res.json({ success: true });
+      }
       return res.status(500).json({
         error: true,
         code: 'pty_stop_failed',
@@ -591,12 +615,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       return res.status(400).json({ error: 'server PTY host not enabled' });
     }
     const sessionId = req.body.sessionId as string;
-    // Idempotent: the client may have raced an attach, or double-fired the
-    // request. If a PTY already exists, treat the spawn as a no-op success so we
-    // never kill+replace a live, attached terminal.
-    if (ptyHostService.hasSession(sessionId)) {
-      return res.status(201).json({ ok: true, sessionId });
-    }
     const shell = process.env.SHELL || '/bin/bash';
     const rawCommand = typeof req.body.command === 'string' ? req.body.command : '';
     // PtyHostService runs `shell -c "<command>"`, so an empty command makes the
@@ -609,7 +627,11 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       : `${shell} -i`;
     const cwd = typeof req.body.cwd === 'string' && req.body.cwd.trim() ? req.body.cwd : homedir();
     try {
-      ptyHostService.spawn({
+      // Idempotent reattach: the client may have raced an attach, double-fired
+      // the request, or — on a browser reload — be re-creating a persisted
+      // standalone terminal. If a live PTY already exists we reattach to it and
+      // never kill+replace an attached terminal; a dead one is recreated.
+      const { reused } = ptyHostService.spawnIfAbsent({
         sessionId,
         command: finalCommand,
         cwd,
@@ -617,7 +639,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         cols: req.body.cols,
         rows: req.body.rows,
       });
-      return res.status(201).json({ ok: true, sessionId });
+      return res.status(201).json({ ok: true, sessionId, reused });
     } catch (err) {
       console.error('[pty/spawn] Failed to spawn server PTY:', err instanceof Error ? err.message : err);
       return res.status(500).json({
@@ -1873,6 +1895,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const resolvedAgentToolFromMember = resolvedLaunchConfig
         ? agentToolForProvider(resolvedLaunchConfig.provider)
         : teamMemberDefaults.agentTool;
+      const resolvedAgentTool = resolvedAgentToolFromMember || 'claude-code';
 
       // Get project
       const project = await projectRepo.findById(projectId);
@@ -1906,8 +1929,13 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // Coordinator gets teamSessionId = its own ID (set after creation).
       const isSessionSpawned = !!resolvedParentSessionId;
 
-      // Pre-generate Claude session ID for resume support
-      const claudeSessionId = randomUUID();
+      // Claude lets Maestro pre-seed its native session id for deterministic
+      // resume. Other providers own their native ids (Codex writes its rollout
+      // id after launch), so minting a Claude id for them creates unusable and
+      // misleading persisted state.
+      const claudeSessionId = resolvedAgentTool === 'claude-code'
+        ? randomUUID()
+        : undefined;
 
       // Resolve the saved team this session belongs to so the whole spawn tree stays
       // team-bound. An explicit request always wins (passing teamId: null clears it);
@@ -1942,7 +1970,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         projectId,
         taskIds,
         name: sessionName || `${modeLabel} for ${taskIds[0]}`,
-        claudeSessionId,
+        ...(claudeSessionId ? { claudeSessionId } : {}),
         status: 'spawning',
         env: {},
         teamId: effectiveTeamId,
@@ -1951,7 +1979,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           spawnedBy: resolvedParentSessionId,
           spawnSource,
           mode: resolvedMode,
-          agentTool: resolvedAgentToolFromMember || 'claude-code',
+          agentTool: resolvedAgentTool,
           model: resolvedModel || null,
           launchConfig: resolvedLaunchConfig || null,
           teamMemberId: effectiveTeamMemberIds.length === 1 ? effectiveTeamMemberIds[0] : null,
@@ -2142,7 +2170,6 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       }
 
       // Prepare spawn data
-      const resolvedAgentTool = resolvedAgentToolFromMember || 'claude-code';
       const initCommand = isCoordinatorMode(resolvedMode) ? 'orchestrator' : 'worker';
       const cwd = worktreeResult?.worktreePath || project.workingDir;
       const { maestroBin, monorepoRoot } = resolveMaestroCliRuntime(config.manifestGenerator.cliPath);
@@ -2184,7 +2211,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
 
       const finalEnvVars: Record<string, string> = {
         MAESTRO_SESSION_ID: session.id,
-        MAESTRO_CLAUDE_SESSION_ID: claudeSessionId,
+        MAESTRO_AGENT_TOOL: resolvedAgentTool,
         MAESTRO_MANIFEST_PATH: manifestPath,
         MAESTRO_SERVER_URL: config.serverUrl,
         MAESTRO_MODE: resolvedMode,
@@ -2196,6 +2223,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         // Pass through auth API keys so spawned agents can authenticate
         ...authEnvVars,
       };
+      if (claudeSessionId) {
+        finalEnvVars.MAESTRO_CLAUDE_SESSION_ID = claudeSessionId;
+      }
 
       // Add worktree env vars if worktree was created
       if (worktreeResult) {
@@ -2304,24 +2334,20 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // on it stranded ~24% of sessions. The terminal-exited state (UI) is the real
       // liveness signal; the server should never block a resume on stale status.
 
-      // Generate claudeSessionId if missing (pre-feature sessions get a fresh spawn)
-      const hadClaudeSessionId = !!session.claudeSessionId;
-      if (!hadClaudeSessionId) {
-        session.claudeSessionId = randomUUID();
-        await sessionService.updateSession(session.id, {
-          env: { ...session.env, MAESTRO_CLAUDE_SESSION_ID: session.claudeSessionId },
-        });
-      }
-
-      // Validate agent tool is claude-code
+      // Only agent tools with a real resume contract may be resumed. Claude
+      // restores via a server-minted --session-id (pre-seeded at spawn); Codex
+      // restores its own rollout thread (recovered below). Every other tool has
+      // no resume path yet, so it is rejected rather than silently fresh-started.
       const agentTool = session.metadata?.agentTool || 'claude-code';
-      if (agentTool !== 'claude-code') {
+      const RESUMABLE_AGENT_TOOLS = ['claude-code', 'codex'];
+      if (!RESUMABLE_AGENT_TOOLS.includes(agentTool)) {
         return res.status(400).json({
           error: true,
           code: 'agent_tool_not_resumable',
-          message: `Agent tool '${agentTool}' does not support resume. Only 'claude-code' sessions can be resumed.`
+          message: `Agent tool '${agentTool}' does not support resume. Only ${RESUMABLE_AGENT_TOOLS.map(t => `'${t}'`).join(' and ')} sessions can be resumed.`
         });
       }
+      const isCodex = agentTool === 'codex';
 
       // Load project for workingDir
       const project = await projectRepo.findById(session.projectId);
@@ -2341,6 +2367,53 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           code: 'maestro_cli_not_found',
           message: `Resolved maestro CLI path does not exist: ${maestroBin}. Set MAESTRO_CLI_PATH to a valid Node-executable CLI entry point, or rebuild the CLI (cd maestro-cli && bun run build).`,
         });
+      }
+
+      // Resolve the provider-native id used to restore the prior conversation.
+      // Claude uses a server-minted UUID (pre-seeded via --session-id at spawn);
+      // Codex assigns its own rollout id, which we recover from the rollout file
+      // and cache on the session. A Codex agent must NEVER receive the Claude id.
+      let hadClaudeSessionId = false;
+      let codexSessionId: string | undefined;
+      if (isCodex) {
+        try {
+          const resolved = await logDigestService.resolveCodexSessionId(session.id, cwd);
+          if (resolved) {
+            codexSessionId = resolved;
+            if (session.metadata?.codexSessionId !== resolved) {
+              // Correct legacy metadata that may have been captured from a
+              // coordinator/tool-output reference instead of the owned rollout.
+              await sessionService.updateSession(session.id, {
+                metadata: { ...session.metadata, codexSessionId: resolved },
+              });
+            }
+          }
+        } catch (resolveErr) {
+          console.warn(
+            `[resume] Failed to resolve Codex rollout id for session ${session.id}:`,
+            resolveErr instanceof Error ? resolveErr.message : resolveErr,
+          );
+        }
+        if (!codexSessionId) {
+          // Resume means conversation continuity. Fail before changing status,
+          // emitting session:resume, or launching an agent when exact ownership
+          // cannot be proven.
+          return res.status(409).json({
+            error: true,
+            code: 'codex_resume_id_unavailable',
+            message: 'Cannot resume this Codex session because its exact native rollout id is unavailable. Maestro will not guess with --last or start a new conversation.',
+          });
+        }
+      } else {
+        // Claude: mint a session id when missing so pre-feature sessions get a
+        // fresh spawn rather than a resume against a non-existent thread.
+        hadClaudeSessionId = !!session.claudeSessionId;
+        if (!hadClaudeSessionId) {
+          session.claudeSessionId = randomUUID();
+          await sessionService.updateSession(session.id, {
+            env: { ...session.env, MAESTRO_CLAUDE_SESSION_ID: session.claudeSessionId },
+          });
+        }
       }
 
       // Regenerate manifest so MAESTRO_MANIFEST_PATH points to a valid file
@@ -2420,9 +2493,11 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         authEnvVars['GOOGLE_GENAI_USE_GCA'] = 'true';
       }
 
-      // Determine command: resume if session had a Claude session ID, fresh spawn otherwise
+      // Determine command: Codex reaches here only with an exact, verified
+      // rollout id. Claude resumes only when it already had a session id,
+      // otherwise it falls back to a fresh init for legacy sessions.
       const initCommand = isCoordinatorMode(mode) ? 'orchestrator' : 'worker';
-      const subcommand = hadClaudeSessionId ? 'resume' : 'init';
+      const subcommand = isCodex || hadClaudeSessionId ? 'resume' : 'init';
       // Invoke the resolved CLI directly on all platforms (see the spawn path above); fall back to
       // bare `maestro` only when maestroBin couldn't be resolved to a path.
       const command = buildMaestroSpawnCommand(maestroBin, initCommand, subcommand);
@@ -2431,15 +2506,41 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const finalEnvVars: Record<string, string> = {
         ...session.env,
         MAESTRO_SESSION_ID: session.id,
-        MAESTRO_CLAUDE_SESSION_ID: session.claudeSessionId!,
         MAESTRO_SERVER_URL: config.serverUrl,
         MAESTRO_MODE: mode,
+        // Provider-aware: lets the CLI worker-resume path branch Claude vs Codex.
+        MAESTRO_AGENT_TOOL: agentTool,
         DATA_DIR: config.dataDir,
         SESSION_DIR: config.sessionDir,
         // Carry the stored permission mode forward so resumed agents keep their access level.
         ...(resumePermissionMode ? { MAESTRO_PERMISSION_MODE: resumePermissionMode } : {}),
         ...authEnvVars,
       };
+
+      // Wire the provider-native resume id. A legacy Codex record may still
+      // contain the Claude id that older fresh-spawn code minted for every
+      // provider; it must never leak through. Codex resumes only by its exact,
+      // verified rollout id.
+      //
+      // Keys deleted from the outgoing env are also collected in `removeEnvKeys`:
+      // the repository MERGES env updates, so without an explicit deletion list the
+      // stale Claude id would be re-introduced into the persisted Codex session.env
+      // on reload (the emitted event would be correct but the stored record stale).
+      // Scoped to the Codex path — the Claude branch is left untouched.
+      const removeEnvKeys: string[] = [];
+      if (isCodex) {
+        delete finalEnvVars.MAESTRO_CLAUDE_SESSION_ID;
+        removeEnvKeys.push('MAESTRO_CLAUDE_SESSION_ID');
+        if (codexSessionId) {
+          finalEnvVars.MAESTRO_CODEX_SESSION_ID = codexSessionId;
+        } else {
+          delete finalEnvVars.MAESTRO_CODEX_SESSION_ID;
+          removeEnvKeys.push('MAESTRO_CODEX_SESSION_ID');
+        }
+      } else {
+        finalEnvVars.MAESTRO_CLAUDE_SESSION_ID = session.claudeSessionId!;
+        delete finalEnvVars.MAESTRO_CODEX_SESSION_ID;
+      }
 
       // Ensure CLI runtime path is correct
       const runtimePath = buildRuntimePath(process.env.PATH, monorepoRoot);
@@ -2468,6 +2569,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       await sessionService.updateSession(session.id, {
         status: 'spawning',
         env: finalEnvVars,
+        // Only present on the Codex path; keeps merge semantics for every other caller.
+        ...(removeEnvKeys.length > 0 ? { removeEnvKeys } : {}),
         timeline: [
           ...(session.timeline || []),
           {
@@ -2485,6 +2588,9 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         command,
         cwd,
         envVars: finalEnvVars,
+        // Provider-aware context for event consumers (UI/PTY host) so they can
+        // apply the correct resume semantics without re-deriving the tool.
+        agentTool: agentTool as AgentTool,
         projectId: session.projectId,
         taskIds: session.taskIds,
         spawnSource: 'ui' as const,
@@ -2498,7 +2604,15 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       // The Tauri desktop path (ptyHost === 'tauri') relies on the event above instead.
       // Without this, the browser's PTY WebSocket attaches to a non-existent session
       // and is immediately closed (1011 "no live PTY"), so resume hangs on web-ui.
-      if (config.ptyHost === 'server') {
+      //
+      // Idempotent, mirroring /pty/spawn's guard: a server PTY outlives its /pty
+      // socket, so resuming a session whose PTY is STILL ALIVE must not kill+replace
+      // it. spawn() restarts output at offset 0, so replacing a live PTY under an
+      // attached web client (which still holds a large resume offset) would hand it a
+      // fresh stream it can't align to. Only spawn when there is genuinely no live PTY
+      // (the real "process exited, bring it back" case); otherwise the session:resume
+      // event above lets the client re-attach to the existing PTY over /pty.
+      if (config.ptyHost === 'server' && !ptyHostService.hasSession(session.id)) {
         try {
           ptyHostService.spawn({
             sessionId: session.id,
@@ -2518,11 +2632,21 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
           });
         }
       }
+      // If resume reused an already-live server PTY, no spawn call exists to
+      // finish the event→PTY handoff. Release and drain prompts accepted after
+      // session:resume now that the reuse decision is authoritative.
+      if (config.ptyHost === 'server') {
+        ptyHostService.completePromptHandoff(session.id);
+      }
 
       res.json({
         success: true,
         sessionId: session.id,
-        claudeSessionId: session.claudeSessionId,
+        agentTool,
+        // Echo only the provider-native id that actually applies.
+        ...(isCodex
+          ? { codexSessionId }
+          : { claudeSessionId: session.claudeSessionId }),
         message: 'Resume request sent to Agent Maestro',
       });
     } catch (err: unknown) {

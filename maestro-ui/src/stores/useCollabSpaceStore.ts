@@ -26,6 +26,15 @@ interface CollabSpaceState {
 
   detectRemote: (projectId: string, workingDir: string) => Promise<ParsedGitRemote | null>;
   setManualRemote: (projectId: string, raw: string) => ParsedGitRemote | null;
+  /** Overwrites the cached parsed remote (e.g. right after a manual save persists). */
+  setDetectedRemote: (projectId: string, parsed: ParsedGitRemote | null) => void;
+  /**
+   * Seeds the cache from a persisted `Project.githubUrl` BEFORE local git
+   * detection runs. Never clobbers an already-resolved value (a prior detection
+   * or a manual change this session wins), so the saved repo hydrates first but
+   * live edits are respected.
+   */
+  hydrateRemoteFromProject: (projectId: string, githubUrl: string | undefined) => void;
   subscribeForRepo: (githubUrl: string, uid: string) => void;
   unsubscribeForRepo: (githubUrl: string) => void;
   /** Tears down every live repo subscription and resets lists (sign-out path). */
@@ -76,6 +85,26 @@ export const useCollabSpaceStore = create<CollabSpaceState>((set, get) => ({
       detectedRemoteByProject: { ...s.detectedRemoteByProject, [projectId]: parsed },
     }));
     return parsed;
+  },
+
+  setDetectedRemote: (projectId, parsed) => {
+    // A manual change supersedes any in-flight local detection.
+    detectionNonces[projectId] = (detectionNonces[projectId] ?? 0) + 1;
+    set((s) => ({
+      detectedRemoteByProject: { ...s.detectedRemoteByProject, [projectId]: parsed },
+    }));
+  },
+
+  hydrateRemoteFromProject: (projectId, githubUrl) => {
+    if (!githubUrl) return;
+    if (get().detectedRemoteByProject[projectId] !== undefined) return;
+    const parsed = parseGitRemote(githubUrl);
+    if (!parsed) return;
+    // Suppress a redundant local detection for this project.
+    detectionNonces[projectId] = (detectionNonces[projectId] ?? 0) + 1;
+    set((s) => ({
+      detectedRemoteByProject: { ...s.detectedRemoteByProject, [projectId]: parsed },
+    }));
   },
 
   subscribeForRepo: (githubUrl, uid) => {

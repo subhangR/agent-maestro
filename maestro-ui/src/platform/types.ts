@@ -13,6 +13,7 @@ export interface CreateSessionOpts {
 
 /** Unsubscribe function returned by onOutput / onExit. */
 export type Unlisten = () => void;
+export type TerminalReplayInfo = { kind: 'delta' | 'snapshot' };
 
 /**
  * Abstraction over Tauri invoke/listen (native) and WebSocket (browser).
@@ -29,6 +30,14 @@ export interface TerminalTransport {
   closeSession(id: string): Promise<void>;
   /** Web: register a handler for server→client PTY output bytes; returns unsubscribe fn. */
   onOutput(handler: (id: string, data: string) => void): Promise<Unlisten>;
+  /**
+   * Web: register a handler for the one-shot replay payload sent during attach.
+   * Keeping replay separate lets the renderer hydrate it atomically instead of
+   * visibly painting thousands of intermediate cursor updates.
+   */
+  onReplay?(
+    handler: (id: string, data: string, info: TerminalReplayInfo) => void,
+  ): Promise<Unlisten>;
   /** Web: register a handler for server→client PTY exit events; returns unsubscribe fn. */
   onExit(handler: (id: string, exitCode?: number | null) => void): Promise<Unlisten>;
   /**
@@ -38,4 +47,11 @@ export interface TerminalTransport {
    * the window's own FitAddon, so there is no late-join width mismatch).
    */
   onSize?(handler: (id: string, size: { cols: number; rows: number }) => void): Promise<Unlisten>;
+  /**
+   * Web: register a handler when attach metadata says the current on-screen
+   * buffer cannot be continued (stream epoch changed, bytes were evicted, or a
+   * legacy stream offset rewound). The handler resets xterm before the replay
+   * payload is delivered. Absent in Tauri.
+   */
+  onReattach?(handler: (id: string) => void): Promise<Unlisten>;
 }
