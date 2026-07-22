@@ -169,8 +169,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const activeMaestroSession = active?.maestroSessionId ? maestroSessions[active.maestroSessionId] : null;
   const activeIsCoordinator = isCoordinatorRole(activeMaestroSession?.mode);
 
-  // Redesign Phase 4 — Activity view toggle (additive overlay over the terminal).
-  const [showActivity, setShowActivity] = useState(false);
+  // Redesign Phase 4 — plain-language Chat view (additive overlay over the terminal).
+  // Default ON for maestro-linked terminals so the conversational view leads and the
+  // raw terminal is one click away.
+  const [showActivity, setShowActivity] = useState(true);
 
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
@@ -479,19 +481,35 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         {/* Redesign Phase 4 — Activity ⇄ Terminal toggle + additive overlay.
             The terminal deck stays mounted underneath; the overlay simply covers
             it when Activity is on, so nothing unmounts or breaks. */}
-        {activeMaestroSession && (
-          <button
-            type="button"
-            className={"pn-activity-toggle" + (showActivity ? " pn-activity-toggle--on" : "")}
-            onClick={() => setShowActivity((v) => !v)}
-            title={showActivity ? "Show the raw terminal" : "Show activity in plain language"}
-          >
-            {showActivity ? "Terminal" : "Activity"}
-          </button>
+        {active?.maestroSessionId && (
+          <div className="pn-viewseg" role="tablist" aria-label="Session view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showActivity}
+              className={"pn-viewseg__btn" + (showActivity ? " pn-viewseg__btn--on" : "")}
+              onClick={() => setShowActivity(true)}
+              title="Plain-language conversation view"
+            >
+              Chat
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!showActivity}
+              className={"pn-viewseg__btn" + (!showActivity ? " pn-viewseg__btn--on" : "")}
+              onClick={() => setShowActivity(false)}
+              title="Raw terminal output"
+            >
+              Terminal
+            </button>
+          </div>
         )}
-        {showActivity && activeMaestroSession && (
+        {showActivity && active?.maestroSessionId && (
           <div className="pn-activity-overlay">
-            <SessionActivityPanel session={activeMaestroSession} />
+            <SessionActivityPanel
+              session={activeMaestroSession ?? maestroSessions[active.maestroSessionId] ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
+            />
           </div>
         )}
         {/* Mode chip — shows current session role (coordinator / worker).
