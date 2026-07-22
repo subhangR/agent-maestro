@@ -3,7 +3,12 @@ import { loadConfig } from './config';
 import { Logger } from './logger';
 import { createAuthVerifier, Allowlist } from './auth';
 import { InstanceRegistry } from './registry';
-import { SharedCredentialSource, prepareSharedClaudeConfig } from './credentials';
+import {
+  SharedCredentialSource,
+  GitHubCredentialSource,
+  CompositeCredentialSource,
+  prepareSharedClaudeConfig,
+} from './credentials';
 import { InstanceSupervisor } from './supervisor';
 import { Proxy } from './proxy';
 import { Gateway } from './gateway';
@@ -28,7 +33,15 @@ async function main(): Promise<void> {
   const auth = createAuthVerifier(config, logger);
   const allowlist = new Allowlist(config.allowlistPath, logger);
   const registry = new InstanceRegistry(config, logger);
-  const credentials = new SharedCredentialSource(config);
+  // Pooled Claude (shared) + self-service per-user GitHub creds, merged per instance.
+  const credentials = new CompositeCredentialSource([
+    new SharedCredentialSource(config),
+    new GitHubCredentialSource(config, logger),
+  ]);
+  logger.info('credential sources', {
+    claude: config.sharedClaudeConfigDir ? 'shared' : '(none)',
+    github: config.githubCredentials ? 'per-user (self-service)' : 'disabled',
+  });
 
   // Ensure the shared pooled config skips Claude's first-run onboarding wizard.
   prepareSharedClaudeConfig(config, logger);
