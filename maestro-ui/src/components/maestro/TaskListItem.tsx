@@ -878,6 +878,10 @@ export const TaskListItem = React.memo(function TaskListItem({
                                 | "cancelled"
                                 | "blocked",
                             priority: task.priority,
+                            initialPrompt: task.initialPrompt ?? "",
+                            dueDate: task.dueDate ?? null,
+                            dangerousMode: task.dangerousMode ?? false,
+                            useWorktree: task.useWorktree ?? false,
                             sourceTaskId: task.id,
                             sourceProjectId: task.projectId,
                         },

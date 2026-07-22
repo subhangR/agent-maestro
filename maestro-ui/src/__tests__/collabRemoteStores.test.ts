@@ -39,7 +39,7 @@ describe("useProjectStore.setProjectGithubUrl", () => {
 
   it("persists the githubUrl through PUT /projects/:id and mirrors it locally", async () => {
     updateProject.mockResolvedValue(
-      project("A", { githubUrl: "https://github.com/owner/repo" }),
+      project("A", { githubUrl: "https://github.com/owner/repo", updatedAt: 2 }),
     );
 
     await useProjectStore
@@ -51,6 +51,7 @@ describe("useProjectStore.setProjectGithubUrl", () => {
     });
     const a = useProjectStore.getState().projects.find((p) => p.id === "A");
     expect(a?.githubUrl).toBe("https://github.com/owner/repo");
+    expect(a?.updatedAt).toBe(2);
     // Only the target project changes.
     const b = useProjectStore.getState().projects.find((p) => p.id === "B");
     expect(b?.githubUrl).toBeUndefined();

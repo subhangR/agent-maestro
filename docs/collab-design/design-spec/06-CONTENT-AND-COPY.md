@@ -34,7 +34,7 @@ Microcopy for every surface. Copy marked `[BUILT]` is the current in-product wor
 ## Create Space modal
 - Title: **"Create a Space"**
 - Fields: **"Name"** (required) · **"Description"** (optional) · **"GitHub repo"** (read-only) · **"Visibility"**
-- Visibility options `[BUILT]`: **"Public — anyone with this repo can find it"** · **"Private — invite-only"**
+- Visibility options `[BUILT]`: **"Public — any signed-in Maestro user can find and join it"** · **"Private — invite-only"**
 - Actions: **"Cancel"** · **"Create"** (→ "Creating…")
 
 ## Space Window

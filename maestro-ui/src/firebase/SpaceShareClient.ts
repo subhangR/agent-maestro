@@ -35,6 +35,10 @@ export interface SharedTaskInput {
   description: string;
   status: SpaceTaskStatus;
   priority: SpaceTaskPriority;
+  initialPrompt: string;
+  dueDate: string | null;
+  dangerousMode: boolean;
+  useWorktree: boolean;
   sourceTaskId: string | null;
   sourceProjectId: string | null;
 }
@@ -47,6 +51,16 @@ export interface SharedTeamMemberInput {
   model: string | null;
   agentTool: string | null;
   mode: string | null;
+  permissionMode: string | null;
+  strategy: string | null;
+  capabilities: {
+    can_spawn_sessions?: boolean;
+    can_edit_tasks?: boolean;
+    can_report_task_level?: boolean;
+    can_report_session_level?: boolean;
+  };
+  customWorkflow: string | null;
+  soundInstrument: string | null;
   skillIds: string[];
   commandPermissions: {
     groups?: Record<string, boolean>;
@@ -101,6 +115,10 @@ export const SpaceShareClient = {
       description: input.description ?? '',
       status: input.status,
       priority: input.priority,
+      initialPrompt: input.initialPrompt ?? '',
+      dueDate: input.dueDate ?? null,
+      dangerousMode: input.dangerousMode ?? false,
+      useWorktree: input.useWorktree ?? false,
       assigneeUids: [],
       parentTaskId: null,
       childrenIds: [],
@@ -137,6 +155,11 @@ export const SpaceShareClient = {
       model: input.model,
       agentTool: input.agentTool,
       mode: input.mode,
+      permissionMode: input.permissionMode,
+      strategy: input.strategy,
+      capabilities: stripUndefinedDeep(input.capabilities ?? {}),
+      customWorkflow: input.customWorkflow,
+      soundInstrument: input.soundInstrument,
       skillIds: input.skillIds ?? [],
       commandPermissions: stripUndefinedDeep(input.commandPermissions ?? {}),
       sourceTeamMemberId: input.sourceTeamMemberId,

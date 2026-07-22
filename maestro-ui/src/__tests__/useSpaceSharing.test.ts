@@ -69,6 +69,10 @@ describe('buildTaskShareInput', () => {
       description: 'All of it',
       status: 'in_progress',
       priority: 'high',
+      initialPrompt: '',
+      dueDate: null,
+      dangerousMode: false,
+      useWorktree: false,
       sourceTaskId: 'task_1',
       sourceProjectId: 'proj_1',
     });
@@ -86,6 +90,20 @@ describe('buildTaskShareInput', () => {
     const input = buildTaskShareInput(task);
     expect(input.description).toBe('');
     expect(input.status).toBe('cancelled');
+    expect(input.initialPrompt).toBe('');
+    expect(input.dueDate).toBeNull();
+  });
+
+  it('keeps portable task execution settings', () => {
+    const input = buildTaskShareInput({
+      id: 'task_3', projectId: 'proj_1', title: 'Portable', description: '',
+      status: 'todo', priority: 'medium', initialPrompt: 'Work carefully',
+      dueDate: '2026-08-01', dangerousMode: true, useWorktree: true,
+    } as unknown as MaestroTask);
+    expect(input).toEqual(expect.objectContaining({
+      initialPrompt: 'Work carefully', dueDate: '2026-08-01',
+      dangerousMode: true, useWorktree: true,
+    }));
   });
 });
 
@@ -101,8 +119,13 @@ describe('buildTeamMemberShareInput', () => {
       model: 'opus',
       agentTool: 'claude-code',
       mode: 'coordinator',
+      permissionMode: null,
+      strategy: null,
+      capabilities: {},
       skillIds: ['sk_1'],
       commandPermissions: { groups: { git: true } },
+      customWorkflow: null,
+      soundInstrument: null,
     });
     expect(input).toEqual({
       name: 'Ada',
@@ -112,8 +135,13 @@ describe('buildTeamMemberShareInput', () => {
       model: 'opus',
       agentTool: 'claude-code',
       mode: 'coordinator',
+      permissionMode: null,
+      strategy: null,
+      capabilities: {},
       skillIds: ['sk_1'],
       commandPermissions: { groups: { git: true } },
+      customWorkflow: null,
+      soundInstrument: null,
       sourceTeamMemberId: 'tm_1',
       sourceProjectId: 'proj_1',
     });
@@ -132,6 +160,11 @@ describe('buildTeamMemberShareInput', () => {
     expect(input.model).toBeNull();
     expect(input.agentTool).toBeNull();
     expect(input.mode).toBeNull();
+    expect(input.permissionMode).toBeNull();
+    expect(input.strategy).toBeNull();
+    expect(input.capabilities).toEqual({});
+    expect(input.customWorkflow).toBeNull();
+    expect(input.soundInstrument).toBeNull();
     expect(input.skillIds).toEqual([]);
     expect(input.commandPermissions).toEqual({});
   });

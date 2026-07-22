@@ -26,7 +26,7 @@ A person authenticated via Firebase (Google or email/password). Inside a space t
 - `id`, `name`, `description`, `visibility` (**public | private**)
 - Repo scoping: `githubUrl` (canonical `github.com/owner/repo`), plus host/owner/repo parts
 - `ownerId`, `memberIds[]`, `members{}` (denormalized member details), `createdAt/updatedAt`
-- **UI implication:** discovery lists match on `githubUrl`; public spaces are visible to anyone on the repo, private only to members.
+- **UI implication:** discovery lists match on `githubUrl`; public spaces are visible and joinable by any signed-in Maestro user. GitHub repository membership is not verified. Private spaces are visible only to members.
 
 ## Channel
 - `id`, `spaceId`, `name` (kebab-case, ≤64), `description`, `isDefault` (one `#general`), `position` (order), `lastMessageAt`, `createdBy`

@@ -185,6 +185,7 @@ export const useProjectStore = create<ProjectState>((set, get) => {
                 ? {
                     ...p,
                     name: title,
+                    workingDir: validatedBasePath,
                     basePath: validatedBasePath,
                     environmentId,
                     assetsEnabled: projectAssetsEnabled,
@@ -490,7 +491,9 @@ export const useProjectStore = create<ProjectState>((set, get) => {
       const updated = await maestroClient.updateProject(projectId, { githubUrl });
       set((s) => ({
         projects: s.projects.map((p) =>
-          p.id === projectId ? { ...p, githubUrl: updated.githubUrl } : p,
+          p.id === projectId
+            ? { ...p, githubUrl: updated.githubUrl, updatedAt: updated.updatedAt }
+            : p,
         ),
       }));
     },

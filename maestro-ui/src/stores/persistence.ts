@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { PersistedStateV1 } from '../app/types/app-state';
 import { IS_TAURI } from '../platform';
 import { PersistedTerminalSession } from '../app/types/session';
+import { MaestroProject } from '../app/types/maestro';
 import { buildWorkspaceViewStorageV1 } from '../utils/workSpaceStorage';
 import { formatError } from '../utils/formatters';
 import * as DEFAULTS from '../app/constants/defaults';
@@ -29,6 +30,39 @@ let pendingWorkspaceViewSaveRef: any = null;
 /* ------------------------------------------------------------------ */
 /*  Central persistence (replaces useStatePersistence main effect)       */
 /* ------------------------------------------------------------------ */
+
+export type PersistedProjectRecord = {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  workingDir: string | null;
+  basePath: string | null;
+  githubUrl?: string;
+  environmentId: string | null;
+  assetsEnabled: boolean | null;
+  soundInstrument: string | null;
+  soundConfig: MaestroProject['soundConfig'] | null;
+};
+
+/** Maps a project to the backwards-compatible desktop snapshot shape. */
+export function toPersistedProjectRecord(project: MaestroProject): PersistedProjectRecord {
+  return {
+    id: project.id,
+    title: project.name,
+    createdAt: project.createdAt,
+    updatedAt: project.updatedAt,
+    // Keep the actual working directory separate from display/base-path state.
+    // Older snapshots only have basePath and remain supported by initApp.
+    workingDir: project.workingDir || project.basePath || null,
+    basePath: project.basePath ?? null,
+    ...(project.githubUrl ? { githubUrl: project.githubUrl } : {}),
+    environmentId: project.environmentId ?? null,
+    assetsEnabled: project.assetsEnabled ?? null,
+    soundInstrument: project.soundInstrument ?? null,
+    soundConfig: project.soundConfig ?? null,
+  };
+}
 
 function buildPersistedState(): PersistedStateV1 {
   const { projects, activeProjectId, activeSessionByProject, closedProjectIds } = useProjectStore.getState();
@@ -58,22 +92,14 @@ function buildPersistedState(): PersistedStateV1 {
     }))
     .sort((a: any, b: any) => a.createdAt - b.createdAt);
 
-  // Map projects to match Rust PersistedProjectV1 structure
-  // Cast to any to bypass TypeScript's type checking since Rust expects 'title' but TS defines 'name'
-  const persistedProjects = projects.map((p: any) => ({
-    id: p.id,
-    title: p.name, // Map 'name' to 'title' for Rust backend
-    basePath: p.basePath ?? null,
-    environmentId: p.environmentId ?? null,
-    assetsEnabled: p.assetsEnabled ?? null,
-    soundInstrument: p.soundInstrument ?? null,
-    soundConfig: p.soundConfig ?? null,
-  }));
+  // The Rust payload calls the display field `title`; the mapping keeps the
+  // project/repository connection durable when the server is unreachable.
+  const persistedProjects = projects.map(toPersistedProjectRecord);
 
   return {
     schemaVersion: 1,
     secureStorageMode: secureStorageMode ?? undefined,
-    projects: persistedProjects as any, // Cast to bypass TS type mismatch (Rust uses 'title', TS uses 'name')
+    projects: persistedProjects as any, // Rust-specific persisted shape
     activeProjectId,
     sessions: persistedSessions,
     activeSessionByProject,
@@ -105,7 +131,17 @@ function scheduleSave() {
     ':' +
     projects.activeProjectId +
     ':' +
-    projects.projects.length +
+    JSON.stringify(projects.projects.map((p) => [
+      p.id,
+      p.name,
+      p.workingDir,
+      p.basePath,
+      p.githubUrl ?? null,
+      p.environmentId,
+      p.assetsEnabled ?? null,
+      p.soundInstrument ?? null,
+      p.soundConfig ?? null,
+    ])) +
     ':' +
     JSON.stringify(projects.activeSessionByProject) +
     ':' +

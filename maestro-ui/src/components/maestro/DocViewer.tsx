@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { DocEntry } from "../../app/types/maestro";
@@ -6,6 +7,9 @@ import { maestroClient } from "../../utils/MaestroClient";
 import { isDiagramDoc } from "../../utils/docHelpers";
 import { lazyWithReload } from "../../utils/lazyWithReload";
 import { ErrorBoundary } from "../ErrorBoundary";
+import { ShareToSpaceModal } from "../share/ShareToSpaceModal";
+import { useProjectStore } from "../../stores/useProjectStore";
+import { buildDocShareInput, docShareBlockReason } from "../../hooks/useSpaceSharing";
 const LazyMermaidDiagram = lazyWithReload(() =>
   import("./MermaidDiagram").then(m => ({ default: m.MermaidDiagram }))
 );
@@ -146,6 +150,8 @@ function makeMarkdownComponents(onOpenDiagramDoc?: (doc: DocEntry) => void) {
 export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [diagramEditMode, setDiagramEditMode] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const fileExt = useMemo(() => getFileExtension(doc.filePath), [doc.filePath]);
   const shouldRenderMarkdown = useMemo(() => isMarkdown(doc.filePath), [doc.filePath]);
   const isDiagram = isDiagramDoc(doc);
@@ -154,6 +160,9 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
     return parts[parts.length - 1];
   }, [doc.filePath]);
   const markdownComponents = useMemo(() => makeMarkdownComponents(), []);
+  const shareBlocked = !activeProjectId
+    ? "Open the document's project before sharing it."
+    : docShareBlockReason(doc);
 
   // Escape-to-close only for overlay mode
   useEffect(() => {
@@ -190,6 +199,16 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
           </div>
         </div>
         <div className="docViewerHeaderActions">
+          <button
+            type="button"
+            className="themedBtn"
+            style={{ padding: '3px 10px', fontSize: '11px' }}
+            onClick={() => setShareOpen(true)}
+            disabled={!!shareBlocked}
+            title={shareBlocked ?? "Share to a Collab Space"}
+          >
+            Share
+          </button>
           {isDiagram && (
             <button
               type="button"
@@ -289,12 +308,30 @@ export function DocViewer({ doc, onClose, inline }: DocViewerProps) {
   );
 
   if (inline) {
-    return <div className="docViewerInline">{panel}</div>;
+    return <div className="docViewerInline">{panel}{shareOpen && activeProjectId && createPortal(
+      <ShareToSpaceModal
+        payload={{ kind: "doc", entityLabel: doc.title, data: buildDocShareInput(doc, activeProjectId) }}
+        onClose={() => setShareOpen(false)}
+      />,
+      document.body,
+    )}</div>;
   }
 
   return (
-    <div className={`docViewerOverlay ${isFullscreen ? 'docViewerOverlay--fullscreen' : ''}`} onClick={onClose}>
+    <div
+      className={`docViewerOverlay ${isFullscreen ? 'docViewerOverlay--fullscreen' : ''}`}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       {panel}
+      {shareOpen && activeProjectId && createPortal(
+        <ShareToSpaceModal
+          payload={{ kind: "doc", entityLabel: doc.title, data: buildDocShareInput(doc, activeProjectId) }}
+          onClose={() => setShareOpen(false)}
+        />,
+        document.body,
+      )}
     </div>
   );
 }

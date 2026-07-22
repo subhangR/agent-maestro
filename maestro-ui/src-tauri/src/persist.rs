@@ -20,7 +20,15 @@ pub enum SecureStorageModeV1 {
 pub struct PersistedProjectV1 {
     pub id: String,
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub created_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub working_dir: Option<String>,
     pub base_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_url: Option<String>,
     pub environment_id: Option<String>,
     pub assets_enabled: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

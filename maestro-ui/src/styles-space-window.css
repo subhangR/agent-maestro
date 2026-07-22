@@ -1779,6 +1779,22 @@ img.spaceMemberFullAvatar {
   cursor: not-allowed;
 }
 
+/* Private invitation lifecycle */
+.spaceModal--invites { max-width: 500px; }
+.spaceInviteForm { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.spaceInviteKindRow { grid-column: 1 / -1; display: flex; gap: 16px; color: var(--text-secondary, #b6bdc7); font-size: 12px; }
+.spaceInviteKindRow label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.spaceInviteField { display: flex; flex-direction: column; gap: 5px; color: var(--text-muted, #6e7785); font-size: 11px; }
+.spaceInviteField select, .spaceInviteField input { box-sizing: border-box; min-height: 32px; width: 100%; padding: 6px 8px; color: var(--text-primary, #e6e9f0); background: var(--bg-input, rgba(0, 0, 0, 0.3)); border: 1px solid var(--border-default, rgba(255, 255, 255, 0.1)); border-radius: 4px; }
+.spaceInviteForm .spaceModalPrimaryBtn { grid-column: 1 / -1; justify-self: start; }
+.spaceInviteCreated { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--theme-primary, #66ddaa); border-radius: 6px; background: color-mix(in srgb, var(--theme-primary, #66ddaa) 8%, transparent); }
+.spaceInviteCreatedLabel, .spaceInviteListHeader { font-size: 11px; font-weight: 600; color: var(--text-secondary, #b6bdc7); }
+.spaceInviteListHeader { display: flex; justify-content: space-between; color: var(--text-muted, #6e7785); }
+.spaceInviteList { display: flex; flex-direction: column; gap: 5px; max-height: 180px; overflow: auto; }
+.spaceInviteRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.06)); }
+.spaceInviteRow strong { display: block; font-size: 12px; color: var(--text-primary, #e6e9f0); }
+.spaceInviteRow span { display: block; margin-top: 2px; font-size: 11px; color: var(--text-muted, #6e7785); }
+
 /* ------------------------------------------------------------------ */
 /*  Share-to-space modal                                                */
 /* ------------------------------------------------------------------ */

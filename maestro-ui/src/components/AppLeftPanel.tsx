@@ -16,6 +16,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import * as DEFAULTS from "../app/constants/defaults";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { useMobilePanelStore } from "../stores/useMobilePanelStore";
+import { useCollabInviteDeepLink } from "../hooks/useCollabInviteDeepLink";
 
 function sectionToPrimaryTab(section: IconRailSection): PrimaryTab | null {
     switch (section) {
@@ -45,6 +46,14 @@ export const AppLeftPanel: React.FC = () => {
     const iconRailActiveSection = useUIStore((s) => s.iconRailActiveSection);
     const toggleIconRailSection = useUIStore((s) => s.toggleIconRailSection);
     const homeDir = useUIStore((s) => s.homeDir);
+
+    // Browser SPA hosting serves index.html for an invite route. Recognize it
+    // during startup so the prefilled invitation UI is visible without asking
+    // the recipient to find the Collab icon first. Desktop remains on the
+    // manual paste path because Tauri URLs are not public share URLs.
+    useCollabInviteDeepLink(() => {
+        useUIStore.getState().setIconRailActiveSection("collab");
+    });
 
     // Project & session stores
     const projects = useProjectStore((s) => s.projects);

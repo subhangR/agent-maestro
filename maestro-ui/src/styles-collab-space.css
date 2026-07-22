@@ -280,6 +280,11 @@ textarea.collabSpaceInput {
   cursor: pointer;
 }
 
+.collabInviteJoin { margin: 0 12px 10px; }
+.collabInviteJoinForm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; gap: 6px; margin-top: 6px; }
+.collabInviteJoinForm .collabSpaceError { grid-column: 1 / -1; }
+@media (max-width: 560px) { .collabInviteJoinForm { grid-template-columns: 1fr; } }
+
 /* Modal */
 
 .collabSpaceModalOverlay {
