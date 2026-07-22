@@ -1,4 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const { spawnWithUlimitMock } = vi.hoisted(() => ({
+  spawnWithUlimitMock: vi.fn(() => ({ stdin: null })),
+}));
+
+vi.mock('../../src/services/spawn-with-ulimit.js', () => ({
+  spawnWithUlimit: spawnWithUlimitMock,
+}));
+
 import { CodexSpawner } from '../../src/services/codex-spawner.js';
 import type { MaestroManifest } from '../../src/types/manifest.js';
 
@@ -158,5 +167,62 @@ describe('CodexSpawner', () => {
     });
 
     expect(args).not.toContain('--max-turns');
+  });
+
+  it('never forwards a Claude-native session id to a fresh Codex process', async () => {
+    const previousClaudeSessionId = process.env.MAESTRO_CLAUDE_SESSION_ID;
+    process.env.MAESTRO_CLAUDE_SESSION_ID = 'stale-parent-claude-id';
+    spawnWithUlimitMock.mockClear();
+
+    try {
+      const spawner = new CodexSpawner();
+      const preparedEnv = spawner.prepareEnvironment(createManifest('gpt-5.5'), 'sess_abc');
+      expect(preparedEnv.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+
+      await spawner.spawn(createManifest('gpt-5.5'), 'sess_abc', {
+        env: { MAESTRO_CLAUDE_SESSION_ID: 'stale-override-claude-id' },
+      });
+
+      expect(spawnWithUlimitMock).toHaveBeenCalledOnce();
+      const spawnOptions = spawnWithUlimitMock.mock.calls[0][2];
+      expect(spawnOptions.env.MAESTRO_CLAUDE_SESSION_ID).toBeUndefined();
+    } finally {
+      if (previousClaudeSessionId === undefined) {
+        delete process.env.MAESTRO_CLAUDE_SESSION_ID;
+      } else {
+        process.env.MAESTRO_CLAUDE_SESSION_ID = previousClaudeSessionId;
+      }
+    }
+  });
+
+  describe('buildResumeArgs', () => {
+    const CODEX_ID = '019ec96a-b3b3-7710-a375-cc969f90615f';
+
+    it('builds an interactive `codex resume <id>` invocation with the launch config reapplied', () => {
+      const args = new CodexSpawner().buildResumeArgs(createManifest('gpt-5.5'), 'sess_abc', CODEX_ID);
+
+      // Codex resumes via the `resume` subcommand, not a Claude-style flag.
+      expect(args[0]).toBe('resume');
+      // The native rollout id is the trailing positional (options precede it).
+      expect(args[args.length - 1]).toBe(CODEX_ID);
+      // Launch config (model/sandbox/approval) is reapplied so the resumed run keeps its settings.
+      expect(args).toContain('--model');
+      expect(args).toContain('gpt-5.5');
+      // These are Claude-only; Codex has neither, and there is no `--last` guess.
+      expect(args).not.toContain('--resume');
+      expect(args).not.toContain('--session-id');
+      expect(args).not.toContain('--last');
+    });
+
+    it('re-injects the Maestro system prompt via `-c developer_instructions` on resume', () => {
+      const args = new CodexSpawner().buildResumeArgs(createManifest('gpt-5.5'), 'sess_abc', CODEX_ID);
+
+      // Resume must re-supply the role/system prompt per invocation (provider-specific
+      // analog of Claude's --append-system-prompt) — the same mechanism as a fresh spawn.
+      const idx = args.findIndex((arg) => arg.startsWith('developer_instructions='));
+      expect(idx).toBeGreaterThan(-1);
+      // It is a `-c` config override (the flag immediately precedes the value).
+      expect(args[idx - 1]).toBe('-c');
+    });
   });
 });

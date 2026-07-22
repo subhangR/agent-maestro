@@ -18,7 +18,8 @@ type LocalProjectMetadata = Pick<
  * server" cases so the field mapping only lives in one place.
  */
 export function toMaestroProject(
-  source: Pick<MaestroProject, 'id' | 'name' | 'workingDir' | 'createdAt' | 'updatedAt'>,
+  source: Pick<MaestroProject, 'id' | 'name' | 'workingDir' | 'createdAt' | 'updatedAt'> &
+    Partial<Pick<MaestroProject, 'githubUrl'>>,
   localProj?: Partial<LocalProjectMetadata> | null,
 ): MaestroProject {
   return {
@@ -27,6 +28,9 @@ export function toMaestroProject(
     workingDir: source.workingDir,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,
+    // Server-owned: the persisted Collab repo URL always comes from the server
+    // copy, never a (possibly stale) local one.
+    githubUrl: source.githubUrl,
     basePath: source.workingDir || null,
     environmentId: localProj?.environmentId ?? null,
     assetsEnabled: localProj?.assetsEnabled ?? true,

@@ -1500,37 +1500,27 @@ html[data-redesign] .mermaidDiagramFallback {
   }
 }
 
-/* ─── Session docs tabs — inline row in the bottom terminal strip ─── */
+/* ─── Session docs/diagrams chips — inline in the terminal strip bar ─── */
 
-/* Edge-faded column of doc/diagram tabs. Shares the strip's middle space
-   with the stats rail; scrolls vertically when there are many docs. Icon-only
-   in the narrow vertical strip — the full title lives in the button tooltip. */
-.termStripDocTabs {
-  flex: 0 1 auto;
-  min-height: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
+/* Two fixed-size chips (docs + diagrams) sitting inline in the horizontal
+   strip bar. Each is icon + count; clicking opens the portal dropdown below.
+   Fixed height keeps the strip a constant height no matter how many docs. */
+.termStripDocChips {
+  flex: 0 0 auto;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
-  gap: 5px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scrollbar-width: none;
-  padding: 4px 0;
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  gap: 6px;
 }
-.termStripDocTabs::-webkit-scrollbar { display: none; }
 
-.termStripDocTab {
+.termStripDocChip {
   flex-shrink: 0;
-  width: 32px;
   height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 0;
+  padding: 0 8px;
   border: 1px solid var(--term-strip-line, #2c2922);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
@@ -1541,30 +1531,104 @@ html[data-redesign] .mermaidDiagramFallback {
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.termStripDocTab:hover {
+.termStripDocChip:hover,
+.termStripDocChip--open {
   background: rgba(217, 154, 78, 0.1);
   border-color: rgba(217, 154, 78, 0.28);
   color: var(--pn-term-acc, #d99a4e);
 }
 
-.termStripDocTab--active {
+.termStripDocChip--active {
   color: var(--pn-term-acc, #d99a4e);
-  background: rgba(217, 154, 78, 0.14);
   border-color: rgba(217, 154, 78, 0.4);
 }
 
-.termStripDocTabIcon {
+.termStripDocChipIcon {
   flex-shrink: 0;
   font-size: 10px;
   color: var(--pn-term-dim, #8a8474);
 }
 
-.termStripDocTab--diagram .termStripDocTabIcon,
-.termStripDocTab--active .termStripDocTabIcon {
+.termStripDocChip:hover .termStripDocChipIcon,
+.termStripDocChip--open .termStripDocChipIcon,
+.termStripDocChip--active .termStripDocChipIcon {
   color: var(--pn-term-acc, #d99a4e);
 }
 
-.termStripDocTabLabel {
-  /* Hidden in the narrow vertical strip — the doc title is the button tooltip. */
-  display: none;
+.termStripDocChipCount {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Portal dropdown — lists the docs/diagrams of the clicked chip's group. */
+.termStripDocMenu {
+  z-index: 1000;
+  min-width: 200px;
+  max-width: 320px;
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--term-strip-line, #2c2922);
+  border-radius: 8px;
+  background: var(--pn-term-bg, #1B1812);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  scrollbar-width: thin;
+}
+.termStripDocMenu::-webkit-scrollbar { width: 5px; }
+.termStripDocMenu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+}
+
+.termStripDocMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pn-term-ink, #cfc9bb);
+  font-family: var(--pn-mono, 'JetBrains Mono', ui-monospace, monospace);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.termStripDocMenuItem:hover {
+  background: rgba(217, 154, 78, 0.1);
+  border-color: rgba(217, 154, 78, 0.28);
+  color: var(--pn-term-acc, #d99a4e);
+}
+
+.termStripDocMenuItem--active {
+  color: var(--pn-term-acc, #d99a4e);
+  background: rgba(217, 154, 78, 0.14);
+  border-color: rgba(217, 154, 78, 0.4);
+}
+
+.termStripDocMenuItemIcon {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--pn-term-dim, #8a8474);
+}
+
+.termStripDocMenuItem:hover .termStripDocMenuItemIcon,
+.termStripDocMenuItem--active .termStripDocMenuItemIcon {
+  color: var(--pn-term-acc, #d99a4e);
+}
+
+.termStripDocMenuItemLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

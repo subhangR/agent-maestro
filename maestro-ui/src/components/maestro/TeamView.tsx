@@ -8,6 +8,7 @@ import { useMaestroStore } from '../../stores/useMaestroStore';
 import { useUIStore } from '../../stores/useUIStore';
 import { getWorktreeInfo } from './WorktreeBadge';
 import { Icon, Glyph, Avatar, AgentTile, type AgentKind } from './redesign/kit';
+import { isAgentToolResumable } from '../../app/constants/agentTools';
 
 interface TeamViewProps {
   root: MaestroSession;
@@ -56,9 +57,9 @@ function agentKindOf(session: MaestroSession): AgentKind {
         : agentTool;
 }
 
-function isResumable(session: MaestroSession): boolean {
-  const canResume = ((session.metadata as { agentTool?: string } | undefined)?.agentTool || 'claude-code') === 'claude-code';
-  return TERMINAL_STATUSES.has(session.status) && canResume;
+export function isResumable(session: MaestroSession): boolean {
+  const agentTool = (session.metadata as { agentTool?: string } | undefined)?.agentTool;
+  return TERMINAL_STATUSES.has(session.status) && isAgentToolResumable(agentTool);
 }
 
 /**

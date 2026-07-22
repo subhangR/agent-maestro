@@ -4,6 +4,7 @@
   "private": true,
   "description": "Maestro - Multi-agent task orchestration system",
   "workspaces": [
+    "maestro-pty-protocol",
     "maestro-ui",
     "maestro-server",
     "maestro-cli",

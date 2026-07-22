@@ -18,6 +18,9 @@
     "build:web": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser vite build"
   },
   "dependencies": {
+    "@maestro/pty-protocol": "workspace:*",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "@crabnebula/tauri-plugin-drag": "~2.1.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
@@ -46,8 +49,6 @@
     "react-mentions": "^4.4.10",
     "recharts": "^3.7.0",
     "remark-gfm": "^4.0.1",
-    "xterm": "^5.0.0",
-    "xterm-addon-fit": "^0.8.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

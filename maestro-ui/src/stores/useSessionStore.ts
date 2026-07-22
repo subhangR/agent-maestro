@@ -40,6 +40,141 @@ export const lastResizeAtRef = new Map<string, number>();
 export const commandLifecycleSessionsRef = new Set<string>();
 export const spawningSessionsRef = new Set<string>();
 
+type MaestroPromptDelivery = {
+  content: string;
+  mode: 'paste' | 'send' | undefined;
+  bytes: number;
+};
+
+type MaestroPromptQueue = {
+  deliveries: MaestroPromptDelivery[];
+  bytes: number;
+  draining: boolean;
+  overflowWarned: boolean;
+};
+
+// A spawn/resume event creates its PTY asynchronously. Prompt events can arrive
+// in the gap before the new TerminalSession is visible, so keep a small FIFO
+// hand-off queue keyed by the stable Maestro session id. All three dimensions
+// are capped to prevent a disconnected/slow terminal from growing memory
+// without bound. On overflow, preserve the already-accepted FIFO prefix and
+// reject newer deliveries rather than reordering it.
+const MAX_PENDING_MAESTRO_PROMPT_SESSIONS = 64;
+const MAX_PENDING_MAESTRO_PROMPTS_PER_SESSION = 32;
+const MAX_PENDING_MAESTRO_PROMPT_BYTES_PER_SESSION = 256 * 1024;
+const pendingMaestroPrompts = new Map<string, MaestroPromptQueue>();
+
+function findLiveTerminalForMaestroSession(
+  maestroSessionId: string,
+): TerminalSession | undefined {
+  return useSessionStore
+    .getState()
+    .sessions.find(
+      (session) =>
+        session.maestroSessionId === maestroSessionId && !session.exited,
+    );
+}
+
+function enqueueMaestroPrompt(
+  maestroSessionId: string,
+  content: string,
+  mode: 'paste' | 'send' | undefined,
+): boolean {
+  const bytes = new TextEncoder().encode(content).byteLength;
+  if (bytes > MAX_PENDING_MAESTRO_PROMPT_BYTES_PER_SESSION) {
+    console.warn(
+      `[Maestro] Dropping prompt for ${maestroSessionId}: terminal hand-off prompt exceeds byte limit`,
+    );
+    return false;
+  }
+
+  let queue = pendingMaestroPrompts.get(maestroSessionId);
+  if (!queue) {
+    if (
+      pendingMaestroPrompts.size >= MAX_PENDING_MAESTRO_PROMPT_SESSIONS
+    ) {
+      console.warn(
+        `[Maestro] Dropping prompt for ${maestroSessionId}: terminal hand-off queue limit reached`,
+      );
+      return false;
+    }
+    queue = {
+      deliveries: [],
+      bytes: 0,
+      draining: false,
+      overflowWarned: false,
+    };
+    pendingMaestroPrompts.set(maestroSessionId, queue);
+  }
+
+  if (
+    queue.deliveries.length >= MAX_PENDING_MAESTRO_PROMPTS_PER_SESSION ||
+    queue.bytes + bytes > MAX_PENDING_MAESTRO_PROMPT_BYTES_PER_SESSION
+  ) {
+    if (!queue.overflowWarned) {
+      queue.overflowWarned = true;
+      console.warn(
+        `[Maestro] Dropping prompts for ${maestroSessionId}: terminal hand-off queue overflowed`,
+      );
+    }
+    return false;
+  }
+
+  queue.deliveries.push({ content, mode, bytes });
+  queue.bytes += bytes;
+  return true;
+}
+
+async function writeMaestroPrompt(
+  ptyId: string,
+  delivery: MaestroPromptDelivery,
+): Promise<void> {
+  const text = delivery.content.replace(/[\r\n]+$/, '');
+  if (delivery.mode === 'paste') {
+    await platform.terminal.write(ptyId, text, 'system');
+    return;
+  }
+  if (text) {
+    await platform.terminal.write(ptyId, text, 'system');
+    await sleep(200);
+  }
+  await platform.terminal.write(ptyId, '\r', 'system');
+}
+
+async function drainMaestroPrompts(maestroSessionId: string): Promise<void> {
+  const queue = pendingMaestroPrompts.get(maestroSessionId);
+  if (!queue || queue.draining) return;
+
+  queue.draining = true;
+  try {
+    while (queue.deliveries.length > 0) {
+      // Re-resolve for every delivery. Resume deliberately replaces the PTY;
+      // if that happens mid-drain, the remaining FIFO stays queued until the
+      // replacement terminal is attached.
+      const terminal = findLiveTerminalForMaestroSession(maestroSessionId);
+      if (!terminal) return;
+
+      const delivery = queue.deliveries.shift();
+      if (!delivery) return;
+      queue.bytes -= delivery.bytes;
+      try {
+        await writeMaestroPrompt(terminal.id, delivery);
+      } catch {
+        // Preserve the existing best-effort delivery contract. A failed PTY
+        // write is discarded so one bad write cannot permanently block later
+        // prompts for the session.
+      }
+    }
+  } finally {
+    queue.draining = false;
+    if (queue.deliveries.length === 0) {
+      pendingMaestroPrompts.delete(maestroSessionId);
+    } else if (findLiveTerminalForMaestroSession(maestroSessionId)) {
+      void drainMaestroPrompts(maestroSessionId);
+    }
+  }
+}
+
 /**
  * Web mode only: the authoritative PTY dimensions the server reports on attach,
  * before it replays scrollback. A terminal that mounts after this arrives reads
@@ -60,6 +195,13 @@ export const serverPtySizes = new Map<string, { cols: number; rows: number }>();
  * on dispose/exit so a fresh mount re-adopts the server size before replay.
  */
 export const clientFittedSessions = new Set<string>();
+
+/**
+ * Replay payloads that arrived before their xterm renderer mounted. The mount
+ * path consumes this flag and keeps xterm hidden until its write queue confirms
+ * that the final replay chunk has been parsed and painted.
+ */
+export const pendingReplayHydrations = new Set<string>();
 
 /**
  * Web mode only: the most recent cols/rows any terminal fit to. All session
@@ -104,16 +246,7 @@ export function initSessionStoreRefs(
   homeDirRef = homeDir;
 
   if (!IS_TAURI) {
-    void platform.terminal.onOutput((id, data) => {
-      if (closingSessions.has(id)) return;
-      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
-
-      const entry = registryRef?.current.get(id);
-      if (entry && _isRendererReady(entry.term)) {
-        entry.term.write(data);
-        return;
-      }
-
+    const bufferOutput = (id: string, data: string) => {
       if (!pendingDataRef?.current) return;
       if (
         !pendingDataRef.current.has(id) &&
@@ -129,6 +262,48 @@ export function initSessionStoreRefs(
       }
       pendingDataRef.current.delete(id);
       pendingDataRef.current.set(id, buffer);
+    };
+
+    void platform.terminal.onOutput((id, data) => {
+      if (closingSessions.has(id)) return;
+      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
+
+      const entry = registryRef?.current.get(id);
+      if (entry && _isRendererReady(entry.term)) {
+        entry.term.write(data);
+        return;
+      }
+      bufferOutput(id, data);
+    });
+
+    void platform.terminal.onReplay?.((id, data) => {
+      if (closingSessions.has(id)) return;
+      useSessionStore.getState().markAgentWorkingFromOutput(id, data);
+
+      const entry = registryRef?.current.get(id);
+      if (entry && _isRendererReady(entry.term)) {
+        entry.hydrateReplay(data);
+        return;
+      }
+      pendingReplayHydrations.add(id);
+      bufferOutput(id, data);
+    });
+
+    void platform.terminal.onReattach?.((id) => {
+      // The transport is about to replay the server's full scrollback ring
+      // buffer on the fresh socket (see PtyHostService.addSubscriber). The
+      // terminal already rendered some/all of that history pre-drop, so wipe
+      // it first or the replay would duplicate it. Also drop any buffered
+      // pre-mount output — it belongs to the stale connection.
+      pendingDataRef?.current.delete(id);
+      pendingReplayHydrations.delete(id);
+      const entry = registryRef?.current.get(id);
+      if (!entry) return;
+      try {
+        entry.term.reset();
+      } catch {
+        // ignore — terminal mid-disposal
+      }
     });
 
     void platform.terminal.onSize?.((id, size) => {
@@ -155,6 +330,7 @@ export function initSessionStoreRefs(
       lastResizeAtRef.delete(id);
       serverPtySizes.delete(id);
       clientFittedSessions.delete(id);
+      pendingReplayHydrations.delete(id);
 
       if (closingSessions.has(id)) {
         const timeout = closingSessions.get(id);
@@ -251,6 +427,11 @@ interface SessionState {
   sendPromptToSession: (sessionId: string, prompt: Prompt, mode: 'paste' | 'send') => Promise<void>;
   sendPromptToActive: (prompt: Prompt, mode: 'paste' | 'send') => Promise<void>;
   sendPromptFromCommandPalette: (prompt: Prompt, mode: 'paste' | 'send') => Promise<void>;
+  deliverPromptToMaestroSession: (
+    maestroSessionId: string,
+    content: string,
+    mode: 'paste' | 'send' | undefined,
+  ) => void;
 
   // Replay
   sendNextReplayStep: () => Promise<void>;
@@ -1172,6 +1353,30 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 
+  deliverPromptToMaestroSession: (maestroSessionId, content, mode) => {
+    const terminal = findLiveTerminalForMaestroSession(maestroSessionId);
+    const pendingQueue = pendingMaestroPrompts.get(maestroSessionId);
+    // Missing terminals outside an active attach retain the existing
+    // best-effort behavior: do not keep stale prompts indefinitely. During
+    // spawn/resume, however, the async creator owns the queue and flushes it.
+    if (!terminal && !spawningSessionsRef.has(maestroSessionId)) return;
+    // Keep the established direct-write path for steady-state terminals. The
+    // FIFO is only involved while an attach or an existing hand-off drain owns
+    // the session.
+    if (
+      terminal &&
+      !spawningSessionsRef.has(maestroSessionId) &&
+      !pendingQueue
+    ) {
+      void writeMaestroPrompt(terminal.id, { content, mode, bytes: 0 }).catch(
+        () => {},
+      );
+      return;
+    }
+    if (!enqueueMaestroPrompt(maestroSessionId, content, mode)) return;
+    if (terminal) void drainMaestroPrompts(maestroSessionId);
+  },
+
   /* ---------------------------------------------------------------- */
   /*  Replay                                                           */
   /* ---------------------------------------------------------------- */
@@ -1350,12 +1555,14 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         sessions: [...s.sessions, newSession],
         activeId: newSession.id,
       }));
+      void drainMaestroPrompts(dedupKey);
 
       setTimeout(() => {
         spawningSessionsRef.delete(dedupKey);
       }, 2000);
     } catch (err) {
       spawningSessionsRef.delete(dedupKey);
+      pendingMaestroPrompts.delete(dedupKey);
       useUIStore.getState().reportError('Failed to spawn terminal session', err);
     }
   },

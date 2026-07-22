@@ -822,6 +822,7 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                             projectId={projectId}
                             workingDir={project.workingDir}
                             projectName={project.name}
+                            savedGithubUrl={project.githubUrl}
                         />
                     )}
                 </div>

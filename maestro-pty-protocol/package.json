@@ -1,0 +1,29 @@
+{
+  "name": "@maestro/pty-protocol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dependency-free, provider-/transport-agnostic parser and types for the /pty WebSocket text control frames. Shared source of truth for maestro-ui and maestro-web (server producer stays CommonJS and independent).",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "vitest": "^4.0.18"
+  }
+}

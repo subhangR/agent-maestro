@@ -8,7 +8,7 @@ import "./task-lists.css";
 import "./styles-startup.css";
 import "./styles-login.css";
 import "./styles-spell-studio.css"; // Spell Studio design tokens + surfaces (Track UI-A)
-import "xterm/css/xterm.css";
+import "@xterm/xterm/css/xterm.css";
 // Self-hosted redesign fonts (Google Fonts @import is blocked by the Tauri CSP
 // font-src 'self'; these are bundled by Vite and served locally). --pn-mono
 // (JetBrains Mono) is already self-hosted in styles.css.

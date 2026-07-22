@@ -220,10 +220,21 @@ describe("<SessionStatsView />", () => {
     expect(btn!.disabled).toBe(false);
   });
 
-  it("disables Resume for non-claude-code sessions", () => {
+  it("enables Resume for Codex sessions (native-id resume supported)", () => {
     const session = makeSession({
       status: "completed",
       metadata: { agentTool: "codex" },
+    });
+    const { container } = render(<SessionStatsView session={session} />);
+    const btn = container.querySelector(".ssv-btn-primary") as HTMLButtonElement | null;
+    expect(btn).not.toBeNull();
+    expect(btn!.disabled).toBe(false);
+  });
+
+  it("disables Resume for tools without a native-id resume path", () => {
+    const session = makeSession({
+      status: "completed",
+      metadata: { agentTool: "gemini" },
     });
     const { container } = render(<SessionStatsView session={session} />);
     const btn = container.querySelector(".ssv-btn-primary") as HTMLButtonElement | null;
