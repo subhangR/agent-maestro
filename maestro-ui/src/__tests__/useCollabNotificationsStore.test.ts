@@ -66,6 +66,21 @@ describe('useCollabNotificationsStore', () => {
     expect(JSON.parse(localStorage.getItem('maestro.collabNotify.inbox')!)).toHaveLength(2);
   });
 
+  it('merges a durable inbox copy without duplicating its foreground toast', () => {
+    const item = notif({ id: 'same', messageId: 'm-same', preview: 'first' });
+    s().notify(item);
+    s().mergeNotification({ ...item, preview: 'server copy', read: true }, true);
+    expect(s().inbox).toHaveLength(1);
+    expect(s().inbox[0]).toMatchObject({ preview: 'server copy', read: true });
+    expect(s().toasts).toHaveLength(1);
+  });
+
+  it('hydrates durable inbox history without generating toasts', () => {
+    s().hydrateInbox([notif({ id: 'older', timestamp: 1 }), notif({ id: 'newer', timestamp: 2 })]);
+    expect(s().inbox.map((item) => item.id)).toEqual(['newer', 'older']);
+    expect(s().toasts).toEqual([]);
+  });
+
   it('caps the visible toast stack at 4', () => {
     for (let i = 0; i < 6; i++) s().notify(notif({ id: `t${i}` }));
     expect(s().toasts).toHaveLength(4);

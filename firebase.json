@@ -17,5 +17,21 @@
   },
   "database": {
     "rules": "database.rules.json"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "notifications",
+      "predeploy": [
+        "npm --prefix functions run build"
+      ],
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "src/**/*.test.ts"
+      ]
+    }
+  ]
 }

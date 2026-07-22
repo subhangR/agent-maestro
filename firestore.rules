@@ -84,6 +84,62 @@ service cloud.firestore {
       return request.resource.data.createdBy == request.auth.uid;
     }
 
+    // Notification settings are private to their owner. FCM registrations are
+    // separate documents below so a browser may only ever mutate its own
+    // profile, never another member's delivery targets.
+    match /notificationProfiles/{uid} {
+      function validProfileShape() {
+        return request.resource.data.keys().hasOnly([
+            'level', 'desktopEnabled', 'mutedSpaceIds', 'mutedChannelIds', 'updatedAt'
+          ])
+          && request.resource.data.level in ['mentions', 'all']
+          && request.resource.data.desktopEnabled is bool
+          && request.resource.data.mutedSpaceIds is list
+          && request.resource.data.mutedSpaceIds.size() <= 200
+          && request.resource.data.mutedChannelIds is list
+          && request.resource.data.mutedChannelIds.size() <= 200
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if isSignedIn() && request.auth.uid == uid && validProfileShape();
+      allow delete: if false;
+
+      match /devices/{deviceId} {
+        function validDeviceShape() {
+          return request.resource.data.keys().hasOnly([
+              'token', 'platform', 'createdAt', 'lastSeenAt'
+            ])
+            && request.resource.data.token is string
+            && request.resource.data.token.size() > 0
+            && request.resource.data.token.size() <= 4096
+            && request.resource.data.platform == 'web'
+            && request.resource.data.createdAt is timestamp
+            && request.resource.data.lastSeenAt is timestamp;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create: if isSignedIn() && request.auth.uid == uid && validDeviceShape();
+        allow update: if isSignedIn() && request.auth.uid == uid
+          && validDeviceShape()
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.platform == resource.data.platform;
+        allow delete: if isSignedIn() && request.auth.uid == uid;
+      }
+    }
+
+    // Notification items are server-authored. A recipient may only acknowledge
+    // an item by setting its read timestamp; they can never forge, alter, or
+    // erase delivery history.
+    match /notifications/{uid}/items/{itemId} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && affectedOnly(['readAt'])
+        && request.resource.data.readAt is timestamp;
+      allow create, delete: if false;
+    }
+
     // Collab Spaces
     match /collabSpaces/{spaceId} {
 
@@ -231,6 +287,18 @@ service cloud.firestore {
       // Only owner can delete.
       allow delete: if isSignedIn()
         && resource.data.ownerId == request.auth.uid;
+
+      // Per-user channel read cursors. These are independent of durable inbox
+      // items and are used by the Collab UI to clear channel badges.
+      match /readState/{uid} {
+        allow get: if isSpaceMember(spaceId) && request.auth.uid == uid;
+        allow list: if false;
+        allow create, update: if isSpaceMember(spaceId) && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['lastReadAt', 'updatedAt'])
+          && request.resource.data.lastReadAt is map
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if false;
+      }
 
       // Private bearer links and human-friendly join codes. Document ids ARE
       // the secrets; no plaintext token is persisted in a field. Holders may

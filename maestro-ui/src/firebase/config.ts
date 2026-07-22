@@ -31,6 +31,15 @@ const firebaseConfig = {
   databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || DEFAULT_FIREBASE_CONFIG.databaseURL,
 };
 
+/**
+ * Public Firebase configuration for browser-only integrations such as the FCM
+ * service worker. Firebase API keys identify a project; access remains guarded
+ * by Firebase Auth and database rules.
+ */
+export function getFirebaseWebConfig(): Readonly<typeof firebaseConfig> {
+  return firebaseConfig;
+}
+
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId,
 );

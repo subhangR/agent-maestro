@@ -1,6 +1,6 @@
 # Collab Space — Notifications Architecture & Plan
 
-**Status:** Design proposal (for review)
+**Status:** Phase 1 and Phase 2 implementation complete; Phase 2 awaits Firebase console configuration and deployment
 **Author:** maestro-worker (sess_1784714043809)
 **Date:** 2026-07-22
 **Scope decisions locked with product owner:** web-browser surface · phased delivery (in-app first, then true push) · Cloud Functions fan-out · **messages are the only notification trigger**
@@ -109,8 +109,8 @@ Components:
 **Requires:** upgrade `maestro-5f3fc` to the **Blaze** plan (Cloud Functions + Firestore triggers). FCM itself and RTDB are free-tier.
 
 ### 6.1 Client (web)
-1. Add `firebase-messaging-sw.js` service worker (handles `onBackgroundMessage` → `showNotification`). Must be served from origin root; needs the `feat/web-collab-csp` CSP to allow the worker + FCM endpoints.
-2. On permission grant, `getToken({ vapidKey })` → register the token in Firestore (Section 9, `notificationProfiles/{uid}.tokens[]`), refresh on `onTokenRefresh`, prune on `deleteToken`/`401`.
+1. Add `firebase-messaging-sw.js` service worker (handles `onBackgroundMessage` → `showNotification`). It is served from the origin root and receives the public Firebase config at registration time, so it also works with a `VITE_FIREBASE_*` override.
+2. On the explicit desktop-notification opt-in, `getToken({ vapidKey })` registers the browser under `notificationProfiles/{uid}/devices/{deviceId}`. Disabling the setting calls `deleteToken` and removes that device registration; the Function also prunes FCM-invalid registrations.
 3. Foreground `onMessage` handler routes to the same in-app toast/inbox from Phase 1 (so a focused tab shows an in-app toast, not an OS banner).
 
 ### 6.2 Server (Cloud Functions) — the fan-out
@@ -169,13 +169,14 @@ Send **data-only** messages (not `notification`-only) so the service worker full
 ### Firestore
 ```
 notificationProfiles/{uid}
-  tokens: [{ token, platform:"web", createdAt, lastSeenAt }]   // FCM registration tokens (Phase 2)
-  globalMuted: bool
-  mentionsOnly: bool                                           // default true (v1 "mentions-first")
+  level: "mentions" | "all"
+  desktopEnabled: bool
   mutedSpaceIds: [spaceId]
   mutedChannelIds: [channelId]
-  quietHours: { start, end, tz } | null                        // later
   updatedAt
+
+notificationProfiles/{uid}/devices/{deviceId}                  // FCM registration (Phase 2)
+  token, platform:"web", createdAt, lastSeenAt
 
 collabSpaces/{spaceId}/readState/{uid}
   lastReadAt: { <channelId>: <ts> }                            // drives unread badges
@@ -188,8 +189,8 @@ notifications/{uid}/items/{itemId}                             // durable inbox 
 
 ### RTDB (new)
 ```
-/presence/{uid}                    : { state, lastChanged }
-/spacePresence/{spaceId}/{uid}     : { online, focus, lastActive }
+/presence/{uid}/connections/{id}                    : { online:true, lastActive }
+/spacePresence/{spaceId}/{uid}/connections/{id}     : { focus, visible, lastActive }
 ```
 
 **Why `notifications/{uid}` is per-recipient (not a space subcollection):** a user must read *their own* inbox across all spaces with one listener, and only they may read it — a per-uid top-level collection makes the security rule trivial and the read cheap.
@@ -201,8 +202,12 @@ notifications/{uid}/items/{itemId}                             // durable inbox 
 ```
 // A user owns their notification profile and inbox.
 match /notificationProfiles/{uid} {
-  allow read, write: if isSignedIn() && request.auth.uid == uid
-    && /* shape: tokens list ≤ 20, bounded strings, bool flags */;
+  allow get, create, update: if isSignedIn() && request.auth.uid == uid
+    && /* level, desktop flag, bounded mute arrays */;
+  match /devices/{deviceId} {
+    allow read, create, update, delete: if isSignedIn() && request.auth.uid == uid
+      && /* bounded web-token shape; createdAt/platform immutable on update */;
+  }
 }
 match /notifications/{uid}/items/{itemId} {
   allow read: if isSignedIn() && request.auth.uid == uid;
@@ -217,7 +222,7 @@ match /collabSpaces/{spaceId}/readState/{uid} {
 }
 ```
 - Inbox items are written **only** by the Admin SDK (Cloud Function), which bypasses rules — so clients can't forge notifications. Clients may only flip `readAt` on their own items.
-- **RTDB rules** (`database.rules.json`, net-new file): a uid may write only its own `/presence/{uid}` and `/spacePresence/{s}/{uid}`; space members may read a space's presence.
+- **RTDB rules** (`database.rules.json`): a uid may write only its own connection entries. The current UI does not expose a presence roster, so reads stay private; the Admin SDK reads space focus for routing and bypasses RTDB rules.
 
 ---
 
@@ -233,26 +238,40 @@ match /collabSpaces/{spaceId}/readState/{uid} {
 - **Topic fan-out for large public spaces:** for spaces with hundreds of "all-activity" subscribers, subscribe clients to `space_{spaceId}` topics and broadcast coarse events via one topic send, reserving token-targeting for mentions. Cuts multicast cost at scale.
 - **Digest / batching:** coalesce bursty channels into a rolling "N new messages" push (`tag` + server-side debounce).
 - **Quiet hours** in the preference model.
-- **Other surfaces:** Tauri desktop via the OS-native notification plugin fed by the same inbox writes; Expo mobile via native FCM/APNs. The `notificationProfiles.tokens[].platform` field is already shaped for this.
+- **Other surfaces:** Tauri desktop via the OS-native notification plugin fed by the same inbox writes; Expo mobile via native FCM/APNs. The per-device registration shape is ready to add a platform discriminator.
 
 ---
 
 ## 13. Phased milestones
 
-**Phase 1 — In-app (no Blaze)**
+**Phase 1 — In-app (no Blaze) — complete**
 1. `NotificationEngine` + space-wide subscription manager (with `createdAt >` backfill guard).
 2. `useNotificationsStore` + read-state model + unread badges.
 3. Notification inbox UI + deep links.
 4. Browser `Notification` API for open-but-unfocused tabs + permission UX.
-5. Minimal preferences (global / per-space mute / mentions-only).
+5. Minimal preferences (all messages or mentions-only, plus per-space/channel mute).
 
-**Phase 2 — True push (Blaze)**
+**Phase 2 — True push (Blaze) — implementation complete**
 6. Upgrade project to Blaze; scaffold `functions/`.
 7. `firebase-messaging-sw.js` + token registration + CSP allowances.
 8. `fanoutMessageNotification` Cloud Function (recipient resolution, prefs, inbox write, multicast send, dead-token pruning, idempotency).
 9. RTDB presence + `onDisconnect` + presence-gated push suppression.
 10. Security rules (Firestore additions + new `database.rules.json`) + tests.
 11. End-to-end verification: closed-tab push, mention targeting, mute honored, no double-notify when focused.
+
+### Deployment checklist (operator action required)
+
+1. Upgrade `maestro-5f3fc` to Blaze and enable Cloud Messaging / Cloud Functions in Firebase.
+2. Generate a Web Push VAPID key in Firebase Console → Project Settings → Cloud Messaging, then set `VITE_FIREBASE_VAPID_KEY` for the browser build. It is a public key and must be available at build time.
+   For a non-default Firebase project, also provide its RTDB instance URL as the `MAESTRO_RTDB_URL` Functions parameter.
+3. Deploy the database and Firestore rules, then deploy the `notifications` Functions codebase:
+
+   ```sh
+   firebase deploy --only database,firestore:rules
+   firebase deploy --only functions:notifications --force
+   ```
+
+4. Test with two signed-in browser profiles: keep the recipient’s channel focused (inbox only, no push), hide/close it (push), then click the notification (opens its message channel). Confirm a muted channel and a mentions-only profile suppress the appropriate deliveries.
 
 ---
 

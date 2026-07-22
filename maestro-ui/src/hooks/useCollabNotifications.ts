@@ -14,10 +14,20 @@ import {
   classifyIncomingMessage,
   previewOf,
   type CollabNotification,
+  type NotifyPrefs,
 } from '../notifications/collabNotificationTypes';
 import { showDesktopNotification } from '../notifications/desktopNotify';
 import { openCollabNotification } from '../notifications/collabNotificationNav';
 import type { Message } from '../firebase/messagingTypes';
+import {
+  markChannelNotificationsRead,
+  saveNotificationPrefs,
+  subscribeNotificationInbox,
+  subscribeNotificationProfile,
+  writeChannelReadState,
+} from '../firebase/notificationClient';
+import { CollabPresence } from '../firebase/collabPresence';
+import { startWebPush, stopWebPush, type CollabPushPayload } from '../firebase/webPush';
 
 /**
  * Bridges a new message surfaced by the engine to the notifications store,
@@ -84,6 +94,7 @@ export function handleEngineMessage(message: Message, meta: ChannelMeta): void {
 
 /** Lazily-built singleton engine (survives re-renders; one per app). */
 let engine: CollabNotificationEngine | null = null;
+const presence = new CollabPresence();
 function getEngine(): CollabNotificationEngine {
   if (!engine) {
     engine = new CollabNotificationEngine({
@@ -106,6 +117,30 @@ function computeVisible(): boolean {
   return visible && focused;
 }
 
+function notificationFromPush(payload: CollabPushPayload): CollabNotification {
+  return {
+    id: `cn_${payload.messageId}`,
+    spaceId: payload.spaceId,
+    spaceName: payload.spaceName,
+    channelId: payload.channelId,
+    channelName: payload.channelName,
+    messageId: payload.messageId,
+    authorUid: payload.actorUid,
+    authorName: payload.actorName,
+    preview: payload.preview,
+    isMention: payload.isMention,
+    timestamp: Date.now(),
+    read: false,
+  };
+}
+
+function samePrefs(a: NotifyPrefs, b: NotifyPrefs): boolean {
+  return a.level === b.level
+    && a.desktopEnabled === b.desktopEnabled
+    && a.mutedSpaceIds.join('\u0000') === b.mutedSpaceIds.join('\u0000')
+    && a.mutedChannelIds.join('\u0000') === b.mutedChannelIds.join('\u0000');
+}
+
 /**
  * Mount once (in AppModals) while signed in. Starts/stops the notification
  * engine with auth, and mirrors window visibility/focus into the store so the
@@ -113,6 +148,8 @@ function computeVisible(): boolean {
  */
 export function useCollabNotifications(): void {
   const uid = useFirebaseAuthStore((s) => s.user?.uid ?? null);
+  const prefs = useCollabNotificationsStore((s) => s.prefs);
+  const windowVisible = useCollabNotificationsStore((s) => s.windowVisible);
   const setWindowVisible = useCollabNotificationsStore((s) => s.setWindowVisible);
   const setFocusedChannel = useCollabNotificationsStore((s) => s.setFocusedChannel);
   const markChannelRead = useCollabNotificationsStore((s) => s.markChannelRead);
@@ -120,6 +157,7 @@ export function useCollabNotifications(): void {
   const activeId = useSessionStore((s) => s.activeId);
   const activeChannelBySpace = useMessagingStore((s) => s.activeChannelBySpace);
   const startedRef = useRef(false);
+  const profileLoadedRef = useRef(false);
 
   // Track which channel is on-screen so the classifier can suppress toasts for
   // it (and opening a channel clears its unread badge).
@@ -127,8 +165,14 @@ export function useCollabNotifications(): void {
     const spaceId = activeId && isCollabId(activeId) ? collabActiveIdToFirestoreId(activeId) : null;
     const channelId = spaceId ? activeChannelBySpace[spaceId] ?? null : null;
     setFocusedChannel(channelId);
-    if (channelId) markChannelRead(channelId);
-  }, [activeId, activeChannelBySpace, setFocusedChannel, markChannelRead]);
+    if (channelId) {
+      markChannelRead(channelId);
+      if (uid && spaceId) {
+        void markChannelNotificationsRead(uid, channelId).catch(() => {});
+        void writeChannelReadState(uid, spaceId, channelId).catch(() => {});
+      }
+    }
+  }, [activeId, activeChannelBySpace, setFocusedChannel, markChannelRead, uid]);
 
   useEffect(() => {
     const eng = getEngine();
@@ -144,6 +188,104 @@ export function useCollabNotifications(): void {
       // Only tear the engine down on unmount; uid changes are handled above.
     };
   }, [uid, resetLiveState]);
+
+  // Preferences move from local storage to a per-user Firestore profile in
+  // Phase 2 so the server can apply the same mutes/level before sending FCM.
+  useEffect(() => {
+    profileLoadedRef.current = false;
+    if (!uid) return;
+    return subscribeNotificationProfile(uid, (remote) => {
+      profileLoadedRef.current = true;
+      if (remote && !samePrefs(remote, useCollabNotificationsStore.getState().prefs)) {
+        useCollabNotificationsStore.getState().setPrefsFromRemote(remote);
+      }
+      else void saveNotificationPrefs(uid, useCollabNotificationsStore.getState().prefs).catch(() => {});
+    });
+  }, [uid]);
+
+  useEffect(() => {
+    if (!uid || !profileLoadedRef.current) return;
+    void saveNotificationPrefs(uid, prefs).catch(() => {});
+  }, [uid, prefs]);
+
+  // Firestore-backed inbox entries are the durable source of truth. The
+  // foreground listener may already have surfaced the same message, so merge
+  // by deterministic message id rather than creating another toast.
+  useEffect(() => {
+    if (!uid) return;
+    return subscribeNotificationInbox(uid, {
+      initial: (items) => useCollabNotificationsStore.getState().hydrateInbox(items),
+      added: (item) => {
+        const store = useCollabNotificationsStore.getState();
+        const focused = store.windowVisible && store.focusedChannelId === item.channelId;
+        store.mergeNotification(item, !focused);
+        if (focused) store.markChannelRead(item.channelId);
+      },
+      modified: (item) => useCollabNotificationsStore.getState().mergeNotification(item, false),
+    });
+  }, [uid]);
+
+  // Per-tab RTDB presence tells the Function whether this exact channel is on
+  // screen. A hidden tab remains present but is deliberately not "focused",
+  // allowing a true push notification to reach the user.
+  useEffect(() => {
+    if (!uid) {
+      presence.stop();
+      return;
+    }
+    presence.start(uid);
+    return () => presence.stop();
+  }, [uid]);
+
+  useEffect(() => {
+    const spaceId = activeId && isCollabId(activeId) ? collabActiveIdToFirestoreId(activeId) : null;
+    const channelId = spaceId ? activeChannelBySpace[spaceId] ?? null : null;
+    presence.setFocus(spaceId, channelId, useCollabNotificationsStore.getState().windowVisible);
+  }, [activeId, activeChannelBySpace, windowVisible]);
+
+  // FCM foreground messages use the same in-app store as the regular listener;
+  // service-worker click events deep-link straight into the relevant channel.
+  useEffect(() => {
+    if (!uid || !prefs.desktopEnabled) {
+      if (uid) void stopWebPush(uid).catch(() => {});
+      return;
+    }
+    let disposed = false;
+    let stop: (() => void) | null = null;
+    void startWebPush(uid, {
+      onForeground: (payload) => {
+        if (disposed) return;
+        const item = notificationFromPush(payload);
+        const store = useCollabNotificationsStore.getState();
+        const focused = store.windowVisible && store.focusedChannelId === item.channelId;
+        store.mergeNotification(item, !focused);
+      },
+      onClick: (payload) => {
+        if (!disposed) openCollabNotification(notificationFromPush(payload));
+      },
+    }).then((cleanup) => {
+      if (disposed) cleanup();
+      else stop = cleanup;
+    }).catch(() => {});
+    return () => {
+      disposed = true;
+      stop?.();
+    };
+  }, [uid, prefs.desktopEnabled]);
+
+  // A click received while no tab was open reopens Maestro at this URL. Once
+  // auth is available, consume that URL and select the Collab channel.
+  useEffect(() => {
+    if (!uid || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    const spaceId = url.searchParams.get('collabSpace');
+    const channelId = url.searchParams.get('collabChannel');
+    if (!spaceId || !channelId) return;
+    url.searchParams.delete('collabSpace');
+    url.searchParams.delete('collabChannel');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    openCollabNotification({ spaceId, channelId });
+  }, [uid]);
 
   useEffect(() => {
     const sync = () => setWindowVisible(computeVisible());

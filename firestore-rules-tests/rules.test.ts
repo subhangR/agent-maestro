@@ -644,6 +644,64 @@ describe('channels', () => {
   });
 });
 
+// ─── Phase 2 notification privacy ──────────────────────────────────
+
+describe('notification profiles and inbox', () => {
+  const profile = {
+    level: 'all',
+    desktopEnabled: true,
+    mutedSpaceIds: [],
+    mutedChannelIds: [],
+    updatedAt: serverTimestamp(),
+  };
+
+  it('keeps a profile and FCM device registrations private to their owner', async () => {
+    const profileRef = doc(dbAs(MEMBER), 'notificationProfiles', MEMBER);
+    await assertSucceeds(setDoc(profileRef, profile));
+    await assertFails(getDoc(doc(dbAs(OUTSIDER), 'notificationProfiles', MEMBER)));
+
+    const deviceRef = doc(dbAs(MEMBER), 'notificationProfiles', MEMBER, 'devices', 'browser-1');
+    await assertSucceeds(setDoc(deviceRef, {
+      token: 'registration-token', platform: 'web',
+      createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(dbAs(OUTSIDER), 'notificationProfiles', MEMBER, 'devices', 'browser-2'), {
+      token: 'stolen-token', platform: 'web',
+      createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+    }));
+  });
+
+  it('allows recipients to read and acknowledge server-created inbox items only', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'notifications', MEMBER, 'items', 'message1'), {
+        type: 'message.new', spaceId: SPACE, channelId: 'general', messageId: 'message1',
+        actorUid: OWNER, actorName: OWNER, preview: 'hello', isMention: false,
+        createdAt: new Date(), readAt: null,
+      });
+    });
+    const inboxRef = doc(dbAs(MEMBER), 'notifications', MEMBER, 'items', 'message1');
+    await assertSucceeds(getDoc(inboxRef));
+    await assertSucceeds(updateDoc(inboxRef, { readAt: serverTimestamp() }));
+    await assertFails(updateDoc(inboxRef, { preview: 'forged' }));
+    await assertFails(getDoc(doc(dbAs(OUTSIDER), 'notifications', MEMBER, 'items', 'message1')));
+    await assertFails(setDoc(doc(dbAs(MEMBER), 'notifications', MEMBER, 'items', 'forged'), {
+      type: 'message.new', readAt: null,
+    }));
+  });
+
+  it('keeps a per-space read cursor private to the member who owns it', async () => {
+    await seedSpace('private');
+    const ownCursor = doc(dbAs(MEMBER), 'collabSpaces', SPACE, 'readState', MEMBER);
+    await assertSucceeds(setDoc(ownCursor, {
+      lastReadAt: { general: serverTimestamp() }, updatedAt: serverTimestamp(),
+    }));
+    await assertFails(getDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE, 'readState', MEMBER)));
+    await assertFails(setDoc(doc(dbAs(OUTSIDER), 'collabSpaces', SPACE, 'readState', OUTSIDER), {
+      lastReadAt: { general: serverTimestamp() }, updatedAt: serverTimestamp(),
+    }));
+  });
+});
+
 describe('default deny', () => {
   it('unknown top-level collections are unreadable and unwritable', async () => {
     await assertFails(getDoc(doc(dbAs(OWNER), 'users', 'alice')));

@@ -92,6 +92,10 @@ interface CollabNotificationsState {
   recordActivity: (channelId: string) => void;
   /** A message worth surfacing: adds a toast + inbox entry. */
   notify: (n: CollabNotification) => void;
+  /** Sync durable inbox records without replaying a toast flood on startup. */
+  hydrateInbox: (inbox: CollabNotification[]) => void;
+  /** Merge a durable inbox update, optionally showing one in-app toast. */
+  mergeNotification: (n: CollabNotification, showToast: boolean) => void;
 
   // ── UI → store ──
   dismissToast: (id: string) => void;
@@ -103,6 +107,8 @@ interface CollabNotificationsState {
   setDesktopEnabled: (enabled: boolean) => void;
   toggleSpaceMuted: (spaceId: string) => void;
   toggleChannelMuted: (channelId: string) => void;
+  /** Applies the signed-in user's Firestore-backed profile. */
+  setPrefsFromRemote: (prefs: NotifyPrefs) => void;
 
   setFocusedChannel: (channelId: string | null) => void;
   setWindowVisible: (visible: boolean) => void;
@@ -128,13 +134,31 @@ export const useCollabNotificationsStore = create<CollabNotificationsState>((set
     });
   },
 
-  notify: (n) => {
+  mergeNotification: (n, showToast) => {
     set((s) => {
-      const inbox = [n, ...s.inbox].slice(0, INBOX_CAP);
-      const toasts = [...s.toasts, n].slice(-TOAST_CAP);
+      const existing = s.inbox.find((item) => item.id === n.id);
+      const inbox = existing
+        ? s.inbox.map((item) => (item.id === n.id ? { ...item, ...n } : item))
+        : [n, ...s.inbox].slice(0, INBOX_CAP);
+      // The foreground engine and the durable inbox listener can observe the
+      // same message in either order. The id guard keeps that one message to
+      // one toast, while later read-state updates still merge into the inbox.
+      const toasts = showToast && !s.toasts.some((item) => item.id === n.id)
+        ? [...s.toasts, n].slice(-TOAST_CAP)
+        : s.toasts;
       write(LS.inbox, inbox);
       return { inbox, toasts };
     });
+  },
+
+  notify: (n) => get().mergeNotification(n, true),
+
+  hydrateInbox: (inbox) => {
+    const normalized = [...inbox]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, INBOX_CAP);
+    write(LS.inbox, normalized);
+    set({ inbox: normalized });
   },
 
   dismissToast: (id) => {
@@ -205,6 +229,11 @@ export const useCollabNotificationsStore = create<CollabNotificationsState>((set
       write(LS.prefs, prefs);
       return { prefs };
     });
+  },
+
+  setPrefsFromRemote: (prefs) => {
+    write(LS.prefs, prefs);
+    set({ prefs });
   },
 
   setFocusedChannel: (channelId) => set({ focusedChannelId: channelId }),

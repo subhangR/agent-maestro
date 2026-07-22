@@ -9,6 +9,8 @@ import {
   notificationPermission,
 } from '../../notifications/desktopNotify';
 import type { CollabNotification } from '../../notifications/collabNotificationTypes';
+import { useFirebaseAuthStore } from '../../stores/useFirebaseAuthStore';
+import { markAllNotificationsRead } from '../../firebase/notificationClient';
 
 /** Relative "2m ago" style timestamp, coarse — good enough for an inbox row. */
 function ago(ms: number): string {
@@ -38,6 +40,7 @@ export function CollabNotificationBell() {
   const clearInbox = useCollabNotificationsStore((s) => s.clearInbox);
   const setLevel = useCollabNotificationsStore((s) => s.setLevel);
   const setDesktopEnabled = useCollabNotificationsStore((s) => s.setDesktopEnabled);
+  const uid = useFirebaseAuthStore((s) => s.user?.uid ?? null);
 
   // Close on outside-click.
   useEffect(() => {
@@ -63,6 +66,11 @@ export function CollabNotificationBell() {
     setDesktopEnabled(perm === 'granted');
   };
 
+  const onMarkAllRead = () => {
+    markAllRead();
+    if (uid) void markAllNotificationsRead(uid).catch(() => {});
+  };
+
   const perm = notificationPermission();
 
   return (
@@ -85,7 +93,7 @@ export function CollabNotificationBell() {
           <div className="collab-notify-panel__head">
             <strong>Notifications</strong>
             <div className="collab-notify-panel__headActions">
-              <button type="button" onClick={markAllRead} disabled={unread === 0}>
+              <button type="button" onClick={onMarkAllRead} disabled={unread === 0}>
                 Mark all read
               </button>
               <button type="button" onClick={clearInbox} disabled={inbox.length === 0}>
