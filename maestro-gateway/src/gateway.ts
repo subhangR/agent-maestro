@@ -50,6 +50,23 @@ export class Gateway {
       });
     });
 
+    // Client-facing capability probe at the box origin. A client (e.g.
+    // maestro-mobile) hits `${hubOrigin}/health` BEFORE it has a token to learn
+    // how to authenticate. The hub always demands a Firebase token, so we answer
+    // `authMode: 'firebase'` here rather than proxying to a per-user instance
+    // (whose own /health reports 'none' since instances run auth-disabled behind
+    // the loopback). Must stay UNAUTHENTICATED and sit ahead of the /api proxy +
+    // SPA catch-all below.
+    app.get('/health', (_req: Request, res: Response) => {
+      res.json({
+        status: 'ok',
+        authMode: 'firebase',
+        commit: this.build.commit,
+        timestamp: Date.now(),
+        uptime: process.uptime(),
+      });
+    });
+
     // Server-level dashboard data. This must stay at the gateway rather than
     // being proxied to one member's private Maestro instance.
     app.get('/gateway/api/overview', (req: Request, res: Response) => {
