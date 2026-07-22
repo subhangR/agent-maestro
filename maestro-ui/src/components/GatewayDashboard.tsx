@@ -9,11 +9,25 @@ interface GatewayMember {
   uid: string | null;
   workspaceStatus: string;
   liveAgentCount: number;
+  runningSessionCount: number;
+}
+
+interface GatewayServerOverview {
+  cpuUsagePercent: number | null;
+  cpuCores: number;
+  memoryUsedBytes: number;
+  memoryTotalBytes: number;
+  memoryUsedPercent: number;
+  runningInstances: number;
+  totalInstances: number;
+  runningSessionCount: number;
+  liveAgentCount: number;
 }
 
 interface GatewayOverview {
   generatedAt: number;
   members: GatewayMember[];
+  server: GatewayServerOverview;
 }
 
 function nameFor(member: GatewayMember, presence?: GatewayPresence): string {
@@ -22,6 +36,10 @@ function nameFor(member: GatewayMember, presence?: GatewayPresence): string {
 
 function initials(name: string): string {
   return name.split(/[\s._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
+}
+
+function formatBytes(bytes: number): string {
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
 /** Gateway-owned team control centre. Its data never comes from a member instance. */
@@ -60,10 +78,8 @@ export function GatewayDashboard() {
     () => members.filter((member) => member.uid && presence[member.uid]).length,
     [members, presence],
   );
-  const liveAgentCount = useMemo(
-    () => members.reduce((total, member) => total + member.liveAgentCount, 0),
-    [members],
-  );
+  const server = overview?.server;
+  const liveAgentCount = server?.liveAgentCount ?? members.reduce((total, member) => total + member.liveAgentCount, 0);
 
   return (
     <main className="gatewayDashboard">
@@ -85,10 +101,14 @@ export function GatewayDashboard() {
         </button>
       </section>
 
-      <section className="gatewayDashboard__metrics" aria-label="Gateway summary">
+      <section className="gatewayDashboard__metrics" aria-label="Gateway and server summary">
         <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{onlineCount}</span><span>online now</span></div>
         <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{liveAgentCount}</span><span>agents working</span></div>
         <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{members.length}</span><span>team members</span></div>
+        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server?.runningSessionCount ?? '—'}</span><span>running sessions</span></div>
+        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server?.cpuUsagePercent == null ? '—' : `${server.cpuUsagePercent}%`}</span><span>CPU · {server?.cpuCores ?? '—'} cores</span></div>
+        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server ? formatBytes(server.memoryUsedBytes) : '—'}</span><span>{server ? `${server.memoryUsedPercent}% of ${formatBytes(server.memoryTotalBytes)}` : 'memory used'}</span></div>
+        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server ? `${server.runningInstances}/${server.totalInstances}` : '—'}</span><span>Maestro servers live</span></div>
       </section>
 
       <section className="gatewayDashboard__members" aria-labelledby="gateway-members-title">
@@ -110,7 +130,7 @@ export function GatewayDashboard() {
                     <span className={`gatewayDashboard__presence ${online ? 'gatewayDashboard__presence--online' : ''}`} />
                   </div>
                   <div className="gatewayDashboard__memberIdentity"><h3>{name}</h3><p>{member.email}</p></div>
-                  <div className="gatewayDashboard__memberStats"><span className={online ? 'gatewayDashboard__onlineText' : ''}>{online ? 'Online' : 'Offline'}</span><strong>{member.liveAgentCount} {member.liveAgentCount === 1 ? 'agent' : 'agents'} working</strong></div>
+                  <div className="gatewayDashboard__memberStats"><span className={online ? 'gatewayDashboard__onlineText' : ''}>{online ? 'Online' : 'Offline'}</span><strong>{member.liveAgentCount} {member.liveAgentCount === 1 ? 'agent' : 'agents'} working · {member.runningSessionCount} sessions</strong></div>
                 </article>
               );
             })}

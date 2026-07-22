@@ -38,22 +38,27 @@ export class InstanceSupervisor {
   }
 
   /**
-   * Count currently working/spawning agent sessions in a running workspace.
-   * This is intentionally read through the instance's own public session DTO;
-   * the gateway never reaches into a user's data directory.
+   * Summary of a member's active sessions. Reading the instance's session DTO
+   * keeps the dashboard at the gateway boundary; it never reads user files.
    */
-  async liveAgentCount(handle: InstanceHandle): Promise<number> {
-    if (handle.status !== 'live') return 0;
+  async sessionCounts(handle: InstanceHandle): Promise<{ liveAgentCount: number; runningSessionCount: number }> {
+    if (handle.status !== 'live') return { liveAgentCount: 0, runningSessionCount: 0 };
     try {
-      const res = await fetch(`${this.targetFor(handle)}/api/sessions?status=spawning,working`, {
+      const res = await fetch(`${this.targetFor(handle)}/api/sessions?status=spawning,idle,working`, {
         signal: AbortSignal.timeout(2000),
       });
-      if (!res.ok) return 0;
+      if (!res.ok) return { liveAgentCount: 0, runningSessionCount: 0 };
       const sessions: unknown = await res.json();
-      return Array.isArray(sessions) ? sessions.length : 0;
+      if (!Array.isArray(sessions)) return { liveAgentCount: 0, runningSessionCount: 0 };
+      return {
+        // "Live agent" means it is actively starting or doing work. Idle PTYs
+        // remain part of the running-session total but do not inflate this number.
+        liveAgentCount: sessions.filter((session: any) => session?.status === 'spawning' || session?.status === 'working').length,
+        runningSessionCount: sessions.length,
+      };
     } catch {
       // A transient count failure must not make the dashboard unavailable.
-      return 0;
+      return { liveAgentCount: 0, runningSessionCount: 0 };
     }
   }
 

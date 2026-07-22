@@ -42,6 +42,19 @@ export interface GatewayMemberOverview {
   uid: string | null;
   workspaceStatus: InstanceStatus | 'not_provisioned';
   liveAgentCount: number;
+  runningSessionCount: number;
+}
+
+export interface GatewayServerOverview {
+  cpuUsagePercent: number | null;
+  cpuCores: number;
+  memoryUsedBytes: number;
+  memoryTotalBytes: number;
+  memoryUsedPercent: number;
+  runningInstances: number;
+  totalInstances: number;
+  runningSessionCount: number;
+  liveAgentCount: number;
 }
 
 /** Thrown by an AuthVerifier when a request must be rejected. */

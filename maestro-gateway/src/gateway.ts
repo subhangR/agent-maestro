@@ -1,5 +1,6 @@
 import * as http from 'http';
 import * as path from 'path';
+import * as os from 'os';
 import { existsSync } from 'fs';
 import { Duplex } from 'stream';
 import express, { Request, Response, NextFunction } from 'express';
@@ -8,7 +9,7 @@ import { Logger } from './logger';
 import { AuthVerifier, Allowlist, AuthInput } from './auth';
 import { InstanceSupervisor } from './supervisor';
 import { Proxy } from './proxy';
-import { AuthResult, AuthError, GatewayMemberOverview } from './types';
+import { AuthResult, AuthError, GatewayMemberOverview, GatewayServerOverview } from './types';
 
 /**
  * The gateway HTTP surface (Design A):
@@ -19,6 +20,7 @@ import { AuthResult, AuthError, GatewayMemberOverview } from './types';
  */
 export class Gateway {
   readonly app: express.Express;
+  private cpuSample = this.readCpuTimes();
 
   constructor(
     private readonly config: GatewayConfig,
@@ -120,19 +122,56 @@ export class Gateway {
       const members: GatewayMemberOverview[] = await Promise.all(
         roster.map(async (email) => {
           const handle = byEmail.get(email);
+          const counts = handle
+            ? await this.supervisor.sessionCounts(handle)
+            : { liveAgentCount: 0, runningSessionCount: 0 };
           return {
             email,
             uid: handle?.uid ?? null,
             workspaceStatus: handle?.status ?? 'not_provisioned',
-            liveAgentCount: handle ? await this.supervisor.liveAgentCount(handle) : 0,
+            ...counts,
           };
         }),
       );
 
-      res.json({ generatedAt: Date.now(), members });
+      const server = this.buildServerOverview(handles.length, handles.filter((handle) => handle.status === 'live').length, members);
+      res.json({ generatedAt: Date.now(), members, server });
     } catch (err) {
       this.rejectHttp(res, err);
     }
+  }
+
+  private buildServerOverview(totalInstances: number, runningInstances: number, members: GatewayMemberOverview[]): GatewayServerOverview {
+    const current = this.readCpuTimes();
+    const totalDelta = current.total - this.cpuSample.total;
+    const idleDelta = current.idle - this.cpuSample.idle;
+    this.cpuSample = current;
+    const cpuUsagePercent = totalDelta > 0
+      ? Math.round(((totalDelta - idleDelta) / totalDelta) * 1000) / 10
+      : null;
+    const memoryTotalBytes = os.totalmem();
+    const memoryUsedBytes = memoryTotalBytes - os.freemem();
+    return {
+      cpuUsagePercent,
+      cpuCores: os.cpus().length,
+      memoryUsedBytes,
+      memoryTotalBytes,
+      memoryUsedPercent: Math.round((memoryUsedBytes / memoryTotalBytes) * 1000) / 10,
+      runningInstances,
+      totalInstances,
+      runningSessionCount: members.reduce((total, member) => total + member.runningSessionCount, 0),
+      liveAgentCount: members.reduce((total, member) => total + member.liveAgentCount, 0),
+    };
+  }
+
+  private readCpuTimes(): { total: number; idle: number } {
+    return os.cpus().reduce(
+      (times, cpu) => ({
+        total: times.total + cpu.times.user + cpu.times.nice + cpu.times.sys + cpu.times.idle + cpu.times.irq,
+        idle: times.idle + cpu.times.idle,
+      }),
+      { total: 0, idle: 0 },
+    );
   }
 
   /**
