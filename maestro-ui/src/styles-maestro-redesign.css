@@ -5,8 +5,8 @@
    carry !important so they cannot lose to any later specificity games.
 
    System: paper #EFEDE6 · panel #F5F3ED · card #FBFAF5 · ink #16130E
-           green #2C7A54 is an ACCENT ONLY (selection bar, status, focus) —
-           never a flat fill.
+           the active theme palette is an ACCENT ONLY (selection bar, status,
+           focus) — never a flat fill.
    GPU note (2015 MacBook Air): backdrop-filter blur is limited to FOUR small
    floating surfaces (top bar, chat header, view segment, ensemble badge).
    Tiles use translucent gradients + layered shadows instead — no jank.
@@ -21,7 +21,7 @@ html[data-redesign][data-redesign] {
   --pn-card:    #FBFAF5;
   --pn-canvas:  #FCFBF7;
   --pn-hover:   #F0EDE4;
-  --pn-active:  #E3EFE6;          /* green-soft — selection tint (accent use only) */
+  --pn-active:  rgba(var(--theme-primary-rgb), 0.12);
   --pn-line:    #DAD4C6;
   --pn-line-2:  #E6E1D5;
 
@@ -32,12 +32,13 @@ html[data-redesign][data-redesign] {
   --pn-muted:   #6B6353;          /* alias used by the activity view */
   --pn-faint:   #9A9081;
 
-  --pn-brand:      #2C7A54;
-  --pn-brand-2:    #38A06B;
-  --pn-brand-soft: #E3EFE6;
-  --pn-accent:     #2C7A54;
-  --pn-run:        #2C7A54;
-  --pn-run-soft:   #E3EFE6;
+  /* Bridge the redesign components to the live style/color picker. */
+  --pn-brand:      var(--theme-primary-dim);
+  --pn-brand-2:    var(--theme-primary);
+  --pn-brand-soft: rgba(var(--theme-primary-rgb), 0.12);
+  --pn-accent:     var(--theme-primary-dim);
+  --pn-run:        var(--theme-primary-dim);
+  --pn-run-soft:   rgba(var(--theme-primary-rgb), 0.12);
 
   /* priority */
   --pn-prio-high: #CB4A34;
@@ -60,9 +61,9 @@ html[data-redesign][data-redesign] {
 }
 html[data-redesign][data-redesign][data-theme='dark'] {
   --pn-canvas: #1A1814;
-  --pn-brand: #4FB07A; --pn-brand-2: #5CB381; --pn-run: #5CB381;
-  --pn-brand-soft: rgba(79, 176, 122, 0.16);
-  --pn-active: rgba(79, 176, 122, 0.16); --pn-run-soft: rgba(79, 176, 122, 0.16);
+  --pn-brand: var(--theme-primary); --pn-brand-2: var(--theme-primary-dim); --pn-run: var(--theme-primary);
+  --pn-brand-soft: rgba(var(--theme-primary-rgb), 0.16);
+  --pn-active: rgba(var(--theme-primary-rgb), 0.16); --pn-run-soft: rgba(var(--theme-primary-rgb), 0.16);
   --pn-muted: #8C8470; --pn-faint: #665E4C;
   --glass-top:  rgba(40, 35, 26, 0.72);
   --glass-bot:  rgba(30, 26, 19, 0.45);
@@ -89,7 +90,7 @@ html[data-redesign][data-redesign] #root,
 html[data-redesign][data-redesign] .app,
 html[data-redesign][data-redesign] .appContent {
   background:
-    radial-gradient(110% 70% at 85% -10%, rgba(44, 122, 84, 0.07), transparent 55%),
+    radial-gradient(110% 70% at 85% -10%, rgba(var(--theme-primary-rgb), 0.08), transparent 55%),
     radial-gradient(90% 60% at -5% 110%, rgba(201, 138, 18, 0.06), transparent 50%),
     var(--pn-paper) !important;
 }
@@ -161,7 +162,7 @@ html[data-redesign][data-redesign] .pn-kids--st { border-left-color: var(--pn-li
 html[data-redesign][data-redesign] .pn-tt--active,
 html[data-redesign][data-redesign] .pn-st--selected {
   background: linear-gradient(180deg, rgba(255,255,255,.95), rgba(255,255,255,.7)) !important;
-  border-color: rgba(44, 122, 84, 0.30) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.30) !important;
   box-shadow:
     inset 3px 0 0 var(--pn-brand),
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
@@ -251,8 +252,8 @@ html[data-redesign][data-redesign] .pn-st__infobadge {
 }
 html[data-redesign][data-redesign] .pn-st__tag--done {
   color: var(--pn-brand) !important;
-  border-color: rgba(44, 122, 84, 0.3) !important;
-  background: rgba(227, 239, 230, 0.7) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.3) !important;
+  background: rgba(var(--theme-primary-rgb), 0.12) !important;
 }
 
 /* primary button — deep-ink glass, NOT green; green stays an accent */
@@ -368,7 +369,7 @@ html[data-redesign][data-redesign] .pn-viewseg__btn {
 html[data-redesign][data-redesign] .pn-viewseg__btn:hover { color: #fff; }
 html[data-redesign][data-redesign] .pn-viewseg__btn--on {
   background: var(--pn-run); color: #fff;
-  box-shadow: 0 1px 6px -1px rgba(44, 122, 84, 0.6);
+  box-shadow: 0 1px 6px -1px rgba(var(--theme-primary-rgb), 0.6);
 }
 
 /* --------------------------------------------------------------------------
@@ -382,7 +383,7 @@ html[data-redesign][data-redesign] .pn-activity-overlay {
 html[data-redesign][data-redesign] .pn-chat {
   display: flex; flex-direction: column; height: 100%; min-height: 0;
   background:
-    radial-gradient(120% 80% at 100% 0%, rgba(44, 122, 84, 0.05), transparent 60%),
+    radial-gradient(120% 80% at 100% 0%, rgba(var(--theme-primary-rgb), 0.06), transparent 60%),
     radial-gradient(100% 70% at 0% 100%, rgba(201, 138, 18, 0.04), transparent 55%),
     var(--pn-canvas) !important;
 }
@@ -516,7 +517,7 @@ html[data-redesign][data-redesign][data-theme='dark'] #root,
 html[data-redesign][data-redesign][data-theme='dark'] .app,
 html[data-redesign][data-redesign][data-theme='dark'] .appContent {
   background:
-    radial-gradient(110% 70% at 85% -10%, rgba(79, 176, 122, 0.06), transparent 55%),
+    radial-gradient(110% 70% at 85% -10%, rgba(var(--theme-primary-rgb), 0.07), transparent 55%),
     radial-gradient(90% 60% at -5% 110%, rgba(217, 170, 73, 0.05), transparent 50%),
     var(--pn-paper) !important;
 }
@@ -540,7 +541,7 @@ html[data-redesign][data-redesign][data-theme='dark'] .pn-st:hover {
 html[data-redesign][data-redesign][data-theme='dark'] .pn-tt--active,
 html[data-redesign][data-redesign][data-theme='dark'] .pn-st--selected {
   background: linear-gradient(180deg, rgba(48, 42, 29, 0.9), rgba(38, 33, 23, 0.65)) !important;
-  border-color: rgba(79, 176, 122, 0.35) !important;
+  border-color: rgba(var(--theme-primary-rgb), 0.35) !important;
   box-shadow:
     inset 3px 0 0 var(--pn-brand),
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
@@ -654,15 +655,15 @@ html[data-redesign][data-redesign] .pn-chat__composer-coord:hover {
 html[data-redesign][data-redesign] .pn-chat__composer-model--open { border-color: var(--pn-brand-2); color: var(--pn-brand); }
 html[data-redesign][data-redesign] .pn-chat__composer-coord--on {
   background: var(--pn-brand-soft); color: var(--pn-brand);
-  border-color: rgba(44, 122, 84, 0.45);
+  border-color: rgba(var(--theme-primary-rgb), 0.45);
 }
 
-/* green send */
+/* palette-accented send */
 html[data-redesign][data-redesign] .pn-chat__composer-send {
   width: 34px; height: 34px; flex: 0 0 auto; border: none; cursor: pointer;
   border-radius: 11px; display: grid; place-items: center;
   background: var(--pn-brand); color: #fff;
-  box-shadow: 0 2px 8px -2px rgba(44, 122, 84, 0.55);
+  box-shadow: 0 2px 8px -2px rgba(var(--theme-primary-rgb), 0.55);
   transition: background 150ms, transform 150ms cubic-bezier(.2,.7,.2,1), opacity 150ms;
 }
 html[data-redesign][data-redesign] .pn-chat__composer-send:hover:not(:disabled) { background: var(--pn-brand-2); transform: translateY(-1px); }
@@ -717,7 +718,7 @@ html[data-redesign][data-redesign][data-theme='dark'] .pn-chat__composer {
   border-top-color: rgba(59, 53, 36, 0.85);
 }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-chat__composer-coord--on {
-  border-color: rgba(79, 176, 122, 0.5);
+  border-color: rgba(var(--theme-primary-rgb), 0.5);
 }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-chat__composer-send {
   box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.6);
