@@ -84,7 +84,8 @@ export class CollabFirestore {
     const structuredQuery: Record<string, unknown> = { from: [{ collectionId }], limit: options.limit || 50 };
     if (where) structuredQuery.where = where;
     if (options.orderBy) structuredQuery.orderBy = [{ field: { fieldPath: options.orderBy }, direction: options.descending ? 'DESCENDING' : 'ASCENDING' }];
-    const rows = await this.request<Array<{ document?: FireDocument }>>(`/${parent}:runQuery`, { method: 'POST', body: JSON.stringify({ structuredQuery }) });
+    const queryPath = parent ? `/${parent}:runQuery` : ':runQuery';
+    const rows = await this.request<Array<{ document?: FireDocument }>>(queryPath, { method: 'POST', body: JSON.stringify({ structuredQuery }) });
     return rows.filter((row) => row.document).map((row) => ({ id: docId(row.document!.name), data: docData(row.document!) }));
   }
 

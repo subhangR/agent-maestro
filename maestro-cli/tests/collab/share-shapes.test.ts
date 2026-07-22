@@ -22,7 +22,13 @@ describe('Collab share/pull schemas', () => {
     expect(task).toEqual(expect.objectContaining({ projectId: 'p2', title: 'Remote', priority: 'low' }));
     expect(task).not.toHaveProperty('sourceUserId');
     const spell = pullShape('spell', { name: 'Remote spell', description: 'd', rules: [] }, '');
-    expect(spell).toEqual({ name: 'Remote spell', description: 'd', icon: undefined, color: 'violet', rules: [] });
+    expect(spell).toMatchObject({ name: 'Remote spell', description: 'd', icon: undefined, color: 'violet', rules: [expect.objectContaining({ enabled: false })] });
+  });
+
+  it('coerces null member avatar and gives legacy spells a disabled safe rule', () => {
+    expect(pullShape('member', { name: 'M', role: 'r', avatar: null }, 'p2')).toMatchObject({ avatar: '' });
+    const legacy = pullShape('spell', { name: 'Old', description: 'legacy content', body: 'legacy body' }, '');
+    expect(legacy.rules).toEqual([expect.objectContaining({ enabled: false, trigger: { type: 'hook', hookEvent: 'Stop' } })]);
   });
 
   it('omits status from strict task create payloads', () => {
