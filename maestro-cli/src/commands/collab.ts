@@ -144,13 +144,14 @@ export function registerCollabCommands(root: Command): void {
   }));
 
   const space = collab.command('space').description('Manage Collab spaces');
-  space.command('list').option('--mine').option('--public').requiredOption('--repo <url>').option('--limit <n>', 'Maximum results', '50').action(guarded(async (options: { mine?: boolean; public?: boolean; repo: string; limit: string }) => {
+  space.command('list').option('--mine').option('--public').option('--repo <url>').option('--limit <n>', 'Maximum results', '50').action(guarded(async (options: { mine?: boolean; public?: boolean; repo?: string; limit: string }) => {
     if (options.mine && options.public) throw new CollabError('INVALID_ARGUMENTS', 'Choose at most one of --mine and --public.');
-    const c = await client(root); const repo = normalizeRepo(options.repo); const limit = Math.min(200, Math.max(1, Number(options.limit)));
-    const spaces = options.public ? await c.db.list('', 'collabSpaces', { filters: [{ field: 'githubUrl', op: 'EQUAL', value: repo }, { field: 'visibility', op: 'EQUAL', value: 'public' }], limit }) : await c.db.list('', 'collabSpaces', { filters: [{ field: 'memberIds', op: 'ARRAY_CONTAINS', value: c.identity.uid }, { field: 'githubUrl', op: 'EQUAL', value: repo }], limit });
+    if (options.public && !options.repo) throw new CollabError('INVALID_ARGUMENTS', '--public requires --repo.');
+    const c = await client(root); const repo = options.repo ? normalizeRepo(options.repo) : undefined; const limit = Math.min(200, Math.max(1, Number(options.limit)));
+    const spaces = options.public ? await c.db.list('', 'collabSpaces', { filters: [{ field: 'githubUrl', op: 'EQUAL', value: repo }, { field: 'visibility', op: 'EQUAL', value: 'public' }], limit }) : await c.db.list('', 'collabSpaces', repo ? { filters: [{ field: 'memberIds', op: 'ARRAY_CONTAINS', value: c.identity.uid }, { field: 'githubUrl', op: 'EQUAL', value: repo }], limit } : { arrayContains: ['memberIds', c.identity.uid], limit });
     // Membership discovery is allowed only for the caller, but still bounded
     // to the explicit repository scope before any output is produced.
-    result(root, spaces.filter((item) => item.data.githubUrl === repo && (!options.public || item.data.visibility === 'public')).slice(0, limit).map((item) => publicValue(item, c.identity)));
+    result(root, spaces.filter((item) => (!repo || item.data.githubUrl === repo) && (!options.public || item.data.visibility === 'public')).slice(0, limit).map((item) => publicValue(item, c.identity)));
   }));
   space.command('show <space-id>').action(guarded(async (spaceId: string) => { const c = await client(root); const value = await c.db.get(`collabSpaces/${spaceId}`); if (!value) throw new CollabError('COLLAB_NOT_FOUND', 'Space was not found.'); result(root, publicValue(value, c.identity)); }));
   space.command('use <space-id>').option('--project <project-id>').action(guarded(async (spaceId: string, options: { project?: string }) => { const { name } = resolveProfile(profileFrom()); setDefaultContext(name, { spaceId, projectId: options.project }); result(root, { spaceId, ...(options.project ? { projectId: options.project } : {}) }); }));
