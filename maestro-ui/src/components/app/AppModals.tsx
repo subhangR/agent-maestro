@@ -38,10 +38,16 @@ import { TeamMemberIntroDialog } from "../maestro/TeamMemberIntroDialog";
 import { SpellbookDrawer } from "../spells/studio/spellbook";
 import { UndoToast } from "../spells/UndoToast";
 import { SpellNotificationToasts } from "../spells/SpellNotificationToasts";
+import { CollabNotificationToaster } from "../collab/CollabNotificationToaster";
+import { useCollabNotifications } from "../../hooks/useCollabNotifications";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { normalizeSmartQuotes } from "../../app/utils/string";
 
 export function AppModals() {
+  // Phase 1 collab notifications: starts the space-wide notification engine
+  // while signed in and mirrors window focus/visibility for toast suppression.
+  useCollabNotifications();
+
   /* ------------------------------------------------------------------ */
   /*  Local refs for modal inputs                                        */
   /* ------------------------------------------------------------------ */
@@ -692,6 +698,7 @@ export function AppModals() {
       <SpellbookHost />
       <UndoToast />
       <SpellNotificationToasts />
+      <CollabNotificationToaster />
 
       {/* Agent-generated modals */}
       {activeModals.map((modal) => (

@@ -13,6 +13,7 @@ import {
 import { makeCollabActiveId } from "../../app/types/space";
 import { CollabSpaceClient } from "../../firebase/CollabSpaceClient";
 import { parseInviteLink } from "../../firebase/spaceInvite";
+import { CollabNotificationBell } from "../collab/CollabNotificationBell";
 
 /**
  * Classifies a failed `setProjectGithubUrl` PUT so the UI can tell a
@@ -273,6 +274,7 @@ function SignedInView({
         <div className="collabSpaceUser">
           <span className="collabSpaceUserLabel">Signed in as</span>
           <span className="collabSpaceUserEmail">{user.email ?? user.displayName ?? user.uid}</span>
+          <CollabNotificationBell />
           <button
             type="button"
             className="collabSpaceTextButton"
