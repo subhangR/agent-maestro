@@ -36,6 +36,7 @@ const updateProject = maestroClient.updateProject as unknown as ReturnType<
 >;
 
 const PROJECT_ID = "proj1";
+const defaultDetectRemote = useCollabSpaceStore.getState().detectRemote;
 
 function renderPanel() {
   return render(
@@ -76,6 +77,7 @@ describe("CollabSpacePanel manual repository save", () => {
       publicByRepo: {},
       listLoading: {},
       listError: {},
+      detectRemote: defaultDetectRemote,
     });
   });
 
@@ -130,6 +132,36 @@ describe("CollabSpacePanel manual repository save", () => {
         useCollabSpaceStore.getState().detectedRemoteByProject[PROJECT_ID]
           ?.canonical,
       ).toBe("github.com/owner/repo");
+    });
+  });
+
+  it("persists an automatically detected GitHub origin onto the current project", async () => {
+    const detectRemote = vi.fn().mockResolvedValue({
+      host: "github.com",
+      owner: "owner",
+      repo: "repo",
+      canonical: "github.com/owner/repo",
+    });
+    updateProject.mockResolvedValue({
+      id: PROJECT_ID,
+      name: "Proj One",
+      workingDir: "/work/proj1",
+      createdAt: 1,
+      updatedAt: 1,
+      githubUrl: "https://github.com/owner/repo",
+    });
+    useCollabSpaceStore.setState({
+      detectedRemoteByProject: {},
+      detectRemote,
+    });
+
+    renderPanel();
+
+    await waitFor(() => {
+      expect(detectRemote).toHaveBeenCalledWith(PROJECT_ID, "/work/proj1");
+      expect(updateProject).toHaveBeenCalledWith(PROJECT_ID, {
+        githubUrl: "https://github.com/owner/repo",
+      });
     });
   });
 

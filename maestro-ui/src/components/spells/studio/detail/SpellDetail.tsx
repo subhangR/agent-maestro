@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSpellLibraryStore } from '../../../../stores/useSpellLibraryStore';
 import { useActiveSpellsStore } from '../../../../stores/useActiveSpellsStore';
 import { useMaestroStore } from '../../../../stores/useMaestroStore';
@@ -8,6 +9,8 @@ import {
   HOOK_EVENT_DESCRIPTIONS, LOOP_TYPE_LABELS,
 } from '../../../../utils/spellSummary';
 import type { Spell, SpellRule, HookDispatchMatch } from '../../../../app/types/maestro';
+import { ShareToSpaceModal } from '../../../share/ShareToSpaceModal';
+import { buildSpellShareInput } from '../../../../hooks/useSpaceSharing';
 import {
   spellColorVars, IconBack, IconCast, IconEdit, IconCopy, IconTrash, IconWarn, StudioState,
 } from '../studioShared';
@@ -31,6 +34,7 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const activeSessionCount = useMemo(() => {
     let n = 0;
@@ -109,6 +113,9 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
           <button className="spst-btn spst-btn--primary" onClick={() => onCast(spell.id)} type="button">
             <IconCast /> Cast
           </button>
+          <button className="spst-btn" onClick={() => setShareOpen(true)} type="button">
+            Share
+          </button>
           {seed ? (
             <button className="spst-btn" onClick={() => onDuplicate(spell)} type="button">
               <IconCopy /> Duplicate to edit
@@ -145,6 +152,14 @@ export function SpellDetail({ spellId, onBack, onCast, onEdit, onDuplicate, onDe
         </div>
 
         {error && <div className="spst-confirm" style={{ marginTop: 8 }}><IconWarn /><div className="spst-confirm__body"><div className="spst-confirm__text">{error}</div></div></div>}
+
+        {shareOpen && createPortal(
+          <ShareToSpaceModal
+            payload={{ kind: 'spell', entityLabel: spell.name, data: buildSpellShareInput(spell) }}
+            onClose={() => setShareOpen(false)}
+          />,
+          document.body,
+        )}
 
         <div className="spst-scroll">
           <div className="spst-rules">

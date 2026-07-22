@@ -1,11 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFirebaseAuthStore } from "../../stores/useFirebaseAuthStore";
 import { useCollabSpaceStore } from "../../stores/useCollabSpaceStore";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { CollabSpace, CollabSpaceVisibility } from "../../firebase/collabSpaceTypes";
-import { ParsedGitRemote, parseManualGithubRemote } from "../../utils/parseGitRemote";
+import {
+  ParsedGitRemote,
+  parseGitRemote,
+  parseManualGithubRemote,
+  toGithubUrlForPersistence,
+} from "../../utils/parseGitRemote";
 import { makeCollabActiveId } from "../../app/types/space";
+import { CollabSpaceClient } from "../../firebase/CollabSpaceClient";
+import { parseInviteLink } from "../../firebase/spaceInvite";
 
 /**
  * Classifies a failed `setProjectGithubUrl` PUT so the UI can tell a
@@ -21,6 +28,13 @@ import { makeCollabActiveId } from "../../app/types/space";
 export function classifyGithubUrlSaveError(err: unknown): 'invalid-url' | 'network' {
   const status = err instanceof Error ? err.message.match(/^HTTP (\d\d\d):/)?.[1] : undefined;
   return status && status.startsWith('4') ? 'invalid-url' : 'network';
+}
+
+/** Normalizes a legacy saved URL before comparing it to a detected remote. */
+function canonicalSavedGithubUrl(githubUrl: string | undefined): string | null {
+  if (!githubUrl) return null;
+  const parsed = parseGitRemote(githubUrl);
+  return parsed ? toGithubUrlForPersistence(parsed) : null;
 }
 
 type CollabSpacePanelProps = {
@@ -98,16 +112,74 @@ function SignedInView({
   const [manualRemote, setManualRemoteInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const repoSaveInFlight = useRef<Promise<boolean> | null>(null);
+  const savedCanonicalGithubUrl = canonicalSavedGithubUrl(savedGithubUrl);
+
+  /**
+   * A Collab Space is repo-scoped, but the repo connection belongs to one
+   * local Maestro project. Keep that project binding durable before we expose
+   * the repo's spaces. The ref coalesces automatic detection and a quick
+   * "Create Space" click into one PUT.
+   */
+  const ensureProjectRepoLinked = useCallback(async (parsed: ParsedGitRemote): Promise<boolean> => {
+    const githubUrl = toGithubUrlForPersistence(parsed);
+    // The current Collab security/data model is GitHub-repository scoped. Do
+    // not expose a session-only space list for a remote that cannot be bound
+    // to the Project aggregate durably.
+    if (!githubUrl) {
+      setSaveError('Collab Spaces currently require a canonical GitHub repository. Set one manually to continue.');
+      return false;
+    }
+    if (savedCanonicalGithubUrl === githubUrl) return true;
+    if (repoSaveInFlight.current) return repoSaveInFlight.current;
+
+    setSaving(true);
+    setSaveError(null);
+    const request = setProjectGithubUrl(projectId, githubUrl)
+      .then(() => true)
+      .catch((err) => {
+        if (classifyGithubUrlSaveError(err) === 'invalid-url') {
+          setSaveError(
+            "The detected repository isn't a supported canonical GitHub URL. Set it manually to continue.",
+          );
+        } else {
+          setSaveError(
+            "We found this repository but couldn't save its connection to the project. Check your connection and try again.",
+          );
+        }
+        return false;
+      })
+      .finally(() => {
+        repoSaveInFlight.current = null;
+        setSaving(false);
+      });
+    repoSaveInFlight.current = request;
+    return request;
+  }, [projectId, savedCanonicalGithubUrl, setProjectGithubUrl]);
+
+  // The panel stays mounted while users switch projects. Clear local UI state
+  // that belongs to the previous project so a create/edit flow can never leak
+  // into the newly selected project's repository context.
+  useEffect(() => {
+    setShowCreate(false);
+    setEditingRemote(false);
+    setManualRemoteInput('');
+    setSaveError(null);
+  }, [projectId]);
 
   // Resolve the repo: seed the persisted project.githubUrl first, then fall
-  // back to local git detection only when the project has no saved URL.
+  // back to local git detection only when the project has no saved URL. A
+  // detected GitHub origin is immediately persisted so reopening the desktop
+  // app never relies on this transient cache again.
   useEffect(() => {
     if (detectedRemote !== undefined) return;
     if (savedGithubUrl) {
       hydrateRemoteFromProject(projectId, savedGithubUrl);
       return;
     }
-    void detectRemote(projectId, workingDir);
+    void detectRemote(projectId, workingDir).then((parsed) => {
+      if (parsed) void ensureProjectRepoLinked(parsed);
+    });
   }, [
     projectId,
     workingDir,
@@ -115,6 +187,7 @@ function SignedInView({
     detectedRemote,
     hydrateRemoteFromProject,
     detectRemote,
+    ensureProjectRepoLinked,
   ]);
 
   const handleSaveRemote = async (e: React.FormEvent) => {
@@ -131,7 +204,11 @@ function SignedInView({
       );
       return;
     }
-    const githubUrl = `https://${parsed.canonical}`;
+    const githubUrl = toGithubUrlForPersistence(parsed);
+    if (!githubUrl) {
+      setSaveError("Only canonical GitHub repositories can be connected to a Collab Space.");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -155,12 +232,21 @@ function SignedInView({
     }
   };
 
-  // Subscribe to space lists for the current repo
+  const detectedGithubUrl = detectedRemote
+    ? toGithubUrlForPersistence(detectedRemote)
+    : null;
+  const projectRepoLinked = Boolean(
+    detectedGithubUrl && savedCanonicalGithubUrl === detectedGithubUrl,
+  );
+
+  // Subscribe to space lists only after the repo has a durable binding on the
+  // current local project. This keeps spaces from leaking across project tabs
+  // through a transient remote-detection result.
   useEffect(() => {
-    if (!detectedRemote) return;
+    if (!detectedRemote || !projectRepoLinked) return;
     subscribeForRepo(detectedRemote.canonical, user.uid);
     return () => unsubscribeForRepo(detectedRemote.canonical);
-  }, [detectedRemote, user.uid, subscribeForRepo, unsubscribeForRepo]);
+  }, [detectedRemote, projectRepoLinked, user.uid, subscribeForRepo, unsubscribeForRepo]);
 
   const mySpaces = detectedRemote ? mineByRepo[detectedRemote.canonical] ?? [] : [];
   const publicSpaces = detectedRemote ? publicByRepo[detectedRemote.canonical] ?? [] : [];
@@ -171,6 +257,15 @@ function SignedInView({
     const mineIds = new Set(mySpaces.map((s) => s.id));
     return publicSpaces.filter((s) => !mineIds.has(s.id));
   }, [mySpaces, publicSpaces]);
+
+  const openCreateSpace = async () => {
+    if (!detectedRemote || saving) return;
+    // Creating a shared space must never be the only place that remembers a
+    // project's repository. For GitHub remotes, require the durable project
+    // binding first; then the space can reliably reappear for this project.
+    if (!(await ensureProjectRepoLinked(detectedRemote))) return;
+    setShowCreate(true);
+  };
 
   return (
     <div className="terminalContent collabSpacePanel">
@@ -245,19 +340,30 @@ function SignedInView({
         )}
       </div>
 
+      <PrivateInviteJoinCard />
+
       {!detectedRemote && !detectionLoading && !editingRemote && (
         <EmptyRepoState projectName={projectName} />
       )}
 
-      {detectedRemote && (
+      {detectedRemote && !projectRepoLinked && (
+        <div className="collabSpaceSectionEmpty" role="status">
+          {saving
+            ? 'Connecting this repository to the current project…'
+            : 'Connect this repository to this project before viewing its spaces.'}
+        </div>
+      )}
+
+      {detectedRemote && projectRepoLinked && (
         <>
           <div className="collabSpaceActionRow">
             <button
               type="button"
               className="collabSpaceButton collabSpaceButtonPrimary"
-              onClick={() => setShowCreate(true)}
+              onClick={() => void openCreateSpace()}
+              disabled={saving}
             >
-              + Create Space
+              {saving ? "Saving repository…" : "+ Create Space"}
             </button>
           </div>
 
@@ -300,6 +406,59 @@ function SignedInView({
 // ============================================================================
 // Sub-components
 // ============================================================================
+
+/**
+ * Browser builds can open the generated /space/:id/join/:inviteId route directly.
+ * Desktop builds retain the same recovery path: paste the link or enter the
+ * code here after signing in. No repository connection is needed to redeem.
+ */
+function PrivateInviteJoinCard() {
+  const user = useFirebaseAuthStore((s) => s.user);
+  const setActiveId = useSessionStore((s) => s.setActiveId);
+  const parsed = useMemo(
+    () => (typeof window === "undefined" ? null : parseInviteLink(window.location.href)),
+    [],
+  );
+  const [spaceId, setSpaceId] = useState(parsed?.spaceId ?? "");
+  const [invite, setInvite] = useState(parsed?.inviteId ?? "");
+  const [open, setOpen] = useState(Boolean(parsed));
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const pastedLink = useMemo(() => parseInviteLink(invite.trim()), [invite]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const targetSpaceId = pastedLink?.spaceId ?? spaceId.trim();
+    const targetInvite = pastedLink?.inviteId ?? invite.trim();
+    if (!user || !targetSpaceId || !targetInvite) return;
+    setJoining(true);
+    setError(null);
+    try {
+      await CollabSpaceClient.redeemInvite(user, targetSpaceId, targetInvite);
+      setActiveId(makeCollabActiveId(targetSpaceId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't join this private space.");
+    } finally {
+      setJoining(false);
+    }
+  };
+
+  return (
+    <section className="collabInviteJoin" aria-label="Join a private space">
+      <button type="button" className="collabSpaceTextButton" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        {open ? "Hide private invite" : "Have a private invite or join code?"}
+      </button>
+      {open && (
+        <form className="collabInviteJoinForm" onSubmit={submit}>
+          <input className="collabSpaceInput" value={spaceId} onChange={(event) => setSpaceId(event.target.value)} placeholder="Space ID (not needed for a full link)" aria-label="Private space ID" disabled={joining || Boolean(pastedLink)} />
+          <input className="collabSpaceInput" value={invite} onChange={(event) => setInvite(event.target.value)} placeholder="Paste a full invite link or enter a join code" aria-label="Invite link or join code" required disabled={joining} />
+          <button type="submit" className="collabSpaceButton" disabled={joining || !invite.trim() || (!spaceId.trim() && !pastedLink)}>{joining ? "Joining…" : "Join private space"}</button>
+          {error && <div className="collabSpaceError" role="alert">{error}</div>}
+        </form>
+      )}
+    </section>
+  );
+}
 
 function Section({
   title,
@@ -471,7 +630,7 @@ function CreateSpaceModal({
                 checked={visibility === "public"}
                 onChange={() => setVisibility("public")}
               />
-              Public — anyone with this repo can find it
+              Public — any signed-in Maestro user can find and join it
             </label>
             <label className="collabSpaceVisOption">
               <input

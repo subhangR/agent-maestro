@@ -41,7 +41,12 @@ import { useAgentShortcutStore } from './useAgentShortcutStore';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import { useSecureStorageStore } from './useSecureStorageStore';
 import { useMaestroStore } from './useMaestroStore';
-import { reconcileProjectsWithServer, resolveActiveProject, toMaestroProject } from './projectSync';
+import {
+  reconcileProjectsWithServer,
+  resolveActiveProject,
+  toLocalOnlyProjectCreatePayload,
+  toMaestroProject,
+} from './projectSync';
 import { restoreStandaloneTerminals } from './sessionRestore';
 import { IS_TAURI, platform } from '../platform';
 
@@ -335,9 +340,17 @@ export function initApp(
         id: p.id,
         name: rustProject.title || rustProject.name || 'Untitled Project', // Map 'title' back to 'name'
         workingDir: rustProject.workingDir || rustProject.basePath || '',
-        createdAt: rustProject.createdAt || Date.now(),
-        updatedAt: rustProject.updatedAt || Date.now(),
-        basePath: p.basePath ?? null,
+        // A snapshot that predates timestamps has no trustworthy ordering
+        // information. Treat it as older than server state so a server-side
+        // unlink cannot be resurrected during recovery.
+        createdAt: typeof rustProject.createdAt === 'number' ? rustProject.createdAt : 0,
+        updatedAt: typeof rustProject.updatedAt === 'number' ? rustProject.updatedAt : 0,
+        basePath: p.basePath ?? rustProject.workingDir ?? null,
+        // `githubUrl` was added after the initial snapshot format. Preserve it
+        // when available, while keeping legacy snapshots fully compatible.
+        githubUrl: typeof rustProject.githubUrl === 'string' && rustProject.githubUrl.trim()
+          ? rustProject.githubUrl
+          : undefined,
         environmentId: (p as { environmentId?: string | null }).environmentId ?? null,
         assetsEnabled: (p as { assetsEnabled?: boolean }).assetsEnabled ?? true,
         soundInstrument: (p as { soundInstrument?: string }).soundInstrument ?? 'piano',
@@ -389,14 +402,10 @@ export function initApp(
       // projects are pruned instead of being resurrected on the server.
       for (const localProj of projectsToCreateOnServer) {
         try {
-          const created = await maestroClient.createProject({
-            name: localProj.name,
-            workingDir: localProj.workingDir,
-            createdAt: localProj.createdAt,
-            updatedAt: localProj.updatedAt,
-            description: '',
-          });
-          mergedProjects.push(toMaestroProject(created, localProj));
+          const created = await maestroClient.createProject(toLocalOnlyProjectCreatePayload(localProj));
+          mergedProjects.push(toMaestroProject(created, localProj, {
+            preserveLocalGithubWhenServerMissing: true,
+          }));
         } catch {
           mergedProjects.push(localProj);
         }

@@ -33,8 +33,17 @@ export async function pullSpaceTaskToLocal(
     title: spaceTask.title,
     description: spaceTask.description ?? '',
     priority,
+    ...(spaceTask.initialPrompt ? { initialPrompt: spaceTask.initialPrompt } : {}),
+    ...(spaceTask.dueDate ? { dueDate: spaceTask.dueDate } : {}),
+    ...(spaceTask.dangerousMode ? { dangerousMode: true } : {}),
+    ...(spaceTask.useWorktree ? { useWorktree: true } : {}),
   };
   const created = await maestroClient.createTask(payload);
+  // Status is update-only in the local task API. Apply it immediately after
+  // creation so completed/blocked work does not silently become todo.
+  if (spaceTask.status && spaceTask.status !== 'todo') {
+    await maestroClient.updateTask(created.id, { status: spaceTask.status });
+  }
   // Best-effort fan-out write: don't fail the pull if it errors.
   try {
     await SpaceTasksClient.recordPull(spaceTask.spaceId, spaceTask.id, user.uid, created.id);
@@ -73,8 +82,13 @@ export async function adoptSpaceTeamMember(
     model: (spaceTm.model ?? undefined) as CreateTeamMemberPayload['model'],
     agentTool: (spaceTm.agentTool ?? undefined) as CreateTeamMemberPayload['agentTool'],
     mode,
+    permissionMode: (spaceTm.permissionMode ?? undefined) as CreateTeamMemberPayload['permissionMode'],
+    strategy: spaceTm.strategy ?? undefined,
+    capabilities: spaceTm.capabilities ?? {},
     skillIds: spaceTm.skillIds ?? [],
     commandPermissions: spaceTm.commandPermissions ?? {},
+    customWorkflow: spaceTm.customWorkflow ?? undefined,
+    soundInstrument: spaceTm.soundInstrument as CreateTeamMemberPayload['soundInstrument'] | undefined,
   };
   const created = await maestroClient.createTeamMember(payload);
   try {

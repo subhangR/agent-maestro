@@ -1,10 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useProjectDocsPaginated } from '../hooks/useProjectDocsPaginated';
 import { useUIStore } from '../stores/useUIStore';
 import { useDocStatusStore } from '../stores/useDocStatusStore';
 import { useSpacesStore } from '../stores/useSpacesStore';
 import { useSessionStore } from '../stores/useSessionStore';
 import { Icon } from './maestro/redesign/kit';
+import { ShareToSpaceModal } from './share/ShareToSpaceModal';
+import { buildDocShareInput, docShareBlockReason } from '../hooks/useSpaceSharing';
+import type { DocEntry } from '../app/types/maestro';
 
 interface ProjectDocsListProps {
   projectId: string;
@@ -31,6 +35,7 @@ export const ProjectDocsList: React.FC<ProjectDocsListProps> = ({ projectId, kin
   const toggleDone = useDocStatusStore((s) => s.toggleDone);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [subTab, setSubTab] = useState<DocSubTab>('open');
+  const [shareDoc, setShareDoc] = useState<DocEntry | null>(null);
 
   const statusOf = (id: string): 'open' | 'done' | 'closed' => statuses[id] ?? 'open';
 
@@ -101,6 +106,7 @@ export const ProjectDocsList: React.FC<ProjectDocsListProps> = ({ projectId, kin
         {visible.map((doc) => {
           const status = statusOf(doc.id);
           const isDone = status === 'done';
+          const shareBlocked = docShareBlockReason(doc);
           const meta = doc.sessionName
             ? `session: ${doc.sessionName}`
             : doc.taskId
@@ -120,6 +126,20 @@ export const ProjectDocsList: React.FC<ProjectDocsListProps> = ({ projectId, kin
                 aria-pressed={isDone}
               >
                 {isDone && <Icon name="check" size={10} sw={2.2} />}
+              </button>
+
+              <button
+                type="button"
+                className="projectDocsListItem__close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShareDoc(doc);
+                }}
+                disabled={!!shareBlocked}
+                title={shareBlocked ?? `Share ${doc.title} to a Collab Space`}
+                aria-label={`Share ${doc.title}`}
+              >
+                ↗
               </button>
 
               <button
@@ -175,6 +195,17 @@ export const ProjectDocsList: React.FC<ProjectDocsListProps> = ({ projectId, kin
         {/* Scroll sentinel — triggers loadMore via IntersectionObserver */}
         {hasMore && <div ref={sentinelRef} className="projectDocsListSentinel" />}
       </div>
+      {shareDoc && createPortal(
+        <ShareToSpaceModal
+          payload={{
+            kind: 'doc',
+            entityLabel: shareDoc.title,
+            data: buildDocShareInput(shareDoc, projectId),
+          }}
+          onClose={() => setShareDoc(null)}
+        />,
+        document.body,
+      )}
     </div>
   );
 };

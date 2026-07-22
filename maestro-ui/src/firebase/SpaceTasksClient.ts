@@ -7,6 +7,7 @@ import {
   asStringArray,
   asStringRecord,
   asNumber,
+  asBoolean,
   asEnum,
 } from './firestoreUtils';
 
@@ -23,6 +24,10 @@ function fromData(id: string, d: DocumentData): SpaceTask {
     description: asString(d.description),
     status: asEnum(d.status, TASK_STATUSES, 'todo'),
     priority: asEnum(d.priority, TASK_PRIORITIES, 'medium'),
+    initialPrompt: asString(d.initialPrompt),
+    dueDate: asStringOrNull(d.dueDate),
+    dangerousMode: asBoolean(d.dangerousMode),
+    useWorktree: asBoolean(d.useWorktree),
     assigneeUids: asStringArray(d.assigneeUids),
     parentTaskId: asStringOrNull(d.parentTaskId),
     childrenIds: asStringArray(d.childrenIds),

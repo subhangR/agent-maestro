@@ -232,6 +232,7 @@ export interface CreateTeamMemberPayload {
   agentTool?: AgentTool;
   mode?: AgentMode;
   permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
+  strategy?: string;
   skillIds?: string[];
   capabilities?: TeamMember['capabilities'];
   commandPermissions?: TeamMember['commandPermissions'];

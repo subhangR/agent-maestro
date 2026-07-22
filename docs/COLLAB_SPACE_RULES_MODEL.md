@@ -8,6 +8,8 @@ Deployed to the `maestro-5f3fc` Firebase project with `firebase deploy --only fi
 
 ```
 collabSpaces/{spaceId}                      — space root (membership lives here)
+  invites/{opaqueInviteId}                  — private invite links / join codes
+  inviteClaims/{uid}                        — immutable redemption proof (not readable)
   channels/{channelId}                      — Slack-style channels
     messages/{messageId}                    — one timeline per channel
   tasks/{taskId}                            — shared tasks (push/pull)
@@ -40,13 +42,49 @@ Everything else is **default-denied** by an explicit catch-all.
 
 Public spaces are readable by any signed-in user; private spaces only by members.
 
+## Private invitation redemption
+
+Private spaces are never discoverable and a `spaceId` alone cannot add a member.
+An owner or admin creates either an **invite link** (a 32-byte base64url bearer id)
+or a **join code** (a 12-character, ambiguity-free code). The Firestore document
+id is the bearer secret; no duplicate plaintext token field is stored.
+
+Each invite carries `maxUses` (1–1,000), `useCount`, `redeemedByUids`,
+`expiresAt`, and `revokedAt`. The manager can list and irrevocably revoke
+invites. A signed-in recipient may `get` one known invite id but may never list
+the collection, so possession of a high-entropy id is required to learn its
+state.
+
+CLI-created invitations also carry an optional opaque `managementId`
+(`^[A-Za-z0-9_-]{16,64}$`) for safe list/revoke operations. It is not a bearer
+secret and is immutable during redemption. The field remains optional so older
+desktop-created invites remain redeemable; CLI management deliberately fails
+closed for those legacy records instead of exposing their bearer document ids.
+
+Redemption is one client-side Firestore transaction with three writes:
+
+1. increment the exact invite's `useCount` and append only the caller uid;
+2. create immutable `inviteClaims/{callerUid}` bound to `spaceId`, `inviteId`,
+   uid, and timestamp;
+3. add exactly that uid once as a `member` on the private space root.
+
+Rules validate all three final documents through `getAfter()`. They reject
+expired, revoked, exhausted, replayed, cross-space, and cross-user attempts;
+claims and invite increments cannot be created independently. The recipient
+does not need (and is not granted) a private-space root read before redemption.
+The existing public self-join path is unchanged except that its newly-created
+member record is also checked to belong to the authenticated caller.
+
 ## Core invariants (enforced on every write)
 
 1. **Final-document validation.** Shape checks (`valid*Shape()`) run on the
    *resulting* document for creates AND updates, so an update can never smuggle
    an oversized/malformed field even when that field wasn't in the diff.
-2. **Immutable audit/provenance.** `createdBy`, `createdAt`, `spaceId` (and the
-   space's `ownerId`) never change after create (`coreImmutable()`).
+2. **Immutable audit/provenance and repository scope.** `createdBy`,
+   `createdAt`, `spaceId` (and the space's `ownerId`) never change after
+   create (`coreImmutable()`). A space's `githubUrl`, `githubHost`,
+   `githubOwner`, and `githubRepo` are also immutable after creation, so a
+   direct write cannot rebind an existing space to another repository.
    `source*` provenance fields are only writable at create because every update
    path whitelists its editable keys via `affectedOnly([...])`.
 3. **No identity spoofing.** `createdBy == request.auth.uid` on create;
