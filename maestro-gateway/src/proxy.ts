@@ -20,6 +20,17 @@ export class Proxy {
       proxyTimeout: 0, // never time out streamed/long-poll responses
     });
 
+    // Per-user instances run their own CORS allowlist (tauri/localhost/env), but
+    // they only ever receive gateway-proxied, already-authenticated loopback
+    // traffic — there is no cross-origin trust boundary to enforce there. The
+    // browser's Origin is the public gateway host (e.g. …:8443 / :443), which
+    // isn't in an instance's allowlist, so a same-origin POST (e.g. session spawn)
+    // would be rejected. Strip Origin before forwarding so the instance treats it
+    // as same-origin — origin-agnostic, so it survives the :8443→:443 cutover.
+    this.proxy.on('proxyReq', (proxyReq) => {
+      proxyReq.removeHeader('origin');
+    });
+
     this.proxy.on('error', (err, _req, res) => {
       this.logger.error('proxy error', err);
       // `res` is a ServerResponse for web, or a Socket for ws.
