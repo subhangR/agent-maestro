@@ -10,7 +10,6 @@ import "./task-lists.css";
 import "./styles-startup.css";
 import "./styles-login.css";
 import "./styles-spell-studio.css"; // Spell Studio design tokens + surfaces (Track UI-A)
-import "./styles-maestro-redesign.css"; // "Score" redesign — agent-green identity + type polish (loaded last to win)
 import "@xterm/xterm/css/xterm.css";
 // Self-hosted redesign fonts (Google Fonts @import is blocked by the Tauri CSP
 // font-src 'self'; these are bundled by Vite and served locally). --pn-mono
@@ -38,6 +37,8 @@ import "./styles-spells.css";
 import "./styles-panel-leak-fix.css";
 import "./styles-gateway-dashboard.css";
 import "./styles-deployment-version.css";
+// "Score" redesign override — glass system + palette. MUST be the LAST CSS import.
+import "./styles-maestro-redesign.css";
 import { setRedesignActive } from "./components/maestro/redesign/useRedesignTheme";
 
 // Redesign is default-on for the maestro-redesign branch. The scoped tokens in
