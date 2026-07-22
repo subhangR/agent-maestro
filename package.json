@@ -8,7 +8,8 @@
     "maestro-ui",
     "maestro-server",
     "maestro-cli",
-    "maestro-web"
+    "maestro-web",
+    "maestro-gateway"
   ],
   "scripts": {
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
@@ -18,6 +19,7 @@
     "build:ui": "cd maestro-ui && bun run build",
     "build:server": "cd maestro-server && bun run build",
     "build:cli": "cd maestro-cli && bun run build",
+    "build:gateway": "cd maestro-gateway && bun run build",
     "build:all": "bun run build:ui && bun run build:server && bun run build:cli",
     "web": "bash scripts/start-web.sh",
     "web:nobuild": "SKIP_BUILD=1 bash scripts/start-web.sh",

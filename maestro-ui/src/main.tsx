@@ -2,6 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { GatewayPage } from "./components/GatewayPage";
+import { GATEWAY_AUTH_MODE } from "./utils/gatewayAuth";
 import "./styles.css";
 import "./styles-responsive.css";
 import "./task-lists.css";
@@ -33,6 +35,7 @@ import "./styles-spell-colors.css";
 import "./styles-spell-ring.css";
 import "./styles-spells.css";
 import "./styles-panel-leak-fix.css";
+import "./styles-gateway-dashboard.css";
 import { setRedesignActive } from "./components/maestro/redesign/useRedesignTheme";
 
 // Redesign is default-on for the maestro-redesign branch. The scoped tokens in
@@ -40,10 +43,12 @@ import { setRedesignActive } from "./components/maestro/redesign/useRedesignThem
 // (un-ported) components render unchanged until they adopt pn-* classes.
 setRedesignActive(true);
 
+const Root = GATEWAY_AUTH_MODE && window.location.pathname === "/gateway" ? GatewayPage : App;
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary name="App">
-      <App />
+      <Root />
     </ErrorBoundary>
   </React.StrictMode>,
 );

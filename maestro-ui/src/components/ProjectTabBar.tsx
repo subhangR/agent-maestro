@@ -12,6 +12,7 @@ import { TerminalSettings } from "./TerminalSettings";
 import { soundManager } from "../services/soundManager";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useUIStore } from "../stores/useUIStore";
+import { GATEWAY_AUTH_MODE } from "../utils/gatewayAuth";
 
 type SavedProject = {
   id: string;
@@ -671,6 +672,11 @@ export function ProjectTabBar({
           )}
         </div>
         <div className="pn-top-r">
+          {GATEWAY_AUTH_MODE && (
+            <a className="pn-ib" href="/gateway" title="Open team gateway" aria-label="Open team gateway">
+              <PnIcon name="grid" size={16} />
+            </a>
+          )}
           {onOpenMultiProjectBoard && (
             <button
               type="button"

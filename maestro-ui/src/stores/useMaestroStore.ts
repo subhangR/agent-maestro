@@ -26,6 +26,7 @@ import type {
 import { useSessionStore } from './useSessionStore';
 import { useUIStore } from './useUIStore';
 import { WS_URL } from '../utils/serverConfig';
+import { withGatewayToken } from '../utils/gatewayAuth';
 import { playEventSound, soundManager } from '../services/soundManager';
 import { usePromptAnimationStore, selectPromptSurface, type PromptSurface } from './usePromptAnimationStore';
 import { useActiveSpellsStore } from './useActiveSpellsStore';
@@ -819,7 +820,7 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
     if (globalWs) { globalWs.close(); globalWs = null; }
 
     try {
-      const ws = new WebSocket(WS_URL);
+      const ws = new WebSocket(withGatewayToken(WS_URL));
       globalWs = ws;
 
       ws.onopen = () => {
