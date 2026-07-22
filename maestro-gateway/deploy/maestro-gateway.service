@@ -1,0 +1,21 @@
+[Unit]
+Description=Maestro Trusted-Team Hub Gateway (process-per-user, Design A)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/agent-maestro
+EnvironmentFile=/etc/maestro/gateway.env
+ExecStart=/usr/bin/node /home/ubuntu/agent-maestro/maestro-gateway/dist/server.js
+Restart=always
+RestartSec=3
+# Kill the whole cgroup on stop so every per-user maestro-server child the gateway
+# spawned is torn down with it (no orphaned instances holding ports).
+KillMode=control-group
+TimeoutStopSec=20
+# Give child agent CLIs room; the box has no swap — cap if needed.
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
