@@ -3,6 +3,7 @@ import { useFirebaseAuthStore } from '../stores/useFirebaseAuthStore';
 import { useGatewayPresence } from '../firebase/gatewayPresence';
 import { GatewayLoginGate } from './GatewayLoginGate';
 import { GatewayDashboard } from './GatewayDashboard';
+import { DeploymentVersion } from './DeploymentVersion';
 
 /**
  * A deliberately small route shell for `/gateway`. Keeping it outside the main
@@ -19,5 +20,8 @@ export function GatewayPage() {
   useGatewayPresence(user);
 
   if (!initialized) return <div className="app" style={{ background: '#0d0d0f' }} />;
-  return user ? <GatewayDashboard /> : <GatewayLoginGate />;
+  return <>
+    {user ? <GatewayDashboard /> : <GatewayLoginGate />}
+    <DeploymentVersion />
+  </>;
 }

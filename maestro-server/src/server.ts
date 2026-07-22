@@ -33,8 +33,10 @@ import { createAuthRoutes } from './api/authRoutes';
 import { createAuthMiddleware, isTrustedLocalRequest } from './api/middleware/authMiddleware';
 import { createSecurityHeaders } from './api/middleware/securityHeaders';
 import { AuthService } from './infrastructure/auth/AuthService';
+import { getBuildInfo } from './infrastructure/buildInfo';
 
 async function startServer() {
+  const build = getBuildInfo();
   // Create and initialize dependency container
   const container = await createContainer();
   await container.initialize();
@@ -110,6 +112,7 @@ async function startServer() {
   app.get('/health', (req: Request, res: Response) => {
     res.json({
       status: 'ok',
+      commit: build.commit,
       timestamp: Date.now(),
       uptime: process.uptime()
     });

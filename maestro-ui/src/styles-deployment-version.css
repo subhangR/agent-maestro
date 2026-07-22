@@ -1,0 +1,22 @@
+.deploymentVersion {
+  position: fixed;
+  right: 12px;
+  bottom: 10px;
+  z-index: 40;
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  color: var(--pn-ink-2, #94a3b8);
+  background: color-mix(in srgb, var(--pn-paper, #17171b) 88%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 999px;
+  padding: 3px 7px;
+  font: 500 10px/1.2 var(--pn-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .deploymentVersion { bottom: 58px; }
+}

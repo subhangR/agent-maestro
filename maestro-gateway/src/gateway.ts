@@ -10,6 +10,7 @@ import { AuthVerifier, Allowlist, AuthInput } from './auth';
 import { InstanceSupervisor } from './supervisor';
 import { Proxy } from './proxy';
 import { AuthResult, AuthError, GatewayMemberOverview, GatewayServerOverview } from './types';
+import { getBuildInfo } from './buildInfo';
 
 /**
  * The gateway HTTP surface (Design A):
@@ -21,6 +22,7 @@ import { AuthResult, AuthError, GatewayMemberOverview, GatewayServerOverview } f
 export class Gateway {
   readonly app: express.Express;
   private cpuSample = this.readCpuTimes();
+  private readonly build = getBuildInfo();
 
   constructor(
     private readonly config: GatewayConfig,
@@ -41,6 +43,7 @@ export class Gateway {
     app.get('/gateway/health', (_req: Request, res: Response) => {
       res.json({
         status: 'ok',
+        commit: this.build.commit,
         mode: this.auth.mode,
         workspaces: this.supervisor.listWorkspaces().length,
         uptime: process.uptime(),

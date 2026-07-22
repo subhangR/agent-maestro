@@ -68,6 +68,7 @@ import { createMaestroSession } from "./services/maestroService";
 import { TaskDetailOverlay } from "./components/maestro/TaskDetailOverlay";
 import { SessionDetailOverlay } from "./components/maestro/SessionDetailOverlay";
 import { DocViewer } from "./components/maestro/DocViewer";
+import { DeploymentVersion } from "./components/DeploymentVersion";
 import { STORAGE_SETUP_COMPLETE_KEY } from "./app/constants/defaults";
 
 // ---------------------------------------------------------------------------
@@ -546,13 +547,19 @@ export default function App() {
       return <div className="app" style={{ background: '#0d0d0f' }} />;
     }
     if (!authUser) {
-      return <GatewayLoginGate />;
+      return <>
+        <GatewayLoginGate />
+        <DeploymentVersion />
+      </>;
     }
   }
 
   // Show login overlay in web mode when auth is enabled and user is not authenticated
   if (!IS_TAURI && (authChecking ? false : showLogin)) {
-    return <LoginOverlay />;
+    return <>
+      <LoginOverlay />
+      <DeploymentVersion />
+    </>;
   }
 
   return (
@@ -750,6 +757,7 @@ export default function App() {
           void closeAppWithRunningSessions();
         }}
       />
+      <DeploymentVersion />
     </div>
   );
 }
