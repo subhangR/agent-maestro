@@ -7,7 +7,7 @@ import {
   type MessagePayload,
   type Unsubscribe,
 } from 'firebase/messaging';
-import { getFirebaseApp, getFirebaseWebConfig } from './config';
+import { getFirebaseApp, getFirebaseVapidKey, getFirebaseWebConfig } from './config';
 import { registerPushDevice, unregisterPushDevice } from './notificationClient';
 
 const DEVICE_KEY_PREFIX = 'maestro.webPushDevice.';
@@ -27,7 +27,7 @@ export interface CollabPushPayload {
 }
 
 function vapidKey(): string | null {
-  const key = import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim();
+  const key = getFirebaseVapidKey();
   return key || null;
 }
 

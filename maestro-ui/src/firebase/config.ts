@@ -19,6 +19,12 @@ const DEFAULT_FIREBASE_CONFIG = {
   databaseURL: 'https://maestro-5f3fc-default-rtdb.asia-southeast1.firebasedatabase.app',
 };
 
+// Web Push VAPID keys are public browser credentials (not server secrets).
+// Keeping the default project's key alongside its public Firebase config makes
+// the deployed Maestro web build push-capable without a local .env file. A
+// custom deployment may still override it with VITE_FIREBASE_VAPID_KEY.
+const DEFAULT_FIREBASE_VAPID_KEY = 'BJoduvp1dro9woRGblxY-w6xZexLqKQuGPmge4F7T3GwXK6dyWZ-o23_PcQuvee4XplrTfuvmFpiFoSkksILzfY';
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || DEFAULT_FIREBASE_CONFIG.apiKey,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || DEFAULT_FIREBASE_CONFIG.authDomain,
@@ -38,6 +44,10 @@ const firebaseConfig = {
  */
 export function getFirebaseWebConfig(): Readonly<typeof firebaseConfig> {
   return firebaseConfig;
+}
+
+export function getFirebaseVapidKey(): string {
+  return import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim() || DEFAULT_FIREBASE_VAPID_KEY;
 }
 
 export const isFirebaseConfigured = Boolean(
