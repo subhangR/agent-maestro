@@ -14,7 +14,9 @@ const DEFAULT_FIREBASE_CONFIG = {
   storageBucket: 'maestro-5f3fc.firebasestorage.app',
   messagingSenderId: '204094353519',
   appId: '1:204094353519:web:f4b09345a95234335a5d9a',
-  databaseURL: 'https://maestro-5f3fc-default-rtdb.firebaseio.com',
+  // This project's default RTDB instance is regional. The generic firebaseio
+  // hostname does not route to it, so presence silently never connected.
+  databaseURL: 'https://maestro-5f3fc-default-rtdb.asia-southeast1.firebasedatabase.app',
 };
 
 const firebaseConfig = {
