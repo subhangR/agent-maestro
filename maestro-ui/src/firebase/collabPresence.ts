@@ -12,6 +12,7 @@ import { getFirebaseDatabase } from './config';
 interface FocusState {
   spaceId: string | null;
   channelId: string | null;
+  section: string;
   visible: boolean;
 }
 
@@ -37,7 +38,7 @@ function connectionId(uid: string): string {
 export class CollabPresence {
   private uid: string | null = null;
   private id: string | null = null;
-  private focus: FocusState = { spaceId: null, channelId: null, visible: false };
+  private focus: FocusState = { spaceId: null, channelId: null, section: 'messages', visible: false };
   private connected = false;
   private connectionUnsub: Unsubscribe | null = null;
   private publishedSpaceId: string | null = null;
@@ -53,8 +54,8 @@ export class CollabPresence {
     });
   }
 
-  setFocus(spaceId: string | null, channelId: string | null, visible: boolean): void {
-    this.focus = { spaceId, channelId, visible };
+  setFocus(spaceId: string | null, channelId: string | null, visible: boolean, section = 'messages'): void {
+    this.focus = { spaceId, channelId, section, visible };
     if (this.connected) void this.publish();
   }
 
@@ -94,7 +95,9 @@ export class CollabPresence {
     // Register server-side cleanup before declaring this connection active.
     await onDisconnect(spaceRef).remove();
     await set(spaceRef, {
-      focus: this.focus.channelId ?? '',
+      focus: this.focus.section === 'messages'
+        ? this.focus.channelId ?? 'section:messages'
+        : `section:${this.focus.section}`,
       visible: this.focus.visible,
       lastActive: serverTimestamp(),
     });

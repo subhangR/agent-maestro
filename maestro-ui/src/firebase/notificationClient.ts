@@ -44,19 +44,31 @@ function timestampMs(value: unknown): number {
     : Date.now();
 }
 
-function notificationFromData(id: string, data: DocumentData): RemoteNotification | null {
-  if (data.type !== 'message.new') return null;
+export function notificationFromData(id: string, data: DocumentData): RemoteNotification | null {
+  const type = asString(data.type);
+  if (!type) return null;
   const spaceId = asString(data.spaceId);
   const channelId = asString(data.channelId);
-  const messageId = asString(data.messageId);
-  if (!spaceId || !channelId || !messageId) return null;
+  const entityId = asString(data.entityId);
+  const messageId = asString(data.messageId, entityId);
+  const rawSection = asString(data.section, type === 'message.new' ? 'messages' : 'settings');
+  const section = ['messages', 'tasks', 'team', 'spells', 'docs', 'files', 'members', 'settings'].includes(rawSection)
+    ? rawSection as RemoteNotification['section']
+    : 'settings';
+  if (!spaceId || (!messageId && !entityId)) return null;
   return {
-    id: `cn_${messageId}`,
+    id: `cn_${id}`,
+    type,
     spaceId,
     spaceName: asNullableString(data.spaceName),
     channelId,
     channelName: asNullableString(data.channelName),
     messageId,
+    section,
+    entityKind: asString(data.entityKind, type.split('.')[0]),
+    entityId: entityId || messageId,
+    entityLabel: asString(data.entityLabel),
+    action: asString(data.action, type.split('.')[1]),
     authorUid: asString(data.actorUid),
     authorName: asString(data.actorName, 'Someone'),
     preview: asString(data.preview, 'New message'),
@@ -144,8 +156,8 @@ export function subscribeNotificationInbox(
   });
 }
 
-export async function markNotificationRead(uid: string, messageId: string): Promise<void> {
-  await updateDoc(doc(getDb(), NOTIFICATIONS, uid, 'items', messageId), { readAt: serverTimestamp() });
+export async function markNotificationRead(uid: string, itemId: string): Promise<void> {
+  await updateDoc(doc(getDb(), NOTIFICATIONS, uid, 'items', itemId), { readAt: serverTimestamp() });
 }
 
 export async function markChannelNotificationsRead(uid: string, channelId: string): Promise<void> {

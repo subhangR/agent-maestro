@@ -1,4 +1,5 @@
 import type { Message } from '../firebase/messagingTypes';
+import type { SpaceSection } from '../stores/useUIStore';
 
 /**
  * Phase 1 in-app collab notifications — pure types + classification logic.
@@ -14,11 +15,18 @@ export type NotifyLevel = 'mentions' | 'all';
 /** One delivered in-app notification (a toast + an inbox entry). */
 export interface CollabNotification {
   id: string;
+  /** Durable taxonomy. Absent only for legacy in-memory message entries. */
+  type?: string;
   spaceId: string;
   spaceName: string | null;
   channelId: string;
   channelName: string | null;
   messageId: string;
+  section?: SpaceSection;
+  entityKind?: string;
+  entityId?: string;
+  entityLabel?: string;
+  action?: string;
   authorUid: string;
   authorName: string;
   preview: string;
@@ -26,6 +34,26 @@ export interface CollabNotification {
   /** Epoch ms the notification was recorded (client clock). */
   timestamp: number;
   read: boolean;
+}
+
+export function collabNotificationIcon(notification: CollabNotification): string {
+  if (notification.isMention) return '📣';
+  const kind = notification.entityKind ?? notification.type?.split('.')[0];
+  return ({
+    channel: '💬', task: '✅', team_member: '🤖', spell: '✦', doc: '📄',
+    file: '📎', invite: '✉️', member: '👤', space: '⚙️', message: '💬',
+  } as Record<string, string>)[kind ?? 'message'] ?? '🔔';
+}
+
+export function collabNotificationHeading(notification: CollabNotification): string {
+  if (!notification.type || notification.type === 'message.new') {
+    const channelLabel = notification.channelName ? `#${notification.channelName}` : 'a channel';
+    return notification.isMention
+      ? `${notification.authorName} mentioned you`
+      : `${notification.authorName} · ${channelLabel}`;
+  }
+  const label = notification.entityLabel ? ` · ${notification.entityLabel}` : '';
+  return `${notification.authorName}${label}`;
 }
 
 /** User-tunable preferences, persisted to localStorage (Phase 1). */

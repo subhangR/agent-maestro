@@ -8,7 +8,11 @@ import {
   ensureNotificationPermission,
   notificationPermission,
 } from '../../notifications/desktopNotify';
-import type { CollabNotification } from '../../notifications/collabNotificationTypes';
+import {
+  collabNotificationHeading,
+  collabNotificationIcon,
+  type CollabNotification,
+} from '../../notifications/collabNotificationTypes';
 import { useFirebaseAuthStore } from '../../stores/useFirebaseAuthStore';
 import { markAllNotificationsRead } from '../../firebase/notificationClient';
 
@@ -109,8 +113,8 @@ export function CollabNotificationBell() {
                 value={prefs.level}
                 onChange={(e) => setLevel(e.target.value as 'mentions' | 'all')}
               >
-                <option value="all">All messages in my spaces</option>
-                <option value="mentions">Only @mentions</option>
+                <option value="all">All messages + Collab activity</option>
+                <option value="mentions">@mentions + Collab activity</option>
               </select>
             </label>
             <label className="collab-notify-panel__toggle">
@@ -140,11 +144,11 @@ export function CollabNotificationBell() {
                   onClick={() => onRowClick(n)}
                 >
                   <span className="collab-notify-row__icon" aria-hidden>
-                    {n.isMention ? '📣' : '💬'}
+                    {collabNotificationIcon(n)}
                   </span>
                   <span className="collab-notify-row__main">
                     <span className="collab-notify-row__top">
-                      <span className="collab-notify-row__author">{n.authorName}</span>
+                      <span className="collab-notify-row__author">{collabNotificationHeading(n)}</span>
                       <span className="collab-notify-row__chan">
                         {n.channelName ? `#${n.channelName}` : ''}
                       </span>

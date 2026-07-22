@@ -20,13 +20,16 @@ if (config.apiKey && config.projectId && config.appId) {
 
   messaging.onBackgroundMessage((payload) => {
     const data = payload.data || {};
-    if (data.type !== 'message.new') return;
-    const title = data.isMention === 'true'
-      ? `${data.actorName || 'Someone'} mentioned you`
-      : `${data.actorName || 'Someone'} · ${data.channelName ? `#${data.channelName}` : 'a channel'}`;
+    if (!data.type || !data.spaceId) return;
+    const isMessage = data.type === 'message.new';
+    const title = isMessage
+      ? (data.isMention === 'true'
+        ? `${data.actorName || 'Someone'} mentioned you`
+        : `${data.actorName || 'Someone'} · ${data.channelName ? `#${data.channelName}` : 'a channel'}`)
+      : `${data.actorName || 'Someone'} · ${data.entityLabel || data.entityKind || 'Collab activity'}`;
     self.registration.showNotification(title, {
-      body: data.preview || 'New message',
-      tag: `maestro-collab-${data.channelId || 'message'}`,
+      body: data.preview || 'New Collab activity',
+      tag: `maestro-collab-${data.channelId || data.entityId || data.spaceId}`,
       data: { payload },
     });
   });

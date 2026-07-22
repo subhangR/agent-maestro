@@ -99,6 +99,7 @@ interface CollabNotificationsState {
 
   // ── UI → store ──
   dismissToast: (id: string) => void;
+  markNotificationItemRead: (id: string) => void;
   markChannelRead: (channelId: string) => void;
   markAllRead: () => void;
   clearInbox: () => void;
@@ -165,6 +166,14 @@ export const useCollabNotificationsStore = create<CollabNotificationsState>((set
     set((s) => {
       if (!s.toasts.some((t) => t.id === id)) return s;
       return { toasts: s.toasts.filter((t) => t.id !== id) };
+    });
+  },
+
+  markNotificationItemRead: (id) => {
+    set((s) => {
+      const inbox = s.inbox.map((n) => (n.id === id && !n.read ? { ...n, read: true } : n));
+      write(LS.inbox, inbox);
+      return { inbox };
     });
   },
 

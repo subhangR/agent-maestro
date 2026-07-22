@@ -13,12 +13,18 @@ import { registerPushDevice, unregisterPushDevice } from './notificationClient';
 const DEVICE_KEY_PREFIX = 'maestro.webPushDevice.';
 
 export interface CollabPushPayload {
-  type: 'message.new';
+  notificationId: string;
+  type: string;
   spaceId: string;
   spaceName: string | null;
   channelId: string;
   channelName: string | null;
   messageId: string;
+  section: string;
+  entityKind: string;
+  entityId: string;
+  entityLabel: string;
+  action: string;
   actorUid: string;
   actorName: string;
   preview: string;
@@ -62,19 +68,25 @@ function workerUrl(): string {
 
 function payloadFromMessage(payload: MessagePayload): CollabPushPayload | null {
   const data = payload.data;
-  if (!data || data.type !== 'message.new' || !data.spaceId || !data.channelId || !data.messageId) return null;
+  if (!data?.type || !data.spaceId || (!data.messageId && !data.entityId)) return null;
   return {
-    type: 'message.new',
+    notificationId: data.notificationId || data.messageId || data.entityId || '',
+    type: data.type,
     spaceId: data.spaceId,
     spaceName: data.spaceName || null,
-    channelId: data.channelId,
+    channelId: data.channelId || '',
     channelName: data.channelName || null,
-    messageId: data.messageId,
+    messageId: data.messageId || data.entityId || '',
+    section: data.section || (data.type === 'message.new' ? 'messages' : 'settings'),
+    entityKind: data.entityKind || data.type.split('.')[0],
+    entityId: data.entityId || data.messageId || '',
+    entityLabel: data.entityLabel || '',
+    action: data.action || data.type.split('.')[1] || '',
     actorUid: data.actorUid || '',
     actorName: data.actorName || 'Someone',
     preview: data.preview || 'New message',
     isMention: data.isMention === 'true',
-    url: data.url || `/?collabSpace=${encodeURIComponent(data.spaceId)}&collabChannel=${encodeURIComponent(data.channelId)}`,
+    url: data.url || `/?collabSpace=${encodeURIComponent(data.spaceId)}&collabSection=${encodeURIComponent(data.section || 'messages')}`,
   };
 }
 

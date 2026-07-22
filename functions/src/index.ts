@@ -1,4 +1,5 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
+import { createHash } from 'node:crypto';
 import { getDatabase } from 'firebase-admin/database';
 import {
   FieldValue,
@@ -7,9 +8,26 @@ import {
   type DocumentReference,
 } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import {
+  onDocumentCreated,
+  onDocumentWrittenWithAuthContext,
+  type Change,
+  type DocumentSnapshot,
+  type FirestoreAuthEvent,
+} from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { defineString } from 'firebase-functions/params';
+import {
+  RESOURCE_DEFINITIONS,
+  actorNameFromSpace,
+  deriveChannelEvent,
+  deriveInviteEvent,
+  deriveResourceEvent,
+  deriveSpaceEvent,
+  memberIdsFromSpace,
+  type DerivedCollabEvent,
+  type ResourceDefinition,
+} from './notificationEvents';
 
 initializeApp();
 
@@ -86,6 +104,10 @@ function presenceDatabase() {
 }
 
 async function isFocusedOnChannel(spaceId: string, uid: string, channelId: string): Promise<boolean> {
+  return isFocusedOn(spaceId, uid, channelId);
+}
+
+async function isFocusedOn(spaceId: string, uid: string, focus: string): Promise<boolean> {
   const snapshot = await presenceDatabase()
     .ref(`spacePresence/${spaceId}/${uid}/connections`)
     .get();
@@ -94,7 +116,7 @@ async function isFocusedOnChannel(spaceId: string, uid: string, channelId: strin
   return Object.values(connections as Record<string, unknown>).some((value) => {
     if (!value || typeof value !== 'object') return false;
     const connection = value as Record<string, unknown>;
-    return connection.visible === true && connection.focus === channelId;
+    return connection.visible === true && connection.focus === focus;
   });
 }
 
@@ -264,5 +286,282 @@ export const fanoutMessageNotification = onDocumentCreated(
         logger.error('Failed to send Collab message push.', { error, spaceId, channelId, messageId, uid: plan.uid });
       }
     }));
+  },
+);
+
+type AuthWriteEvent = FirestoreAuthEvent<
+  Change<DocumentSnapshot> | undefined,
+  Record<string, string>
+>;
+
+interface EntityFanoutInput {
+  sourceEventId: string;
+  spaceId: string;
+  entityId: string;
+  actorUid: string;
+  actorName: string;
+  spaceName: string | null;
+  channelId?: string;
+  candidateUids: string[];
+  event: DerivedCollabEvent;
+}
+
+function dataOf(snapshot: DocumentSnapshot | undefined): Record<string, unknown> | undefined {
+  return snapshot?.exists ? snapshot.data() as Record<string, unknown> : undefined;
+}
+
+function notificationId(sourceEventId: string, spaceId: string, type: string, entityId: string): string {
+  const digest = createHash('sha256')
+    .update(`${sourceEventId}\u0000${spaceId}\u0000${type}\u0000${entityId}`)
+    .digest('hex')
+    .slice(0, 40);
+  return `evt_${digest}`;
+}
+
+function entityUrl(input: Pick<EntityFanoutInput, 'spaceId' | 'entityId' | 'event' | 'channelId'>): string {
+  const params = new URLSearchParams({
+    collabSpace: input.spaceId,
+    collabSection: input.event.section,
+    collabEntity: input.entityId,
+  });
+  if (input.channelId) params.set('collabChannel', input.channelId);
+  return `/?${params.toString()}`;
+}
+
+/**
+ * Shared entity fan-out. Unlike message-level preferences, entity activity is
+ * always relevant to space members; global desktop opt-in and per-space mute
+ * still apply. The deterministic inbox create is the idempotency gate for FCM.
+ */
+async function fanoutEntityNotification(input: EntityFanoutInput): Promise<void> {
+  const db = getFirestore();
+  const candidates = [...new Set(input.candidateUids)]
+    .filter((uid) => uid && uid !== input.actorUid);
+  if (candidates.length === 0) return;
+
+  const profiles = await Promise.all(candidates.map(async (uid) => ({
+    uid,
+    profile: parseProfile((await db.doc(`notificationProfiles/${uid}`).get()).data()),
+  })));
+  const eligible = profiles.filter(({ profile }) => (
+    !profile.mutedSpaceIds.has(input.spaceId)
+    && (!input.channelId || !profile.mutedChannelIds.has(input.channelId))
+  ));
+  if (eligible.length === 0) return;
+
+  const focus = input.channelId ?? `section:${input.event.section}`;
+  const plans: RecipientPlan[] = await Promise.all(eligible.map(async ({ uid }): Promise<RecipientPlan> => ({
+    uid,
+    isMention: false,
+    focused: await isFocusedOn(input.spaceId, uid, focus),
+  })));
+
+  const itemId = notificationId(
+    input.sourceEventId,
+    input.spaceId,
+    input.event.type,
+    input.entityId,
+  );
+  const url = entityUrl(input);
+  const delivered: Array<RecipientPlan | null> = await Promise.all(plans.map(async (plan): Promise<RecipientPlan | null> => {
+    const created = await createInboxItem(
+      db.doc(`notifications/${plan.uid}/items/${itemId}`),
+      {
+        type: input.event.type,
+        spaceId: input.spaceId,
+        spaceName: input.spaceName,
+        channelId: input.channelId ?? null,
+        section: input.event.section,
+        entityKind: input.event.entityKind,
+        entityId: input.entityId,
+        entityLabel: input.event.entityLabel,
+        action: input.event.action,
+        actorUid: input.actorUid,
+        actorName: input.actorName,
+        preview: input.event.preview,
+        isMention: false,
+        createdAt: FieldValue.serverTimestamp(),
+        readAt: null,
+      },
+    );
+    return created ? plan : null;
+  }));
+
+  await Promise.all(delivered.filter((plan): plan is RecipientPlan => plan !== null).map(async (plan) => {
+    const profile = eligible.find((candidate) => candidate.uid === plan.uid)?.profile;
+    if (!profile?.desktopEnabled || plan.focused) return;
+    const devices = await deviceTargets(plan.uid);
+    if (devices.length === 0) return;
+    try {
+      await sendPush(devices, {
+        notificationId: itemId,
+        type: input.event.type,
+        spaceId: input.spaceId,
+        spaceName: input.spaceName ?? '',
+        channelId: input.channelId ?? '',
+        section: input.event.section,
+        entityKind: input.event.entityKind,
+        entityId: input.entityId,
+        entityLabel: input.event.entityLabel,
+        action: input.event.action,
+        actorUid: input.actorUid,
+        actorName: input.actorName,
+        preview: input.event.preview,
+        isMention: 'false',
+        url,
+      });
+    } catch (error) {
+      logger.error('Failed to send Collab entity push.', {
+        error,
+        type: input.event.type,
+        spaceId: input.spaceId,
+        entityId: input.entityId,
+        uid: plan.uid,
+      });
+    }
+  }));
+}
+
+function actorUidFor(event: AuthWriteEvent): string {
+  return typeof event.authId === 'string' ? event.authId : '';
+}
+
+async function handleResourceWrite(event: AuthWriteEvent, definition: ResourceDefinition): Promise<void> {
+  const change = event.data;
+  if (!change) return;
+  const actorUid = actorUidFor(event);
+  if (!actorUid) {
+    logger.warn('Skipping Collab entity notification without authenticated actor.', {
+      authType: event.authType,
+      document: event.document,
+    });
+    return;
+  }
+  const before = dataOf(change.before);
+  const after = dataOf(change.after);
+  const derived = deriveResourceEvent(definition, before, after, actorUid);
+  if (!derived) return;
+  const { spaceId, entityId } = event.params;
+  const spaceSnapshot = await getFirestore().doc(`collabSpaces/${spaceId}`).get();
+  if (!spaceSnapshot.exists) return;
+  const space = spaceSnapshot.data() as Record<string, unknown>;
+  await fanoutEntityNotification({
+    sourceEventId: event.id,
+    spaceId,
+    entityId,
+    actorUid,
+    actorName: actorNameFromSpace(space, actorUid),
+    spaceName: typeof space.name === 'string' ? space.name : null,
+    candidateUids: memberIdsFromSpace(space),
+    event: derived,
+  });
+}
+
+function resourceTrigger(segment: keyof typeof RESOURCE_DEFINITIONS) {
+  const definition = RESOURCE_DEFINITIONS[segment];
+  return onDocumentWrittenWithAuthContext(
+    {
+      document: `collabSpaces/{spaceId}/${segment}/{entityId}`,
+      region: REGION,
+      retry: true,
+    },
+    (event) => handleResourceWrite(event as AuthWriteEvent, definition),
+  );
+}
+
+export const fanoutTaskNotification = resourceTrigger('tasks');
+export const fanoutTeamMemberNotification = resourceTrigger('teamMembers');
+export const fanoutSpellNotification = resourceTrigger('spells');
+export const fanoutDocNotification = resourceTrigger('docs');
+export const fanoutFileNotification = resourceTrigger('files');
+
+export const fanoutChannelNotification = onDocumentWrittenWithAuthContext(
+  {
+    document: 'collabSpaces/{spaceId}/channels/{entityId}',
+    region: REGION,
+    retry: true,
+  },
+  async (event) => {
+    const change = event.data;
+    const actorUid = typeof event.authId === 'string' ? event.authId : '';
+    if (!change || !actorUid) return;
+    const derived = deriveChannelEvent(dataOf(change.before), dataOf(change.after));
+    if (!derived) return;
+    const { spaceId, entityId } = event.params;
+    const spaceSnapshot = await getFirestore().doc(`collabSpaces/${spaceId}`).get();
+    if (!spaceSnapshot.exists) return;
+    const space = spaceSnapshot.data() as Record<string, unknown>;
+    await fanoutEntityNotification({
+      sourceEventId: event.id,
+      spaceId,
+      entityId,
+      actorUid,
+      actorName: actorNameFromSpace(space, actorUid),
+      spaceName: typeof space.name === 'string' ? space.name : null,
+      channelId: derived.action === 'deleted' ? undefined : entityId,
+      candidateUids: memberIdsFromSpace(space),
+      event: derived,
+    });
+  },
+);
+
+export const fanoutInviteNotification = onDocumentWrittenWithAuthContext(
+  {
+    document: 'collabSpaces/{spaceId}/invites/{entityId}',
+    region: REGION,
+    retry: true,
+  },
+  async (event) => {
+    const change = event.data;
+    const actorUid = typeof event.authId === 'string' ? event.authId : '';
+    if (!change || !actorUid) return;
+    const derived = deriveInviteEvent(dataOf(change.before), dataOf(change.after));
+    if (!derived) return;
+    const { spaceId, entityId } = event.params;
+    const spaceSnapshot = await getFirestore().doc(`collabSpaces/${spaceId}`).get();
+    if (!spaceSnapshot.exists) return;
+    const space = spaceSnapshot.data() as Record<string, unknown>;
+    await fanoutEntityNotification({
+      sourceEventId: event.id,
+      spaceId,
+      entityId,
+      actorUid,
+      actorName: actorNameFromSpace(space, actorUid),
+      spaceName: typeof space.name === 'string' ? space.name : null,
+      candidateUids: memberIdsFromSpace(space),
+      event: derived,
+    });
+  },
+);
+
+export const fanoutSpaceNotification = onDocumentWrittenWithAuthContext(
+  {
+    document: 'collabSpaces/{spaceId}',
+    region: REGION,
+    retry: true,
+  },
+  async (event) => {
+    const change = event.data;
+    const actorUid = typeof event.authId === 'string' ? event.authId : '';
+    if (!change || !actorUid) return;
+    const before = dataOf(change.before);
+    const after = dataOf(change.after);
+    const derived = deriveSpaceEvent(before, after, actorUid);
+    if (!derived) return;
+    const space = after ?? before;
+    if (!space) return;
+    await fanoutEntityNotification({
+      sourceEventId: event.id,
+      spaceId: event.params.spaceId,
+      entityId: derived.subjectUid ?? event.params.spaceId,
+      actorUid,
+      actorName: actorNameFromSpace(after ?? before, actorUid),
+      spaceName: typeof space.name === 'string' ? space.name : null,
+      candidateUids: [...new Set([
+        ...memberIdsFromSpace(before),
+        ...memberIdsFromSpace(after),
+      ])],
+      event: derived,
+    });
   },
 );

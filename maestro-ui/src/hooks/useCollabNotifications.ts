@@ -3,6 +3,7 @@ import { useFirebaseAuthStore } from '../stores/useFirebaseAuthStore';
 import { useCollabNotificationsStore } from '../stores/useCollabNotificationsStore';
 import { useSessionStore } from '../stores/useSessionStore';
 import { useMessagingStore } from '../stores/useMessagingStore';
+import { useUIStore, type SpaceSection } from '../stores/useUIStore';
 import { CollabSpaceClient } from '../firebase/CollabSpaceClient';
 import { MessagingClient } from '../firebase/MessagingClient';
 import { isCollabId, collabActiveIdToFirestoreId } from '../app/types/space';
@@ -119,12 +120,18 @@ function computeVisible(): boolean {
 
 function notificationFromPush(payload: CollabPushPayload): CollabNotification {
   return {
-    id: `cn_${payload.messageId}`,
+    id: `cn_${payload.notificationId}`,
+    type: payload.type,
     spaceId: payload.spaceId,
     spaceName: payload.spaceName,
     channelId: payload.channelId,
     channelName: payload.channelName,
     messageId: payload.messageId,
+    section: payload.section as SpaceSection,
+    entityKind: payload.entityKind,
+    entityId: payload.entityId,
+    entityLabel: payload.entityLabel,
+    action: payload.action,
     authorUid: payload.actorUid,
     authorName: payload.actorName,
     preview: payload.preview,
@@ -132,6 +139,17 @@ function notificationFromPush(payload: CollabPushPayload): CollabNotification {
     timestamp: Date.now(),
     read: false,
   };
+}
+
+function isNotificationFocused(item: CollabNotification): boolean {
+  const notificationState = useCollabNotificationsStore.getState();
+  if (!notificationState.windowVisible) return false;
+  const activeId = useSessionStore.getState().activeId;
+  const activeSpaceId = activeId && isCollabId(activeId) ? collabActiveIdToFirestoreId(activeId) : null;
+  if (activeSpaceId !== item.spaceId) return false;
+  const section = item.section ?? 'messages';
+  if (section !== useUIStore.getState().spaceActiveSection) return false;
+  return section !== 'messages' || notificationState.focusedChannelId === item.channelId;
 }
 
 function samePrefs(a: NotifyPrefs, b: NotifyPrefs): boolean {
@@ -156,6 +174,7 @@ export function useCollabNotifications(): void {
   const resetLiveState = useCollabNotificationsStore((s) => s.resetLiveState);
   const activeId = useSessionStore((s) => s.activeId);
   const activeChannelBySpace = useMessagingStore((s) => s.activeChannelBySpace);
+  const spaceActiveSection = useUIStore((s) => s.spaceActiveSection);
   const startedRef = useRef(false);
   const profileLoadedRef = useRef(false);
 
@@ -217,9 +236,9 @@ export function useCollabNotifications(): void {
       initial: (items) => useCollabNotificationsStore.getState().hydrateInbox(items),
       added: (item) => {
         const store = useCollabNotificationsStore.getState();
-        const focused = store.windowVisible && store.focusedChannelId === item.channelId;
+        const focused = isNotificationFocused(item);
         store.mergeNotification(item, !focused);
-        if (focused) store.markChannelRead(item.channelId);
+        if (focused && item.channelId) store.markChannelRead(item.channelId);
       },
       modified: (item) => useCollabNotificationsStore.getState().mergeNotification(item, false),
     });
@@ -240,8 +259,13 @@ export function useCollabNotifications(): void {
   useEffect(() => {
     const spaceId = activeId && isCollabId(activeId) ? collabActiveIdToFirestoreId(activeId) : null;
     const channelId = spaceId ? activeChannelBySpace[spaceId] ?? null : null;
-    presence.setFocus(spaceId, channelId, useCollabNotificationsStore.getState().windowVisible);
-  }, [activeId, activeChannelBySpace, windowVisible]);
+    presence.setFocus(
+      spaceId,
+      channelId,
+      useCollabNotificationsStore.getState().windowVisible,
+      spaceActiveSection,
+    );
+  }, [activeId, activeChannelBySpace, windowVisible, spaceActiveSection]);
 
   // FCM foreground messages use the same in-app store as the regular listener;
   // service-worker click events deep-link straight into the relevant channel.
@@ -257,7 +281,7 @@ export function useCollabNotifications(): void {
         if (disposed) return;
         const item = notificationFromPush(payload);
         const store = useCollabNotificationsStore.getState();
-        const focused = store.windowVisible && store.focusedChannelId === item.channelId;
+        const focused = isNotificationFocused(item);
         store.mergeNotification(item, !focused);
       },
       onClick: (payload) => {
@@ -279,12 +303,18 @@ export function useCollabNotifications(): void {
     if (!uid || typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     const spaceId = url.searchParams.get('collabSpace');
-    const channelId = url.searchParams.get('collabChannel');
-    if (!spaceId || !channelId) return;
+    const channelId = url.searchParams.get('collabChannel') ?? '';
+    const rawSection = url.searchParams.get('collabSection') ?? (channelId ? 'messages' : 'settings');
+    const section = ['messages', 'tasks', 'team', 'spells', 'docs', 'files', 'members', 'settings'].includes(rawSection)
+      ? rawSection as SpaceSection
+      : 'settings';
+    if (!spaceId) return;
     url.searchParams.delete('collabSpace');
     url.searchParams.delete('collabChannel');
+    url.searchParams.delete('collabSection');
+    url.searchParams.delete('collabEntity');
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
-    openCollabNotification({ spaceId, channelId });
+    openCollabNotification({ spaceId, channelId, section });
   }, [uid]);
 
   useEffect(() => {

@@ -3,7 +3,11 @@ import { createPortal } from 'react-dom';
 import {
   useCollabNotificationsStore,
 } from '../../stores/useCollabNotificationsStore';
-import type { CollabNotification } from '../../notifications/collabNotificationTypes';
+import {
+  collabNotificationHeading,
+  collabNotificationIcon,
+  type CollabNotification,
+} from '../../notifications/collabNotificationTypes';
 import { openCollabNotification } from '../../notifications/collabNotificationNav';
 
 const TOAST_TIMEOUT_MS = 6000;
@@ -34,10 +38,7 @@ function CollabToast({ toast }: { toast: CollabNotification }) {
     return () => window.clearTimeout(timer);
   }, [toast.id, dismissToast]);
 
-  const channelLabel = toast.channelName ? `#${toast.channelName}` : 'a channel';
-  const heading = toast.isMention
-    ? `${toast.authorName} mentioned you`
-    : `${toast.authorName} · ${channelLabel}`;
+  const heading = collabNotificationHeading(toast);
 
   return (
     <div
@@ -50,7 +51,7 @@ function CollabToast({ toast }: { toast: CollabNotification }) {
       }}
     >
       <span className="collab-notify-toast__icon" aria-hidden>
-        {toast.isMention ? '📣' : '💬'}
+        {collabNotificationIcon(toast)}
       </span>
       <div className="collab-notify-toast__body">
         <span className="collab-notify-toast__heading">{heading}</span>
