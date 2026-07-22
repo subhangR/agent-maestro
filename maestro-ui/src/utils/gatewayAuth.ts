@@ -23,22 +23,43 @@ export const GATEWAY_AUTH_MODE =
 // sites append a token without an async refactor of the reconnect logic.
 let cachedIdToken: string | null = null;
 
+// Firebase restores a persisted session ASYNCHRONOUSLY. On a fresh page load the
+// app's startup fetches can fire before that restore completes, sending them with
+// no token → 401. We gate the token getter on the first auth resolution so those
+// initial requests wait for the session to hydrate.
+let authResolved = false;
+let resolveAuthReady!: () => void;
+const authReady = new Promise<void>((r) => { resolveAuthReady = r; });
+function markAuthResolved() {
+  if (!authResolved) {
+    authResolved = true;
+    resolveAuthReady();
+  }
+}
+
 if (GATEWAY_AUTH_MODE) {
   try {
     onIdTokenChanged(getFbAuth(), async (user) => {
       cachedIdToken = user ? await user.getIdToken().catch(() => null) : null;
+      markAuthResolved();
     });
   } catch {
     /* firebase not initialized in this context — token stays null */
+    markAuthResolved();
   }
 }
 
 /**
  * Fresh ID token for REST calls (getIdToken auto-refreshes when expired).
- * Returns null when not in gateway mode or when no user is signed in.
+ * Returns null when not in gateway mode or when no user is signed in. Waits (up
+ * to ~4s) for Firebase's initial session restore so startup fetches don't race
+ * ahead of it and 401.
  */
 export async function getGatewayAuthToken(): Promise<string | null> {
   if (!GATEWAY_AUTH_MODE) return null;
+  if (!authResolved) {
+    await Promise.race([authReady, new Promise((r) => setTimeout(r, 4000))]);
+  }
   try {
     const user = getFbAuth().currentUser;
     const token = user ? await user.getIdToken() : null;

@@ -1,4 +1,5 @@
 import { useFirebaseAuthStore } from '../stores/useFirebaseAuthStore';
+import { getFbAuth } from '../firebase/auth';
 
 /**
  * Trusted-Team Hub login gate (Design A, Phase 2).
@@ -52,7 +53,13 @@ export function GatewayLoginGate() {
           <>
             <button
               type="button"
-              onClick={() => void signInGoogle()}
+              onClick={async () => {
+                await signInGoogle();
+                // The app's startup effects run once on mount (before sign-in), so
+                // reload after a successful sign-in to bootstrap cleanly with the
+                // session in place — startup fetches then carry a token.
+                if (getFbAuth().currentUser) window.location.reload();
+              }}
               disabled={loading}
               style={{
                 marginTop: 24,

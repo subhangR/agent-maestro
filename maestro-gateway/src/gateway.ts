@@ -94,13 +94,14 @@ export class Gateway {
     }
   }
 
-  /** Handle a /ws or /pty upgrade: authenticate, ensure instance, proxy the socket. */
+  /**
+   * Handle a WebSocket upgrade: authenticate, ensure instance, proxy the socket.
+   * The maestro-server routes upgrades by path itself — the entity-sync bridge
+   * connects to the ROOT path `/` and the PTY stream to `/pty` — so we accept any
+   * path and let the per-user instance's own upgrade handler dispatch it. (We only
+   * exclude nothing here; auth is what gates access, not the path.)
+   */
   async handleUpgrade(req: http.IncomingMessage, socket: Duplex, head: Buffer): Promise<void> {
-    const pathname = new URL(req.url || '/', 'http://localhost').pathname;
-    if (pathname !== '/ws' && pathname !== '/pty') {
-      socket.destroy();
-      return;
-    }
     let identity: AuthResult;
     try {
       identity = await this.authenticate(req);
