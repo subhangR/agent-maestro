@@ -1,6 +1,6 @@
 import { Command } from 'commander';
-import { basename, dirname, extname, resolve, sep } from 'path';
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { basename, dirname, extname, join, resolve, sep } from 'path';
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
 import { api } from '../api.js';
 import { outputJSON, outputKeyValue } from '../utils/formatter.js';
 import { currentIdentity, loginWithLoopback } from '../collab/auth.js';
@@ -9,6 +9,7 @@ import { CollabFirestore } from '../collab/firestore.js';
 import { buildInviteLink, generateInviteId, InviteKind, normalizeInviteId, parseDuration, parseInviteLink } from '../collab/invites.js';
 import { randomBytes } from 'crypto';
 import { eraseRefreshToken } from '../collab/token-store.js';
+import { homedir } from 'os';
 import { CollabError, CollabIdentity } from '../collab/types.js';
 
 type Global = { json?: boolean; profile?: string; project?: string };
@@ -104,8 +105,21 @@ export async function applyConflict(kind: 'task' | 'member' | 'spell', payload: 
   const field = kind === 'task' ? 'title' : 'name'; const target = String(payload[field] || '');
   if (!existing.some((item) => String(item[field] || '') === target)) return payload;
   if (mode === 'fail') throw new CollabError('LOCAL_CONFLICT', `A local ${kind} named '${target}' already exists.`);
-  payload[field] = `${target} (copy)`;
+  let suffix = 1;
+  let candidate = `${target} (copy)`;
+  while (existing.some((item) => String(item[field] || '') === candidate)) candidate = `${target} (copy ${++suffix})`;
+  payload[field] = candidate;
   return payload;
+}
+
+function recordLocalProvenance(kind: string, localId: unknown, remoteId: string, spaceId: string, projectId: string): void {
+  if (typeof localId !== 'string') return;
+  const path = join(homedir(), '.maestro', 'collab', 'provenance.json');
+  let records: Array<Record<string, string>> = [];
+  try { records = JSON.parse(readFileSync(path, 'utf8')) as Array<Record<string, string>>; } catch { /* initialize */ }
+  records.push({ kind, localId, remoteId, spaceId, projectId, recordedAt: new Date().toISOString() });
+  const temp = `${path}.${process.pid}.tmp`;
+  try { mkdirSync(dirname(path), { recursive: true, mode: 0o700 }); writeFileSync(temp, `${JSON.stringify(records)}\n`, { mode: 0o600 }); renameSync(temp, path); } catch { /* best effort audit */ }
 }
 
 /** Direct-Firebase Collab commands. `--server` remains exclusively local API scope. */
@@ -142,8 +156,7 @@ export function registerCollabCommands(root: Command): void {
   space.command('use <space-id>').option('--project <project-id>').action(guarded(async (spaceId: string, options: { project?: string }) => { const { name } = resolveProfile(profileFrom()); setDefaultContext(name, { spaceId, projectId: options.project }); result(root, { spaceId, ...(options.project ? { projectId: options.project } : {}) }); }));
   space.command('create').requiredOption('--name <name>').requiredOption('--repo <url>').option('--private').option('--public').option('--description <text>', '').action(guarded(async (options: { name: string; repo: string; private?: boolean; public?: boolean; description: string }) => {
     if (options.private && options.public) throw new CollabError('INVALID_ARGUMENTS', 'Choose either --private or --public.');
-    const c = await client(root); const repo = normalizeRepo(options.repo); const url = new URL(repo); const [owner, repository] = url.pathname.slice(1).split('/'); const id = await c.db.create('', 'collabSpaces', { name: options.name.trim(), description: options.description, githubUrl: repo, githubHost: url.hostname, githubOwner: owner, githubRepo: repository, visibility: options.private ? 'private' : 'public', ownerId: c.identity.uid, memberIds: [c.identity.uid], members: { [c.identity.uid]: { uid: c.identity.uid, displayName: c.identity.displayName, email: c.identity.email, photoUrl: null, role: 'owner', joinedAt: new Date() } }, createdAt: new Date(), updatedAt: new Date() });
-    await c.db.create(`collabSpaces/${id}`, 'channels', { spaceId: id, name: 'general', description: 'Default channel for this space', createdBy: c.identity.uid, createdAt: new Date(), updatedAt: new Date(), lastMessageAt: null, position: 0, isDefault: true }, 'general'); result(root, { id, name: options.name, visibility: options.private ? 'private' : 'public', defaultChannel: 'general' });
+    const c = await client(root); const repo = normalizeRepo(options.repo); const url = new URL(repo); const [owner, repository] = url.pathname.slice(1).split('/'); const id = await c.db.createSpace({ name: options.name.trim(), description: options.description, githubUrl: repo, githubHost: url.hostname, githubOwner: owner, githubRepo: repository, visibility: options.private ? 'private' : 'public' }); result(root, { id, name: options.name, visibility: options.private ? 'private' : 'public', defaultChannel: 'general' });
   }));
   space.command('leave <space-id>').option('--yes').action(guarded(async (spaceId: string, options: { yes?: boolean }) => { if (!options.yes) throw new CollabError('CONFIRMATION_REQUIRED', 'Pass --yes to leave a space.'); const c = await client(root); await c.db.removeMember(spaceId, c.identity.uid); result(root, { id: spaceId, left: true }); }));
   space.command('delete <space-id>').requiredOption('--yes').action(guarded(async (spaceId: string) => { const c = await client(root); await c.db.delete(`collabSpaces/${spaceId}`); result(root, { id: spaceId, deleted: true }); }));

@@ -32,6 +32,16 @@ export function decode(value: FireValue | undefined): unknown {
   return undefined;
 }
 
+export function buildAtomicSpaceCommit(profile: CollabProfile, identity: CollabIdentity, input: { id: string; name: string; description: string; githubUrl: string; githubHost: string; githubOwner: string; githubRepo: string; visibility: 'public' | 'private' }): Record<string, unknown> {
+  const rootName = `projects/${profile.firebase.projectId}/databases/(default)/documents/collabSpaces/${input.id}`;
+  const channelName = `${rootName}/channels/general`;
+  const now = new Date();
+  const member = { uid: identity.uid, displayName: identity.displayName, email: identity.email, photoUrl: null, role: 'owner', joinedAt: now };
+  const space = { ...input, ownerId: identity.uid, memberIds: [identity.uid], members: { [identity.uid]: member }, createdAt: now, updatedAt: now };
+  const channel = { spaceId: input.id, name: 'general', description: 'Default channel for this space', createdBy: identity.uid, createdAt: now, updatedAt: now, lastMessageAt: null, position: 0, isDefault: true };
+  return { writes: [{ update: { name: rootName, fields: fieldsForPaths(space) } }, { update: { name: channelName, fields: fieldsForPaths(channel) } }] };
+}
+
 function docData(document: FireDocument): Record<string, unknown> {
   const fields = document.fields || {};
   return Object.fromEntries(Object.entries(fields).map(([key, value]) => [key, decode(value)]));
@@ -108,6 +118,12 @@ export class CollabFirestore {
     // a document path or authorization input, so leaking it cannot redeem an
     // invitation; the opaque document id remains the sole bearer capability.
     await this.create(`collabSpaces/${spaceId}`, 'invites', { spaceId, kind, managementId, maxUses, useCount: 0, redeemedByUids: [], expiresAt, revokedAt: null, createdBy: this.identity.uid, createdAt: new Date(), updatedAt: new Date() }, inviteId);
+  }
+
+  async createSpace(input: { name: string; description: string; githubUrl: string; githubHost: string; githubOwner: string; githubRepo: string; visibility: 'public' | 'private' }): Promise<string> {
+    const id = randomBytes(16).toString('base64url');
+    await this.request(':commit', { method: 'POST', body: JSON.stringify(buildAtomicSpaceCommit(this.profile, this.identity, { ...input, id })) });
+    return id;
   }
 
   async addMember(spaceId: string): Promise<void> {
