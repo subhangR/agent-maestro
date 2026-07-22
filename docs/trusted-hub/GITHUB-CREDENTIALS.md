@@ -287,7 +287,58 @@ supervisor and server never learn the difference.
 
 ---
 
-## 8. Non-goals for this doc
+## 8. Alternative considered: per-user OS accounts ("hard isolation")
+
+The owner raised: *what if each user gets their own OS-level user on the same machine?*
+This is worth capturing because it's the **cleanest possible answer to the GitHub-creds
+problem** — and the natural next rung of the isolation ladder — but it's an **OS-architecture
+change, not a gateway-seam change**, and it trades against the current pooled-subscription
+simplicity.
+
+**Idea:** map each Firebase uid → a real Linux account (`hub-<uid>`, `HOME=/home/hub-<uid>`)
+and run that user's `maestro-server` instance *as* that OS user (setuid launcher /
+`systemd-run --uid` / `runuser`).
+
+**What it fixes — for free:**
+- `~/.gitconfig`, `~/.config/gh`, `~/.ssh` become **natively per-user**. No `GH_TOKEN` /
+  `GIT_CONFIG_GLOBAL` / `GH_CONFIG_DIR` injection needed — each user runs `gh auth login`
+  once in their own home.
+- The §6 confidentiality caveat **evaporates, kernel-enforced**: `chmod 700` home + process
+  ownership means another user's agent cannot read your token, your `/proc/<pid>/environ`,
+  or your files. This is exactly the leak env-injection cannot close under D9.
+
+**What it costs (why it's not L1):**
+1. **Gateway must spawn children as other UIDs** → needs root / `CAP_SETUID` / a small setuid
+   launcher. Making the always-on, network-facing authenticator root-capable *enlarges its
+   own attack surface* — prefer a tiny privileged spawner helper over a root gateway.
+2. **Provisioning becomes a root OS mutation** (`useradd` + home + quotas) on first login,
+   vs. today's `mkdir`. Reconcile / registry / de-provision all get heavier and stateful.
+3. **It fights subscription pooling.** Pooling works *because* everyone is one OS user
+   sharing one `~/.claude`. Across N real UIDs that dir needs group-readable perms — which
+   re-opens a confidentiality hole *for the Claude creds*, and the OAuth-refresh race (the
+   deferred crux) worsens with N UIDs writing one token file. You'd likely need the loopback
+   broker for Claude too.
+
+**The isolation ladder (this option is tier 3 of 4):**
+
+| Tier | Mechanism | GitHub token confidentiality | Cost |
+|---|---|---|---|
+| 1 (L1, this doc) | one OS user + **env injection** | ❌ (correct attribution/scope only) | ~none |
+| 2 | one OS user + **loopback credential broker** (§7) | ✅ tokens (not files) | small |
+| 3 (**this alternative**) | **per-user OS accounts** | ✅ everything, kernel-enforced | medium (root-spawn + pooling tension) |
+| 4 | container / microVM per user/session | ✅✅ strongest | heavy (DESIGN-A §10) |
+
+**Verdict:** per-user OS accounts is the *right* target when hardening at "the move" or if
+the team stops being fully trusted — and a sensible lighter-than-containers choice. But
+adopting it *just* to fix GitHub creds is over-scoped (drags in root-spawning + the pooling
+tension). If confidentiality is the only concern, **tier 2 (the loopback broker) gets there
+far more cheaply without the OS overhaul.** Recommended sequence: ship tier-1 env injection
+now → add the broker when confidentiality matters → move to OS accounts at "the move," at
+which point the env injection is simply removed (the per-user home *is* the identity).
+
+---
+
+## 9. Non-goals for this doc
 
 - No code in this pass (design/decision only).
 - No VPS/deploy changes.
