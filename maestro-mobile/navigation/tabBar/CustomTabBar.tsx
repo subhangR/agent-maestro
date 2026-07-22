@@ -23,6 +23,7 @@ const TAB_META: Record<string, { label: string; icon: IconName }> = {
   '(sessions)': { label: 'Sessions', icon: 'layers' },
   '(tasks)': { label: 'Tasks', icon: 'listChecks' },
   '(members)': { label: 'Members', icon: 'users' },
+  '(spaces)': { label: 'Spaces', icon: 'hash' },
   '(more)': { label: 'More', icon: 'menu' },
 };
 
@@ -111,6 +112,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps): React.JS
         </View>
 
         {renderTab('(members)', false)}
+        {renderTab('(spaces)', false)}
         {renderTab('(more)', false)}
       </View>
     </View>

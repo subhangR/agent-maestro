@@ -14,6 +14,7 @@ export default function TabsLayout(): React.JSX.Element {
       <Tabs.Screen name="(sessions)" options={{ title: 'Sessions' }} />
       <Tabs.Screen name="(tasks)" options={{ title: 'Tasks' }} />
       <Tabs.Screen name="(members)" options={{ title: 'Members' }} />
+      <Tabs.Screen name="(spaces)" options={{ title: 'Spaces' }} />
       <Tabs.Screen name="(more)" options={{ title: 'More' }} />
     </Tabs>
   );
