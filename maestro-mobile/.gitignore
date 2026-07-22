@@ -18,3 +18,5 @@ expo-env.d.ts
 
 # Env
 .env*.local
+credentials.json
+credentials/
