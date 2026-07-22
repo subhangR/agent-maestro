@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { GatewayConfig } from './config';
 import { Logger } from './logger';
+import { InstanceHandle } from './types';
 
 /**
  * Resolves the agent credential env injected into a per-user instance at spawn.
@@ -14,7 +15,26 @@ import { Logger } from './logger';
  * the supervisor. See docs/trusted-hub/DESIGN-A.md §3.5 / §10.
  */
 export interface CredentialSource {
+  /** Env injected into the user's instance (inherited by every agent PTY). */
   resolve(uid: string): Record<string, string>;
+  /** Optional one-time filesystem setup for the workspace (dirs, config files). */
+  prepare?(handle: InstanceHandle): void;
+}
+
+/** Fan-out to several sources: merge their env, run all their prepare() hooks. */
+export class CompositeCredentialSource implements CredentialSource {
+  constructor(private readonly sources: CredentialSource[]) {}
+
+  resolve(uid: string): Record<string, string> {
+    return this.sources.reduce<Record<string, string>>(
+      (env, s) => ({ ...env, ...s.resolve(uid) }),
+      {},
+    );
+  }
+
+  prepare(handle: InstanceHandle): void {
+    for (const s of this.sources) s.prepare?.(handle);
+  }
 }
 
 /**
@@ -86,4 +106,85 @@ export function prepareSharedClaudeConfig(config: GatewayConfig, logger: Logger)
   } catch (err) {
     logger.warn('failed to seed shared Claude config — interactive onboarding may show', err);
   }
+}
+
+/**
+ * Self-service per-user GitHub credentials.
+ *
+ * Unlike the shared Claude sub, GitHub identity is PER USER. We do NOT store any
+ * token in the gateway — instead we point each user's git/gh at folders inside
+ * their OWN workspace and pre-wire git to use `gh` for auth:
+ *   GH_CONFIG_DIR      = ~/hub/<uid>/gh          (gh auth login persists here)
+ *   GIT_CONFIG_GLOBAL  = ~/hub/<uid>/git/config  (user.* + gh credential helper)
+ *
+ * So a user runs `gh auth login` ONCE in their own terminal; the login is saved
+ * in their workspace and reused by every terminal/agent in that workspace only.
+ * The owner provisions nothing; there is no central token file.
+ *
+ * NOTE (soft isolation, D9): this gives correct attribution + push scope, not
+ * confidentiality — the shared OS user means another user's agent can still read
+ * ~/hub/<uid>/gh. Hardening (loopback broker / per-user OS accounts) is deferred.
+ * See docs/trusted-hub/GITHUB-CREDENTIALS.md.
+ */
+export class GitHubCredentialSource implements CredentialSource {
+  constructor(private readonly config: GatewayConfig, private readonly logger: Logger) {}
+
+  private ghDir(uid: string): string {
+    return path.join(this.config.hubDir, uid, 'gh');
+  }
+  private gitConfigPath(uid: string): string {
+    return path.join(this.config.hubDir, uid, 'git', 'config');
+  }
+
+  resolve(uid: string): Record<string, string> {
+    if (!this.config.githubCredentials) return {};
+    return {
+      GH_CONFIG_DIR: this.ghDir(uid),
+      GIT_CONFIG_GLOBAL: this.gitConfigPath(uid),
+    };
+  }
+
+  prepare(handle: InstanceHandle): void {
+    if (!this.config.githubCredentials) return;
+    try {
+      fs.mkdirSync(this.ghDir(handle.uid), { recursive: true });
+      const cfgPath = this.gitConfigPath(handle.uid);
+      fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+      // Only seed if absent — never clobber a user's later `git config` edits.
+      if (!fs.existsSync(cfgPath)) {
+        const email = handle.email || `${handle.uid}@users.noreply.github.com`;
+        const name = handle.email ? handle.email.split('@')[0] : handle.uid;
+        fs.writeFileSync(cfgPath, buildUserGitConfig(name, email), 'utf-8');
+        this.logger.info(`seeded per-user git config uid=${handle.uid}`, { path: cfgPath });
+      }
+    } catch (err) {
+      this.logger.warn(`failed to prepare GitHub creds for uid=${handle.uid}`, err);
+    }
+  }
+}
+
+/**
+ * A per-user global gitconfig that (a) sets a default identity so commits work
+ * out of the box (editable by the user) and (b) wires `gh` as the https
+ * credential helper so `git push` reuses whatever `gh auth login` stored — the
+ * empty `helper =` first resets any inherited helper (mirrors `gh auth setup-git`).
+ */
+function buildUserGitConfig(name: string, email: string): string {
+  return [
+    '# Managed by maestro-gateway — your private per-workspace git config.',
+    '# Edit user.name / user.email freely. The credential.helper lines let',
+    '# `git push` reuse your `gh auth login` (run it once in a terminal).',
+    '[user]',
+    `\tname = ${name}`,
+    `\temail = ${email}`,
+    '[credential "https://github.com"]',
+    '\thelper = ',
+    '\thelper = !gh auth git-credential',
+    '[credential "https://gist.github.com"]',
+    '\thelper = ',
+    '\thelper = !gh auth git-credential',
+    '[init]',
+    '\tdefaultBranch = main',
+    '',
+  ].join('\n');
 }

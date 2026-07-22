@@ -44,6 +44,14 @@ export interface GatewayConfig {
   /** Extra fixed env injected into every instance (comma KV: A=1,B=2). */
   extraInstanceEnv: Record<string, string>;
 
+  /**
+   * Self-service per-user GitHub credentials: inject GH_CONFIG_DIR +
+   * GIT_CONFIG_GLOBAL pointing at ~/hub/<uid>/, so each user runs `gh auth login`
+   * once in their own terminal and their login persists in their own workspace.
+   * On (default). Set MAESTRO_GITHUB_CREDENTIALS=false to disable.
+   */
+  githubCredentials: boolean;
+
   // Lifecycle
   alwaysOn: boolean;
   healthTimeoutMs: number;
@@ -109,6 +117,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): GatewayConfig 
     sharedClaudeConfigDir: env.CLAUDE_CONFIG_DIR ? expand(env.CLAUDE_CONFIG_DIR) : undefined,
     sharedCodexHome: env.CODEX_HOME ? expand(env.CODEX_HOME) : undefined,
     extraInstanceEnv: parseKV(env.MAESTRO_INSTANCE_ENV),
+    githubCredentials: env.MAESTRO_GITHUB_CREDENTIALS !== 'false',
 
     alwaysOn: env.MAESTRO_ALWAYS_ON !== 'false',
     healthTimeoutMs: parseInt(env.MAESTRO_HEALTH_TIMEOUT_MS || '15000', 10),

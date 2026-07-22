@@ -61,6 +61,8 @@ export class InstanceSupervisor {
       this.logger.info(`provisioning new workspace for uid=${uid}`, { port: handle.port });
     }
     this.provisionDirs(handle);
+    // Per-user credential setup (e.g. seed the workspace's gitconfig + gh dir).
+    this.credentials.prepare?.(handle);
 
     const isFirstBoot = !fs.existsSync(handle.dataDir) || this.isEmptyDir(handle.dataDir);
 
