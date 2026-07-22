@@ -1,5 +1,8 @@
 import fetch from 'node-fetch';
 import { randomBytes } from 'crypto';
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { homedir } from 'os';
+import { dirname, join } from 'path';
 import { CollabError, CollabIdentity, CollabProfile } from './types.js';
 
 type FireValue = Record<string, unknown>;
@@ -152,6 +155,18 @@ export class CollabFirestore {
       update: { name, fields }, ...(linkedField && localId ? { updateMask: { fieldPaths: [`${linkedField}.${this.identity.uid}`] } } : {}),
       updateTransforms: [{ fieldPath: uidsField, appendMissingElements: { values: [encode(this.identity.uid)] } }, { fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }],
     }] }) });
+    if (localId) this.persistProvenance(collection, localId, id, spaceId);
+  }
+
+  private persistProvenance(kind: string, localId: string, remoteId: string, spaceId: string): void {
+    const path = join(homedir(), '.maestro', 'collab', 'provenance.json');
+    let records: Array<Record<string, string>> = [];
+    try { records = JSON.parse(readFileSync(path, 'utf8')) as Array<Record<string, string>>; } catch { /* initialize */ }
+    records.push({ kind, localId, remoteId, spaceId, recordedAt: new Date().toISOString() });
+    mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
+    const temp = `${path}.${process.pid}.tmp`;
+    writeFileSync(temp, `${JSON.stringify(records)}\n`, { mode: 0o600 });
+    renameSync(temp, path);
   }
 
   async redeemInvite(spaceId: string, inviteId: string): Promise<'joined' | 'already_member'> {

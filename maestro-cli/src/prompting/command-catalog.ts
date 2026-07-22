@@ -29,6 +29,19 @@ const COMMAND_DEFINITIONS: Array<Omit<CommandCatalogEntry, 'syntax'>> = [
   { id: 'status', description: 'Show project status', group: 'root', allowedModes: ALL_MODES, isCore: true },
   { id: 'commands', description: 'Show available commands', group: 'root', allowedModes: ALL_MODES, isCore: true },
 
+  // Opt-in Firebase Collab commands. Mutating remote operations remain
+  // explicitly invoked by the user; the manifest group controls visibility.
+  { id: 'collab:auth', description: 'Authenticate to Firebase Collab', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:context', description: 'Show Collab profile and context', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:space:list', description: 'List Collab spaces', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:space:show', description: 'Show a Collab space', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:channel:list', description: 'List Collab channels', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:message:list', description: 'List Collab messages', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:message:send', description: 'Send a Collab message', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:invite:create', description: 'Create a private Collab invitation', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:share', description: 'Share a local entity to Collab', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:pull', description: 'Pull a shared entity locally', group: 'collab', allowedModes: ALL_MODES },
+
   // Task commands
   { id: 'task:list', description: 'List tasks', group: 'task', allowedModes: ALL_MODES },
   { id: 'task:get', description: 'Get task details', group: 'task', allowedModes: ALL_MODES },
@@ -308,6 +321,7 @@ export const COMMAND_GROUP_META: Record<string, { prefix: string; description: s
   modal: { prefix: 'maestro modal', description: 'Modal interaction' },
   spell: { prefix: 'maestro spell', description: 'Spell management and invocation' },
   'command-log': { prefix: 'maestro command-log', description: 'CLI command-usage audit trail' },
+  collab: { prefix: 'maestro collab', description: 'Firebase Collab Space operations (opt-in)' },
 };
 
 export function getCommandCatalog(): CommandCatalogEntry[] {
