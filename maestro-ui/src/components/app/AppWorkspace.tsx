@@ -30,6 +30,7 @@ const LazySpaceWindow = React.lazy(() => import("../space-window/SpaceWindow").t
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
 import { SessionStatsView } from "../maestro/SessionStatsView";
+import { SessionActivityPanel } from "../maestro/SessionActivityPanel";
 import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../../utils/spellRings";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
@@ -142,6 +143,9 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
 
   const activeMaestroSession = active?.maestroSessionId ? maestroSessions[active.maestroSessionId] : null;
   const activeIsCoordinator = isCoordinatorRole(activeMaestroSession?.mode);
+
+  // Redesign Phase 4 — Activity view toggle (additive overlay over the terminal).
+  const [showActivity, setShowActivity] = useState(false);
 
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
@@ -447,6 +451,24 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
           />
         )}
         <div className="terminalDeck">
+        {/* Redesign Phase 4 — Activity ⇄ Terminal toggle + additive overlay.
+            The terminal deck stays mounted underneath; the overlay simply covers
+            it when Activity is on, so nothing unmounts or breaks. */}
+        {activeMaestroSession && (
+          <button
+            type="button"
+            className={"pn-activity-toggle" + (showActivity ? " pn-activity-toggle--on" : "")}
+            onClick={() => setShowActivity((v) => !v)}
+            title={showActivity ? "Show the raw terminal" : "Show activity in plain language"}
+          >
+            {showActivity ? "Terminal" : "Activity"}
+          </button>
+        )}
+        {showActivity && activeMaestroSession && (
+          <div className="pn-activity-overlay">
+            <SessionActivityPanel session={activeMaestroSession} />
+          </div>
+        )}
         {/* Mode chip — shows current session role (coordinator / worker).
             Lives inside the deck so it overlays only the terminal content, not
             the session-log strip above it. */}
