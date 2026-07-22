@@ -132,6 +132,31 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const sendPromptToActive = useSessionStore((s) => s.sendPromptToActive);
   const sendPromptToSession = useSessionStore((s) => s.sendPromptToSession);
   const active = sessions.find((s) => s.id === activeId) ?? null;
+
+  // Low-compute terminal virtualization: each session's <SessionTerminal> is a
+  // full xterm instance whose live-output write loop runs even while the tab is
+  // hidden. With many sessions (30+) that starves the render thread on weak
+  // machines — the terminal paints blank/glitchy and the active agent can't be
+  // seen. Cap how many terminals stay mounted at once to the active session plus
+  // the few most-recently-active ones (an MRU). Unmounted sessions keep their
+  // server PTY + WebSocket and buffer output in the store's pendingData, then
+  // re-hydrate on remount (SessionTerminal.flushPending); status/liveness still
+  // updates via the store's onOutput, which is independent of mounting.
+  const TERMINAL_MOUNT_CAP = 4;
+  const terminalMruRef = useRef<string[]>([]);
+  const mountedTerminalIds = useMemo(() => {
+    const mru = terminalMruRef.current;
+    if (activeId && mru[0] !== activeId) {
+      terminalMruRef.current = [activeId, ...mru.filter((id) => id !== activeId)].slice(
+        0,
+        TERMINAL_MOUNT_CAP,
+      );
+    }
+    const set = new Set(terminalMruRef.current);
+    if (activeId) set.add(activeId);
+    return set;
+  }, [activeId]);
+
   const maestroSessions = useMaestroStore((s) => s.sessions);
   const teamViewOpen = useUIStore((s) => s.teamViewRootId) !== null;
   const reportError = useUIStore((s) => s.reportError);
@@ -527,7 +552,10 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                 >
                   {inactiveMaestroSession ? (
                     <SessionStatsView session={inactiveMaestroSession} />
-                  ) : (
+                  ) : mountedTerminalIds.has(s.id) ? (
+                    // Only the active + recently-active terminals stay mounted
+                    // (see mountedTerminalIds). Others render nothing until
+                    // selected, then mount and re-hydrate from buffered output.
                     <SessionTerminal
                       id={s.id}
                       active={s.id === activeId}
@@ -539,7 +567,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                       registry={registry}
                       pendingData={pendingData}
                     />
-                  )}
+                  ) : null}
                 </TerminalRingContainer>
               );
             })}
