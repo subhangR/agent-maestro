@@ -28,6 +28,7 @@ import { registerGitCommands } from './commands/git.js';
 import { registerCommandLogCommands } from './commands/command-log.js';
 import { registerHookCommands } from './commands/hook.js';
 import { registerEnsembleCommands } from './commands/ensemble.js';
+import { registerCollabCommands } from './commands/collab.js';
 import { installCommandTracker, setTrackedCommand } from './services/command-tracker.js';
 import {
   loadCommandPermissions,
@@ -180,6 +181,7 @@ program
   .option('--json', 'Output results as JSON')
   .option('--server <url>', 'Override Maestro Server URL')
   .option('--project <id>', 'Override Project ID')
+  .option('--profile <name>', 'Collab profile name')
   .hook('preAction', (thisCommand, actionCommand) => {
     const opts = thisCommand.opts();
     if (opts.server) {
@@ -380,6 +382,7 @@ registerGitCommands(program);
 registerCommandLogCommands(program);
 registerHookCommands(program);
 registerEnsembleCommands(program);
+registerCollabCommands(program);
 program.command('status')
   .description('Show summary of current project state')
   .action(async () => {
