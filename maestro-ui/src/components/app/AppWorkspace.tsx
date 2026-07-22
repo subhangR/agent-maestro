@@ -383,7 +383,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
 
 
       {/* Inline collab space — Firebase-backed collaboration room */}
-      {isActiveCollab && activeCollabSpaceId && (
+      {!hasInspectedSession && isActiveCollab && activeCollabSpaceId && (
         <ErrorBoundary name="CollabSpace">
           <Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading space…</div>}>
             <LazySpaceWindow key={activeCollabSpaceId} spaceId={activeCollabSpaceId} inline />
