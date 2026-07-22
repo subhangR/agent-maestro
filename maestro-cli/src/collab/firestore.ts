@@ -155,14 +155,21 @@ export class CollabFirestore {
       update: { name, fields }, ...(linkedField && localId ? { updateMask: { fieldPaths: [`${linkedField}.${this.identity.uid}`] } } : {}),
       updateTransforms: [{ fieldPath: uidsField, appendMissingElements: { values: [encode(this.identity.uid)] } }, { fieldPath: 'updatedAt', setToServerValue: 'REQUEST_TIME' }],
     }] }) });
-    if (localId) this.persistProvenance(collection, localId, id, spaceId);
+    if (localId) this.persistProvenance(collection, localId, id, spaceId, 'synced');
   }
 
-  private persistProvenance(kind: string, localId: string, remoteId: string, spaceId: string): void {
+  /** Record a local write before remote fan-out so failures remain recoverable. */
+  recordPendingProvenance(kind: string, localId: string, remoteId: string, spaceId: string): void {
+    this.persistProvenance(kind, localId, remoteId, spaceId, 'pending');
+  }
+
+  private persistProvenance(kind: string, localId: string, remoteId: string, spaceId: string, status: 'pending' | 'synced'): void {
     const path = join(homedir(), '.maestro', 'collab', 'provenance.json');
     let records: Array<Record<string, string>> = [];
     try { records = JSON.parse(readFileSync(path, 'utf8')) as Array<Record<string, string>>; } catch { /* initialize */ }
-    records.push({ kind, localId, remoteId, spaceId, recordedAt: new Date().toISOString() });
+    const existing = records.find((r) => r.kind === kind && r.localId === localId && r.remoteId === remoteId && r.spaceId === spaceId);
+    if (existing) { existing.status = status; existing.updatedAt = new Date().toISOString(); }
+    else records.push({ kind, localId, remoteId, spaceId, status, recordedAt: new Date().toISOString() });
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     const temp = `${path}.${process.pid}.tmp`;
     writeFileSync(temp, `${JSON.stringify(records)}\n`, { mode: 0o600 });
