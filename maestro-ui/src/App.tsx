@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "./platform";
 import { useAuthStore } from "./stores/useAuthStore";
 import { LoginOverlay } from "./components/LoginOverlay";
+import { GatewayLoginGate } from "./components/GatewayLoginGate";
+import { GATEWAY_AUTH_MODE } from "./utils/gatewayAuth";
 import { TerminalRegistry } from "./SessionTerminal";
 import { PendingDataBuffer } from "./app/types/app-state";
 import * as DEFAULTS from "./app/constants/defaults";
@@ -221,6 +223,7 @@ export default function App() {
   // ---------- auth + joined-spaces global subscription ----------
   const initAuth = useFirebaseAuthStore((s) => s.initAuth);
   const authUser = useFirebaseAuthStore((s) => s.user);
+  const authInitialized = useFirebaseAuthStore((s) => s.initialized);
   useEffect(() => {
     initAuth();
   }, [initAuth]);
@@ -532,6 +535,18 @@ export default function App() {
 
   // ---------- render ----------
   const isEmpty = projects.length === 0;
+
+  // Gateway (multi-user) mode: require a Firebase Google sign-in before the app
+  // makes any API call, so every request carries a token the gateway routes by.
+  // Gated on VITE_MAESTRO_AUTH_MODE=firebase — a no-op in the Tauri/single-server builds.
+  if (GATEWAY_AUTH_MODE) {
+    if (!authInitialized) {
+      return <div className="app" style={{ background: '#0d0d0f' }} />;
+    }
+    if (!authUser) {
+      return <GatewayLoginGate />;
+    }
+  }
 
   // Show login overlay in web mode when auth is enabled and user is not authenticated
   if (!IS_TAURI && (authChecking ? false : showLogin)) {
