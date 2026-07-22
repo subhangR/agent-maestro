@@ -60,11 +60,13 @@ git pull                                  # get the login-gate + M4 client commi
 bun install                               # installs firebase-admin (gateway dep)
 bun run build:gateway
 
-# Service-account key: the repo already ships one at the repo root
-# (maestro-5f3fc-firebase-adminsdk-*.json). Point the gateway at it, or copy to
-# /etc/maestro/firebase-sa.json (chmod 600). NOTE: this key is committed to git —
-# acceptable ONLY behind Tailscale; ROTATE + purge from history before any public move.
-sudo cp maestro-5f3fc-firebase-adminsdk-*.json /etc/maestro/firebase-sa.json
+# Service-account key: NOT in git (it's gitignored — good). It must be delivered to
+# the box out-of-band, then placed at /etc/maestro/firebase-sa.json (chmod 600). Either:
+#   (a) scp the owner's local maestro-5f3fc-firebase-adminsdk-*.json to the box, or
+#   (b) Firebase Console → Project settings → Service accounts → Generate new private key.
+# The gateway reads it via MAESTRO_FIREBASE_CREDENTIALS (JSON.parse of the file).
+sudo mkdir -p /etc/maestro
+sudo mv ~/firebase-sa.json /etc/maestro/firebase-sa.json   # after it's been delivered to ~
 sudo chmod 600 /etc/maestro/firebase-sa.json
 ```
 
@@ -83,15 +85,18 @@ block (`MAESTRO_GATEWAY_AUTH=firebase`, `MAESTRO_FIREBASE_PROJECT_ID=maestro-5f3
 Then `sudo systemctl restart maestro-gateway` and check `journalctl -u maestro-gateway`
 shows `firebase-admin initialized`.
 
-### 2.4 Rebuild the SPA with the gateway-auth flag
-This bakes in the Google login gate + per-request token attachment (M4).
+### 2.4 Build the gateway SPA into a SEPARATE dir (never touch the :4570 build)
+The firebase build renders a Google-login gate. It MUST go to its own outDir so it
+doesn't gate-lock the single-server UI that :4570 serves from `maestro-ui/dist`.
+`build:web:gateway` sets `VITE_MAESTRO_AUTH_MODE=firebase` and outputs to `dist-gateway`.
 ```bash
 cd /home/ubuntu/agent-maestro/maestro-ui
-# NODE_OPTIONS bumps the heap — build:web OOMs at Node's 2GB default on this box.
-NODE_OPTIONS=--max-old-space-size=6144 VITE_MAESTRO_AUTH_MODE=firebase bun run build:web
-# base URLs resolve to same-origin (= the gateway), so no VITE_API_URL/VITE_WS_URL needed.
+# NODE_OPTIONS bumps the heap — the web build OOMs at Node's 2GB default on this box.
+NODE_OPTIONS=--max-old-space-size=6144 bun run build:web:gateway   # -> maestro-ui/dist-gateway
 ```
-Watch the 2-core/swap box here — build:web is the heaviest step (~90s, ~2GB heap).
+Then point the gateway at it (Phase-2 env): `MAESTRO_UI_DIST=/home/ubuntu/agent-maestro/maestro-ui/dist-gateway`.
+`maestro-ui/dist` stays the normal single-server build for :4570 — untouched.
+Watch the 2-core/swap box here — this is the heaviest step (~90s, ~2GB heap).
 
 ### 2.5 Test on a side port BEFORE flipping :443
 ```bash

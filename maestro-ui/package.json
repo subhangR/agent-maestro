@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:web": "VITE_APP_MODE=browser VITE_API_URL=http://localhost:4569/api vite --port 4570 --strictPort",
-    "build:web": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser vite build"
+    "build:web": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser vite build",
+    "build:web:gateway": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser VITE_MAESTRO_AUTH_MODE=firebase vite build --outDir dist-gateway --emptyOutDir"
   },
   "dependencies": {
     "@maestro/pty-protocol": "workspace:*",
