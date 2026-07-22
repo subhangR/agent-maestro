@@ -6,6 +6,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { MaestroTask, MaestroSession } from '../app/types/maestro';
 import { WS_URL } from '../utils/serverConfig';
+import { withGatewayToken } from '../utils/gatewayAuth';
 
 // Global singleton WebSocket instance (shared across all hook instances)
 let globalWs: WebSocket | null = null;
@@ -103,7 +104,7 @@ export function useMaestroWebSocket(callbacks: MaestroWebSocketCallbacks = {}) {
         }
 
         try {
-            const ws = new WebSocket(WS_URL);
+            const ws = new WebSocket(withGatewayToken(WS_URL));
             globalWs = ws;
 
             ws.onopen = () => {

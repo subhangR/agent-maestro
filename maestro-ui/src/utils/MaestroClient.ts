@@ -63,6 +63,7 @@ import type {
 import { API_BASE_URL } from './serverConfig';
 import { IS_TAURI } from '../platform/detect';
 import { measureSpawnTerminalSize } from './terminalSize';
+import { getGatewayAuthToken } from './gatewayAuth';
 
 // Sentinel error type so callers can detect 401 without string-matching
 export class UnauthenticatedError extends Error {
@@ -88,12 +89,17 @@ class MaestroClient {
     private async fetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
         const url = `${this.baseUrl}${endpoint}`;
 
+        // In gateway (multi-user) mode, carry the signed-in user's Firebase ID
+        // token so the gateway can route to that user's instance. No-op otherwise.
+        const gatewayToken = await getGatewayAuthToken();
+
         try {
             const response = await fetch(url, {
                 credentials: 'include',
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(gatewayToken ? { Authorization: `Bearer ${gatewayToken}` } : {}),
                     ...options?.headers,
                 },
             });
@@ -124,14 +130,16 @@ class MaestroClient {
      * Get all projects
      */
     async getProjects(): Promise<MaestroProject[]> {
-        return this.fetch<MaestroProject[]>('/projects');
+        // Project metadata includes the Collab repository binding. Never let a
+        // short-lived browser cache resurrect a pre-link version at startup.
+        return this.fetch<MaestroProject[]>('/projects', { cache: 'no-store' });
     }
 
     /**
      * Get a single project by ID
      */
     async getProject(id: string): Promise<MaestroProject> {
-        return this.fetch<MaestroProject>(`/projects/${id}`);
+        return this.fetch<MaestroProject>(`/projects/${id}`, { cache: 'no-store' });
     }
 
     /**
