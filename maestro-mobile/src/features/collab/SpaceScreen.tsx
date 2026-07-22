@@ -10,14 +10,19 @@
 // the active channel). All subscriptions are set up / torn down in useEffect.
 // KeyboardAvoidingView wraps the bottom half so the composer lifts on keyboard.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 import { IconButton, Text } from '@/components';
 import { SpacesClient, type CollabSpace } from '@/services/collab';
 import { currentUser } from '@/services/firebaseAuth';
 import { useFirebaseAuth } from '@/services/firebaseAuth';
 import { useTheme } from '@/theme';
+
+import { MembersSheet, InvitesSheet } from './spaces';
+import { SharedBrowseScreen } from './share';
 import {
   useMessagingStore,
   selectChannels,
@@ -82,6 +87,9 @@ export function SpaceScreen({ spaceId }: { spaceId: string }): React.JSX.Element
 
   // ── Sheet state ───────────────────────────────────────────────────────────
   const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const [showShared, setShowShared] = useState(false);
+  const membersSheetRef = useRef<BottomSheetModal>(null);
+  const invitesSheetRef = useRef<BottomSheetModal>(null);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const handleSelectChannel = useCallback(
@@ -154,6 +162,8 @@ export function SpaceScreen({ spaceId }: { spaceId: string }): React.JSX.Element
   // ── Render ────────────────────────────────────────────────────────────────
   const fbUser = currentUser();
   const currentUid = user?.uid ?? fbUser?.uid ?? '';
+  const myRole = space?.members?.[currentUid]?.role;
+  const isAdmin = myRole === 'owner' || myRole === 'admin';
 
   // Find active channel name for the header eyebrow
   const activeChannel = channels.find((c) => c.id === activeChannelId);
@@ -173,13 +183,12 @@ export function SpaceScreen({ spaceId }: { spaceId: string }): React.JSX.Element
           gap: theme.space[1],
         }}
       >
-        {/* Back button placeholder — lead wires navigation */}
         <IconButton
           icon="chevronL"
           size={36}
           iconSize={18}
           accessibilityLabel="Back"
-          onPress={() => { /* lead wires this to navigation.goBack() */ }}
+          onPress={() => router.back()}
         />
         <View style={{ flex: 1 }}>
           <Text variant="h2" color="ink" numberOfLines={1}>
@@ -191,13 +200,28 @@ export function SpaceScreen({ spaceId }: { spaceId: string }): React.JSX.Element
             </Text>
           )}
         </View>
-        {/* "Manage" button — LEAD INTEGRATION POINT: replace onPress to open MembersSheet */}
+        <IconButton
+          icon="inbox"
+          size={36}
+          iconSize={17}
+          accessibilityLabel="Shared items"
+          onPress={() => setShowShared(true)}
+        />
+        {isAdmin && (
+          <IconButton
+            icon="copy"
+            size={36}
+            iconSize={17}
+            accessibilityLabel="Invitations"
+            onPress={() => invitesSheetRef.current?.present()}
+          />
+        )}
         <IconButton
           icon="users"
           size={36}
           iconSize={17}
-          accessibilityLabel="Manage space"
-          onPress={() => { /* LEAD: wire to MembersSheet */ }}
+          accessibilityLabel="Members"
+          onPress={() => membersSheetRef.current?.present()}
         />
       </View>
 
@@ -264,6 +288,39 @@ export function SpaceScreen({ spaceId }: { spaceId: string }): React.JSX.Element
           onClose={() => setShowCreateChannel(false)}
         />
       )}
+
+      {/* ── Members / Invites management sheets ──────────────────────────── */}
+      {space && <MembersSheet sheetRef={membersSheetRef} space={space} />}
+      {space && isAdmin && <InvitesSheet sheetRef={invitesSheetRef} space={space} />}
+
+      {/* ── Shared items (tasks/members/spells/docs/files) as a modal ────── */}
+      <Modal
+        visible={showShared}
+        animationType="slide"
+        onRequestClose={() => setShowShared(false)}
+        presentationStyle="fullScreen"
+      >
+        <View style={{ flex: 1, backgroundColor: theme.colors.paper, paddingTop: insets.top }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              paddingHorizontal: theme.space[2],
+              paddingVertical: theme.space[1],
+            }}
+          >
+            <IconButton
+              icon="x"
+              size={36}
+              iconSize={18}
+              accessibilityLabel="Close shared items"
+              onPress={() => setShowShared(false)}
+            />
+          </View>
+          <SharedBrowseScreen spaceId={spaceId} />
+        </View>
+      </Modal>
     </View>
   );
 }

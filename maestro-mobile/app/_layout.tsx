@@ -18,6 +18,8 @@ import { Stack } from 'expo-router';
 
 import { ThemeBoot, useAppFonts } from '@/theme';
 import { initFirebaseAuth } from '@/services/firebaseAuth';
+import { useCollabRuntime } from '@/features/collab/collabRuntime';
+import { NotificationToaster } from '@/features/collab/notifications';
 
 // Direct module import (NOT the '../navigation/sheets' barrel): SheetHost pulls
 // in SHEET_REGISTRY → @/features/* bodies. The barrel is a leaf consumed by
@@ -35,6 +37,9 @@ export default function RootLayout(): React.JSX.Element | null {
   useEffect(() => {
     initFirebaseAuth();
   }, []);
+
+  // Collab notifications + push lifecycle, bound to the Firebase auth snapshot.
+  useCollabRuntime();
 
   // Gate first paint on fonts (unless they failed — then proceed with fallbacks).
   if (!loaded && !error) return null;
@@ -57,6 +62,7 @@ export default function RootLayout(): React.JSX.Element | null {
                 options={{ presentation: 'fullScreenModal' }}
               />
             </Stack>
+            <NotificationToaster />
             <SheetHost />
           </BottomSheetModalProvider>
         </ThemeBoot>

@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { routes } from '../../../navigation/routes';
 import { startSpacesSubscription, stopSpacesSubscription, useSpacesStore } from '../../state/collab/spacesStore';
 import { Screen, StatusBlock } from '../more/kit';
+import { NotificationBell } from './notifications';
 import { CreateSpaceSheet } from './spaces/CreateSpaceSheet';
 import { DiscoverSheet } from './spaces/DiscoverSheet';
 import { JoinPrivateCard } from './spaces/JoinPrivateCard';
@@ -102,6 +103,7 @@ export function SpacesHome(): React.JSX.Element {
         title="Spaces"
         trailing={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.space[1] }}>
+            <NotificationBell />
             <IconButton
               icon="plus"
               onPress={() => createSheetRef.current?.present()}
