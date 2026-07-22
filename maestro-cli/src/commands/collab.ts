@@ -76,7 +76,7 @@ function collectionFor(kind: string): string {
 }
 
 /** Browser-neutral copies of the current UI SpaceShareClient write shapes. */
-function shareShape(kind: 'task' | 'member' | 'spell', local: Record<string, unknown>, identity: CollabIdentity, localId: string): Record<string, unknown> {
+export function shareShape(kind: 'task' | 'member' | 'spell', local: Record<string, unknown>, identity: CollabIdentity, localId: string): Record<string, unknown> {
   if (kind === 'task') return {
     title: String(local.title || '').trim(), description: String(local.description || ''), status: ['todo', 'in_progress', 'in_review', 'completed', 'cancelled', 'blocked'].includes(String(local.status)) ? local.status : 'todo', priority: ['high', 'medium', 'low'].includes(String(local.priority)) ? local.priority : 'medium', initialPrompt: typeof local.initialPrompt === 'string' ? local.initialPrompt : '', dueDate: typeof local.dueDate === 'string' ? local.dueDate : null, dangerousMode: local.dangerousMode === true, useWorktree: local.useWorktree === true, assigneeUids: [], parentTaskId: null, childrenIds: [], position: Date.now(), sourceTaskId: localId, sourceProjectId: typeof local.projectId === 'string' ? local.projectId : null, sourceUserId: identity.uid, linkedLocalIdsByUid: {}, pulledByUids: [],
   };
@@ -88,13 +88,13 @@ function shareShape(kind: 'task' | 'member' | 'spell', local: Record<string, unk
   };
 }
 
-function pullShape(kind: 'task' | 'member' | 'spell', remote: Record<string, unknown>, projectId: string): Record<string, unknown> {
+export function pullShape(kind: 'task' | 'member' | 'spell', remote: Record<string, unknown>, projectId: string): Record<string, unknown> {
   if (kind === 'task') return { projectId, title: remote.title, description: remote.description || '', status: remote.status || 'todo', priority: remote.priority || 'medium', initialPrompt: remote.initialPrompt || '', dueDate: remote.dueDate || undefined, dangerousMode: remote.dangerousMode === true, useWorktree: remote.useWorktree === true };
   if (kind === 'member') return { projectId, name: remote.name, role: remote.role || '', identity: remote.identity || '', avatar: remote.avatar || undefined, model: remote.model || undefined, agentTool: remote.agentTool || undefined, mode: remote.mode || undefined, permissionMode: remote.permissionMode || undefined, strategy: remote.strategy || undefined, capabilities: remote.capabilities || {}, skillIds: Array.isArray(remote.skillIds) ? remote.skillIds : [], commandPermissions: remote.commandPermissions || {}, customWorkflow: remote.customWorkflow || undefined, soundInstrument: remote.soundInstrument || undefined };
   return { name: remote.name, description: remote.description || '', icon: remote.icon || undefined, color: remote.color || 'violet', rules: Array.isArray(remote.rules) ? remote.rules : [] };
 }
 
-async function applyConflict(kind: 'task' | 'member' | 'spell', payload: Record<string, unknown>, projectId: string, mode: string): Promise<Record<string, unknown>> {
+export async function applyConflict(kind: 'task' | 'member' | 'spell', payload: Record<string, unknown>, projectId: string, mode: string): Promise<Record<string, unknown>> {
   const endpoint = kind === 'member' ? 'team-members' : `${kind}s`;
   const existing = await api.get<Array<Record<string, unknown>>>(`/api/${endpoint}?projectId=${encodeURIComponent(projectId)}`);
   const field = kind === 'task' ? 'title' : 'name'; const target = String(payload[field] || '');
