@@ -71,6 +71,11 @@ export function createSecurityHeaders(allowedOrigins: string[] = []): RequestHan
 
   return helmet({
     crossOriginOpenerPolicy: coop,
+    // Split-origin web/dev (Vite on :4570, API on :4569) needs cross-origin
+    // reads. Helmet's default `same-origin` CORP blocks those fetches even
+    // when CORS allows them, which surfaces as an empty project list and
+    // failed session spawns in the browser UI.
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
