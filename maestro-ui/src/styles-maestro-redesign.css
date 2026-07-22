@@ -75,3 +75,45 @@ html[data-redesign][data-redesign] .pn-dot--live,
 html[data-redesign][data-redesign] .pn-dot--run {
   box-shadow: 0 0 7px var(--pn-run);
 }
+
+/* ==========================================================================
+   UX / QA PASS — make actions obviously clickable and accessible.
+   Fixes: icon buttons that didn't read as interactive, no keyboard focus ring,
+   unclear disabled state.
+   ========================================================================== */
+html[data-redesign][data-redesign] .pn-btn,
+html[data-redesign][data-redesign] .pn-qchip,
+html[data-redesign][data-redesign] .pn-st__btn,
+html[data-redesign][data-redesign] .pn-st__actbtn,
+html[data-redesign][data-redesign] .pn-act,
+html[data-redesign][data-redesign] button:not(:disabled),
+html[data-redesign][data-redesign] [role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+html[data-redesign][data-redesign] button:disabled,
+html[data-redesign][data-redesign] [aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+/* visible keyboard focus — green ring, everywhere */
+html[data-redesign][data-redesign] .pn-btn:focus-visible,
+html[data-redesign][data-redesign] .pn-qchip:focus-visible,
+html[data-redesign][data-redesign] .pn-st__btn:focus-visible,
+html[data-redesign][data-redesign] .pn-st__actbtn:focus-visible,
+html[data-redesign][data-redesign] button:focus-visible,
+html[data-redesign][data-redesign] [role="button"]:focus-visible,
+html[data-redesign][data-redesign] input:focus-visible,
+html[data-redesign][data-redesign] a:focus-visible {
+  outline: 2px solid var(--pn-run);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* icon action buttons were low-contrast/ambiguous — clear hover affordance */
+html[data-redesign][data-redesign] .pn-st__actbtn:hover,
+html[data-redesign][data-redesign] .pn-st__btn:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+/* primary / danger buttons feel pressable */
+html[data-redesign][data-redesign] .pn-btn--primary:active,
+html[data-redesign][data-redesign] .pn-btn--danger:active { transform: translateY(1px); }
