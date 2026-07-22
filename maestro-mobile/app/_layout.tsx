@@ -17,7 +17,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack } from 'expo-router';
 
 import { ThemeBoot, useAppFonts } from '@/theme';
-import { initFirebaseAuth } from '@/services/firebaseAuth';
+import { initFirebaseAuth, getIdToken, signInAndGetIdToken } from '@/services/firebaseAuth';
+import { setHubFirebaseAuth } from '@/services/api';
 import { useCollabRuntime } from '@/features/collab/collabRuntime';
 import { NotificationToaster } from '@/features/collab/notifications';
 
@@ -36,6 +37,10 @@ export default function RootLayout(): React.JSX.Element | null {
   // planning/MOBILE_COLLAB_SPEC.md §4a.
   useEffect(() => {
     initFirebaseAuth();
+    // Merge-time wiring (feat/mobile-multi-server ⋈ feat/mobile-collab): hand the
+    // Hub's token seam the Firebase accessors so a firebase-authMode server profile
+    // rides the current id token, and can trigger Google sign-in on demand.
+    setHubFirebaseAuth({ getIdToken, signIn: signInAndGetIdToken });
   }, []);
 
   // Collab notifications + push lifecycle, bound to the Firebase auth snapshot.

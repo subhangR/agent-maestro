@@ -23,6 +23,7 @@ import {
   getTokenForAuthMode,
   ensureHubFirebaseToken,
   refreshHubFirebaseToken,
+  hasHubFirebaseAuth,
   HubSignInRequiredError,
   type AuthMode,
 } from '@/services/api';
@@ -113,7 +114,9 @@ export async function bootstrap(host: string, opts: BootstrapOptions = {}): Prom
     probe = await probeClient().probeHealthInfo();
   }
   if (!probe.ok) throw new Error('health probe returned false');
-  const authMode = probe.authMode;
+  // authMode/getToken are reassignable: a server whose /health didn't advertise
+  // firebase (older gateway) can still be promoted to firebase on a 401 below.
+  let authMode = probe.authMode;
 
   // 2. Satisfy auth for the detected mode BEFORE the first guarded call.
   if (authMode === 'password' && opts.password) {
@@ -128,34 +131,58 @@ export async function bootstrap(host: string, opts: BootstrapOptions = {}): Prom
 
   // 3. Build the real client with an authMode-aware token seam. 'firebase' reads
   // the Firebase token cache, 'password' the stored JWT, 'none' carries nothing.
-  const getToken = getTokenForAuthMode(authMode, () => usePrefsStore.getState().authToken);
+  let getToken = getTokenForAuthMode(authMode, () => usePrefsStore.getState().authToken);
   let client = new MaestroClient(cfg, { getToken });
   setMaestroClient(client);
+  const rebuildClient = () => {
+    getToken = getTokenForAuthMode(authMode, () => usePrefsStore.getState().authToken);
+    client = new MaestroClient(cfg, { getToken });
+    setMaestroClient(client);
+  };
 
   // 4. Guarded probe. A 401 means the credential is missing/stale:
   //    password → surface AuthRequiredError so the connect screen asks for one.
   //    firebase → force-refresh the token once and retry; else sign-in required.
+  //    none/password + a live Firebase session → this is almost certainly a Hub
+  //      whose /health didn't advertise 'firebase' (older gateway): attach the id
+  //      token, retry AS firebase, and promote the profile's authMode on success.
   try {
     await client.getProjects();
   } catch (e) {
-    if (e instanceof MaestroApiError && e.status === 401) {
-      if (authMode === 'firebase') {
-        const refreshed = await refreshHubFirebaseToken(true);
-        if (!refreshed) throw new HubSignInRequiredError();
-        client = new MaestroClient(cfg, { getToken });
-        setMaestroClient(client);
-        try {
-          await client.getProjects();
-        } catch (e2) {
-          if (e2 instanceof MaestroApiError && e2.status === 401) throw new HubSignInRequiredError();
-          throw e2;
-        }
-      } else {
+    if (!(e instanceof MaestroApiError) || e.status !== 401) throw e;
+
+    if (authMode === 'firebase') {
+      const refreshed = await refreshHubFirebaseToken(true);
+      if (!refreshed) throw new HubSignInRequiredError();
+      rebuildClient();
+      try {
+        await client.getProjects();
+      } catch (e2) {
+        if (e2 instanceof MaestroApiError && e2.status === 401) throw new HubSignInRequiredError();
+        throw e2;
+      }
+    } else if (hasHubFirebaseAuth()) {
+      // Try to obtain a Firebase token (signs in on demand). If the token is then
+      // accepted, this backend is a Hub — lock the profile to 'firebase'. If it is
+      // still rejected, or no token could be obtained, fall back to the password flow.
+      let promoted = false;
+      try {
+        await ensureHubFirebaseToken();
+        authMode = 'firebase';
+        rebuildClient();
+        await client.getProjects();
+        promoted = true;
+      } catch (e2) {
+        authMode = probe.authMode; // revert; it wasn't a firebase hub
+        rebuildClient();
+      }
+      if (!promoted) {
         usePrefsStore.getState().setAuthToken(null);
         throw new AuthRequiredError();
       }
     } else {
-      throw e;
+      usePrefsStore.getState().setAuthToken(null);
+      throw new AuthRequiredError();
     }
   }
 

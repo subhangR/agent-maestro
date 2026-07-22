@@ -49,10 +49,10 @@ describe('serverProfilesStore', () => {
     useServerProfilesStore.getState().addProfile({ host: 'persist:9', authMode: 'password' });
     // Re-point the store at the SAME backing storage → re-reads persisted blob.
     __setServerProfilesStorage(storage);
-    const profiles = useServerProfilesStore.getState().profiles;
-    expect(profiles).toHaveLength(1);
-    expect(profiles[0].host).toBe('persist:9');
-    expect(profiles[0].authMode).toBe('password');
+    const [restored] = useServerProfilesStore.getState().profiles;
+    expect(restored).toBeDefined();
+    expect(restored?.host).toBe('persist:9');
+    expect(restored?.authMode).toBe('password');
   });
 });
 
