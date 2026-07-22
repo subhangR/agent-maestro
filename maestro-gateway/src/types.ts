@@ -36,6 +36,14 @@ export interface AuthResult {
   emailVerified: boolean;
 }
 
+/** Safe, server-level view returned by the authenticated gateway dashboard API. */
+export interface GatewayMemberOverview {
+  email: string;
+  uid: string | null;
+  workspaceStatus: InstanceStatus | 'not_provisioned';
+  liveAgentCount: number;
+}
+
 /** Thrown by an AuthVerifier when a request must be rejected. */
 export class AuthError extends Error {
   constructor(

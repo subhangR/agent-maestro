@@ -38,6 +38,26 @@ export class InstanceSupervisor {
   }
 
   /**
+   * Count currently working/spawning agent sessions in a running workspace.
+   * This is intentionally read through the instance's own public session DTO;
+   * the gateway never reaches into a user's data directory.
+   */
+  async liveAgentCount(handle: InstanceHandle): Promise<number> {
+    if (handle.status !== 'live') return 0;
+    try {
+      const res = await fetch(`${this.targetFor(handle)}/api/sessions?status=spawning,working`, {
+        signal: AbortSignal.timeout(2000),
+      });
+      if (!res.ok) return 0;
+      const sessions: unknown = await res.json();
+      return Array.isArray(sessions) ? sessions.length : 0;
+    } catch {
+      // A transient count failure must not make the dashboard unavailable.
+      return 0;
+    }
+  }
+
+  /**
    * Guarantee uid's instance is running, provisioning the workspace on first
    * sight. Concurrent callers for the same uid share one start promise.
    */

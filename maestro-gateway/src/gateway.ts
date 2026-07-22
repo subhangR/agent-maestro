@@ -8,7 +8,7 @@ import { Logger } from './logger';
 import { AuthVerifier, Allowlist, AuthInput } from './auth';
 import { InstanceSupervisor } from './supervisor';
 import { Proxy } from './proxy';
-import { AuthResult, AuthError } from './types';
+import { AuthResult, AuthError, GatewayMemberOverview } from './types';
 
 /**
  * The gateway HTTP surface (Design A):
@@ -43,6 +43,12 @@ export class Gateway {
         workspaces: this.supervisor.listWorkspaces().length,
         uptime: process.uptime(),
       });
+    });
+
+    // Server-level dashboard data. This must stay at the gateway rather than
+    // being proxied to one member's private Maestro instance.
+    app.get('/gateway/api/overview', (req: Request, res: Response) => {
+      this.authThenSendOverview(req, res);
     });
 
     // All API traffic → authenticate → ensure instance → proxy. No body parser
@@ -91,6 +97,41 @@ export class Gateway {
       if (!res.headersSent) {
         res.status(503).json({ error: 'workspace_unavailable', message: 'could not start your workspace' });
       }
+    }
+  }
+
+  private async authThenSendOverview(req: Request, res: Response): Promise<void> {
+    try {
+      await this.authenticate(req);
+      const handles = this.supervisor.listWorkspaces();
+      const byEmail = new Map(
+        handles
+          .filter((handle) => handle.email)
+          .map((handle) => [handle.email!.trim().toLowerCase(), handle]),
+      );
+
+      // In production the allowlist is the roster. The registry fallback keeps
+      // the local dev-auth dashboard useful without an allowlist file.
+      const emails = this.allowlist.listEmails();
+      const roster = emails.length > 0
+        ? emails
+        : [...byEmail.keys()].sort();
+
+      const members: GatewayMemberOverview[] = await Promise.all(
+        roster.map(async (email) => {
+          const handle = byEmail.get(email);
+          return {
+            email,
+            uid: handle?.uid ?? null,
+            workspaceStatus: handle?.status ?? 'not_provisioned',
+            liveAgentCount: handle ? await this.supervisor.liveAgentCount(handle) : 0,
+          };
+        }),
+      );
+
+      res.json({ generatedAt: Date.now(), members });
+    } catch (err) {
+      this.rejectHttp(res, err);
     }
   }
 

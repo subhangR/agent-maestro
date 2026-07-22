@@ -5,6 +5,7 @@ import { useAuthStore } from "./stores/useAuthStore";
 import { LoginOverlay } from "./components/LoginOverlay";
 import { GatewayLoginGate } from "./components/GatewayLoginGate";
 import { GATEWAY_AUTH_MODE } from "./utils/gatewayAuth";
+import { useGatewayPresence } from "./firebase/gatewayPresence";
 import { TerminalRegistry } from "./SessionTerminal";
 import { PendingDataBuffer } from "./app/types/app-state";
 import * as DEFAULTS from "./app/constants/defaults";
@@ -224,6 +225,7 @@ export default function App() {
   const initAuth = useFirebaseAuthStore((s) => s.initAuth);
   const authUser = useFirebaseAuthStore((s) => s.user);
   const authInitialized = useFirebaseAuthStore((s) => s.initialized);
+  useGatewayPresence(authUser);
   useEffect(() => {
     initAuth();
   }, [initAuth]);

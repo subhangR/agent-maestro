@@ -57,6 +57,16 @@ export class Allowlist {
     if (!email) return false;
     return this.emails.has(email.trim().toLowerCase());
   }
+
+  /**
+   * The trusted team roster. This deliberately exposes only normalized emails,
+   * never any authentication material. The gateway dashboard uses it to show
+   * invited members even before their first workspace is provisioned.
+   */
+  listEmails(): string[] {
+    this.reload();
+    return [...this.emails].sort();
+  }
 }
 
 /**

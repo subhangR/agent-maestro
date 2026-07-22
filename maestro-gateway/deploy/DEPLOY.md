@@ -98,7 +98,26 @@ Then point the gateway at it (Phase-2 env): `MAESTRO_UI_DIST=/home/ubuntu/agent-
 `maestro-ui/dist` stays the normal single-server build for :4570 — untouched.
 Watch the 2-core/swap box here — this is the heaviest step (~90s, ~2GB heap).
 
-### 2.5 Test on a side port BEFORE flipping :443
+### 2.5 Enable Gateway presence (Firebase Realtime Database)
+The Gateway dashboard at `/gateway` shows the allowlisted team roster, live browser
+presence, and a per-member working-agent count. Presence is stored in Firebase Realtime
+Database so Firebase removes a member automatically when their browser/network disconnects.
+
+1. In Firebase Console → **Build → Realtime Database**, create the default database for
+   `maestro-5f3fc` (choose the closest region).
+2. From a checked-out gateway branch with Firebase CLI access, deploy the repository rules:
+
+```bash
+cd /home/ubuntu/agent-maestro
+firebase deploy --only database
+```
+
+The rules allow authenticated users to read team presence and only write/remove their own
+presence record. The dashboard itself remains protected by the gateway's Firebase-token
+verification and allowlist. If a non-default RTDB instance is used, set its URL at gateway
+SPA build time with `VITE_FIREBASE_DATABASE_URL`.
+
+### 2.6 Test on a side port BEFORE flipping :443
 ```bash
 sudo tailscale serve --bg --https=8443 http://127.0.0.1:4580   # :443 still -> :4570
 ```
@@ -106,7 +125,7 @@ Open `https://maestro.tail6cfd2b.ts.net:8443` in a browser → expect the "Conti
 Google" gate → sign in with an allowlisted account → land in a fresh private workspace.
 A non-allowlisted account must be rejected (403).
 
-### 2.6 Flip the domain
+### 2.7 Flip the domain
 ```bash
 sudo tailscale serve --https=443 http://127.0.0.1:4580   # domain now = gateway
 sudo tailscale serve --https=8443 off
