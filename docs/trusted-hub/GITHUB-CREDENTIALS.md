@@ -338,7 +338,81 @@ which point the env injection is simply removed (the per-user home *is* the iden
 
 ---
 
-## 9. Non-goals for this doc
+## 9. Generalizing beyond GitHub: the whole-hub credential model
+
+GitHub is one instance of a broader question the owner raised: *when an agent runs a command,
+whose credentials get used — for GitHub, Firebase, and everything else — and what's
+confidential from whom?* This section is the general answer; §5 is just its first
+implementation.
+
+### 9.1 Two isolation planes (answers "are my sessions/work private?")
+
+Isolation in the hub is **not** one boundary — it's two, and they behave differently:
+
+- **Control plane** (browser → gateway → instance): the gateway authenticates each user and
+  only ever proxies them to **their own** instance (`uid → port`, via the registry). User A
+  has **no route** to user B's sessions/tasks/work through the app or API. This is real,
+  gateway-enforced, and independent of D9.
+- **Compute / OS plane** (the agent processes on the box): one OS user, shared HOME. Here
+  soft isolation (D9) applies — a *malicious* agent could read another user's files or
+  another instance's env. Normal operation never does; adversarial behavior isn't contained.
+
+So a user's sessions/work are private in the UI; they're only exposed to a deliberately
+hostile co-tenant **agent** at the OS level. Closing that last gap is the tier-2/tier-3
+hardening (§7/§8).
+
+### 9.2 "Whose token gets used?"
+
+**Automatically the acting user's, with no ambiguity in normal operation.** Credentials are
+injected into each user's *instance* env (§2), and every agent is a child of that instance,
+so user B's `git push` uses B's `GH_TOKEN` because that's the only token in B's instance
+env. (The confidentiality caveat — a malicious B could *read* A's token — is a separate,
+adversarial concern and does not affect *which* token is used.)
+
+### 9.3 The four credential classes (every secret in the hub is one of these)
+
+| Class | Examples | Policy |
+|---|---|---|
+| **1. Pooled by design** | Claude / Codex subscription (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`) | ONE shared login, everyone uses it — the point of pooling |
+| **2. Per-user service identity** | GitHub, a user's own cloud/npm creds, their Collab identity, their own Firebase-app keys | MUST be the acting user's → `CredentialSource` per-uid injection. **GitHub is just the first slot** |
+| **3. Gateway-only** | Firebase **Admin SA key**, allowlist, registry | Used only by the gateway to authenticate/route — **never** descends to instances/agents |
+| **4. Ambient-inherited** (accidental) | anything in the gateway's own process env | `supervisor.spawnChild` does `{...process.env, ...}` (supervisor.ts:104) — the gateway's **entire env** is inherited by every instance and agent |
+
+**Class 4 is the systemic risk and it's bigger than any single service:** any secret in the
+gateway process env leaks to every user's agent. The general fix is to **scrub / allowlist**
+the env the supervisor forwards, rather than blanket-spreading `...process.env`. Do this
+regardless of the GitHub work.
+
+### 9.4 Firebase is three distinct surfaces (disambiguated)
+
+1. **Gateway Admin SA key** — class 3, gateway-only, never reaches agents. ✅ already correct.
+2. **User's Firebase ID token** (their Google login) — stops at the gateway, verified to
+   `uid`, **not forwarded**. Agents don't get the user's Firebase identity by default. ✅
+3. **`maestro collab` (Firestore) identity** — the leaky one today. `maestro-cli/src/collab/
+   token-store.ts` tries the OS keychain (`secret-tool`), which is **absent on a headless
+   Ubuntu box**, then falls back to an encrypted file at `~/.maestro/collab/tokens.enc` in
+   the **shared** HOME, keyed by a `profile` name, encrypted with
+   `MAESTRO_COLLAB_TOKEN_STORE_KEY` **from env** (itself a class-4 leak). Net effect under
+   the hub: shared file + shared key + profile-dependent identity → **all agents would share
+   / be able to decrypt one Collab identity.** Making it per-user is the *same* pattern:
+   `profile = uid`, relocate the store per-uid, distinct key per uid — i.e. Collab is another
+   class-2 slot behind the same seam.
+4. **A user's own Firebase-app keys** (if they're building an app) — ordinary project
+   secrets, handled like any class-2/per-project credential.
+
+### 9.5 The unifying recommendation
+
+Elevate `CredentialSource` from "GitHub creds" to **"the per-user credential resolver for all
+class-2 service identities,"** and add a companion **env-scrub policy** for class 4. Then
+"whose token?" has one uniform answer across GitHub, Collab, cloud CLIs, and anything future:
+whatever the resolver injected for that uid; pooled things (class 1) are pooled by explicit
+choice; gateway secrets (class 3) never descend; and nothing leaks by ambient inheritance
+(class 4) because the forwarded env is scrubbed. Confidentiality *between* users is then the
+single remaining gap, closed by the tier-2 broker / tier-3 OS accounts ladder (§7/§8).
+
+---
+
+## 10. Non-goals for this doc
 
 - No code in this pass (design/decision only).
 - No VPS/deploy changes.
