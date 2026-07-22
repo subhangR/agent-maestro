@@ -9,6 +9,7 @@ export {
   signInAndGetIdToken,
   signOut,
   getSnapshot,
+  currentUser,
   subscribe,
   type AuthStatus,
   type AuthUser,

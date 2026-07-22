@@ -79,6 +79,15 @@ export function getSnapshot(): AuthSnapshot {
   return snapshot;
 }
 
+/**
+ * The raw @react-native-firebase user (or null). Pass THIS to the collab
+ * Firestore clients' write methods (they expect the real user with `photoURL`);
+ * the useFirebaseAuth() `user` is the normalized display snapshot (`photoUrl`).
+ */
+export function currentUser(): FirebaseAuthTypes.User | null {
+  return auth().currentUser;
+}
+
 // ── Initialization ───────────────────────────────────────────────────────────
 /**
  * Idempotent. Configures GoogleSignin and wires the Firebase id-token listener.
