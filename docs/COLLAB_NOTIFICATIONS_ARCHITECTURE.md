@@ -3,13 +3,13 @@
 **Status:** Design proposal (for review)
 **Author:** maestro-worker (sess_1784714043809)
 **Date:** 2026-07-22
-**Scope decisions locked with product owner:** web-browser surface · phased delivery (in-app first, then true push) · Cloud Functions fan-out · @mentions-first
+**Scope decisions locked with product owner:** web-browser surface · phased delivery (in-app first, then true push) · Cloud Functions fan-out · **messages are the only notification trigger**
 
 ---
 
 ## 1. Goal
 
-When something happens in a Collab Space — a message is sent, a doc/task/spell is shared, a member joins — the *other* people in that space should find out, even when they aren't staring at the channel. Two delivery regimes:
+When a message is sent in a Collab Space, the *other* people in that space should find out, even when they aren't staring at the channel. Documents, tasks, spells, files, membership changes, and every other Collab event are deliberately out of scope and must not create notifications. Two delivery regimes:
 
 - **In-app (foreground):** live toasts, unread badges, a notification inbox while the app is open.
 - **True push:** an OS/browser notification that arrives when the tab is backgrounded or fully closed.
@@ -27,7 +27,7 @@ Findings from the current `staging` tree:
 | Backend | **100% Firestore + serverless.** No Cloud Functions, no RTDB configured (`firebase.json` has only `firestore`). Rules-only security. | Any *server-side* fan-out is net-new infra. |
 | Firebase plan | Almost certainly **Spark (free)** — files are stored inline as base64 *because* "Storage requires Blaze" (see `firestore.rules` files block). | True push (Cloud Functions) **requires upgrading to Blaze**. |
 | Live updates | Client `onSnapshot` listeners (`MessagingClient.subscribeToChannels/Messages`), plus poll-based `collab message watch` in the CLI. | Phase 1 in-app notifications can be built **entirely on existing listeners — zero new infra**. |
-| Data model | `collabSpaces/{id}` → subcollections `channels/{id}/messages`, `docs`, `files`, `tasks`, `teamMembers`, `spells`, `invites`. Members carry roles (owner/admin/member) in `members{}` + `memberIds[]`. | Notification triggers map 1:1 to these subcollections. |
+| Data model | `collabSpaces/{id}` has `channels/{id}/messages` plus separate document, file, task, membership, spell, and invite data. Members carry roles (owner/admin/member) in `members{}` + `memberIds[]`. | Only `channels/{id}/messages` is a notification source; all other data stays out of the pipeline. |
 | Presence | **None.** No "who's online" anywhere. | RTDB presence is net-new (Section 7). |
 | Notification infra | **None.** No FCM, VAPID, service worker, tokens. | All net-new. |
 | Client surface (in scope) | **Web app** (`feat/web-ui*`, served over Tailscale) — a real browser. | This is the *only* surface that supports true **Web Push**. |
@@ -66,12 +66,12 @@ Three things are all confusingly called "channels." Keep them distinct:
   ┌─────────────┐      │   Firestore onSnapshot listeners ──► NotificationEngine (client)             │
   │  Author      │ write│        (existing MessagingClient etc.)      │                               │
   │  action      ├──────┼──► Firestore                                 ├─► in-app toast + inbox + badge│
-  │ (msg/doc/…)  │      │      collabSpaces/{s}/…                       │                               │
+  │  message     │      │ collabSpaces/{s}/channels/{c}/messages        │                               │
   └─────────────┘      │        ▲          │ onCreate trigger          └─► Notification API (tab open, │
                        │        │          ▼                                unfocused) — no FCM needed  │
                        │        │   ┌──────────────────────┐                                           │
                        │  RTDB  │   │  Cloud Function        │  ── FCM HTTP v1 ──►  Service Worker ──►  OS notification
-                       │ presence│  │  fanoutNotification()  │       (token-targeted)   (firebase-        (tab closed /
+                       │ presence│  │ fanoutMessageNotification()│    (token-targeted)   (firebase-        (tab closed /
                        │  read ──┼──►│  • resolve recipients  │                           messaging-sw.js)  backgrounded)
                        │        │   │  • filter prefs+presence│                                           │
                        │        │   │  • write inbox + send   │                                           │
@@ -91,8 +91,8 @@ Three things are all confusingly called "channels." Keep them distinct:
 **Mechanism:** a client-side `NotificationEngine` that consumes the Firestore listeners the UI *already* runs (and extends coverage to all of the user's member spaces, not just the focused one).
 
 Components:
-1. **Space-wide subscription manager.** On login, subscribe to the user's member spaces. For each space, listen to new messages across channels and to new `docs`/`tasks`/`spells`/`files` and member-join deltas. (Use `where('createdAt','>', sessionStart)` guards so the initial snapshot backfill doesn't fire a flood of "notifications" for old data.)
-2. **Event derivation.** For each incoming create, compute an in-app `NotificationEvent` (Section 9) with `type`, `spaceId`, `channelId?`, `actor`, `preview`, `isMention` (author != me, and — v1 rule — I'm @mentioned **or** it's a new message in a space I belong to).
+1. **Space-wide subscription manager.** On login, subscribe to the user's member spaces. For each space, listen only to new messages across its channels. (Use `where('createdAt','>', sessionStart)` guards so the initial snapshot backfill doesn't fire a flood of notifications for old messages.)
+2. **Event derivation.** For each incoming message, compute an in-app notification with `type: "message.new"`, `spaceId`, `channelId`, `actor`, `preview`, and `isMention` (author != me, and — v1 rule — I'm @mentioned **or** it's a new message in a space I belong to).
 3. **Presentation:**
    - **Toast** (transient) via the existing UI toast system.
    - **Unread badges** driven by a per-user **read-state** model (Section 9): `unread = messages with createdAt > myLastReadAt[channel]`.
@@ -114,7 +114,7 @@ Components:
 3. Foreground `onMessage` handler routes to the same in-app toast/inbox from Phase 1 (so a focused tab shows an in-app toast, not an OS banner).
 
 ### 6.2 Server (Cloud Functions) — the fan-out
-A single `fanoutNotification` triggered on `onCreate` of the notifiable subcollections (`.../messages/{id}`, `docs`, `tasks`, `spells`, `files`) — plus a membership-delta trigger on `collabSpaces/{id}` for member-join.
+A single `fanoutMessageNotification` triggered only on `onCreate` of `collabSpaces/{spaceId}/channels/{channelId}/messages/{messageId}`. There are no notification triggers for any other collection or membership change.
 
 Function logic:
 1. **Load the space** → `memberIds`, `members{}`.
@@ -125,10 +125,10 @@ Function logic:
 6. **Write to inbox:** append to `notifications/{uid}/items/{id}` (durable history + unread source of truth; also lets a just-returned user catch up). This write itself drives the in-app inbox via that user's own listener.
 7. **Send push:** look up recipient tokens, multicast via Admin SDK `sendEachForMulticast` (≤500/batch). Collapse/`tag` by `channelId` so a burst coalesces. On `messaging/registration-token-not-registered`, delete the dead token.
 
-Keep the function **idempotent** (keyed on the source doc id) so retries don't double-send.
+Keep the function **idempotent** (keyed on the source message id) so retries don't double-send.
 
 ### 6.3 Payload shape
-Send **data-only** messages (not `notification`-only) so the service worker fully controls rendering (title/body/icon/deep-link `data.url`), with a server-computed title/body fallback. Include `spaceId`, `channelId`, `entityType`, `entityId`, `tag`.
+Send **data-only** messages (not `notification`-only) so the service worker fully controls rendering (title/body/icon/deep-link `data.url`), with a server-computed title/body fallback. Include `spaceId`, `channelId`, `messageId`, `type: "message.new"`, and `tag`.
 
 ---
 
@@ -159,13 +159,8 @@ Send **data-only** messages (not `notification`-only) so the service worker full
 |---|---|---|
 | `message.new` | `channels/{c}/messages` create | @mentioned members; + all members whose pref = "all activity" |
 | `message.mention` | `message.mentions[]` includes uid | the mentioned member (highest priority) |
-| `doc.shared` | `docs` create | space members (pref-gated) |
-| `task.shared` | `tasks` create | space members (pref-gated) |
-| `spell.shared` | `spells` create | space members (pref-gated) |
-| `file.shared` | `files` create | space members (pref-gated) |
-| `member.joined` | `collabSpaces` memberIds delta | space members (low priority) |
 
-**v1 ships:** `message.mention` + `message.new` (space-scoped) + `member.joined`. Doc/task/spell/file are wired in the same trigger but default to opt-in to keep volume sane. Everything is tunable via the preference model below.
+**Scope boundary:** `message.new` and its `message.mention` priority are the entire taxonomy. A message carrying an attachment is still a message notification; creating or sharing the attachment itself is not. No document, task, spell, file, invite, presence, or membership event may be added to this pipeline without a new product decision.
 
 ---
 
@@ -187,7 +182,7 @@ collabSpaces/{spaceId}/readState/{uid}
   updatedAt
 
 notifications/{uid}/items/{itemId}                             // durable inbox / history
-  type, spaceId, channelId?, entityType, entityId,
+  type: "message.new", spaceId, channelId, messageId,
   actorUid, actorName, preview, createdAt, readAt|null
 ```
 
@@ -237,7 +232,7 @@ match /collabSpaces/{spaceId}/readState/{uid} {
 
 - **Topic fan-out for large public spaces:** for spaces with hundreds of "all-activity" subscribers, subscribe clients to `space_{spaceId}` topics and broadcast coarse events via one topic send, reserving token-targeting for mentions. Cuts multicast cost at scale.
 - **Digest / batching:** coalesce bursty channels into a rolling "N new messages" push (`tag` + server-side debounce).
-- **Quiet hours & per-type granularity** in the preference model.
+- **Quiet hours** in the preference model.
 - **Other surfaces:** Tauri desktop via the OS-native notification plugin fed by the same inbox writes; Expo mobile via native FCM/APNs. The `notificationProfiles.tokens[].platform` field is already shaped for this.
 
 ---
@@ -254,7 +249,7 @@ match /collabSpaces/{spaceId}/readState/{uid} {
 **Phase 2 — True push (Blaze)**
 6. Upgrade project to Blaze; scaffold `functions/`.
 7. `firebase-messaging-sw.js` + token registration + CSP allowances.
-8. `fanoutNotification` Cloud Function (recipient resolution, prefs, inbox write, multicast send, dead-token pruning, idempotency).
+8. `fanoutMessageNotification` Cloud Function (recipient resolution, prefs, inbox write, multicast send, dead-token pruning, idempotency).
 9. RTDB presence + `onDisconnect` + presence-gated push suppression.
 10. Security rules (Firestore additions + new `database.rules.json`) + tests.
 11. End-to-end verification: closed-tab push, mention targeting, mute honored, no double-notify when focused.
