@@ -25,6 +25,12 @@ describe('Collab share/pull schemas', () => {
     expect(spell).toEqual({ name: 'Remote spell', description: 'd', icon: undefined, color: 'violet', rules: [] });
   });
 
+  it('omits status from strict task create payloads', () => {
+    const payload = pullShape('task', { title: 'Done remotely', status: 'completed' }, 'p2');
+    expect(payload).toMatchObject({ projectId: 'p2', title: 'Done remotely' });
+    expect(payload).not.toHaveProperty('status');
+  });
+
   it('fails on a local collision by default and makes an explicit copy when requested', async () => {
     vi.spyOn(api, 'get').mockResolvedValue([{ id: 'local', title: 'Remote' }] as any);
     await expect(applyConflict('task', { title: 'Remote' }, 'p2', 'fail')).rejects.toMatchObject({ code: 'LOCAL_CONFLICT' });

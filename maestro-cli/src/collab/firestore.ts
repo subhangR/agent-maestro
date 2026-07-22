@@ -23,7 +23,10 @@ export function decode(value: FireValue | undefined): unknown {
   if ('booleanValue' in value) return value.booleanValue;
   if ('integerValue' in value) return Number(value.integerValue);
   if ('doubleValue' in value) return Number(value.doubleValue);
-  if ('timestampValue' in value) return value.timestampValue;
+  // Preserve timestamp typing through a read-modify-write transaction. In
+  // particular, private invite redemption reuses expiresAt and the rules
+  // require it to remain a Firestore timestamp rather than a string.
+  if ('timestampValue' in value) return new Date(String(value.timestampValue));
   if ('arrayValue' in value) return ((value.arrayValue as { values?: FireValue[] }).values || []).map(decode);
   if ('mapValue' in value) return Object.fromEntries(Object.entries(((value.mapValue as { fields?: Record<string, FireValue> }).fields || {})).map(([k, v]) => [k, decode(v)]));
   return undefined;
