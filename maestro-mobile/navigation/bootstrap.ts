@@ -162,23 +162,35 @@ export async function bootstrap(host: string, opts: BootstrapOptions = {}): Prom
         throw e2;
       }
     } else if (hasHubFirebaseAuth()) {
-      // Try to obtain a Firebase token (signs in on demand). If the token is then
-      // accepted, this backend is a Hub — lock the profile to 'firebase'. If it is
-      // still rejected, or no token could be obtained, fall back to the password flow.
-      let promoted = false;
+      // Try to obtain a Firebase token (signs in on demand). Two distinct failures:
+      //  - couldn't get a token at all → could be a plain password server; fall
+      //    back to the password flow (AuthRequiredError).
+      //  - got a token but /api still 401s → this IS a Hub that rejected the signed-in
+      //    Google account (not authorized / token not accepted). Say so plainly rather
+      //    than showing a misleading password prompt.
+      let token: string | null = null;
       try {
-        await ensureHubFirebaseToken();
-        authMode = 'firebase';
-        rebuildClient();
-        await client.getProjects();
-        promoted = true;
-      } catch (e2) {
-        authMode = probe.authMode; // revert; it wasn't a firebase hub
-        rebuildClient();
+        token = await ensureHubFirebaseToken();
+      } catch {
+        token = null;
       }
-      if (!promoted) {
+      if (!token) {
+        authMode = probe.authMode; // revert; treat as a password server
+        rebuildClient();
         usePrefsStore.getState().setAuthToken(null);
         throw new AuthRequiredError();
+      }
+      authMode = 'firebase';
+      rebuildClient();
+      try {
+        await client.getProjects();
+      } catch (e2) {
+        if (e2 instanceof MaestroApiError && e2.status === 401) {
+          throw new HubSignInRequiredError(
+            'Signed in, but this hub hasn’t authorized your Google account (token rejected).',
+          );
+        }
+        throw e2;
       }
     } else {
       usePrefsStore.getState().setAuthToken(null);

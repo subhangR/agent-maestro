@@ -55,9 +55,9 @@ export default function Connect(): React.JSX.Element {
         setErrorMsg('This server requires a password.');
         setPhase('idle');
       } else if (e instanceof HubSignInRequiredError) {
-        // The Hub needs a Google sign-in. The Firebase sign-in UI ships with the
-        // Collab auth module; until it's wired, surface a clear message.
-        setErrorMsg('This hub requires a Google sign-in (sign in from the Spaces tab, then reconnect).');
+        // Firebase hub: either sign-in is needed, or the signed-in Google account
+        // was rejected by the hub. Surface the specific message from the error.
+        setErrorMsg(e.message);
         setPhase('error');
       } else {
         setErrorMsg(e instanceof Error ? e.message : String(e));
