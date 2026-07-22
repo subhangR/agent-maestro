@@ -62,6 +62,19 @@ add the service-account JSON + `allowlist.json`, `bun add firebase-admin`, rebui
 `~/.maestro/data` into `/home/ubuntu/hub/<owner-uid>/data` and retire
 `maestro-server.service`.
 
+**Rebuild the SPA with the gateway-auth flag** so the browser attaches each user's
+Firebase ID token to REST/WS/PTY (M4, gated — off by default):
+
+```bash
+cd /home/ubuntu/agent-maestro/maestro-ui
+VITE_MAESTRO_AUTH_MODE=firebase bun run build:web
+# The gateway serves this dist at the box origin; base URLs resolve to same-origin
+# (= the gateway), so no VITE_API_URL/VITE_WS_URL is needed.
+```
+
+Without this flag the client is the normal single-server build (no token attached);
+with it, every request carries the signed-in user's token for uid→instance routing.
+
 ## Rollback
 `sudo systemctl stop maestro-gateway` (KillMode=control-group tears down all per-user
 instances). Re-point serve to `:4570` if it was moved: `sudo tailscale serve --https=443
