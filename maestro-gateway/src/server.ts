@@ -3,7 +3,7 @@ import { loadConfig } from './config';
 import { Logger } from './logger';
 import { createAuthVerifier, Allowlist } from './auth';
 import { InstanceRegistry } from './registry';
-import { SharedCredentialSource } from './credentials';
+import { SharedCredentialSource, prepareSharedClaudeConfig } from './credentials';
 import { InstanceSupervisor } from './supervisor';
 import { Proxy } from './proxy';
 import { Gateway } from './gateway';
@@ -29,6 +29,9 @@ async function main(): Promise<void> {
   const allowlist = new Allowlist(config.allowlistPath, logger);
   const registry = new InstanceRegistry(config, logger);
   const credentials = new SharedCredentialSource(config);
+
+  // Ensure the shared pooled config skips Claude's first-run onboarding wizard.
+  prepareSharedClaudeConfig(config, logger);
   const supervisor = new InstanceSupervisor(config, registry, credentials, logger);
   const proxy = new Proxy(logger);
   const gateway = new Gateway(config, logger, auth, allowlist, supervisor, proxy);

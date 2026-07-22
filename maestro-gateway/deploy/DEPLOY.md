@@ -48,32 +48,74 @@ Spawn a session in a tester workspace (via the API/CLI against `:4580` with the
 `x-maestro-uid` header) and confirm the `claude` PTY starts using `~/.claude`. This is
 the live check that the shared-subscription injection works for a gateway-spawned instance.
 
-## Phase 2 — cut over the domain + real login (when Phase 1 is proven)
+## Phase 2 — real Google login + domain cutover (when Phase 1 is proven)
 
+Order matters: configure + rebuild + test on a SIDE port first, then flip `:443`.
+Everything here is reversible (see Rollback).
+
+### 2.1 Server-side Firebase verification (firebase-admin + SA key)
 ```bash
-# Point the Tailscale serve at the gateway instead of the old :4570 server.
-sudo tailscale serve --https=443 http://127.0.0.1:4580
-# (verify: tailscale serve status  → 443 maps to 4580)
+cd /home/ubuntu/agent-maestro
+git pull                                  # get the login-gate + M4 client commits
+bun install                               # installs firebase-admin (gateway dep)
+bun run build:gateway
+
+# Service-account key: the repo already ships one at the repo root
+# (maestro-5f3fc-firebase-adminsdk-*.json). Point the gateway at it, or copy to
+# /etc/maestro/firebase-sa.json (chmod 600). NOTE: this key is committed to git —
+# acceptable ONLY behind Tailscale; ROTATE + purge from history before any public move.
+sudo cp maestro-5f3fc-firebase-adminsdk-*.json /etc/maestro/firebase-sa.json
+sudo chmod 600 /etc/maestro/firebase-sa.json
 ```
 
-Then switch `/etc/maestro/gateway.env` to the Phase 2 block (Firebase auth + allowlist),
-add the service-account JSON + `allowlist.json`, `bun add firebase-admin`, rebuild,
-`systemctl restart maestro-gateway`. Optionally migrate the owner's existing
-`~/.maestro/data` into `/home/ubuntu/hub/<owner-uid>/data` and retire
-`maestro-server.service`.
+### 2.2 Allowlist (who may provision a workspace)
+```bash
+# Only these Google accounts get a workspace. Hot-reloads — add teammates anytime.
+cat > /home/ubuntu/hub/allowlist.json <<'JSON'
+{ "emails": ["manzilshaik95@gmail.com"] }
+JSON
+```
 
-**Rebuild the SPA with the gateway-auth flag** so the browser attaches each user's
-Firebase ID token to REST/WS/PTY (M4, gated — off by default):
+### 2.3 Switch gateway to Firebase auth
+Edit `/etc/maestro/gateway.env`: comment the Phase-1 two lines, uncomment the Phase-2
+block (`MAESTRO_GATEWAY_AUTH=firebase`, `MAESTRO_FIREBASE_PROJECT_ID=maestro-5f3fc`,
+`MAESTRO_FIREBASE_CREDENTIALS=/etc/maestro/firebase-sa.json`, `MAESTRO_ENFORCE_ALLOWLIST=true`).
+Then `sudo systemctl restart maestro-gateway` and check `journalctl -u maestro-gateway`
+shows `firebase-admin initialized`.
 
+### 2.4 Rebuild the SPA with the gateway-auth flag
+This bakes in the Google login gate + per-request token attachment (M4).
 ```bash
 cd /home/ubuntu/agent-maestro/maestro-ui
-VITE_MAESTRO_AUTH_MODE=firebase bun run build:web
-# The gateway serves this dist at the box origin; base URLs resolve to same-origin
-# (= the gateway), so no VITE_API_URL/VITE_WS_URL is needed.
+# NODE_OPTIONS bumps the heap — build:web OOMs at Node's 2GB default on this box.
+NODE_OPTIONS=--max-old-space-size=6144 VITE_MAESTRO_AUTH_MODE=firebase bun run build:web
+# base URLs resolve to same-origin (= the gateway), so no VITE_API_URL/VITE_WS_URL needed.
+```
+Watch the 2-core/swap box here — build:web is the heaviest step (~90s, ~2GB heap).
+
+### 2.5 Test on a side port BEFORE flipping :443
+```bash
+sudo tailscale serve --bg --https=8443 http://127.0.0.1:4580   # :443 still -> :4570
+```
+Open `https://maestro.tail6cfd2b.ts.net:8443` in a browser → expect the "Continue with
+Google" gate → sign in with an allowlisted account → land in a fresh private workspace.
+A non-allowlisted account must be rejected (403).
+
+### 2.6 Flip the domain
+```bash
+sudo tailscale serve --https=443 http://127.0.0.1:4580   # domain now = gateway
+sudo tailscale serve --https=8443 off
 ```
 
-Without this flag the client is the normal single-server build (no token attached);
-with it, every request carries the signed-in user's token for uid→instance routing.
+### ⚠️ Owner-only gotchas (I can't do these from here)
+- **Firebase authorized domains**: `signInWithPopup` from `maestro.tail6cfd2b.ts.net`
+  requires that host in Firebase Console → Authentication → Settings → Authorized domains.
+  If Collab already logs in from this domain it's set; else the popup fails with
+  `auth/unauthorized-domain`.
+- **Owner's existing data**: after cutover you log in and get a FRESH empty
+  `~/hub/<your-uid>/` workspace — your old projects on `:4570`/`~/.maestro/data` are NOT
+  gone, just not shown in the new workspace. Migrate later by copying `~/.maestro/data`
+  into `~/hub/<your-uid>/data` (stop that instance first), or keep `:4570` reachable.
 
 ## Rollback
 `sudo systemctl stop maestro-gateway` (KillMode=control-group tears down all per-user
