@@ -33,8 +33,10 @@ import { createAuthRoutes } from './api/authRoutes';
 import { createAuthMiddleware, isTrustedLocalRequest } from './api/middleware/authMiddleware';
 import { createSecurityHeaders } from './api/middleware/securityHeaders';
 import { AuthService } from './infrastructure/auth/AuthService';
+import { getBuildInfo } from './infrastructure/buildInfo';
 
 async function startServer() {
+  const build = getBuildInfo();
   // Create and initialize dependency container
   const container = await createContainer();
   await container.initialize();
@@ -106,10 +108,15 @@ async function startServer() {
   // Auth guard — protects all /api/* except /api/auth/* and health endpoints
   app.use(createAuthMiddleware(authService));
 
-  // Health check
+  // Health check. `authMode` is a capability hint clients (e.g. maestro-mobile)
+  // read BEFORE authenticating to pick the right login flow: 'password' when the
+  // web password guard is enabled, else 'none'. The gateway/hub overrides this
+  // with 'firebase' at its own origin. Stays unauthenticated (see EXEMPT_PREFIXES).
   app.get('/health', (req: Request, res: Response) => {
     res.json({
       status: 'ok',
+      authMode: authService.enabled ? 'password' : 'none',
+      commit: build.commit,
       timestamp: Date.now(),
       uptime: process.uptime()
     });

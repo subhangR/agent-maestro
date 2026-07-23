@@ -19,6 +19,7 @@
     "android": {
       "package": "net.maestro.mobile",
       "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F4F2EC"
@@ -26,14 +27,30 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "net.maestro.mobile"
+      "bundleIdentifier": "net.maestro.mobile",
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
+    "extra": {
+      "googleWebClientId": "REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com"
     },
     "plugins": [
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.REPLACE_WITH_IOS_CLIENT_ID"
+        }
+      ],
+      "expo-secure-store",
       [
         "expo-build-properties",
         {
           "android": {
             "usesCleartextTraffic": true
+          },
+          "ios": {
+            "useFrameworks": "static"
           }
         }
       ],
@@ -55,7 +72,8 @@
         }
       ],
       "react-native-edge-to-edge",
-      "expo-router"
+      "expo-router",
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true

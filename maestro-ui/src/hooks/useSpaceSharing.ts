@@ -193,6 +193,10 @@ export function buildTaskShareInput(task: MaestroTask): SharedTaskInput {
     description: task.description ?? '',
     status: localStatusToSpace(task.status),
     priority: task.priority,
+    initialPrompt: task.initialPrompt ?? '',
+    dueDate: task.dueDate ?? null,
+    dangerousMode: task.dangerousMode ?? false,
+    useWorktree: task.useWorktree ?? false,
     sourceTaskId: task.id,
     sourceProjectId: task.projectId,
   };
@@ -208,6 +212,16 @@ export function buildTeamMemberShareInput(tm: {
   model?: string;
   agentTool?: string;
   mode?: string;
+  permissionMode?: string;
+  strategy?: string;
+  capabilities?: {
+    can_spawn_sessions?: boolean;
+    can_edit_tasks?: boolean;
+    can_report_task_level?: boolean;
+    can_report_session_level?: boolean;
+  };
+  customWorkflow?: string;
+  soundInstrument?: string;
   skillIds?: string[];
   commandPermissions?: { groups?: Record<string, boolean>; commands?: Record<string, boolean> };
 }): SharedTeamMemberInput {
@@ -219,6 +233,11 @@ export function buildTeamMemberShareInput(tm: {
     model: tm.model ?? null,
     agentTool: tm.agentTool ?? null,
     mode: tm.mode ?? null,
+    permissionMode: tm.permissionMode ?? null,
+    strategy: tm.strategy ?? null,
+    capabilities: tm.capabilities ?? {},
+    customWorkflow: tm.customWorkflow ?? null,
+    soundInstrument: tm.soundInstrument ?? null,
     skillIds: tm.skillIds ?? [],
     commandPermissions: tm.commandPermissions ?? {},
     sourceTeamMemberId: tm.id,

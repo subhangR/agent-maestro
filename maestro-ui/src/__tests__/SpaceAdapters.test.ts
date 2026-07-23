@@ -15,6 +15,7 @@ import type { MaestroTask, Spell, TeamMember } from '../app/types/maestro';
 vi.mock('../utils/MaestroClient', () => ({
   maestroClient: {
     createTask: vi.fn(),
+    updateTask: vi.fn(),
     createTeamMember: vi.fn(),
     listSpells: vi.fn(),
     createSpell: vi.fn(),
@@ -71,6 +72,7 @@ beforeEach(() => {
   vi.mocked(maestroClient.createSpell).mockResolvedValue({ id: 'local_spell_1' } as Spell);
   vi.mocked(maestroClient.updateSpell).mockResolvedValue({ id: 'existing_1' } as Spell);
   vi.mocked(maestroClient.createTask).mockResolvedValue({ id: 'local_task_1' } as MaestroTask);
+  vi.mocked(maestroClient.updateTask).mockResolvedValue({ id: 'local_task_1' } as MaestroTask);
   vi.mocked(maestroClient.createTeamMember).mockResolvedValue({ id: 'local_tm_1' } as TeamMember);
   vi.mocked(SpaceSpellsClient.recordInstall).mockResolvedValue(undefined);
   vi.mocked(SpaceTasksClient.recordPull).mockResolvedValue(undefined);
@@ -268,6 +270,22 @@ describe('pullSpaceTaskToLocal', () => {
     expect(maestroClient.createTask).toHaveBeenCalledWith(
       expect.objectContaining({ description: '', priority: 'medium' }),
     );
+  });
+
+  it('preserves portable task settings and applies the shared status', async () => {
+    await pullSpaceTaskToLocal(user, {
+      ...spaceTask,
+      status: 'blocked',
+      initialPrompt: 'Review deployment',
+      dueDate: '2026-08-01',
+      dangerousMode: true,
+      useWorktree: true,
+    } as unknown as SpaceTask, 'proj_1');
+    expect(maestroClient.createTask).toHaveBeenCalledWith(expect.objectContaining({
+      initialPrompt: 'Review deployment', dueDate: '2026-08-01',
+      dangerousMode: true, useWorktree: true,
+    }));
+    expect(maestroClient.updateTask).toHaveBeenCalledWith('local_task_1', { status: 'blocked' });
   });
 
   it('recordPull failure is best-effort: the pull still returns the created task', async () => {

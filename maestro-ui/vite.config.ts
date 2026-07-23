@@ -1,6 +1,9 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+const isBrowserDev = process.env.VITE_APP_MODE === "browser";
+const apiProxyTarget = process.env.MAESTRO_DEV_API_PROXY || "http://127.0.0.1:4569";
+
 export default defineConfig({
   plugins: [react()],
   clearScreen: false,
@@ -12,6 +15,19 @@ export default defineConfig({
       // compilation, which crashes Vite's FSWatcher with EBUSY on Windows.
       ignored: ["**/src-tauri/**"],
     },
+    // Browser split-origin dev: proxy API/WS/PTY to the Node server so the SPA
+    // stays same-origin (avoids CORP/CORS pitfalls when Vite is on :4570).
+    ...(isBrowserDev
+      ? {
+          proxy: {
+            "/api": { target: apiProxyTarget, changeOrigin: true },
+            "/health": { target: apiProxyTarget, changeOrigin: true },
+            "/ws-status": { target: apiProxyTarget, changeOrigin: true },
+            "/ws": { target: apiProxyTarget, ws: true, changeOrigin: true },
+            "/pty": { target: apiProxyTarget, ws: true, changeOrigin: true },
+          },
+        }
+      : {}),
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {

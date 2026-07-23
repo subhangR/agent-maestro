@@ -30,6 +30,11 @@ export interface SpaceTask {
   description: string;
   status: SpaceTaskStatus;
   priority: SpaceTaskPriority;
+  /** Portable execution settings; project-local references are intentionally excluded. */
+  initialPrompt: string;
+  dueDate: string | null;
+  dangerousMode: boolean;
+  useWorktree: boolean;
   assigneeUids: string[];
   parentTaskId: string | null;
   childrenIds: string[];
@@ -59,6 +64,16 @@ export interface SpaceTeamMember {
   model: string | null;
   agentTool: string | null;
   mode: string | null;
+  permissionMode: string | null;
+  strategy: string | null;
+  capabilities: {
+    can_spawn_sessions?: boolean;
+    can_edit_tasks?: boolean;
+    can_report_task_level?: boolean;
+    can_report_session_level?: boolean;
+  };
+  customWorkflow: string | null;
+  soundInstrument: string | null;
   skillIds: string[];
   commandPermissions: {
     groups?: Record<string, boolean>;

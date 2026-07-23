@@ -12,6 +12,64 @@ type LocalProjectMetadata = Pick<
 >;
 
 /**
+ * Data from the desktop snapshot that is relevant while recovering a project
+ * whose server response predates the GitHub binding field. `updatedAt` lets us
+ * distinguish that case from an explicit server-side unlink: the unlink is a
+ * newer server update and must remain unlinked locally.
+ */
+type LocalProjectRecoveryData = LocalProjectMetadata &
+  Pick<MaestroProject, 'githubUrl' | 'updatedAt'>;
+
+function githubUrlOrUndefined(project: Partial<Pick<MaestroProject, 'githubUrl'>>): string | undefined {
+  return typeof project.githubUrl === 'string' && project.githubUrl.trim().length > 0
+    ? project.githubUrl
+    : undefined;
+}
+
+/**
+ * Build the request for recreating a project that only exists in the desktop
+ * snapshot. Its repository binding is part of the durable project identity,
+ * not local-only UI metadata, so it must travel with the upstream create.
+ */
+export function toLocalOnlyProjectCreatePayload(localProj: MaestroProject): {
+  name: string;
+  workingDir: string;
+  description: string;
+  githubUrl?: string;
+} {
+  const githubUrl = githubUrlOrUndefined(localProj);
+  return {
+    name: localProj.name,
+    workingDir: localProj.workingDir,
+    description: '',
+    ...(githubUrl ? { githubUrl } : {}),
+  };
+}
+
+function resolveGithubUrl(
+  source: Pick<MaestroProject, 'githubUrl' | 'updatedAt'>,
+  localProj?: Partial<LocalProjectRecoveryData> | null,
+  preserveLocalGithubWhenServerMissing = false,
+): string | undefined {
+  // A non-empty response from the server always wins, including when it
+  // conflicts with a locally persisted remote.
+  const serverGithubUrl = githubUrlOrUndefined(source);
+  if (serverGithubUrl) return serverGithubUrl;
+  const localGithubUrl = localProj ? githubUrlOrUndefined(localProj) : undefined;
+  if (!localProj || !localGithubUrl) return undefined;
+
+  // A project freshly recreated from a local-only desktop record has no prior
+  // server binding to unlink. Keep the requested binding even if an older
+  // server omits it from the create response.
+  if (preserveLocalGithubWhenServerMissing) return localGithubUrl;
+
+  // For an existing project, only recover the local binding if it is newer
+  // than the server record. A server update at or after the local snapshot is
+  // authoritative: an absent githubUrl is an intentional unlink.
+  return (localProj.updatedAt ?? 0) > source.updatedAt ? localGithubUrl : undefined;
+}
+
+/**
  * Maps a server (or newly server-created) project into the app's
  * `MaestroProject` shape, merging in local-only metadata when available.
  * Used for both "project exists on server" and "project just got created on
@@ -20,7 +78,8 @@ type LocalProjectMetadata = Pick<
 export function toMaestroProject(
   source: Pick<MaestroProject, 'id' | 'name' | 'workingDir' | 'createdAt' | 'updatedAt'> &
     Partial<Pick<MaestroProject, 'githubUrl'>>,
-  localProj?: Partial<LocalProjectMetadata> | null,
+  localProj?: Partial<LocalProjectRecoveryData> | null,
+  options?: { preserveLocalGithubWhenServerMissing?: boolean },
 ): MaestroProject {
   return {
     id: source.id,
@@ -28,9 +87,7 @@ export function toMaestroProject(
     workingDir: source.workingDir,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,
-    // Server-owned: the persisted Collab repo URL always comes from the server
-    // copy, never a (possibly stale) local one.
-    githubUrl: source.githubUrl,
+    githubUrl: resolveGithubUrl(source, localProj, options?.preserveLocalGithubWhenServerMissing),
     basePath: source.workingDir || null,
     environmentId: localProj?.environmentId ?? null,
     assetsEnabled: localProj?.assetsEnabled ?? true,

@@ -11,16 +11,15 @@ import { router } from 'expo-router';
 import { Text, Input, Button, Card } from '@/components';
 import { useTheme } from '@/theme';
 import { usePrefsStore } from '@/state';
-import { AuthRequiredError } from '@/services/api';
+import { AuthRequiredError, HubSignInRequiredError } from '@/services/api';
 
-import { bootstrap } from '../navigation/bootstrap';
+import { addServerAndConnect } from '../navigation/bootstrap';
 
 type Phase = 'idle' | 'connecting' | 'error';
 
 export default function Connect(): React.JSX.Element {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const setLastHost = usePrefsStore((s) => s.setLastHost);
   const initialHost = usePrefsStore((s) => s.lastHost) ?? '';
 
   const [host, setHost] = useState(initialHost);
@@ -45,21 +44,27 @@ export default function Connect(): React.JSX.Element {
     setErrorMsg(null);
     setPhase('connecting');
     try {
-      await bootstrap(trimmed, needsPassword && password ? password : undefined);
-      // Persist only after a successful health probe + sync.
-      setLastHost(trimmed);
+      // Detects the server's authMode, connects, and saves it as a profile.
+      await addServerAndConnect(trimmed, {
+        password: needsPassword && password ? password : undefined,
+      });
       router.replace('/(tabs)');
     } catch (e) {
       if (e instanceof AuthRequiredError) {
         setNeedsPassword(true);
         setErrorMsg('This server requires a password.');
         setPhase('idle');
+      } else if (e instanceof HubSignInRequiredError) {
+        // Firebase hub: either sign-in is needed, or the signed-in Google account
+        // was rejected by the hub. Surface the specific message from the error.
+        setErrorMsg(e.message);
+        setPhase('error');
       } else {
         setErrorMsg(e instanceof Error ? e.message : String(e));
         setPhase('error');
       }
     }
-  }, [host, password, needsPassword, setLastHost]);
+  }, [host, password, needsPassword]);
 
   return (
     <View

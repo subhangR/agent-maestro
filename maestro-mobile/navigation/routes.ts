@@ -8,6 +8,7 @@
 //     (sessions)/index            · (sessions)/session/[id]
 //     (tasks)/index               · (tasks)/task/[id]
 //     (members)/index             · (members)/member/[id] · (members)/team/[id]
+//     (spaces)/index              · (spaces)/space/[id] (Collab; Firebase-direct)
 //     (more)/index
 //   terminal/[sessionId]          (fullScreenModal)
 //   whiteboard/[sessionId]        (fullScreenModal · ?docId=)
@@ -23,6 +24,7 @@ export const ROUTE = {
   sessions: '(sessions)',
   tasks: '(tasks)',
   members: '(members)',
+  spaces: '(spaces)',
   more: '(more)',
   connect: 'connect',
   terminal: 'terminal',
@@ -35,6 +37,7 @@ export const routes = {
   sessions: (): Href => '/(tabs)/(sessions)' as Href,
   tasks: (): Href => '/(tabs)/(tasks)' as Href,
   members: (): Href => '/(tabs)/(members)' as Href,
+  spaces: (): Href => '/(tabs)/(spaces)' as Href,
   more: (): Href => '/(tabs)/(more)' as Href,
 
   // Detail (pushed) screens
@@ -42,6 +45,8 @@ export const routes = {
   task: (id: string): Href => `/(tabs)/(tasks)/task/${id}` as Href,
   member: (id: string): Href => `/(tabs)/(members)/member/${id}` as Href,
   team: (id: string): Href => `/(tabs)/(members)/team/${id}` as Href,
+  // Collab Space chat (pushed). `?join=<spaceId>/<inviteId>` deep-link redeem.
+  space: (id: string): Href => `/(tabs)/(spaces)/space/${id}` as Href,
 
   // Full-screen modal route (Relay's terminal body)
   terminal: (sessionId: string): Href => `/terminal/${sessionId}` as Href,

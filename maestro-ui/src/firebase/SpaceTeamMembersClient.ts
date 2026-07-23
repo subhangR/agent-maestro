@@ -5,7 +5,27 @@ import {
   asString,
   asStringOrNull,
   asStringArray,
+  asBoolean,
 } from './firestoreUtils';
+
+function capabilitiesFromData(v: unknown): SpaceTeamMember['capabilities'] {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const raw = v as Record<string, unknown>;
+  return {
+    ...(typeof raw.can_spawn_sessions === 'boolean'
+      ? { can_spawn_sessions: asBoolean(raw.can_spawn_sessions) }
+      : {}),
+    ...(typeof raw.can_edit_tasks === 'boolean'
+      ? { can_edit_tasks: asBoolean(raw.can_edit_tasks) }
+      : {}),
+    ...(typeof raw.can_report_task_level === 'boolean'
+      ? { can_report_task_level: asBoolean(raw.can_report_task_level) }
+      : {}),
+    ...(typeof raw.can_report_session_level === 'boolean'
+      ? { can_report_session_level: asBoolean(raw.can_report_session_level) }
+      : {}),
+  };
+}
 
 function commandPermissionsFromData(v: unknown): SpaceTeamMember['commandPermissions'] {
   if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
@@ -38,6 +58,11 @@ function fromData(id: string, d: DocumentData): SpaceTeamMember {
     model: asStringOrNull(d.model),
     agentTool: asStringOrNull(d.agentTool),
     mode: asStringOrNull(d.mode),
+    permissionMode: asStringOrNull(d.permissionMode),
+    strategy: asStringOrNull(d.strategy),
+    capabilities: capabilitiesFromData(d.capabilities),
+    customWorkflow: asStringOrNull(d.customWorkflow),
+    soundInstrument: asStringOrNull(d.soundInstrument),
     skillIds: asStringArray(d.skillIds),
     commandPermissions: commandPermissionsFromData(d.commandPermissions),
     sourceTeamMemberId: asStringOrNull(d.sourceTeamMemberId),
@@ -65,7 +90,7 @@ export const SpaceTeamMembersClient = {
   async update(
     spaceId: string,
     tmId: string,
-    patch: Partial<Pick<SpaceTeamMember, 'name' | 'role' | 'identity' | 'model' | 'agentTool' | 'mode' | 'commandPermissions' | 'skillIds'>>,
+    patch: Partial<Pick<SpaceTeamMember, 'name' | 'role' | 'identity' | 'model' | 'agentTool' | 'mode' | 'permissionMode' | 'strategy' | 'capabilities' | 'customWorkflow' | 'soundInstrument' | 'commandPermissions' | 'skillIds'>>,
   ): Promise<void> {
     await client.update(spaceId, tmId, patch);
   },

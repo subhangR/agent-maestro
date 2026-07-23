@@ -14,8 +14,6 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
     const [name, setName] = useState(space.name);
     const [description, setDescription] = useState(space.description ?? "");
     const [visibility, setVisibility] = useState<"public" | "private">(space.visibility);
-    const [linkCopied, setLinkCopied] = useState(false);
-
     const [saving, setSaving] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [justSaved, setJustSaved] = useState(false);
@@ -24,8 +22,6 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
     const [confirm, setConfirm] = useState<null | "leave" | "delete">(null);
     const [dangerBusy, setDangerBusy] = useState(false);
     const [dangerError, setDangerError] = useState<string | null>(null);
-
-    const inviteLink = CollabSpaceClient.buildInviteLink(space.id);
 
     const myRole = user ? space.members[user.uid]?.role : undefined;
     const isOwner = myRole === "owner";
@@ -43,16 +39,6 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
         name !== space.name ||
         description !== (space.description ?? "") ||
         visibility !== space.visibility;
-
-    const copyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(inviteLink);
-            setLinkCopied(true);
-            setTimeout(() => setLinkCopied(false), 1600);
-        } catch {
-            /* ignore */
-        }
-    };
 
     const discard = () => {
         setName(space.name);
@@ -242,29 +228,9 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
 
                 <div className="spaceSettingsGroup">
                     <div className="spaceSettingsGroupTitle">Invite</div>
-                    <div className="spaceSettingsField">
-                        <span className="spaceSettingsLabel" id="space-invite-link-label">
-                            Invite link
-                        </span>
-                        <div className="spaceSettingsInviteRow">
-                            <input
-                                readOnly
-                                type="text"
-                                className="spaceSettingsInput spaceSettingsInputMono"
-                                value={inviteLink}
-                                aria-labelledby="space-invite-link-label"
-                                onFocus={(e) => e.currentTarget.select()}
-                            />
-                            <button
-                                type="button"
-                                className="spaceEntityPrimaryBtn"
-                                onClick={copyLink}
-                                aria-live="polite"
-                            >
-                                {linkCopied ? "Copied" : "Copy"}
-                            </button>
-                        </div>
-                    </div>
+                    <p className="spaceModalHint">
+                        Create and manage private invite links or join codes from the Members tab.
+                    </p>
                 </div>
 
                 <div className="spaceSettingsGroup">

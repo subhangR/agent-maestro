@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   query,
+  where,
   orderBy,
   limit,
   startAfter,
@@ -142,6 +143,41 @@ export const MessagingClient = {
       (err) => {
         // eslint-disable-next-line no-console
         console.warn('[Messaging] channels subscription failed:', err);
+        onError?.(err);
+      },
+    );
+  },
+
+  /**
+   * Notification feed: fires `cb` for each message CREATED after `since` in the
+   * channel. Emits only `added` doc-changes (edits/deletes are ignored), so a
+   * `since` of "now" means the caller sees genuinely new messages and never a
+   * backfill flood. Ordered by createdAt on a single field → no composite index.
+   */
+  subscribeToNewMessages(
+    spaceId: string,
+    channelId: string,
+    since: Timestamp,
+    cb: (message: Message) => void,
+    onError?: (err: Error) => void,
+  ): Unsubscribe {
+    const q = query(
+      messagesCol(spaceId, channelId),
+      where('createdAt', '>', since),
+      orderBy('createdAt', 'asc'),
+    );
+    return onSnapshot(
+      q,
+      (snap) => {
+        snap.docChanges().forEach((change) => {
+          if (change.type !== 'added') return;
+          const msg = messageFromSnap(change.doc);
+          if (msg) cb(msg);
+        });
+      },
+      (err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[Messaging] new-message subscription failed:', err);
         onError?.(err);
       },
     );

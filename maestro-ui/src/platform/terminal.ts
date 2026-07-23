@@ -60,6 +60,7 @@ export const tauriTerminal: TerminalTransport = {
 
 // ── webTerminal: per-session WebSocket transport to /pty ──────────────────
 import { API_BASE_URL, PTY_WS_URL } from '../utils/serverConfig';
+import { withGatewayToken } from '../utils/gatewayAuth';
 import { parseControlFrame } from './ptyProtocol';
 
 const _sockets = new Map<string, WebSocket>();
@@ -287,7 +288,7 @@ function _ensureSocket(id: string): WebSocket {
   // replay, so this stays backward-compatible with a pre-offset server.
   const offset = _received.get(id) ?? 0;
   const ws = new WebSocket(
-    `${PTY_WS_URL}?sessionId=${encodeURIComponent(id)}&offset=${offset}`,
+    withGatewayToken(`${PTY_WS_URL}?sessionId=${encodeURIComponent(id)}&offset=${offset}`),
   );
   ws.binaryType = 'arraybuffer';
 

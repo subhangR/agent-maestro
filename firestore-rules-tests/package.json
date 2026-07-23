@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Security-rules tests for Collab Space (runs against the Firestore emulator)",
   "scripts": {
-    "test": "cd .. && firebase emulators:exec --only firestore --project demo-maestro-rules \"cd firestore-rules-tests && bunx vitest run\""
+    "test": "cd .. && firebase emulators:exec --config firebase.rules-test.json --only firestore --project demo-maestro-rules \"cd firestore-rules-tests && bunx vitest run\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4",

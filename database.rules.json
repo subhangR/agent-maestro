@@ -1,0 +1,34 @@
+{
+  "rules": {
+    "gatewayPresence": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "!newData.exists() || (newData.child('uid').val() === auth.uid && newData.child('email').isString())"
+      }
+    },
+    "presence": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "connections": {
+          "$connectionId": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "!newData.exists() || (newData.hasChildren(['online', 'lastActive']) && newData.child('online').val() === true && newData.child('lastActive').isNumber())"
+          }
+        }
+      }
+    },
+    "spacePresence": {
+      "$spaceId": {
+        "$uid": {
+          "connections": {
+            "$connectionId": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "!newData.exists() || (newData.hasChildren(['focus', 'visible', 'lastActive']) && newData.child('focus').isString() && newData.child('visible').isBoolean() && newData.child('lastActive').isNumber())"
+            }
+          }
+        }
+      }
+    }
+  }
+}

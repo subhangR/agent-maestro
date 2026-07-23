@@ -25,6 +25,7 @@ import {
   arrayUnion,
   arrayRemove,
   deleteField,
+  runTransaction,
 } from 'firebase/firestore';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -103,7 +104,7 @@ describe('space read access', () => {
     await assertFails(getDoc(doc(dbAs(null), 'collabSpaces', SPACE)));
   });
 
-  it('any signed-in user can read a public space', async () => {
+  it('any signed-in user can read a public space without GitHub membership verification', async () => {
     await seedSpace('public');
     await assertSucceeds(getDoc(doc(dbAs(OUTSIDER), 'collabSpaces', SPACE)));
     await assertFails(getDoc(doc(dbAs(null), 'collabSpaces', SPACE)));
@@ -201,6 +202,150 @@ describe('join / leave', () => {
   });
 });
 
+// ─── Private invitation redemption ─────────────────────────────────
+
+function inviteData(extra?: Record<string, unknown>) {
+  return {
+    spaceId: SPACE,
+    kind: 'link',
+    maxUses: 1,
+    useCount: 0,
+    redeemedByUids: [],
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    revokedAt: null,
+    createdBy: OWNER,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...extra,
+  };
+}
+
+async function seedInvite(inviteId = 'invite-token-abcdefghijklmnopqrstuvwxyz123456') {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'collabSpaces', SPACE, 'invites', inviteId), inviteData());
+  });
+  return inviteId;
+}
+
+/** Mirrors the client transaction: it deliberately does not read the private space root. */
+async function redeem(
+  uid: string,
+  inviteId: string,
+  memberUid = uid,
+  invitePatch: Record<string, unknown> = {},
+) {
+  const db = dbAs(uid);
+  const spaceRef = doc(db, 'collabSpaces', SPACE);
+  const inviteRef = doc(db, 'collabSpaces', SPACE, 'invites', inviteId);
+  const claimRef = doc(db, 'collabSpaces', SPACE, 'inviteClaims', uid);
+  return runTransaction(db, async (tx) => {
+    const invite = await tx.get(inviteRef);
+    if (!invite.exists()) throw new Error('missing invite');
+    const data = invite.data();
+    tx.update(inviteRef, {
+      useCount: data.useCount + 1,
+      redeemedByUids: [...data.redeemedByUids, uid],
+      updatedAt: serverTimestamp(),
+      ...invitePatch,
+    });
+    tx.set(claimRef, { spaceId: SPACE, inviteId, uid, createdAt: serverTimestamp() });
+    tx.update(spaceRef, {
+      memberIds: arrayUnion(memberUid),
+      [`members.${memberUid}`]: memberEntry(memberUid, 'member'),
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+describe('private invitation redemption', () => {
+  beforeEach(async () => {
+    await seedSpace('private', {
+      memberIds: [OWNER],
+      members: { [OWNER]: memberEntry(OWNER, 'owner') },
+    });
+  });
+
+  it('atomically redeems an active invite without granting a pre-join private read', async () => {
+    const inviteId = await seedInvite();
+    await assertFails(getDoc(doc(dbAs(OUTSIDER), 'collabSpaces', SPACE)));
+    await assertSucceeds(redeem(OUTSIDER, inviteId));
+    await assertSucceeds(getDoc(doc(dbAs(OUTSIDER), 'collabSpaces', SPACE)));
+  });
+
+  it('rejects replay and a standalone claim or invite increment', async () => {
+    const inviteId = await seedInvite();
+    await assertSucceeds(redeem(OUTSIDER, inviteId));
+    await assertFails(redeem(OUTSIDER, inviteId));
+    const db = dbAs(MEMBER);
+    await assertFails(setDoc(doc(db, 'collabSpaces', SPACE, 'inviteClaims', MEMBER), {
+      spaceId: SPACE, inviteId, uid: MEMBER, createdAt: serverTimestamp(),
+    }));
+    await assertFails(updateDoc(doc(db, 'collabSpaces', SPACE, 'invites', inviteId), {
+      useCount: 2, redeemedByUids: [OUTSIDER, MEMBER], updatedAt: serverTimestamp(),
+    }));
+  });
+
+  it.each([
+    ['expired', { expiresAt: new Date(Date.now() - 1) }],
+    ['revoked', { revokedAt: new Date() }],
+  ])('rejects a %s invite', async (_name, extra) => {
+    const inviteId = await seedInvite('invite-token-abcdefghijklmnopqrstuvwxyz123457');
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'collabSpaces', SPACE, 'invites', inviteId), extra);
+    });
+    await assertFails(redeem(OUTSIDER, inviteId));
+  });
+
+  it('rejects cross-space and cross-user membership attempts', async () => {
+    const inviteId = await seedInvite();
+    const db = dbAs(OUTSIDER);
+    const crossSpaceInvite = await seedInvite('invite-token-abcdefghijklmnopqrstuvwxyz123458');
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'collabSpaces', SPACE, 'invites', crossSpaceInvite), {
+        spaceId: 'another-space',
+      });
+    });
+    await assertFails(redeem(OUTSIDER, crossSpaceInvite));
+    await assertFails(redeem(OUTSIDER, inviteId, MEMBER));
+    // The original invite remains unused after both rejected transactions.
+    await assertSucceeds(redeem(OUTSIDER, inviteId));
+    await assertFails(getDoc(doc(db, 'collabSpaces', SPACE, 'inviteClaims', MEMBER)));
+  });
+
+  it('preserves an optional management id during redemption while accepting legacy invites without one', async () => {
+    const managedInvite = await seedInvite('invite-token-abcdefghijklmnopqrstuvwxyz123459');
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'collabSpaces', SPACE, 'invites', managedInvite), {
+        managementId: 'manager_12345678901234567890',
+      });
+    });
+    await assertFails(redeem(OUTSIDER, managedInvite, OUTSIDER, {
+      managementId: 'manager_replaced_1234567890',
+    }));
+    await assertSucceeds(redeem(OUTSIDER, managedInvite));
+
+    // This remains deliberately valid: old UI-created invites have no safe
+    // management id, but are still redeemable until reissued or revoked.
+    await env.clearFirestore();
+    await seedSpace('private', { memberIds: [OWNER], members: { [OWNER]: memberEntry(OWNER, 'owner') } });
+    const legacyInvite = await seedInvite('invite-token-abcdefghijklmnopqrstuvwxyz123460');
+    await assertSucceeds(redeem(OUTSIDER, legacyInvite));
+  });
+
+  it('caps an optional management id at creation', async () => {
+    await assertFails(setDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE, 'invites', 'invite-token-abcdefghijklmnopqrstuvwxyz123461'), {
+      ...inviteData({ managementId: 'x'.repeat(129) }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE, 'invites', 'invite-token-abcdefghijklmnopqrstuvwxyz123462'), {
+      ...inviteData({ managementId: 'not an opaque management id' }),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+  });
+});
+
 describe('admin boundaries', () => {
   it('admin can rename the space but cannot demote or remove the owner', async () => {
     await seedSpace('private', {
@@ -224,6 +369,27 @@ describe('admin boundaries', () => {
     await seedSpace('private');
     await assertFails(deleteDoc(doc(dbAs(MEMBER), 'collabSpaces', SPACE)));
     await assertSucceeds(deleteDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE)));
+  });
+});
+
+describe('repository identity', () => {
+  it('rejects an owner attempt to rebind an existing space to another repository', async () => {
+    await seedSpace('private');
+
+    for (const field of ['githubUrl', 'githubHost', 'githubOwner', 'githubRepo'] as const) {
+      await assertFails(updateDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE), {
+        [field]: `changed-${field}`,
+        updatedAt: serverTimestamp(),
+      }));
+    }
+  });
+
+  it('allows an owner to update a profile field without changing repository identity', async () => {
+    await seedSpace('private');
+    await assertSucceeds(updateDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE), {
+      name: 'Renamed by owner',
+      updatedAt: serverTimestamp(),
+    }));
   });
 });
 
@@ -475,6 +641,64 @@ describe('channels', () => {
     await assertFails(updateDoc(ref(MEMBER), { name: 'hijacked', updatedAt: serverTimestamp() }));
     await assertSucceeds(updateDoc(ref(OWNER), { name: 'renamed', updatedAt: serverTimestamp() }));
     await assertFails(updateDoc(ref(OWNER), { createdBy: MEMBER, updatedAt: serverTimestamp() }));
+  });
+});
+
+// ─── Phase 2 notification privacy ──────────────────────────────────
+
+describe('notification profiles and inbox', () => {
+  const profile = {
+    level: 'all',
+    desktopEnabled: true,
+    mutedSpaceIds: [],
+    mutedChannelIds: [],
+    updatedAt: serverTimestamp(),
+  };
+
+  it('keeps a profile and FCM device registrations private to their owner', async () => {
+    const profileRef = doc(dbAs(MEMBER), 'notificationProfiles', MEMBER);
+    await assertSucceeds(setDoc(profileRef, profile));
+    await assertFails(getDoc(doc(dbAs(OUTSIDER), 'notificationProfiles', MEMBER)));
+
+    const deviceRef = doc(dbAs(MEMBER), 'notificationProfiles', MEMBER, 'devices', 'browser-1');
+    await assertSucceeds(setDoc(deviceRef, {
+      token: 'registration-token', platform: 'web',
+      createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+    }));
+    await assertFails(setDoc(doc(dbAs(OUTSIDER), 'notificationProfiles', MEMBER, 'devices', 'browser-2'), {
+      token: 'stolen-token', platform: 'web',
+      createdAt: serverTimestamp(), lastSeenAt: serverTimestamp(),
+    }));
+  });
+
+  it('allows recipients to read and acknowledge server-created inbox items only', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'notifications', MEMBER, 'items', 'message1'), {
+        type: 'message.new', spaceId: SPACE, channelId: 'general', messageId: 'message1',
+        actorUid: OWNER, actorName: OWNER, preview: 'hello', isMention: false,
+        createdAt: new Date(), readAt: null,
+      });
+    });
+    const inboxRef = doc(dbAs(MEMBER), 'notifications', MEMBER, 'items', 'message1');
+    await assertSucceeds(getDoc(inboxRef));
+    await assertSucceeds(updateDoc(inboxRef, { readAt: serverTimestamp() }));
+    await assertFails(updateDoc(inboxRef, { preview: 'forged' }));
+    await assertFails(getDoc(doc(dbAs(OUTSIDER), 'notifications', MEMBER, 'items', 'message1')));
+    await assertFails(setDoc(doc(dbAs(MEMBER), 'notifications', MEMBER, 'items', 'forged'), {
+      type: 'message.new', readAt: null,
+    }));
+  });
+
+  it('keeps a per-space read cursor private to the member who owns it', async () => {
+    await seedSpace('private');
+    const ownCursor = doc(dbAs(MEMBER), 'collabSpaces', SPACE, 'readState', MEMBER);
+    await assertSucceeds(setDoc(ownCursor, {
+      lastReadAt: { general: serverTimestamp() }, updatedAt: serverTimestamp(),
+    }));
+    await assertFails(getDoc(doc(dbAs(OWNER), 'collabSpaces', SPACE, 'readState', MEMBER)));
+    await assertFails(setDoc(doc(dbAs(OUTSIDER), 'collabSpaces', SPACE, 'readState', OUTSIDER), {
+      lastReadAt: { general: serverTimestamp() }, updatedAt: serverTimestamp(),
+    }));
   });
 });
 

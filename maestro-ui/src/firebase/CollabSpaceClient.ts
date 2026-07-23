@@ -15,6 +15,7 @@ import {
   arrayRemove,
   onSnapshot,
   writeBatch,
+  runTransaction,
   Unsubscribe,
   DocumentSnapshot,
   DocumentData,
@@ -27,8 +28,11 @@ import {
   CollabSpaceVisibility,
   CreateCollabSpaceInput,
   CollabSpaceMember,
+  CollabSpaceInvite,
+  CreateCollabSpaceInviteInput,
 } from './collabSpaceTypes';
 import { asString, asStringOrNull, asStringArray, asEnum, withRetry } from './firestoreUtils';
+import { buildInviteLink, generateInviteId, isInviteId, normalizeInviteId } from './spaceInvite';
 
 const COLLECTION = 'collabSpaces';
 
@@ -80,6 +84,22 @@ function fromSnapshot(snap: DocumentSnapshot): CollabSpace | null {
 
 function fromQuery(snap: QuerySnapshot): CollabSpace[] {
   return snap.docs.map((d) => spaceFromData(d.id, d.data()));
+}
+
+function inviteFromData(id: string, d: DocumentData): CollabSpaceInvite {
+  return {
+    id,
+    spaceId: asString(d.spaceId),
+    kind: asEnum(d.kind, ['link', 'code'] as const, 'link'),
+    maxUses: typeof d.maxUses === 'number' ? d.maxUses : 1,
+    useCount: typeof d.useCount === 'number' ? d.useCount : 0,
+    redeemedByUids: asStringArray(d.redeemedByUids),
+    expiresAt: d.expiresAt ?? null,
+    revokedAt: d.revokedAt ?? null,
+    createdBy: asString(d.createdBy),
+    createdAt: d.createdAt,
+    updatedAt: d.updatedAt,
+  };
 }
 
 function memberFromUser(user: User, role: CollabSpaceMember['role']): Omit<CollabSpaceMember, 'joinedAt'> {
@@ -343,11 +363,113 @@ export const CollabSpaceClient = {
   },
 
   /**
-   * Build the canonical join link for a space. v1 uses `spaceId`-only links
-   * (no token) so this is just a derived URL — `acceptInvite` is handled by
-   * the existing `join()` method on a public space.
+   * Creates an opaque, revocable invitation for a private space. The invite id
+   * is deliberately the only bearer secret and is never stored in plaintext in
+   * a field, so Firestore backups/logs cannot expose a second reusable token.
    */
-  buildInviteLink(spaceId: string): string {
-    return `https://maestro.app/space/${spaceId}/join`;
+  async createInvite(
+    user: User,
+    spaceId: string,
+    input: CreateCollabSpaceInviteInput,
+  ): Promise<CollabSpaceInvite> {
+    if (!Number.isInteger(input.maxUses) || input.maxUses < 1 || input.maxUses > 1000) {
+      throw new Error('Invite use limit must be between 1 and 1,000.');
+    }
+    const db = getDb();
+    const inviteRef = doc(
+      db,
+      COLLECTION,
+      spaceId,
+      'invites',
+      generateInviteId(input.kind),
+    );
+    const now = serverTimestamp();
+    await withRetry(() => writeBatch(db)
+      .set(inviteRef, {
+        spaceId,
+        kind: input.kind,
+        maxUses: input.maxUses,
+        useCount: 0,
+        redeemedByUids: [],
+        expiresAt: input.expiresAt,
+        revokedAt: null,
+        createdBy: user.uid,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .commit());
+    const fresh = await withRetry(() => getDoc(inviteRef));
+    if (!fresh.exists()) throw new Error('Invite was created but could not be read back.');
+    return inviteFromData(fresh.id, fresh.data());
+  },
+
+  async listInvites(spaceId: string): Promise<CollabSpaceInvite[]> {
+    const db = getDb();
+    const invites = await withRetry(() => getDocs(query(
+      collection(db, COLLECTION, spaceId, 'invites'),
+      orderBy('createdAt', 'desc'),
+      limit(100),
+    )));
+    return invites.docs.map((snap) => inviteFromData(snap.id, snap.data()));
+  },
+
+  async revokeInvite(spaceId: string, inviteId: string): Promise<void> {
+    const db = getDb();
+    await withRetry(() => updateDoc(doc(db, COLLECTION, spaceId, 'invites', inviteId), {
+      revokedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }));
+  },
+
+  /**
+   * Redeems one private invitation in a single Firestore transaction. The
+   * rules require the invite increment, immutable claim, and membership write
+   * to be committed together, preventing link replay or a client-side bypass.
+   */
+  async redeemInvite(user: User, spaceId: string, rawInviteId: string): Promise<void> {
+    const inviteId = normalizeInviteId(rawInviteId);
+    if (!isInviteId(inviteId)) throw new Error('Enter a valid invite link or join code.');
+    const db = getDb();
+    const spaceRef = doc(db, COLLECTION, spaceId);
+    const inviteRef = doc(db, COLLECTION, spaceId, 'invites', inviteId);
+    const claimRef = doc(db, COLLECTION, spaceId, 'inviteClaims', user.uid);
+    const member = memberFromUser(user, 'member');
+
+    await withRetry(() => runTransaction(db, async (transaction) => {
+      const inviteSnap = await transaction.get(inviteRef);
+      if (!inviteSnap.exists()) throw new Error('This invitation is invalid or has been revoked.');
+
+      const invite = inviteFromData(inviteSnap.id, inviteSnap.data());
+      const expiresAt = invite.expiresAt?.toDate().getTime() ?? null;
+      if (invite.revokedAt || (expiresAt !== null && expiresAt <= Date.now())) {
+        throw new Error('This invitation has expired or was revoked.');
+      }
+      if (invite.useCount >= invite.maxUses || invite.redeemedByUids.includes(user.uid)) {
+        throw new Error('This invitation has reached its use limit.');
+      }
+
+      const now = serverTimestamp();
+      transaction.update(inviteRef, {
+        useCount: invite.useCount + 1,
+        redeemedByUids: [...invite.redeemedByUids, user.uid],
+        updatedAt: now,
+      });
+      transaction.set(claimRef, {
+        spaceId,
+        inviteId,
+        uid: user.uid,
+        createdAt: now,
+      });
+      transaction.update(spaceRef, {
+        memberIds: arrayUnion(user.uid),
+        [`members.${user.uid}`]: { ...member, joinedAt: now },
+        updatedAt: now,
+      });
+    }));
+  },
+
+  /** Builds a signed-in browser/deep-link route for an opaque invite id. */
+  buildInviteLink(spaceId: string, inviteId: string): string {
+    return buildInviteLink(spaceId, inviteId);
   },
 };

@@ -1,6 +1,7 @@
 # Node / frontend
 node_modules/
 dist/
+dist-gateway/
 
 # Logs
 *.log
@@ -9,6 +10,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 package-lock.json
+!functions/package-lock.json
 
 # TypeScript build artifacts
 *.tsbuildinfo

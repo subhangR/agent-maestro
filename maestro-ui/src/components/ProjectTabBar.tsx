@@ -12,6 +12,7 @@ import { TerminalSettings } from "./TerminalSettings";
 import { soundManager } from "../services/soundManager";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useUIStore } from "../stores/useUIStore";
+import { GATEWAY_AUTH_MODE } from "../utils/gatewayAuth";
 
 type SavedProject = {
   id: string;
@@ -579,6 +580,10 @@ export function ProjectTabBar({
   return (
     <>
       <div className="pn-top projectTabBar">
+        <div className="pn-brandmark" title="Maestro" aria-label="Maestro">
+          <span className="pn-brandmark__bars" aria-hidden="true"><i /><i /><i /><i /></span>
+          <b className="pn-brandmark__word">Maestro</b>
+        </div>
         <div className="pn-ptabs projectTabs" ref={tabsRef}>
           {projects.map((p) => {
             const isActive = p.id === activeProjectId;
@@ -671,6 +676,17 @@ export function ProjectTabBar({
           )}
         </div>
         <div className="pn-top-r">
+          <div className="pn-ensemble" title="Maestro — conducting your agent ensemble" aria-hidden="true">
+            <span className="pn-ensemble__bars">
+              <i /><i /><i /><i />
+            </span>
+            <b>ensemble</b>
+          </div>
+          {GATEWAY_AUTH_MODE && (
+            <a className="pn-ib" href="/gateway" title="Open team gateway" aria-label="Open team gateway">
+              <PnIcon name="grid" size={16} />
+            </a>
+          )}
           {onOpenMultiProjectBoard && (
             <button
               type="button"

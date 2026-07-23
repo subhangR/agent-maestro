@@ -1,4 +1,5 @@
 import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
+import { Database, getDatabase } from 'firebase/database';
 
 // Bundled DEFAULT Firebase web config so Maestro Collab works out of the box on
 // a fresh clone. Firebase web API keys are PUBLIC by design — access is enforced
@@ -13,7 +14,16 @@ const DEFAULT_FIREBASE_CONFIG = {
   storageBucket: 'maestro-5f3fc.firebasestorage.app',
   messagingSenderId: '204094353519',
   appId: '1:204094353519:web:f4b09345a95234335a5d9a',
+  // This project's default RTDB instance is regional. The generic firebaseio
+  // hostname does not route to it, so presence silently never connected.
+  databaseURL: 'https://maestro-5f3fc-default-rtdb.asia-southeast1.firebasedatabase.app',
 };
+
+// Web Push VAPID keys are public browser credentials (not server secrets).
+// Keeping the default project's key alongside its public Firebase config makes
+// the deployed Maestro web build push-capable without a local .env file. A
+// custom deployment may still override it with VITE_FIREBASE_VAPID_KEY.
+const DEFAULT_FIREBASE_VAPID_KEY = 'BJoduvp1dro9woRGblxY-w6xZexLqKQuGPmge4F7T3GwXK6dyWZ-o23_PcQuvee4XplrTfuvmFpiFoSkksILzfY';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || DEFAULT_FIREBASE_CONFIG.apiKey,
@@ -24,13 +34,28 @@ const firebaseConfig = {
   messagingSenderId:
     import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || DEFAULT_FIREBASE_CONFIG.messagingSenderId,
   appId: import.meta.env.VITE_FIREBASE_APP_ID || DEFAULT_FIREBASE_CONFIG.appId,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || DEFAULT_FIREBASE_CONFIG.databaseURL,
 };
+
+/**
+ * Public Firebase configuration for browser-only integrations such as the FCM
+ * service worker. Firebase API keys identify a project; access remains guarded
+ * by Firebase Auth and database rules.
+ */
+export function getFirebaseWebConfig(): Readonly<typeof firebaseConfig> {
+  return firebaseConfig;
+}
+
+export function getFirebaseVapidKey(): string {
+  return import.meta.env.VITE_FIREBASE_VAPID_KEY?.trim() || DEFAULT_FIREBASE_VAPID_KEY;
+}
 
 export const isFirebaseConfigured = Boolean(
   firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId,
 );
 
 let app: FirebaseApp | null = null;
+let database: Database | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
   if (!isFirebaseConfigured) {
@@ -42,4 +67,11 @@ export function getFirebaseApp(): FirebaseApp {
   const existing = getApps()[0];
   app = existing ?? initializeApp(firebaseConfig);
   return app;
+}
+
+/** Shared Realtime Database connection for the trusted-team hub presence feed. */
+export function getFirebaseDatabase(): Database {
+  if (database) return database;
+  database = getDatabase(getFirebaseApp());
+  return database;
 }

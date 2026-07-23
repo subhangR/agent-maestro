@@ -84,6 +84,62 @@ service cloud.firestore {
       return request.resource.data.createdBy == request.auth.uid;
     }
 
+    // Notification settings are private to their owner. FCM registrations are
+    // separate documents below so a browser may only ever mutate its own
+    // profile, never another member's delivery targets.
+    match /notificationProfiles/{uid} {
+      function validProfileShape() {
+        return request.resource.data.keys().hasOnly([
+            'level', 'desktopEnabled', 'mutedSpaceIds', 'mutedChannelIds', 'updatedAt'
+          ])
+          && request.resource.data.level in ['mentions', 'all']
+          && request.resource.data.desktopEnabled is bool
+          && request.resource.data.mutedSpaceIds is list
+          && request.resource.data.mutedSpaceIds.size() <= 200
+          && request.resource.data.mutedChannelIds is list
+          && request.resource.data.mutedChannelIds.size() <= 200
+          && request.resource.data.updatedAt is timestamp;
+      }
+
+      allow get: if isSignedIn() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if isSignedIn() && request.auth.uid == uid && validProfileShape();
+      allow delete: if false;
+
+      match /devices/{deviceId} {
+        function validDeviceShape() {
+          return request.resource.data.keys().hasOnly([
+              'token', 'platform', 'createdAt', 'lastSeenAt'
+            ])
+            && request.resource.data.token is string
+            && request.resource.data.token.size() > 0
+            && request.resource.data.token.size() <= 4096
+            && request.resource.data.platform == 'web'
+            && request.resource.data.createdAt is timestamp
+            && request.resource.data.lastSeenAt is timestamp;
+        }
+
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow create: if isSignedIn() && request.auth.uid == uid && validDeviceShape();
+        allow update: if isSignedIn() && request.auth.uid == uid
+          && validDeviceShape()
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.platform == resource.data.platform;
+        allow delete: if isSignedIn() && request.auth.uid == uid;
+      }
+    }
+
+    // Notification items are server-authored. A recipient may only acknowledge
+    // an item by setting its read timestamp; they can never forge, alter, or
+    // erase delivery history.
+    match /notifications/{uid}/items/{itemId} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid
+        && affectedOnly(['readAt'])
+        && request.resource.data.readAt is timestamp;
+      allow create, delete: if false;
+    }
+
     // Collab Spaces
     match /collabSpaces/{spaceId} {
 
@@ -98,6 +154,65 @@ service cloud.firestore {
           && (request.resource.data.visibility == 'public' || request.resource.data.visibility == 'private')
           && request.resource.data.memberIds is list
           && request.resource.data.memberIds.size() <= 200;
+      }
+
+      // A space's repository is its permanent discovery scope. Preserve each
+      // component independently so owners and admins cannot rebind a space
+      // through a direct Firestore write. Defaults keep this check safe for
+      // legacy documents that predate one of the denormalized fields.
+      function repositoryIdentityImmutable() {
+        return request.resource.data.get('githubUrl', null) == resource.data.get('githubUrl', null)
+          && request.resource.data.get('githubHost', null) == resource.data.get('githubHost', null)
+          && request.resource.data.get('githubOwner', null) == resource.data.get('githubOwner', null)
+          && request.resource.data.get('githubRepo', null) == resource.data.get('githubRepo', null);
+      }
+
+      // The caller may only ever create their own ordinary member record.
+      // Shared by the existing public join path and the private invite path.
+      function validJoiningMember() {
+        return request.resource.data.members[request.auth.uid].uid == request.auth.uid
+          && request.resource.data.members[request.auth.uid].role == 'member'
+          && (request.resource.data.members[request.auth.uid].displayName == null
+              || request.resource.data.members[request.auth.uid].displayName is string)
+          && (request.resource.data.members[request.auth.uid].email == null
+              || request.resource.data.members[request.auth.uid].email is string)
+          && (request.resource.data.members[request.auth.uid].photoUrl == null
+              || request.resource.data.members[request.auth.uid].photoUrl is string);
+      }
+
+      // Authorizes only the membership leg of the private redemption
+      // transaction. The invite and claim matches below independently require
+      // the other two legs, so none can be committed on its own.
+      function isRedeemingPrivateInvite() {
+        let claimPath = /databases/$(database)/documents/collabSpaces/$(spaceId)/inviteClaims/$(request.auth.uid);
+        let claim = getAfter(claimPath).data;
+        let invitePath = /databases/$(database)/documents/collabSpaces/$(spaceId)/invites/$(claim.inviteId);
+        let inviteBefore = get(invitePath).data;
+        let inviteAfter = getAfter(invitePath).data;
+        return resource.data.visibility == 'private'
+          && !exists(claimPath)
+          && affectedOnly(['memberIds', 'members', 'updatedAt'])
+          && !(request.auth.uid in resource.data.memberIds)
+          && request.auth.uid in request.resource.data.memberIds
+          && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+          && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+          && request.resource.data.members.diff(resource.data.members).affectedKeys()
+            .hasOnly([request.auth.uid])
+          && validJoiningMember()
+          && claim.spaceId == spaceId
+          && claim.uid == request.auth.uid
+          && claim.inviteId is string
+          && claim.createdAt is timestamp
+          && inviteBefore.spaceId == spaceId
+          && inviteBefore.kind in ['link', 'code']
+          && inviteBefore.revokedAt == null
+          && (inviteBefore.expiresAt == null || request.time < inviteBefore.expiresAt)
+          && inviteBefore.useCount < inviteBefore.maxUses
+          && !(request.auth.uid in inviteBefore.redeemedByUids)
+          && inviteAfter.useCount == inviteBefore.useCount + 1
+          && inviteAfter.redeemedByUids.hasAll(inviteBefore.redeemedByUids)
+          && inviteAfter.redeemedByUids.size() == inviteBefore.redeemedByUids.size() + 1
+          && request.auth.uid in inviteAfter.redeemedByUids;
       }
 
       // Anyone signed in can read public spaces. Members can read private spaces.
@@ -121,6 +236,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && validSpaceShape()
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.createdAt == resource.data.createdAt
+        && repositoryIdentityImmutable()
         && (
         // Owner: full edit of profile + members — but always stays a member
         // with the 'owner' role (no orphaned spaces; delete instead).
@@ -147,7 +263,12 @@ service cloud.firestore {
           request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
           request.resource.data.members.diff(resource.data.members).affectedKeys()
             .hasOnly([request.auth.uid]) &&
-          request.resource.data.members[request.auth.uid].role == 'member'
+          validJoiningMember()
+        ) ||
+        // A private space id is not an invitation. The only self-join route is
+        // an active opaque invite redeemed atomically with its audit claim.
+        (
+          isRedeemingPrivateInvite()
         ) ||
         // Self-leave: may only remove their own membership. The owner cannot
         // leave (they must delete the space instead — no orphaned spaces).
@@ -166,6 +287,121 @@ service cloud.firestore {
       // Only owner can delete.
       allow delete: if isSignedIn()
         && resource.data.ownerId == request.auth.uid;
+
+      // Per-user channel read cursors. These are independent of durable inbox
+      // items and are used by the Collab UI to clear channel badges.
+      match /readState/{uid} {
+        allow get: if isSpaceMember(spaceId) && request.auth.uid == uid;
+        allow list: if false;
+        allow create, update: if isSpaceMember(spaceId) && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['lastReadAt', 'updatedAt'])
+          && request.resource.data.lastReadAt is map
+          && request.resource.data.updatedAt is timestamp;
+        allow delete: if false;
+      }
+
+      // Private bearer links and human-friendly join codes. Document ids ARE
+      // the secrets; no plaintext token is persisted in a field. Holders may
+      // get one known document to redeem it, but cannot enumerate invites.
+      match /invites/{inviteId} {
+        function validInviteShape() {
+          return request.resource.data.spaceId == spaceId
+            && (request.resource.data.kind == 'link' || request.resource.data.kind == 'code')
+            && request.resource.data.maxUses is int
+            && request.resource.data.maxUses >= 1
+            && request.resource.data.maxUses <= 1000
+            && request.resource.data.useCount is int
+            && request.resource.data.useCount >= 0
+            && request.resource.data.useCount <= request.resource.data.maxUses
+            && request.resource.data.redeemedByUids is list
+            && request.resource.data.redeemedByUids.size() == request.resource.data.useCount
+            && request.resource.data.redeemedByUids.size() <= 1000
+            // Manager-facing metadata is optional for legacy UI-created
+            // invitations. When present it is opaque, bounded, and never a
+            // redemption capability (the document id remains the secret).
+            && (request.resource.data.get('managementId', null) == null
+                || (request.resource.data.managementId is string
+                    && request.resource.data.managementId.matches('^[A-Za-z0-9_-]{16,64}$')))
+            && request.resource.data.expiresAt is timestamp
+            && (request.resource.data.revokedAt == null || request.resource.data.revokedAt is timestamp)
+            && request.resource.data.createdBy is string;
+        }
+
+        function isInviteManager() {
+          return isSpaceOwner(spaceId) || isSpaceAdmin(spaceId);
+        }
+
+        function isAtomicRedemption() {
+          let claimPath = /databases/$(database)/documents/collabSpaces/$(spaceId)/inviteClaims/$(request.auth.uid);
+          let claim = getAfter(claimPath).data;
+          let joinedSpace = getAfter(/databases/$(database)/documents/collabSpaces/$(spaceId)).data;
+          return request.resource.data.spaceId == resource.data.spaceId
+            && request.resource.data.kind == resource.data.kind
+            && request.resource.data.get('managementId', null)
+              == resource.data.get('managementId', null)
+            && request.resource.data.maxUses == resource.data.maxUses
+            && request.resource.data.expiresAt == resource.data.expiresAt
+            && request.resource.data.revokedAt == null
+            && request.resource.data.createdBy == resource.data.createdBy
+            && request.resource.data.useCount == resource.data.useCount + 1
+            && request.resource.data.redeemedByUids.hasAll(resource.data.redeemedByUids)
+            && request.resource.data.redeemedByUids.size() == resource.data.redeemedByUids.size() + 1
+            && request.auth.uid in request.resource.data.redeemedByUids
+            && !(request.auth.uid in resource.data.redeemedByUids)
+            && !exists(claimPath)
+            && resource.data.revokedAt == null
+            && (resource.data.expiresAt == null || request.time < resource.data.expiresAt)
+            && resource.data.useCount < resource.data.maxUses
+            && claim.uid == request.auth.uid
+            && claim.spaceId == spaceId
+            && claim.inviteId == inviteId
+            && request.auth.uid in joinedSpace.memberIds;
+        }
+
+        allow get: if isSignedIn();
+        allow list: if isInviteManager();
+        allow create: if isInviteManager()
+          && spaceData(spaceId).visibility == 'private'
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.useCount == 0
+          && request.resource.data.redeemedByUids.size() == 0
+          && request.resource.data.revokedAt == null
+          && request.time < request.resource.data.expiresAt
+          && validInviteShape();
+        // Managers may revoke (never restore) an invite. Redeemers may only
+        // perform the transaction-verified use increment above.
+        allow update: if (isInviteManager()
+            && affectedOnly(['revokedAt', 'updatedAt'])
+            && resource.data.revokedAt == null
+            && request.resource.data.revokedAt is timestamp
+            && validInviteShape())
+          || (isSignedIn() && isAtomicRedemption() && validInviteShape());
+        allow delete: if false;
+      }
+
+      // A claim is an immutable audit/proof record written only by the user
+      // who is joining. It has no standalone access value: the root and invite
+      // rules each require the corresponding getAfter state in the same commit.
+      match /inviteClaims/{uid} {
+        allow create: if isSignedIn()
+          && request.auth.uid == uid
+          && !exists(/databases/$(database)/documents/collabSpaces/$(spaceId)/inviteClaims/$(uid))
+          && request.resource.data.keys().hasOnly(['spaceId', 'inviteId', 'uid', 'createdAt'])
+          && request.resource.data.spaceId == spaceId
+          && request.resource.data.uid == uid
+          && request.resource.data.inviteId is string
+          && request.resource.data.createdAt is timestamp
+          // The claim cannot be minted alone: it is valid only when the exact
+          // invite use and private membership appear in this same commit.
+          && get(/databases/$(database)/documents/collabSpaces/$(spaceId)).data.visibility == 'private'
+          && !(uid in get(/databases/$(database)/documents/collabSpaces/$(spaceId)).data.memberIds)
+          && uid in getAfter(/databases/$(database)/documents/collabSpaces/$(spaceId)).data.memberIds
+          && getAfter(/databases/$(database)/documents/collabSpaces/$(spaceId)/invites/$(request.resource.data.inviteId)).data.useCount
+            == get(/databases/$(database)/documents/collabSpaces/$(spaceId)/invites/$(request.resource.data.inviteId)).data.useCount + 1
+          && uid in getAfter(/databases/$(database)/documents/collabSpaces/$(spaceId)/invites/$(request.resource.data.inviteId)).data.redeemedByUids
+          && !(uid in get(/databases/$(database)/documents/collabSpaces/$(spaceId)/invites/$(request.resource.data.inviteId)).data.redeemedByUids);
+        allow read, update, delete: if false;
+      }
 
       // Channels — Slack-style channels per space
       match /channels/{channelId} {
@@ -241,7 +477,16 @@ service cloud.firestore {
             && request.resource.data.description is string
             && request.resource.data.description.size() <= 20000
             && request.resource.data.status in ['todo', 'in_progress', 'in_review', 'completed', 'cancelled', 'blocked']
-            && request.resource.data.priority in ['high', 'medium', 'low'];
+            && request.resource.data.priority in ['high', 'medium', 'low']
+            // Portable execution settings. Defaults preserve compatibility
+            // with tasks shared before these fields were introduced.
+            && request.resource.data.get('initialPrompt', '') is string
+            && request.resource.data.get('initialPrompt', '').size() <= 20000
+            && (request.resource.data.get('dueDate', null) == null
+                || (request.resource.data.get('dueDate', null) is string
+                    && request.resource.data.get('dueDate', null).size() <= 32))
+            && request.resource.data.get('dangerousMode', false) is bool
+            && request.resource.data.get('useWorktree', false) is bool;
         }
 
         allow read: if isSpaceMember(spaceId);
@@ -256,7 +501,7 @@ service cloud.firestore {
         allow update: if isSpaceMember(spaceId) && coreImmutable() && (
           (
             (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
-            && affectedOnly(['title', 'description', 'status', 'priority', 'assigneeUids', 'position', 'updatedAt'])
+            && affectedOnly(['title', 'description', 'status', 'priority', 'initialPrompt', 'dueDate', 'dangerousMode', 'useWorktree', 'assigneeUids', 'position', 'updatedAt'])
             && validTaskShape()
           ) ||
           (
@@ -282,7 +527,26 @@ service cloud.firestore {
             && request.resource.data.identity is string
             && request.resource.data.identity.size() <= 20000
             && request.resource.data.skillIds is list
-            && request.resource.data.skillIds.size() <= 50;
+            && request.resource.data.skillIds.size() <= 50
+            && (request.resource.data.get('permissionMode', null) == null
+                || request.resource.data.get('permissionMode', null) in ['acceptEdits', 'interactive', 'readOnly', 'bypassPermissions'])
+            && (request.resource.data.get('strategy', null) == null
+                || (request.resource.data.get('strategy', null) is string
+                    && request.resource.data.get('strategy', null).size() <= 100))
+            && request.resource.data.get('capabilities', {}) is map
+            && request.resource.data.get('capabilities', {}).keys().hasOnly([
+              'can_spawn_sessions', 'can_edit_tasks', 'can_report_task_level', 'can_report_session_level'
+            ])
+            && request.resource.data.get('capabilities', {}).get('can_spawn_sessions', false) is bool
+            && request.resource.data.get('capabilities', {}).get('can_edit_tasks', false) is bool
+            && request.resource.data.get('capabilities', {}).get('can_report_task_level', false) is bool
+            && request.resource.data.get('capabilities', {}).get('can_report_session_level', false) is bool
+            && (request.resource.data.get('customWorkflow', null) == null
+                || (request.resource.data.get('customWorkflow', null) is string
+                    && request.resource.data.get('customWorkflow', null).size() <= 10000))
+            && (request.resource.data.get('soundInstrument', null) == null
+                || (request.resource.data.get('soundInstrument', null) is string
+                    && request.resource.data.get('soundInstrument', null).size() <= 100));
         }
 
         allow read: if isSpaceMember(spaceId);
@@ -296,7 +560,7 @@ service cloud.firestore {
         allow update: if isSpaceMember(spaceId) && coreImmutable() && (
           (
             (request.auth.uid == resource.data.createdBy || isSpaceOwner(spaceId))
-            && affectedOnly(['name', 'role', 'identity', 'avatar', 'model', 'agentTool', 'mode', 'commandPermissions', 'skillIds', 'updatedAt'])
+            && affectedOnly(['name', 'role', 'identity', 'avatar', 'model', 'agentTool', 'mode', 'permissionMode', 'strategy', 'capabilities', 'customWorkflow', 'soundInstrument', 'commandPermissions', 'skillIds', 'updatedAt'])
             && validTeamMemberShape()
           ) ||
           (

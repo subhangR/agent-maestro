@@ -44,14 +44,14 @@ const MAX_ARG_LEN = 4000;
  * Flags whose VALUES carry prompt/content text (messages, subjects, memory
  * entries, descriptions). We log the flag name but never its value.
  */
-const VALUE_BEARING_FLAGS = new Set(['--message', '--subject', '--entry', '-d', '--desc']);
+const VALUE_BEARING_FLAGS = new Set(['--message', '--subject', '--entry', '-d', '--desc', '--code']);
 const REDACTED = '***';
 
 /**
  * Replace the values of value-bearing flags with '***' while keeping the flag
  * name. Handles both "--message value" (two tokens) and "--message=value".
  */
-function redactValues(args: string[]): string[] {
+export function redactValues(args: string[]): string[] {
   const out: string[] = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -66,6 +66,12 @@ function redactValues(args: string[]): string[] {
         out.push(REDACTED);
         i += 1;
       }
+      continue;
+    }
+    if (/\/space\/[^/]+\/join\/[A-Za-z0-9_-]{12,}/.test(arg)
+      || /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{12}$/.test(arg)
+      || /^[A-Za-z0-9_-]{43}$/.test(arg)) {
+      out.push(REDACTED);
       continue;
     }
     out.push(arg);

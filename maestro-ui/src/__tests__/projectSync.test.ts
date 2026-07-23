@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { MaestroProject } from '../app/types/maestro';
-import { reconcileProjectsWithServer, resolveActiveProject, toMaestroProject } from '../stores/projectSync';
+import {
+  reconcileProjectsWithServer,
+  resolveActiveProject,
+  toLocalOnlyProjectCreatePayload,
+  toMaestroProject,
+} from '../stores/projectSync';
 
 function project(overrides: Partial<MaestroProject> & { id: string }): MaestroProject {
   return {
@@ -9,6 +14,7 @@ function project(overrides: Partial<MaestroProject> & { id: string }): MaestroPr
     workingDir: overrides.workingDir ?? `/work/${overrides.id}`,
     createdAt: overrides.createdAt ?? 1,
     updatedAt: overrides.updatedAt ?? 1,
+    githubUrl: overrides.githubUrl,
     basePath: overrides.basePath,
     environmentId: overrides.environmentId ?? null,
     assetsEnabled: overrides.assetsEnabled,
@@ -90,6 +96,82 @@ describe('reconcileProjectsWithServer', () => {
     ]);
   });
 
+  it('recovers a newer persisted GitHub binding when a legacy server response lacks it', () => {
+    const serverA = project({ id: 'A', updatedAt: 10 });
+    const localA = project({
+      id: 'A',
+      githubUrl: 'https://github.com/acme/recovered',
+      updatedAt: 11,
+    });
+
+    const result = reconcileProjectsWithServer({
+      localProjects: [localA],
+      serverProjects: [serverA],
+      closedProjectIds: new Set(),
+      isTauri: true,
+    });
+
+    expect(result.projectsToDisplay[0].githubUrl).toBe('https://github.com/acme/recovered');
+  });
+
+  it('does not resurrect a binding after a newer server-side unlink', () => {
+    const serverA = project({ id: 'A', updatedAt: 12 });
+    const localA = project({
+      id: 'A',
+      githubUrl: 'https://github.com/acme/unlinked',
+      updatedAt: 11,
+    });
+
+    const result = reconcileProjectsWithServer({
+      localProjects: [localA],
+      serverProjects: [serverA],
+      closedProjectIds: new Set(),
+      isTauri: true,
+    });
+
+    expect(result.projectsToDisplay[0].githubUrl).toBeUndefined();
+  });
+
+  it('does not treat a pre-timestamp legacy snapshot as newer than an unlinked server project', () => {
+    const serverA = project({ id: 'A', updatedAt: 12 });
+    const localA = project({
+      id: 'A',
+      githubUrl: 'https://github.com/acme/legacy',
+      updatedAt: 0,
+    });
+
+    const result = reconcileProjectsWithServer({
+      localProjects: [localA],
+      serverProjects: [serverA],
+      closedProjectIds: new Set(),
+      isTauri: true,
+    });
+
+    expect(result.projectsToDisplay[0].githubUrl).toBeUndefined();
+  });
+
+  it('uses a non-empty server binding when it conflicts with the persisted value', () => {
+    const serverA = project({
+      id: 'A',
+      githubUrl: 'https://github.com/acme/server',
+      updatedAt: 10,
+    });
+    const localA = project({
+      id: 'A',
+      githubUrl: 'https://github.com/acme/local',
+      updatedAt: 11,
+    });
+
+    const result = reconcileProjectsWithServer({
+      localProjects: [localA],
+      serverProjects: [serverA],
+      closedProjectIds: new Set(),
+      isTauri: true,
+    });
+
+    expect(result.projectsToDisplay[0].githubUrl).toBe('https://github.com/acme/server');
+  });
+
   it('tauri mode: proposes local-only projects for creation and displays both existing + local-only', () => {
     const serverA = project({ id: 'A' });
     const localA = project({ id: 'A' });
@@ -108,8 +190,34 @@ describe('reconcileProjectsWithServer', () => {
     // Simulate the initApp create loop: the caller pushes the created
     // project (mapped via toMaestroProject) onto the display list.
     const created = { id: 'B-server', name: 'B', workingDir: localB.workingDir, createdAt: 2, updatedAt: 2 };
-    const finalDisplay = [...result.projectsToDisplay, toMaestroProject(created, localB)];
+    const finalDisplay = [...result.projectsToDisplay, toMaestroProject(created, localB, {
+      preserveLocalGithubWhenServerMissing: true,
+    })];
     expect(finalDisplay.map((p) => p.id)).toEqual(['A', 'B-server']);
+  });
+
+  it('tauri recovery keeps a local-only project binding when an older create response omits it', () => {
+    const localB = project({
+      id: 'B',
+      githubUrl: 'https://github.com/acme/local-only',
+      updatedAt: 10,
+    });
+    const created = { id: 'B-server', name: 'B', workingDir: localB.workingDir, createdAt: 11, updatedAt: 11 };
+
+    expect(toMaestroProject(created, localB, {
+      preserveLocalGithubWhenServerMissing: true,
+    }).githubUrl).toBe('https://github.com/acme/local-only');
+  });
+
+  it('sends a local-only project binding with its upstream create request', () => {
+    const payload = toLocalOnlyProjectCreatePayload(project({
+      id: 'B',
+      githubUrl: 'https://github.com/acme/local-only',
+    }));
+
+    expect(payload.githubUrl).toBe('https://github.com/acme/local-only');
+    expect(payload).not.toHaveProperty('createdAt');
+    expect(payload).not.toHaveProperty('updatedAt');
   });
 });
 

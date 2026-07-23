@@ -30,6 +30,7 @@ const LazySpaceWindow = React.lazy(() => import("../space-window/SpaceWindow").t
 const LazyCodeEditorPanel = React.lazy(() => import("../CodeEditorPanel"));
 const LazyMermaidDiagram = React.lazy(() => import("../maestro/MermaidDiagram").then(m => ({ default: m.MermaidDiagram })));
 import { SessionStatsView } from "../maestro/SessionStatsView";
+import { SessionActivityPanel } from "../maestro/SessionActivityPanel";
 import { spellRingAttrs, buildRingSpecsFromActive, spellRingAriaLabel, type RingSpec } from "../../utils/spellRings";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
@@ -142,6 +143,11 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
 
   const activeMaestroSession = active?.maestroSessionId ? maestroSessions[active.maestroSessionId] : null;
   const activeIsCoordinator = isCoordinatorRole(activeMaestroSession?.mode);
+
+  // Redesign Phase 4 — plain-language Chat view (additive overlay over the terminal).
+  // Default ON for maestro-linked terminals so the conversational view leads and the
+  // raw terminal is one click away.
+  const [showActivity, setShowActivity] = useState(true);
 
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
@@ -383,7 +389,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
 
 
       {/* Inline collab space — Firebase-backed collaboration room */}
-      {isActiveCollab && activeCollabSpaceId && (
+      {!hasInspectedSession && isActiveCollab && activeCollabSpaceId && (
         <ErrorBoundary name="CollabSpace">
           <Suspense fallback={<div style={{ padding: 20, opacity: 0.5 }}>Loading space…</div>}>
             <LazySpaceWindow key={activeCollabSpaceId} spaceId={activeCollabSpaceId} inline />
@@ -447,6 +453,40 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
           />
         )}
         <div className="terminalDeck">
+        {/* Redesign Phase 4 — Activity ⇄ Terminal toggle + additive overlay.
+            The terminal deck stays mounted underneath; the overlay simply covers
+            it when Activity is on, so nothing unmounts or breaks. */}
+        {active?.maestroSessionId && (
+          <div className="pn-viewseg" role="tablist" aria-label="Session view">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={showActivity}
+              className={"pn-viewseg__btn" + (showActivity ? " pn-viewseg__btn--on" : "")}
+              onClick={() => setShowActivity(true)}
+              title="Plain-language conversation view"
+            >
+              Chat
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={!showActivity}
+              className={"pn-viewseg__btn" + (!showActivity ? " pn-viewseg__btn--on" : "")}
+              onClick={() => setShowActivity(false)}
+              title="Raw terminal output"
+            >
+              Terminal
+            </button>
+          </div>
+        )}
+        {showActivity && active?.maestroSessionId && (
+          <div className="pn-activity-overlay">
+            <SessionActivityPanel
+              session={activeMaestroSession ?? maestroSessions[active.maestroSessionId] ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
+            />
+          </div>
+        )}
         {/* Mode chip — shows current session role (coordinator / worker).
             Lives inside the deck so it overlays only the terminal content, not
             the session-log strip above it. */}
