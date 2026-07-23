@@ -523,6 +523,7 @@ export interface Session {
     active: boolean;
     message?: string;
     since?: number;
+    source?: NeedsInputSource;
   };
   teamMemberId?: string;
   teamMemberSnapshot?: TeamMemberSnapshot;
@@ -545,6 +546,59 @@ export type TaskStatus = 'todo' | 'in_progress' | 'in_review' | 'completed' | 'c
 export type TaskSessionStatus = 'working' | 'blocked' | 'completed' | 'failed' | 'skipped';
 export type TaskPriority = 'low' | 'medium' | 'high';
 export type SessionStatus = 'spawning' | 'idle' | 'working' | 'completed' | 'failed' | 'stopped';
+
+/**
+ * What caused `needsInput.active` to be set. Named after the Claude hook that
+ * reports it (see the plugin hooks.json files under maestro-cli/plugins).
+ *
+ * This exists because the triggers do NOT mean the same thing. `stop`,
+ * `notification` and `permission_request` mean the agent's turn genuinely ended
+ * and a human must act, so the session is no longer working. `tool_failure`
+ * fires mid-turn — the agent almost always recovers and keeps going — so it must
+ * NOT be read as turn end, or we would report a session finished while it is
+ * still running. `manual` covers a human or API client asserting it directly.
+ *
+ * An omitted `source` is deliberately NOT treated as turn end. Pre-upgrade
+ * plugin bundles call `maestro session needs-input` with no --source from
+ * PostToolUseFailure as well as from Stop, so guessing "turn ended" would demote
+ * a session to idle mid-turn — a false "done" while the agent is still
+ * recovering. Falling back to no demotion leaves at worst today's stuck spinner,
+ * which the UI's terminal-liveness tiers already cover.
+ */
+export type NeedsInputSource =
+  | 'stop'
+  | 'notification'
+  | 'permission_request'
+  | 'tool_failure'
+  | 'manual';
+
+/**
+ * Does each needsInput source mean the agent's turn genuinely ended?
+ *
+ * Declared as a Record keyed by the union rather than a Set of turn-end members:
+ * TypeScript requires every key of the union to be present, so adding a sixth
+ * NeedsInputSource is a compile error here until its turn-end semantics are
+ * decided. A Set would silently default a new source to "not turn end" — the
+ * wrong failure direction, since a genuine new turn-end hook would then behave
+ * like `tool_failure` and leave the session spinning forever.
+ */
+export const NEEDS_INPUT_SOURCE_ENDS_TURN: Readonly<Record<NeedsInputSource, boolean>> = {
+  stop: true,
+  notification: true,
+  permission_request: true,
+  tool_failure: false,
+  manual: true,
+};
+
+/**
+ * Runtime narrowing for a `source` arriving from outside the type system —
+ * notably `POST /sessions/:id/timeline`, whose Zod schema validates `metadata`
+ * only as a record of unknowns, so any string reaches us unchecked.
+ */
+export function isNeedsInputSource(value: unknown): value is NeedsInputSource {
+  return typeof value === 'string'
+    && Object.prototype.hasOwnProperty.call(NEEDS_INPUT_SOURCE_ENDS_TURN, value);
+}
 
 // Session timeline event types
 export type SessionTimelineEventType =
@@ -1075,6 +1129,7 @@ export interface UpdateSessionPayload {
     active: boolean;
     message?: string;
     since?: number;
+    source?: NeedsInputSource;
   };
   rootSessionId?: string | null;
   teamSessionId?: string | null;

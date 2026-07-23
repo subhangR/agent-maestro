@@ -1,4 +1,4 @@
-import { Session, SessionStatus, AgentMode, CreateSessionPayload, UpdateSessionPayload, SessionTimelineEvent, SessionTimelineEventType, DocEntry } from '../../types';
+import { Session, SessionStatus, AgentMode, NeedsInputSource, NEEDS_INPUT_SOURCE_ENDS_TURN, isNeedsInputSource, CreateSessionPayload, UpdateSessionPayload, SessionTimelineEvent, SessionTimelineEventType, DocEntry } from '../../types';
 import { ISessionRepository, SessionFilter } from '../../domain/repositories/ISessionRepository';
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { IProjectRepository } from '../../domain/repositories/IProjectRepository';
@@ -6,6 +6,41 @@ import { IEventBus } from '../../domain/events/IEventBus';
 import { IIdGenerator } from '../../domain/common/IIdGenerator';
 import { ValidationError, NotFoundError } from '../../domain/common/Errors';
 import { GitWorktreeService } from './GitWorktreeService';
+
+/** Statuses that a turn-end signal is allowed to demote. */
+const IN_TURN_STATUSES: ReadonlySet<SessionStatus> = new Set<SessionStatus>(['working', 'spawning']);
+
+/**
+ * Decide whether an incoming update carries an end-of-turn signal that should
+ * move the session out of a working status.
+ *
+ * Exported for direct unit testing — the rule is the whole point of the fix, and
+ * it is much easier to pin down here than through the full repository stack.
+ */
+export function isTurnEndSignal(
+  updates: Pick<UpdateSessionPayload, 'status' | 'needsInput'>,
+  currentStatus: SessionStatus | undefined,
+): boolean {
+  // Only an assertion that the session needs input can end a turn.
+  if (updates.needsInput?.active !== true) return false;
+
+  // The caller named a status explicitly — respect it rather than second-guess.
+  // This keeps `{ status: 'completed', needsInput: {...} }` intact.
+  if (updates.status !== undefined) return false;
+
+  // Nothing to demote unless the session is mid-turn.
+  if (currentStatus === undefined || !IN_TURN_STATUSES.has(currentStatus)) return false;
+
+  const source = updates.needsInput.source;
+  // Untagged callers get NO demotion. A pre-upgrade plugin bundle calls
+  // `maestro session needs-input` with no --source from PostToolUseFailure just
+  // as it does from Stop, so an untagged signal carries no evidence that the
+  // turn ended. Guessing "ended" there would report a false "done" mid-turn,
+  // which is strictly worse than the stuck spinner we fall back to.
+  if (source === undefined) return false;
+
+  return NEEDS_INPUT_SOURCE_ENDS_TURN[source];
+}
 
 /**
  * Application service for session operations.
@@ -132,6 +167,26 @@ export class SessionService {
       }
     }
 
+    // Turn-end is authoritative here, not at the client. Clients only ever push
+    // status *forward* to 'working' (worker init/resume, session register,
+    // resume-working) and never back, so status was a one-way latch that stayed
+    // 'working' for the life of the session. needsInput.active=true — written by
+    // the Stop / Notification hooks via `maestro session needs-input` — is the
+    // real end-of-turn signal, so derive the status demotion from it.
+    //
+    // The decision is made against a status re-read immediately before the write,
+    // NOT against `oldStatus`. updateSession is called concurrently from a dozen
+    // sites (session/git routes, PtyHostService, LogDigestService), so `oldStatus`
+    // — captured before an await — can already be obsolete: a concurrent call may
+    // have landed 'completed' in the meantime, and demoting from the stale read
+    // would silently revert a terminal status.
+    if (isTurnEndSignal(updates, oldStatus)) {
+      const currentStatus = (await this.sessionRepo.findById(id))?.status;
+      if (isTurnEndSignal(updates, currentStatus)) {
+        updates.status = 'idle';
+      }
+    }
+
     const session = await this.sessionRepo.update(id, updates);
 
     // Propagate terminal session status to task-level taskSessionStatuses
@@ -165,6 +220,11 @@ export class SessionService {
     const updateKeys = Object.keys(updates).filter(k => (updates as any)[k] !== undefined);
     const isStatusOnly = updateKeys.length > 0 && updateKeys.every(k => statusOnlyFields.has(k));
 
+    // Did the visible state (status or needsInput.active) actually transition?
+    const newNeedsInputActive = session.needsInput?.active ?? false;
+    const statusTransitioned =
+      !!oldSession && (oldStatus !== session.status || oldNeedsInputActive !== newNeedsInputActive);
+
     if (isStatusOnly) {
       await this.eventBus.emit('session:status_changed', {
         id: session.id,
@@ -172,6 +232,27 @@ export class SessionService {
         lastActivity: session.lastActivity,
         needsInput: session.needsInput,
       });
+    } else if (statusTransitioned) {
+      // A structural update (e.g. the CLI's needs-input PATCH, which carries a
+      // `timeline` entry alongside `needsInput`) can also flip status/needsInput.
+      // session:updated is batched + throttled; the transition itself must take
+      // the immediate lane, so emit the lightweight event as well when it moved.
+      //
+      // Emitted concurrently, not in sequence: InMemoryEventBus.emit awaits every
+      // listener, so awaiting session:updated first would hold the latency-
+      // sensitive status frame behind them — exactly what the immediate lane is
+      // there to avoid. Listener invocation order is unchanged (Promise.all calls
+      // them in array order), so WebSocketBridge still sees session:updated first
+      // and reconciles the status frame against it.
+      await Promise.all([
+        this.eventBus.emit('session:updated', session),
+        this.eventBus.emit('session:status_changed', {
+          id: session.id,
+          status: session.status,
+          lastActivity: session.lastActivity,
+          needsInput: session.needsInput,
+        }),
+      ]);
     } else {
       await this.eventBus.emit('session:updated', session);
     }
@@ -374,11 +455,29 @@ export class SessionService {
 
     await this.sessionRepo.addTimelineEvent(sessionId, event);
 
-    // Auto-set needsInput flag when needs_input timeline event is added
+    // Auto-set needsInput flag when needs_input timeline event is added.
+    // This writes through the repository rather than updateSession(), so the
+    // turn-end rule has to be applied here too — otherwise this path could leave
+    // status='working' alongside needsInput.active=true, the exact contradiction
+    // that keeps the chat panel spinning after the agent has finished.
     if (type === 'needs_input') {
-      await this.sessionRepo.update(sessionId, {
-        needsInput: { active: true, message, since: Date.now() },
-      });
+      // `metadata` reaches us from POST /sessions/:id/timeline, whose Zod schema
+      // validates it only as a record of unknowns — any string passes. Narrow it
+      // at runtime; an unrecognised value is dropped and treated exactly like an
+      // absent one (no demotion), so a bogus source cannot manufacture a turn end
+      // and cannot be persisted onto the session either.
+      const rawSource = metadata?.source;
+      const source: NeedsInputSource | undefined = isNeedsInputSource(rawSource) ? rawSource : undefined;
+      const needsInputUpdate: UpdateSessionPayload = {
+        needsInput: { active: true, message, since: Date.now(), source },
+      };
+      // Re-read the status right before the write for the same reason as
+      // updateSession: `session` was captured before two awaits.
+      const currentStatus = (await this.sessionRepo.findById(sessionId))?.status ?? session.status;
+      if (isTurnEndSignal(needsInputUpdate, currentStatus)) {
+        needsInputUpdate.status = 'idle';
+      }
+      await this.sessionRepo.update(sessionId, needsInputUpdate);
     }
 
     // Fetch the fully updated session after all mutations
@@ -387,7 +486,24 @@ export class SessionService {
       throw new NotFoundError('Session', sessionId);
     }
 
-    await this.eventBus.emit('session:updated', updatedSession);
+    // session:updated is batched and throttled; a turn ending is the one thing
+    // the UI must repaint without delay, so also emit the lightweight status
+    // event that takes the immediate lane in WebSocketBridge. Emitted
+    // concurrently so the status frame does not queue behind session:updated's
+    // listeners (see the matching note in updateSession).
+    if (type === 'needs_input') {
+      await Promise.all([
+        this.eventBus.emit('session:updated', updatedSession),
+        this.eventBus.emit('session:status_changed', {
+          id: updatedSession.id,
+          status: updatedSession.status,
+          lastActivity: updatedSession.lastActivity,
+          needsInput: updatedSession.needsInput,
+        }),
+      ]);
+    } else {
+      await this.eventBus.emit('session:updated', updatedSession);
+    }
 
     // Emit notification events for specific timeline event types
     if (type === 'progress') {

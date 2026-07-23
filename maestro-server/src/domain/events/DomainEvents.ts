@@ -1,4 +1,4 @@
-import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell, Ensemble } from '../../types';
+import { Project, Task, Session, SpawnRequestEvent, TaskSessionStatus, TeamMember, Team, TaskList, TaskGraph, SpellInvocationResult, CustomPrompt, ModelProfile, SessionModeChangedPayload, ActiveSpell, Ensemble, NeedsInputSource } from '../../types';
 
 export type PromptDeliveryOwner = 'server' | 'ui';
 
@@ -103,7 +103,7 @@ export interface SessionTaskAddedEvent {
 
 export interface SessionStatusChangedEvent {
   type: 'session:status_changed';
-  data: { id: string; status: string; lastActivity: string; needsInput?: { active: boolean; message?: string } };
+  data: { id: string; status: string; lastActivity: string; needsInput?: { active: boolean; message?: string; since?: number; source?: NeedsInputSource } };
 }
 
 export interface SessionTaskRemovedEvent {
@@ -448,7 +448,7 @@ export interface TypedEventMap {
   'session:spawn': SpawnRequestEvent;
   'session:resume': SpawnRequestEvent;
   'session:updated': Session;
-  'session:status_changed': { id: string; status: string; lastActivity: string; needsInput?: { active: boolean; message?: string } };
+  'session:status_changed': { id: string; status: string; lastActivity: string; needsInput?: { active: boolean; message?: string; since?: number; source?: NeedsInputSource } };
   'session:mode_changed': SessionModeChangedPayload;
   'session:deleted': { id: string };
   'session:task_added': { sessionId: string; taskId: string };

@@ -5,6 +5,7 @@ import { MaestroSessionStatus } from "../../app/types/maestro";
 import { SessionTimeline } from "./SessionTimeline";
 import { DocsList } from "./DocsList";
 import { useSessionDocs } from "../../hooks/useSessionDocs";
+import { useSessionLiveness } from "../../hooks/useSessionLiveness";
 import { StrategyBadge } from "./StrategyBadge";
 import { GitPanel } from "./GitPanel";
 import { WorktreeBadge, getWorktreeInfo } from "./WorktreeBadge";
@@ -84,6 +85,9 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
   const fetchSession = useMaestroStore((s) => s.fetchSession);
   // session.docs carries metadata only; hydrate content so docs open properly.
   const hydratedDocs = useSessionDocs(session, isOpen);
+  // Shared liveness derivation (must run before the isOpen early-return).
+  // See hooks/useSessionLiveness.ts for the precedence ladder.
+  const liveness = useSessionLiveness(session);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const isUserScrolledToBottomRef = useRef(true);
@@ -131,10 +135,21 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
     ?.map((taskId) => tasks[taskId])
     .filter((t) => t !== undefined) ?? [];
 
-  const needsInput = session?.needsInput?.active;
-  const pillVariant = session ? (needsInput ? "wait" : STATUS_PILL[session.status]) : "idle";
-  const dotVariant = session ? (needsInput ? "wait" : STATUS_DOT[session.status]) : "idle";
-  const statusLive = !!session && session.status === "working" && !needsInput;
+  const needsInput = liveness.state === "needsInput";
+  // The pill, dot AND label all read the liveness-derived status, not the raw
+  // sticky `session.status`: a session stranded at working/spawning after its
+  // turn ended must render Idle here, exactly as SessionActivityPanel does.
+  // Only exited/closing or a demoted server status flip it — see
+  // hooks/useSessionLiveness.ts.
+  const effectiveStatus: MaestroSessionStatus = liveness.isWorking
+    ? "working"
+    : session && (session.status === "working" || session.status === "spawning")
+      ? "idle"
+      : session?.status ?? "idle";
+  const pillVariant = session ? (needsInput ? "wait" : STATUS_PILL[effectiveStatus]) : "idle";
+  const dotVariant = session ? (needsInput ? "wait" : STATUS_DOT[effectiveStatus]) : "idle";
+  // The live dot rides on liveness, not on the sticky server status.
+  const statusLive = !!session && liveness.isWorking;
   // Model badge: prefer the per-spawn launch model over the stored default, then render
   // a friendly label (claude-fable-5 -> Fable 5). Enriched session carries metadata/
   // launchConfig; fall through model -> launchConfig.model -> metadata.model -> teamMemberSnapshot.model.
@@ -155,7 +170,7 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
                 <span className={`pn-pill pn-pill--${pillVariant}`}>
                   <span className="pn-dot-wrap"><span className={`pn-dot pn-dot--${dotVariant}${statusLive ? " pn-dot--live" : ""}`}></span></span>
-                  {needsInput ? "Needs Input" : SESSION_STATUS_LABELS[session.status]}
+                  {needsInput ? "Needs Input" : SESSION_STATUS_LABELS[effectiveStatus]}
                 </span>
                 <StrategyBadge strategy={session.strategy} orchestratorStrategy={session.orchestratorStrategy} />
                 {modelLabel && (

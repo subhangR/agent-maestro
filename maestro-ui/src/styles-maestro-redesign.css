@@ -429,6 +429,7 @@ html[data-redesign][data-redesign] .pn-chat__name { display: block; font-size: 1
 html[data-redesign][data-redesign] .pn-chat__sub { font-family: var(--pn-mono); font-size: 11px; color: var(--pn-ink-4); }
 html[data-redesign][data-redesign] .pn-chat__status { font-family: var(--pn-mono); font-size: 11px; font-weight: 600; color: var(--pn-ink-3); display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; text-transform: capitalize; }
 html[data-redesign][data-redesign] .pn-chat__status--working { color: var(--pn-brand); background: var(--pn-brand-soft); }
+html[data-redesign][data-redesign] .pn-chat__status--needsInput { color: var(--pn-wait); background: var(--pn-wait-soft); }
 html[data-redesign][data-redesign] .pn-chat__livedot { width: 6px; height: 6px; border-radius: 50%; background: var(--pn-brand-2); box-shadow: 0 0 7px var(--pn-brand-2); animation: pnChatPulse 1.7s ease-in-out infinite; }
 @keyframes pnChatPulse { 0%,100% { opacity: 1 } 50% { opacity: .4 } }
 
