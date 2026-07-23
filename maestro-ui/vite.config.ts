@@ -10,6 +10,8 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    // Allow reaching the dev server over the tailnet by its *.ts.net hostname.
+    allowedHosts: [".ts.net"],
     watch: {
       // Don't watch the Rust build output — cargo locks files there during
       // compilation, which crashes Vite's FSWatcher with EBUSY on Windows.
