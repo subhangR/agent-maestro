@@ -15,6 +15,7 @@ import type {
   TeamId,
   Project,
   ProjectId,
+  ModelProfile,
   SessionTab,
   UiSessionStatus,
 } from '@/domain';
@@ -90,6 +91,10 @@ export const useProjectTeams = (projectId: ProjectId): Team[] =>
   useEntityStore(useShallow((s) => selectTeamsByProject(s, projectId)));
 
 export const useProjects = (): Project[] => useEntityStore(useShallow((s) => selectProjects(s)));
+
+/** All workspace model profiles, kept reactive as Pulse ingests profile updates. */
+export const useModelProfiles = (): ModelProfile[] =>
+  useEntityStore(useShallow((s) => Object.values(s.modelProfiles)));
 
 // ---------------------------------------------------------------------------
 // Loading / error flags (keyed by operation)

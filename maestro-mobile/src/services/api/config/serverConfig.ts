@@ -10,6 +10,26 @@
 // quote-stripping + protocol-allowlist hardening is kept. `new URL()` works
 // under Hermes via react-native-url-polyfill (imported app-wide at boot).
 
+/**
+ * How a server expects a client to authenticate — reported by GET /health so the
+ * app can pick the right login flow WITHOUT a token in hand:
+ *   'none'     — open server (Tailscale/loopback trust). Connect straight through.
+ *   'password' — web-password guard on; exchange a password for a ?token= JWT.
+ *   'firebase' — the multi-user Hub/gateway; sign in with Google, ride the
+ *                Firebase ID token as ?token= / Bearer.
+ * Old servers that don't send the field are treated as 'none' (back-compat).
+ */
+export type AuthMode = 'none' | 'password' | 'firebase';
+
+const AUTH_MODES: readonly AuthMode[] = ['none', 'password', 'firebase'];
+
+/** Coerce an unknown /health `authMode` value to a known mode; default 'none'. */
+export function parseAuthMode(raw: unknown): AuthMode {
+  return typeof raw === 'string' && (AUTH_MODES as readonly string[]).includes(raw)
+    ? (raw as AuthMode)
+    : 'none';
+}
+
 /** Resolved, ready-to-use connection URLs for a single server host. */
 export interface ServerConfig {
   /** Canonical REST base, always ends in /api. e.g. http://host:4569/api */

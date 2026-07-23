@@ -11,6 +11,7 @@ import { StrategyBadge } from "./StrategyBadge";
 import { SessionDetailsSection } from "./SessionDetailsSection";
 import { WorktreeBadge, getWorktreeInfo } from "./WorktreeBadge";
 import { SessionLiveIndicator } from "./SessionLiveIndicator";
+import { ChatView } from "./chat/ChatView";
 import { maestroClient } from "../../utils/MaestroClient";
 import { Icon, Glyph, type IconName } from "./redesign/kit";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
@@ -24,10 +25,11 @@ const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
   stopped: "Stopped",
 };
 
-type Tab = "info" | "subsessions" | "tasks" | "docs";
+type Tab = "info" | "chat" | "subsessions" | "tasks" | "docs";
 
 const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: "info", label: "Info", icon: "info" },
+  { id: "chat", label: "Chat", icon: "bot" },
   { id: "subsessions", label: "Sub-sessions", icon: "team" },
   { id: "tasks", label: "Tasks", icon: "listChecks" },
   { id: "docs", label: "Docs + Timeline", icon: "doc" },
@@ -257,6 +259,10 @@ export function SessionDetailOverlay() {
             <div className="pn-fhint">Loading session data…</div>
           ) : tab === "info" ? (
             <SessionDetailsSection session={session} compact={false} />
+          ) : tab === "chat" ? (
+            <div style={{ height: isMobile ? "100%" : "min(62vh, 560px)", display: "flex" }}>
+              <ChatView sessionId={session.id} session={session} />
+            </div>
           ) : tab === "subsessions" ? (
             subSessions.length === 0 ? (
               <div className="pn-fhint">No sub-sessions spawned from this session.</div>

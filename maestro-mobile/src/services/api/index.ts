@@ -11,8 +11,22 @@ export {
   deriveServerUrl,
   normalizeApiBaseUrl,
   normalizeWsUrl,
+  parseAuthMode,
   type ServerConfig,
+  type AuthMode,
 } from './config/serverConfig';
+
+export {
+  setHubFirebaseAuth,
+  hasHubFirebaseAuth,
+  getHubFirebaseToken,
+  refreshHubFirebaseToken,
+  ensureHubFirebaseToken,
+  getTokenForAuthMode,
+  HubSignInRequiredError,
+  type FirebaseTokenSource,
+  type FirebaseSignIn,
+} from './http/hubToken';
 
 export {
   MaestroClient,

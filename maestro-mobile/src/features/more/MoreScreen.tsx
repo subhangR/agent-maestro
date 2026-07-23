@@ -9,6 +9,7 @@ import { Icon, Text } from '@/components';
 import type { IconName } from '@/theme';
 import { useTheme } from '@/theme';
 
+import { DocListScreen } from '../docs';
 import { GraphsScreen } from '../graphs';
 import { ListsScreen } from '../lists';
 import { ProfilesScreen } from '../profiles';
@@ -17,7 +18,7 @@ import { TeamsScreen } from '../teams';
 import { Screen } from './kit';
 import { SettingsScreen } from './SettingsScreen';
 
-type Section = 'teams' | 'skills' | 'lists' | 'graphs' | 'profiles' | 'settings';
+type Section = 'docs' | 'teams' | 'skills' | 'lists' | 'graphs' | 'profiles' | 'settings';
 
 interface MenuItem {
   section: Section;
@@ -27,6 +28,7 @@ interface MenuItem {
 }
 
 const MENU: MenuItem[] = [
+  { section: 'docs', label: 'Docs', detail: 'All documents across the project', icon: 'doc' },
   { section: 'teams', label: 'Teams', detail: 'Ensembles & sub-teams', icon: 'team' },
   { section: 'skills', label: 'Skills', detail: 'Referenced across members & tasks', icon: 'sparkles' },
   { section: 'lists', label: 'Lists', detail: 'Task lists', icon: 'listChecks' },
@@ -84,6 +86,8 @@ export function MoreScreen(): React.JSX.Element {
   const back = () => setSection(null);
 
   switch (section) {
+    case 'docs':
+      return <DocListScreen onBack={back} />;
     case 'teams':
       return <TeamsScreen onBack={back} />;
     case 'skills':

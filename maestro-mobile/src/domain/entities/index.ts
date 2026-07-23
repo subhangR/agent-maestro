@@ -3,6 +3,7 @@ export type { Project, Ordering } from './project';
 export type { LaunchConfig, MemberLaunchOverride } from './launchOverride';
 export type { Task, TaskImage } from './task';
 export type { DocEntry } from './doc';
+export type { LogProvider, AgentLogFile, LogTailResult } from './agentLog';
 export type {
   Session,
   SessionEvent,

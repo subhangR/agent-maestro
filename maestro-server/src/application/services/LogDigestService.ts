@@ -53,6 +53,39 @@ export interface SessionStatsDigest {
   lastMessages: TextEntry[];
 }
 
+// ── Transcript (structured chat turns) ───────────────────────
+
+export interface ChatToolCall {
+  id: string;
+  name: string;
+  input: string;          // compact human-readable preview of the call args
+  resultPreview?: string; // short preview of the tool_result, when available in the batch
+}
+
+export interface ChatTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  toolCalls: ChatToolCall[];
+  timestamp: number;
+  model?: string;
+}
+
+/**
+ * A window of structured chat turns plus a byte cursor for incremental
+ * tail-polling. Clients render `turns` as chat bubbles and pass `nextOffset`
+ * back as `afterOffset` to fetch only turns appended since the last poll.
+ */
+export interface SessionTranscript {
+  sessionId: string;
+  source: 'claude' | 'codex' | null;
+  found: boolean;
+  turns: ChatTurn[];
+  nextOffset: number;  // byte offset to pass as afterOffset on the next poll
+  fileSize: number;
+  partial: boolean;    // true when early history was dropped (file exceeded MAX_HISTORY_BYTES)
+}
+
 // ── Internal cache type ──────────────────────────────────────
 
 interface PathCacheEntry {
@@ -449,6 +482,341 @@ export class LogDigestService {
       lastMessageAt,
       lastMessages: lastEntries,
     };
+  }
+
+  /**
+   * Read a window of structured chat turns from a session's JSONL transcript.
+   *
+   * Designed for a native chat UI: instead of replaying raw terminal output,
+   * callers get ordered user/assistant turns with collapsible tool calls, and a
+   * byte cursor (`nextOffset`) for cheap incremental tail-polling.
+   *
+   * - First load (`afterOffset` omitted/0): returns the whole transcript, or the
+   *   last MAX_HISTORY_BYTES with `partial=true` for very large files.
+   * - Poll (`afterOffset` = previous `nextOffset`): reads only bytes appended
+   *   since, so a poll that finds nothing new is nearly free.
+   *
+   * Offsets always land on a newline boundary, so windows never split a JSONL
+   * record or a multi-byte UTF-8 glyph.
+   */
+  async getTranscript(
+    sessionId: string,
+    options: { afterOffset?: number; limit?: number } = {},
+  ): Promise<SessionTranscript> {
+    const MAX_WINDOW_BYTES = 8 * 1024 * 1024;   // most bytes read in one call
+    const MAX_HISTORY_BYTES = 16 * 1024 * 1024; // most first-load history
+
+    const session = await this.sessionService.getSession(sessionId);
+    const project = session.projectId ? await this.projectRepo.findById(session.projectId) : null;
+    const jsonlPath = await this.resolveJsonlPath(sessionId, project?.workingDir);
+
+    const empty: SessionTranscript = {
+      sessionId,
+      source: null,
+      found: false,
+      turns: [],
+      nextOffset: options.afterOffset ?? 0,
+      fileSize: 0,
+      partial: false,
+    };
+    if (!jsonlPath) return empty;
+
+    let fileSize: number;
+    try {
+      fileSize = (await stat(jsonlPath)).size;
+    } catch {
+      return empty;
+    }
+
+    let start = options.afterOffset ?? 0;
+    let partial = false;
+    let skipFirstPartialLine = false;
+    if (start <= 0) {
+      if (fileSize > MAX_HISTORY_BYTES) {
+        start = fileSize - MAX_HISTORY_BYTES;
+        partial = true;
+        skipFirstPartialLine = true;
+      } else {
+        start = 0;
+      }
+    }
+    // Caller is already caught up (or asked past EOF, e.g. after a truncation).
+    if (start >= fileSize) {
+      return { sessionId, source: null, found: true, turns: [], nextOffset: fileSize, fileSize, partial: false };
+    }
+
+    const end = Math.min(fileSize, start + MAX_WINDOW_BYTES);
+    const length = end - start;
+    let buf = Buffer.alloc(length);
+    let bytesRead = 0;
+    const fh = await open(jsonlPath, 'r');
+    try {
+      ({ bytesRead } = await fh.read(buf, 0, length, start));
+    } finally {
+      await fh.close();
+    }
+    const usable = buf.subarray(0, bytesRead);
+
+    // Drop a leading partial record only when we chose a non-boundary start
+    // ourselves (large-file head truncation).
+    let sliceStart = 0;
+    if (skipFirstPartialLine) {
+      const firstNl = usable.indexOf(0x0a);
+      sliceStart = firstNl >= 0 ? firstNl + 1 : bytesRead;
+    }
+
+    // Parse only up to the last complete line; the cursor advances by exactly
+    // those bytes so the trailing partial record is re-read on the next poll.
+    const lastNl = usable.lastIndexOf(0x0a);
+    let consumedBytes: number;
+    let completeText = '';
+    if (lastNl < sliceStart) {
+      consumedBytes = sliceStart;
+    } else {
+      consumedBytes = lastNl + 1;
+      completeText = usable.toString('utf-8', sliceStart, lastNl);
+    }
+
+    const parsed: any[] = [];
+    for (const raw of completeText.split('\n')) {
+      if (!raw.trim()) continue;
+      try {
+        parsed.push(JSON.parse(raw));
+      } catch {
+        // Skip malformed lines.
+      }
+    }
+
+    const source: 'claude' | 'codex' = parsed.length > 0
+      ? (this.isCodexLog(parsed) ? 'codex' : 'claude')
+      : (session.metadata?.codexSessionId ? 'codex' : 'claude');
+
+    let turns = source === 'codex'
+      ? this.buildCodexTurns(parsed)
+      : this.buildClaudeTurns(parsed);
+    if (options.limit && turns.length > options.limit) {
+      turns = turns.slice(-options.limit);
+    }
+
+    return {
+      sessionId,
+      source,
+      found: true,
+      turns,
+      nextOffset: start + consumedBytes,
+      fileSize,
+      partial,
+    };
+  }
+
+  /**
+   * Build structured chat turns from Claude JSONL lines.
+   * Assistant messages carry text plus tool_use chips; synthetic
+   * tool_result-only user messages are folded into their tool call's preview.
+   */
+  private buildClaudeTurns(lines: any[]): ChatTurn[] {
+    // Pre-index tool_result previews by tool_use_id (best effort within batch).
+    const resultMap = new Map<string, string>();
+    for (const line of lines) {
+      if (line?.type !== 'user') continue;
+      const content = line.message?.content ?? line.content;
+      if (!Array.isArray(content)) continue;
+      for (const block of content) {
+        if (block?.type === 'tool_result' && block.tool_use_id) {
+          resultMap.set(block.tool_use_id, this.summarizeToolResult(block.content));
+        }
+      }
+    }
+
+    const turns: ChatTurn[] = [];
+    for (const line of lines) {
+      const type = line?.type;
+      const timestamp = line?.timestamp ? new Date(line.timestamp).getTime() : Date.now();
+      const id = typeof line?.uuid === 'string' && line.uuid
+        ? line.uuid
+        : `${type}-${timestamp}-${turns.length}`;
+
+      if (type === 'assistant') {
+        const message = line.message ?? line;
+        const content = message?.content;
+        const model = typeof message?.model === 'string' ? message.model : undefined;
+        let text = '';
+        const toolCalls: ChatToolCall[] = [];
+
+        if (typeof content === 'string') {
+          text = this.cleanText(content);
+        } else if (Array.isArray(content)) {
+          const parts: string[] = [];
+          for (const block of content) {
+            if (block?.type === 'text' && block.text) {
+              const cleaned = this.cleanText(block.text);
+              if (cleaned) parts.push(cleaned);
+            } else if (block?.type === 'tool_use') {
+              const callId = typeof block.id === 'string' ? block.id : '';
+              toolCalls.push({
+                id: callId,
+                name: typeof block.name === 'string' ? block.name : 'tool',
+                input: this.summarizeToolInput(block.name, block.input),
+                resultPreview: callId ? resultMap.get(callId) : undefined,
+              });
+            }
+          }
+          text = parts.join('\n\n');
+        }
+
+        if (text || toolCalls.length > 0) {
+          turns.push({ id, role: 'assistant', text, toolCalls, timestamp, model });
+        }
+      } else if (type === 'user') {
+        const content = line.message?.content ?? line.content;
+        // Skip synthetic tool_result-only user messages (folded into tool chips above).
+        if (
+          Array.isArray(content)
+          && content.length > 0
+          && content.every((b: any) => b?.type === 'tool_result' || b?.type === 'tool_use')
+        ) {
+          continue;
+        }
+        const text = this.extractPlainUserText(content);
+        if (text) {
+          turns.push({ id, role: 'user', text, toolCalls: [], timestamp });
+        }
+      }
+    }
+    return turns;
+  }
+
+  /**
+   * Build chat turns from Codex JSONL (text turns + function_call chips).
+   */
+  private buildCodexTurns(lines: any[]): ChatTurn[] {
+    const turns: ChatTurn[] = [];
+    for (const line of lines) {
+      const timestamp = this.parseTimestamp(line, Date.now());
+      const id = typeof line?.uuid === 'string' && line.uuid
+        ? line.uuid
+        : `codex-${timestamp}-${turns.length}`;
+
+      const isFnCall = line?.type === 'function_call'
+        || (line?.type === 'response_item' && line?.payload?.type === 'function_call');
+      if (isFnCall) {
+        const p = line.type === 'function_call' ? line : line.payload;
+        turns.push({
+          id,
+          role: 'assistant',
+          text: '',
+          toolCalls: [{
+            id: String(p.call_id ?? ''),
+            name: String(p.name ?? 'tool'),
+            input: this.summarizeToolInput(p.name, this.safeParseArgs(p.arguments)),
+          }],
+          timestamp,
+        });
+        continue;
+      }
+
+      const message = this.getCodexMessage(line);
+      if (!message) continue;
+      const text = this.cleanText(this.extractCodexMessageText(message.content));
+      if (!text) continue;
+      if (message.role === 'assistant') {
+        turns.push({ id, role: 'assistant', text, toolCalls: [], timestamp });
+      } else if (message.role === 'user') {
+        turns.push({ id, role: 'user', text, toolCalls: [], timestamp });
+      }
+    }
+    return turns;
+  }
+
+  /**
+   * Extract a user message's readable prompt text without truncation.
+   *
+   * Maestro wraps prompts in XML envelopes. Rather than blanking those, we
+   * surface what a human would want to read: the task title/description from a
+   * spawn prompt, or the inner text of a coordinator's teammate-message. The
+   * identity/system-prompt dump is dropped entirely. Returns '' when nothing
+   * human-readable remains (e.g. a pure system-reminder injection).
+   */
+  private extractPlainUserText(content: any): string {
+    let text: string;
+    if (typeof content === 'string') {
+      text = content;
+    } else if (Array.isArray(content)) {
+      text = content
+        .filter((b: any) => b?.type === 'text' && b.text)
+        .map((b: any) => b.text)
+        .join('\n');
+    } else {
+      return '';
+    }
+
+    // A spawn/task prompt: surface the tasks the human actually asked for.
+    if (text.includes('<maestro_task_prompt')) {
+      const tasks: string[] = [];
+      const taskRe = /<task\b[^>]*>([\s\S]*?)<\/task>/g;
+      let m: RegExpExecArray | null;
+      while ((m = taskRe.exec(text)) !== null) {
+        const block = m[1];
+        const title = (block.match(/<title>([\s\S]*?)<\/title>/)?.[1] ?? '').trim();
+        const desc = (block.match(/<description>([\s\S]*?)<\/description>/)?.[1] ?? '').trim();
+        const merged = [title, desc && desc !== title ? desc : ''].filter(Boolean).join('\n\n');
+        if (merged) tasks.push(merged);
+      }
+      if (tasks.length > 0) return tasks.join('\n\n———\n\n');
+    }
+
+    // Drop the identity/system-prompt dump wholesale, then unwrap the rest.
+    let cleaned = this.cleanText(text)
+      .replace(/<maestro_system_prompt[\s\S]*?<\/maestro_system_prompt>/g, '')
+      .replace(/<maestro_task_prompt[\s\S]*?<\/maestro_task_prompt>/g, '')
+      .replace(/<teammate-message\b[^>]*>([\s\S]*?)<\/teammate-message>/g, '$1')
+      .replace(/<session_id>[\s\S]*?<\/session_id>/g, '')
+      .trim();
+    return cleaned;
+  }
+
+  private summarizeToolInput(name: any, input: any): string {
+    if (typeof input === 'string') return input.slice(0, 300);
+    if (!input || typeof input !== 'object') return '';
+    if (input.command) return String(input.command).slice(0, 300);
+    if (input.file_path) return String(input.file_path);
+    if (input.path) return String(input.path);
+    if (input.pattern) return String(input.pattern);
+    if (input.query) return String(input.query).slice(0, 200);
+    if (input.description) return String(input.description).slice(0, 200);
+    if (input.prompt) return String(input.prompt).slice(0, 200);
+    if (input.url) return String(input.url);
+    try {
+      return JSON.stringify(input).slice(0, 200);
+    } catch {
+      return '';
+    }
+  }
+
+  private summarizeToolResult(content: any): string {
+    let text = '';
+    if (typeof content === 'string') {
+      text = content;
+    } else if (Array.isArray(content)) {
+      text = content
+        .map((b: any) => (typeof b === 'string' ? b : b?.type === 'text' ? b.text : ''))
+        .filter(Boolean)
+        .join('\n');
+    }
+    text = text.trim();
+    return text.length > 300 ? text.slice(0, 300) + '…' : text;
+  }
+
+  private safeParseArgs(args: any): any {
+    if (args && typeof args === 'object') return args;
+    if (typeof args === 'string') {
+      try {
+        return JSON.parse(args);
+      } catch {
+        return args;
+      }
+    }
+    return args;
   }
 
   /**

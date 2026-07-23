@@ -146,6 +146,61 @@ maestro team-member get <member-id>
 maestro team-member edit <member-id> --model opus
 ```
 
+### Collab Spaces
+
+The Collab CLI connects directly to Firebase-backed Collab Spaces. It is
+experimental and deliberately disabled unless you opt in:
+
+```bash
+export MAESTRO_COLLAB_CLI_ENABLED=true
+```
+
+Before using a Collab command, create `~/.maestro/collab/config.json` with a
+selected Firebase *public web* configuration. Firebase web API keys identify a
+project; they are not secrets, and access is controlled by Firebase rules.
+
+```json
+{
+  "version": 1,
+  "selectedProfile": "default",
+  "profiles": {
+    "default": {
+      "firebase": {
+        "apiKey": "your-public-firebase-web-api-key",
+        "authDomain": "your-project.firebaseapp.com",
+        "projectId": "your-project-id",
+        "appId": "optional-firebase-app-id"
+      },
+      "defaults": {
+        "spaceId": "optional-default-space-id",
+        "projectId": "optional-local-maestro-project-id"
+      }
+    }
+  }
+}
+```
+
+Then sign in from a machine with a browser and an available OS credential
+store:
+
+```bash
+maestro collab auth login
+maestro collab space list
+maestro collab channel list --space <space-id>
+maestro collab message list --space <space-id> --channel <channel-id>
+```
+
+`auth login` opens a local browser page and waits for you to finish Google or
+email/password sign-in. It cannot complete unattended on a headless host. The
+refresh token is stored in macOS Keychain or Linux libsecret when available. If
+neither is available, explicitly set `MAESTRO_COLLAB_TOKEN_STORE_KEY` to enable
+the encrypted file fallback at `~/.maestro/collab/tokens.enc`; keep that key
+private and stable between invocations.
+
+Use `maestro collab --help` for the full command surface. A `profile add` or
+`profile init` command does not exist yet, so the configuration file above must
+currently be created by hand.
+
 ### Other Commands
 
 ```bash
@@ -179,6 +234,10 @@ maestro whoami
 | `MAESTRO_PROMPT_IDENTITY_V2` | Use v2 identity prompts (`true`/`false`) | `true` |
 | `MAESTRO_PROMPT_IDENTITY_COORDINATOR_POLICY` | Coordinator identity policy (`permissive`/`strict`) | `strict` |
 | `MAESTRO_MANIFEST_FAILURE_POLICY` | Manifest failure behavior (`permissive`/`safe-degraded`) | `safe-degraded` |
+| `MAESTRO_COLLAB_CLI_ENABLED` | Opt in to experimental Firebase Collab commands | `false` |
+| `MAESTRO_COLLAB_TOKEN_STORE_KEY` | Enable encrypted-file token storage if no OS credential store is available | - |
+| `MAESTRO_COLLAB_SPACE_ID` | Default Collab space, overriding the profile default | - |
+| `MAESTRO_COLLAB_PROJECT_ID` | Default local project for Collab pulls, overriding the profile default | - |
 | `MAESTRO_INITIAL_DIRECTIVE` | Initial directive for manifest generation | - |
 | `MAESTRO_MEMBER_OVERRIDES` | Team member overrides for manifest generation | - |
 | `DATA_DIR` | Override data storage directory | `~/.maestro/data` |

@@ -12,6 +12,8 @@ describe('collab Commander surface', () => {
     const collab = enabled.commands.find((c) => c.name() === 'collab');
     expect(collab).toBeDefined();
     expect(collab?.commands.some((c) => c.name() === 'context')).toBe(true);
+    expect(collab?.helpInformation()).toContain('MAESTRO_COLLAB_CLI_ENABLED=true');
+    expect(collab?.description()).toContain('Firebase Collab Space commands');
   });
 
   it('redacts bearer invite values from tracked output', () => {

@@ -115,7 +115,17 @@ export async function applyConflict(kind: 'task' | 'member' | 'spell', payload: 
 export function registerCollabCommands(root: Command): void {
   // `--profile` is deliberately a root option: `--server` remains local API
   // scope and a Collab profile must apply consistently to every subcommand.
-  const collab = root.command('collab').description('Opt-in Firebase Collab Space commands');
+  const collab = root
+    .command('collab')
+    .description('Firebase Collab Space commands (opt in with MAESTRO_COLLAB_CLI_ENABLED=true)')
+    .addHelpText('after', `
+
+Setup:
+  1. Enable the experimental CLI: export MAESTRO_COLLAB_CLI_ENABLED=true
+  2. Add a Firebase public profile to ~/.maestro/collab/config.json.
+  3. Run \`maestro collab auth login\` and complete sign-in in a local browser.
+
+See maestro-cli/README.md#collab-spaces for the profile format and credential-store notes.`);
   const profileFrom = () => (root.opts() as Global).profile;
   const guarded = <T extends unknown[]>(action: (...args: T) => Promise<void>) => async (...args: T) => { try { enabled(); await action(...args); } catch (error) { showError(root, error); } };
 

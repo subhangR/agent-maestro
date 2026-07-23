@@ -63,12 +63,25 @@ export function PickerSheet({ intent, sheet }: SheetBodyProps<{ type: 'picker'; 
                 backgroundColor: isSel ? theme.colors.hover : 'transparent',
               }}
             >
+              {o.tone && !o.badge ? (
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors[o.tone as keyof typeof theme.colors] ?? o.tone }} />
+              ) : null}
               <View style={{ flex: 1, gap: 2 }}>
                 <Text variant="body" color="ink">
                   {o.label}
                 </Text>
+                {o.badge ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    {o.tone ? (
+                      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.colors[o.tone as keyof typeof theme.colors] ?? o.tone }} />
+                    ) : null}
+                    <Text variant="label" color="ink3">
+                      {o.badge}
+                    </Text>
+                  </View>
+                ) : null}
                 {o.sublabel ? (
-                  <Text variant="secondary" color="ink3">
+                  <Text variant={o.monoSublabel ? 'mono' : 'secondary'} color="ink3">
                     {o.sublabel}
                   </Text>
                 ) : null}

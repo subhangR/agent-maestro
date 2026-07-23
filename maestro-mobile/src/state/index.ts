@@ -17,6 +17,13 @@ export {
   type RealtimeStatus,
 } from './uiStore';
 export { usePrefsStore, hydratePrefs, type PrefsState } from './prefsStore';
+export {
+  useServerProfilesStore,
+  migrateLegacyHost,
+  hydrateServerProfiles,
+  type ServerProfile,
+  type ServerProfilesState,
+} from './serverProfilesStore';
 
 // ---- Realtime → state seam (Pulse) ----
 export { ingestEvent, ingestBatch, resyncProject } from './ingest';

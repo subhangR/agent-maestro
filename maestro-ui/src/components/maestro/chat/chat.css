@@ -1,0 +1,200 @@
+/* Custom session chat surface — scoped to the redesign theme. */
+
+html[data-redesign] .pn-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 320px;
+  gap: 10px;
+}
+
+html[data-redesign] .pn-chat__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 2px 8px;
+}
+
+html[data-redesign] .pn-chat__scroll::-webkit-scrollbar { width: 9px; }
+html[data-redesign] .pn-chat__scroll::-webkit-scrollbar-thumb {
+  background: var(--pn-line-2, var(--pn-line));
+  border-radius: 6px;
+}
+
+/* ── Rows ─────────────────────────────────────────────── */
+
+html[data-redesign] .pn-chatrow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 100%;
+}
+
+html[data-redesign] .pn-chatrow--user {
+  align-items: flex-end;
+}
+
+html[data-redesign] .pn-chatrow__role {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--pn-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--pn-ink-3);
+  text-transform: uppercase;
+}
+
+/* ── Bubbles ──────────────────────────────────────────── */
+
+html[data-redesign] .pn-bubble {
+  border-radius: var(--pn-r-md);
+  padding: 10px 13px;
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pn-ink);
+  max-width: 88%;
+  border: 1px solid var(--pn-line);
+  overflow-wrap: anywhere;
+}
+
+html[data-redesign] .pn-bubble--assistant {
+  background: var(--pn-card);
+  border-top-left-radius: var(--pn-r-xs);
+}
+
+html[data-redesign] .pn-bubble--user {
+  background: var(--pn-brand-weak, var(--pn-surface));
+  border-top-right-radius: var(--pn-r-xs);
+}
+
+/* Markdown reset inside bubbles */
+html[data-redesign] .pn-bubble__md > :first-child { margin-top: 0; }
+html[data-redesign] .pn-bubble__md > :last-child { margin-bottom: 0; }
+html[data-redesign] .pn-bubble__md p { margin: 0 0 8px; }
+html[data-redesign] .pn-bubble__md pre {
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  padding: 8px 10px;
+  overflow-x: auto;
+  font-family: var(--pn-mono);
+  font-size: 12px;
+}
+html[data-redesign] .pn-bubble__md code {
+  font-family: var(--pn-mono);
+  font-size: 12px;
+}
+html[data-redesign] .pn-bubble__md :not(pre) > code {
+  background: var(--pn-surface);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+html[data-redesign] .pn-bubble__md ul,
+html[data-redesign] .pn-bubble__md ol { margin: 4px 0 8px; padding-left: 20px; }
+
+/* ── Tool chips ───────────────────────────────────────── */
+
+html[data-redesign] .pn-bubble__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+html[data-redesign] .pn-toolchip {
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-surface);
+  overflow: hidden;
+}
+
+html[data-redesign] .pn-toolchip__hd {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 9px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--pn-ink-2);
+  font-family: var(--pn-ui);
+  font-size: 12px;
+}
+
+html[data-redesign] .pn-toolchip__name {
+  font-weight: 600;
+  color: var(--pn-ink);
+  flex: 0 0 auto;
+}
+
+html[data-redesign] .pn-toolchip__arg {
+  font-family: var(--pn-mono);
+  font-size: 11px;
+  color: var(--pn-ink-3);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html[data-redesign] .pn-toolchip__result {
+  margin: 0;
+  padding: 8px 10px;
+  border-top: 1px solid var(--pn-line);
+  background: var(--pn-paper, var(--pn-card));
+  font-family: var(--pn-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--pn-ink-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* ── Composer ─────────────────────────────────────────── */
+
+html[data-redesign] .pn-chat__compose {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  border-top: 1px solid var(--pn-line);
+  padding-top: 10px;
+}
+
+html[data-redesign] .pn-chat__input {
+  flex: 1;
+  resize: none;
+  max-height: 140px;
+  min-height: 38px;
+  padding: 9px 11px;
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-surface);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+html[data-redesign] .pn-chat__input:focus {
+  outline: none;
+  border-color: var(--pn-brand);
+}
+
+html[data-redesign] .pn-chat__send {
+  flex: 0 0 auto;
+  height: 38px;
+  width: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

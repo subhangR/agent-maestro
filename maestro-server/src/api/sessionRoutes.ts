@@ -888,6 +888,27 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
     }
   });
 
+  // Session transcript — structured chat turns (user/assistant + tool chips)
+  // for a native chat UI. Byte-cursor pagination: pass the previous response's
+  // `nextOffset` as `?afterOffset=` to fetch only turns appended since.
+  router.get('/sessions/:id/transcript', validateParams(idParamSchema), async (req: Request, res: Response) => {
+    try {
+      const sessionId = req.params.id as string;
+      const rawOffset = (req.query.afterOffset ?? req.query.offset) as string | undefined;
+      const afterOffset = rawOffset !== undefined
+        ? Math.max(0, parseInt(rawOffset, 10) || 0)
+        : undefined;
+      const rawLimit = req.query.limit as string | undefined;
+      const limit = rawLimit !== undefined
+        ? Math.max(1, Math.min(2000, parseInt(rawLimit, 10) || 0))
+        : undefined;
+      const transcript = await logDigestService.getTranscript(sessionId, { afterOffset, limit });
+      res.json(transcript);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
   // Get session by ID
   router.get('/sessions/:id', validateParams(idParamSchema), async (req: Request, res: Response) => {
     try {

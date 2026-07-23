@@ -22,13 +22,14 @@ import type { GlyphKind } from '@/theme';
 
 import { useScreenStatus, type ScreenStatusResult } from '../_shared';
 
-export type SessionDetailTab = 'stats' | 'timeline' | 'prompts' | 'docs';
+export type SessionDetailTab = 'stats' | 'timeline' | 'prompts' | 'docs' | 'logs';
 
 export const SESSION_DETAIL_TABS: { key: SessionDetailTab; label: string }[] = [
   { key: 'stats', label: 'Stats' },
   { key: 'timeline', label: 'Timeline' },
   { key: 'prompts', label: 'Prompts' },
   { key: 'docs', label: 'Docs' },
+  { key: 'logs', label: 'Logs' },
 ];
 
 /** A key/value line on the Stats tab. */

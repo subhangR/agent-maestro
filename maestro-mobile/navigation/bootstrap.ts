@@ -1,12 +1,31 @@
 // navigation/bootstrap.ts — the PRODUCTION bootstrapper (Compass).
 //
-// Productionizes __qa__/devharness/DevHarness.tsx's `connect()` into a single
-// reusable async function the connect screen calls on submit. It wires Conduit's
-// REST client into @/state, probes /health, hydrates the entity store for the
-// first project, then stands up the realtime sockets and pushes status into the
-// UI store. The returned handle lets the connect/disconnect flow tear realtime
-// down. v1 is NO AUTH — bare host:port, nothing else.
-import { buildServerConfig, MaestroClient, MaestroApiError, login, AuthRequiredError } from '@/services/api';
+// Productionizes __qa__/devharness/DevHarness.tsx's `connect()` into reusable
+// async functions the connect screen + server switcher call. It wires Conduit's
+// REST client into @/state, probes /health (learning the server's authMode),
+// hydrates the entity store for the first project, then stands up the realtime
+// sockets and pushes status into the UI store.
+//
+// MULTI-SERVER: a "server" is a saved ServerProfile (see serverProfilesStore).
+// Same protocol/APIs everywhere; switching just re-points the app at another
+// backend (separate data per server — no cross-server sync). Auth is auto-detected
+// from GET /health `authMode`:
+//   'none'     — open server; connect straight through (Tailscale/loopback).
+//   'password' — exchange a password for a ?token= JWT.
+//   'firebase' — the Hub/gateway; ride the Firebase ID token (owned by the Collab
+//                firebaseAuth module; consumed here via the hubToken seam).
+import {
+  buildServerConfig,
+  MaestroClient,
+  MaestroApiError,
+  login,
+  AuthRequiredError,
+  getTokenForAuthMode,
+  ensureHubFirebaseToken,
+  refreshHubFirebaseToken,
+  HubSignInRequiredError,
+  type AuthMode,
+} from '@/services/api';
 import { createRealtime, type Realtime, type RealtimeLedger } from '@/services/realtime';
 import {
   setMaestroClient,
@@ -24,6 +43,10 @@ import {
   useEntityStore,
   useUiStore,
   usePrefsStore,
+  useServerProfilesStore,
+  migrateLegacyHost,
+  hydrateServerProfiles,
+  type ServerProfile,
 } from '@/state';
 import { asProjectId } from '@/domain';
 
@@ -46,75 +69,99 @@ export interface BootstrapResult {
   realtime: Realtime;
   /** The first project's id that realtime + fetches were scoped to (may be null). */
   projectId: string | null;
+  /** The auth mode detected from the server's /health during this connect. */
+  authMode: AuthMode;
+}
+
+export interface BootstrapOptions {
+  /** Password for a 'password'-authMode server (exchanged for a ?token= JWT). */
+  password?: string;
+  /** Hint from a saved profile; the live /health probe is authoritative. */
+  authMode?: AuthMode;
 }
 
 /**
- * Connect to a maestro-server at the given bare `host:port` and bring the app
- * online. Throws if the health probe fails (caller shows the error).
+ * Connect to a maestro-server at the given `host` and bring the app online.
+ * Throws on an unreachable host, a needed-but-missing password (AuthRequiredError),
+ * or a needed-but-missing Firebase sign-in (HubSignInRequiredError).
  *
- * Sequence (mirrors DevHarness.connect exactly):
- *   buildServerConfig → new MaestroClient → setMaestroClient → probeHealth
- *   → fetchProjects → (first project) fetchTasks/Sessions/TeamMembers/Teams
- *   → createRealtime({ getWsUrl, getPtyWsUrl, ledger })
- *   → entitySync.onStatus(→ uiStore.setRealtimeStatus)
- *   → entitySync.setActiveProject → start()
+ * Sequence:
+ *   buildServerConfig → probe /health (detect authMode + reachability, http retry)
+ *   → satisfy auth (password login / firebase token) → new MaestroClient
+ *   → setMaestroClient → guarded getProjects → fetch first project's entities
+ *   → createRealtime({ getWsUrl, getPtyWsUrl, ledger }) → start()
  */
-export async function bootstrap(host: string, password?: string): Promise<BootstrapResult> {
+export async function bootstrap(host: string, opts: BootstrapOptions = {}): Promise<BootstrapResult> {
   // Tear down any prior realtime before re-connecting.
   if (activeRealtime) {
     activeRealtime.stop();
     activeRealtime = null;
   }
   // Wipe the previous host's entities so a reconnect to a DIFFERENT server starts
-  // clean — fetchProjects/etc. merge into the store, so without this the old
-  // host's projects/sessions linger and the app appears stuck on the old server.
+  // clean — fetch* merge into the store, so without this the old host's data lingers.
   resetEntities();
 
-  // 1. Build ServerConfig from the bare host:port the user typed.
+  // 1. Build ServerConfig from the host, then probe /health UNAUTHENTICATED to
+  // learn reachability + authMode before we decide how to log in. Recover the
+  // common footgun: a stale https:// scheme on a plain-http dev port — retry once
+  // over http when the port isn't 443.
   let cfg = buildServerConfig(host);
-
-  // 2. Instantiate the real client + wire it into @/state. The client appends the
-  // stored ?token= on every request (null/inert on no-auth servers).
-  const makeClient = (c: typeof cfg): MaestroClient =>
-    new MaestroClient(c, { getToken: () => usePrefsStore.getState().authToken });
-  let client = makeClient(cfg);
-  setMaestroClient(client);
-
-  // 3. GET {serverUrl}/health first — the boot gate (public, no token needed).
-  let ok = await client.probeHealth();
-  // Recover the common footgun: an https:// scheme left over from a prior server
-  // pointed at a plain-http dev port (e.g. https://192.168.1.5:4569) — the TLS
-  // probe fails. Retry once over http when the port isn't 443.
-  if (!ok && isHttpsNonStandardPort(cfg.serverUrl)) {
+  const probeClient = () => new MaestroClient(cfg);
+  let probe = await probeClient().probeHealthInfo();
+  if (!probe.ok && isHttpsNonStandardPort(cfg.serverUrl)) {
     cfg = buildServerConfig(host.replace(/^https:\/\//i, 'http://'));
-    client = makeClient(cfg);
-    setMaestroClient(client);
-    ok = await client.probeHealth();
+    probe = await probeClient().probeHealthInfo();
   }
-  if (!ok) throw new Error('health probe returned false');
+  if (!probe.ok) throw new Error('health probe returned false');
+  const authMode = probe.authMode;
 
-  // 3b. Auth: if the user supplied a password, exchange it for a token now. Then
-  // probe a guarded endpoint — a 401 means this server needs a (fresh) password,
-  // which we signal to the connect screen via AuthRequiredError.
-  if (password) {
-    const token = await login(cfg.apiBaseUrl, password);
+  // 2. Satisfy auth for the detected mode BEFORE the first guarded call.
+  if (authMode === 'password' && opts.password) {
+    const token = await login(cfg.apiBaseUrl, opts.password);
     usePrefsStore.getState().setAuthToken(token);
   }
+  if (authMode === 'firebase') {
+    // Refresh/obtain a Firebase ID token (triggers Google sign-in when the
+    // firebaseAuth module is wired; throws HubSignInRequiredError otherwise).
+    await ensureHubFirebaseToken();
+  }
+
+  // 3. Build the real client with an authMode-aware token seam. 'firebase' reads
+  // the Firebase token cache, 'password' the stored JWT, 'none' carries nothing.
+  const getToken = getTokenForAuthMode(authMode, () => usePrefsStore.getState().authToken);
+  let client = new MaestroClient(cfg, { getToken });
+  setMaestroClient(client);
+
+  // 4. Guarded probe. A 401 means the credential is missing/stale:
+  //    password → surface AuthRequiredError so the connect screen asks for one.
+  //    firebase → force-refresh the token once and retry; else sign-in required.
   try {
     await client.getProjects();
   } catch (e) {
     if (e instanceof MaestroApiError && e.status === 401) {
-      usePrefsStore.getState().setAuthToken(null);
-      throw new AuthRequiredError();
+      if (authMode === 'firebase') {
+        const refreshed = await refreshHubFirebaseToken(true);
+        if (!refreshed) throw new HubSignInRequiredError();
+        client = new MaestroClient(cfg, { getToken });
+        setMaestroClient(client);
+        try {
+          await client.getProjects();
+        } catch (e2) {
+          if (e2 instanceof MaestroApiError && e2.status === 401) throw new HubSignInRequiredError();
+          throw e2;
+        }
+      } else {
+        usePrefsStore.getState().setAuthToken(null);
+        throw new AuthRequiredError();
+      }
+    } else {
+      throw e;
     }
-    throw e;
   }
 
-  // 4. REST fetch → populates the entity store. Projects first so we can scope
-  // the project-scoped fetches to the first project.
+  // 5. REST fetch → populate the entity store. Projects first so project-scoped
+  // fetches can target the first (or last-active) project.
   await fetchProjects();
-  // Prefer the last active project (restored from prefs on cold boot); fall back
-  // to the first project when there's no stored choice or it's gone on this host.
   const projectIds = Object.keys(useEntityStore.getState().projects);
   const storedProject = usePrefsStore.getState().lastProjectId;
   const firstProject =
@@ -130,12 +177,11 @@ export async function bootstrap(host: string, password?: string): Promise<Bootst
     await fetchSessions();
   }
 
-  // 5. Wire realtime (entity-sync WS + /pty) against the SAME config. The ledger
-  // is the realtime→state seam (Pulse's ingest functions). WS upgrades are gated
-  // separately from REST, so the token rides as a query param here too (read at
-  // call time so reconnects pick up a refreshed token).
+  // 6. Wire realtime (entity-sync WS + /pty). WS upgrades are gated separately
+  // from REST, so the token rides as ?token= here too — read at call time so
+  // reconnects pick up a refreshed token (password JWT or Firebase ID token).
   const withWsToken = (wsUrl: string): string => {
-    const token = usePrefsStore.getState().authToken;
+    const token = getToken();
     if (!token) return wsUrl;
     return `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
   };
@@ -146,39 +192,70 @@ export async function bootstrap(host: string, password?: string): Promise<Bootst
     ledger,
   });
   activeRealtime = rt;
-  // Expose the pty transport to @/state so getPtyTransport() (reply-to-agent)
-  // resolves. `rt.pty` structurally satisfies the PtyClientApi seam (Wave 1).
   setPtyTransport(rt.pty);
 
-  // Push realtime status into the UI store (Forge reads `connected`). The
-  // realtime layer has an extra 'idle' state the UI store doesn't model — map it
-  // to 'disconnected' (no live socket yet).
   rt.entitySync.onStatus((s) =>
     useUiStore.getState().setRealtimeStatus(s === 'idle' ? 'disconnected' : s),
   );
-  // Scope entity-sync (and the active project for resync) to the first project.
   const projectId = firstProject ? asProjectId(firstProject) : null;
   useUiStore.getState().setActiveProject(projectId);
   usePrefsStore.getState().setLastProjectId(firstProject);
   rt.entitySync.setActiveProject(projectId);
   rt.start();
 
-  return { realtime: rt, projectId: firstProject };
+  return { realtime: rt, projectId: firstProject, authMode };
 }
 
 /**
- * Boot-time auto-reconnect. Hydrates prefs (AsyncStorage path), reads the last
- * host, and reconnects if present. Returns true if a connection was established;
- * false when there's no stored host OR the stored host is unreachable (a stale
- * host falls back to the connect screen rather than throwing). The boot gate
- * (app/index.tsx) uses this to decide tabs vs. the connect screen.
+ * Add a server by host (or reuse an existing profile with the same host), connect
+ * to it, and record the detected authMode. On success the profile is upserted +
+ * made active and `lastHost` is persisted. Returns the connect result + profile.
+ */
+export async function addServerAndConnect(
+  host: string,
+  opts: { password?: string; label?: string } = {},
+): Promise<{ result: BootstrapResult; profile: ServerProfile }> {
+  const result = await bootstrap(host, { password: opts.password });
+  const store = useServerProfilesStore.getState();
+  const profile = store.upsertByHost({ host, label: opts.label, authMode: result.authMode });
+  store.setActiveProfile(profile.id);
+  usePrefsStore.getState().setLastHost(host);
+  return { result, profile };
+}
+
+/**
+ * Switch to a saved profile: connect to it (tearing down the current connection),
+ * refresh its detected authMode, make it active, and persist `lastHost`.
+ */
+export async function switchToProfile(id: string): Promise<BootstrapResult> {
+  const store = useServerProfilesStore.getState();
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile) throw new Error(`unknown server profile: ${id}`);
+  const result = await bootstrap(profile.host, { authMode: profile.authMode });
+  if (result.authMode !== profile.authMode) {
+    store.updateProfile(profile.id, { authMode: result.authMode });
+  }
+  store.setActiveProfile(profile.id);
+  usePrefsStore.getState().setLastHost(profile.host);
+  return result;
+}
+
+/**
+ * Boot-time auto-reconnect. Hydrates prefs + server profiles, migrates a legacy
+ * single `lastHost` into a profile if needed, and reconnects to the active
+ * profile. Returns true if a connection was established; false when there's no
+ * saved server OR the active one is unreachable (falls back to the connect screen
+ * rather than throwing).
  */
 export async function bootstrapFromStoredHost(): Promise<boolean> {
   await hydratePrefs();
-  const host = usePrefsStore.getState().lastHost;
-  if (!host) return false;
+  await hydrateServerProfiles();
+  const active = migrateLegacyHost(usePrefsStore.getState().lastHost);
+  if (!active) return false;
   try {
-    await bootstrap(host);
+    await bootstrap(active.host, { authMode: active.authMode });
+    useServerProfilesStore.getState().setActiveProfile(active.id);
+    usePrefsStore.getState().setLastHost(active.host);
     return true;
   } catch {
     return false;

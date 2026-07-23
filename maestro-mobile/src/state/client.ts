@@ -36,6 +36,9 @@ import type {
   SpellEntity,
   SpellEntityType,
   DocEntry,
+  LogProvider,
+  AgentLogFile,
+  LogTailResult,
 } from '@/domain';
 import type { SpawnSessionRequest } from '@/domain/schemas/spawn';
 
@@ -117,7 +120,8 @@ export interface MaestroClientApi {
   // ---- Docs (Whiteboard read + write) ----
   getSessionDocs(sessionId: string): Promise<DocEntry[]>;
   getTaskDocs(taskId: string): Promise<DocEntry[]>;
-  getProjectDocs(projectId: string): Promise<DocEntry[]>;
+  /** All docs across a project (content hydrated); optional server-side kind filter. */
+  getProjectDocs(projectId: string, kind?: 'markdown' | 'diagram'): Promise<DocEntry[]>;
   addSessionDoc(
     sessionId: string,
     title: string,
@@ -132,6 +136,19 @@ export interface MaestroClientApi {
     kind?: 'markdown' | 'diagram',
   ): Promise<DocEntry>;
   updateDocContent(sessionId: string, docId: string, content: string): Promise<DocEntry>;
+
+  // ---- Agent logs (raw provider transcripts for non-Tauri clients) ----
+  /** List a cwd's agent log files for a provider (newest → oldest). */
+  listAgentLogs(provider: LogProvider, cwd: string): Promise<AgentLogFile[]>;
+  /** Read a whole agent log file's decoded content. */
+  readAgentLog(provider: LogProvider, cwd: string, filename: string): Promise<string>;
+  /** Incrementally tail an agent log from `offset` (for live sessions). */
+  tailAgentLog(
+    provider: LogProvider,
+    cwd: string,
+    filename: string,
+    offset: number,
+  ): Promise<LogTailResult>;
 }
 
 let client: MaestroClientApi | null = null;

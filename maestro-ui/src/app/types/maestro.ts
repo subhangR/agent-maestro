@@ -1236,3 +1236,31 @@ export interface SessionStatsResponse {
   lastMessageAt: number | null;
   lastMessages: SessionTranscriptMessage[];
 }
+
+// ── Structured chat transcript (for the custom chat UI) ──────────────
+
+export interface ChatToolCall {
+  id: string;
+  name: string;
+  input: string;
+  resultPreview?: string;
+}
+
+export interface ChatTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  toolCalls: ChatToolCall[];
+  timestamp: number;
+  model?: string;
+}
+
+export interface SessionTranscript {
+  sessionId: string;
+  source: 'claude' | 'codex' | null;
+  found: boolean;
+  turns: ChatTurn[];
+  nextOffset: number;
+  fileSize: number;
+  partial: boolean;
+}

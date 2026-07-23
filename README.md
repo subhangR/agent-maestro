@@ -489,6 +489,7 @@ npm run build:cli
 | `MAESTRO_ROLE` | `worker` or `orchestrator` |
 | `MAESTRO_STRATEGY` | `simple` or `queue` (default: `simple`) |
 | `MAESTRO_MANIFEST_PATH` | Path to a manifest file |
+| `MAESTRO_COLLAB_CLI_ENABLED` | Set to `true` to opt in to experimental Firebase Collab CLI commands; see [`maestro-cli/README.md`](./maestro-cli/README.md#collab-spaces) for profile and browser-login setup |
 
 ---
 

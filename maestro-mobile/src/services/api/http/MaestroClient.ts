@@ -54,10 +54,14 @@ import type {
   ClaudeCodeSkill,
   SessionCommandUsage,
   SessionStatsResponse,
+  LogProvider,
+  AgentLogFile,
+  LogTailResult,
 } from '@/domain';
 import { spawnSessionRequestSchema, type SpawnSessionRequest } from '@/domain/schemas/spawn';
 
-import type { ServerConfig } from '../config/serverConfig';
+import type { ServerConfig, AuthMode } from '../config/serverConfig';
+import { parseAuthMode } from '../config/serverConfig';
 import { DEFAULT_TIMEOUT_MS, HEALTH_PATH } from '../constants';
 import { MaestroApiError, TimeoutError, NetworkError } from './errors';
 import { buildQuery } from './buildQuery';
@@ -146,21 +150,37 @@ export class MaestroClient {
 
   /**
    * Unauthenticated health probe (GET {serverUrl}/health, outside /api) used to
-   * validate a host before saving it. Returns true on a 2xx, false otherwise.
+   * validate a host before saving it. Also reports the server's `authMode` so the
+   * caller can pick the right login flow (none/password/firebase) before it has a
+   * token. `authMode` is only meaningful when `ok` is true; old servers that omit
+   * the field parse to 'none'.
    */
-  async probeHealth(): Promise<boolean> {
+  async probeHealthInfo(): Promise<{ ok: boolean; authMode: AuthMode }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
       const res = await fetch(`${this.config.serverUrl}${HEALTH_PATH}`, {
         signal: controller.signal,
       });
-      return res.ok;
+      if (!res.ok) return { ok: false, authMode: 'none' };
+      let authMode: AuthMode = 'none';
+      try {
+        const body = (await res.json()) as { authMode?: unknown };
+        authMode = parseAuthMode(body?.authMode);
+      } catch {
+        /* a 2xx with a non-JSON/empty body is still a healthy 'none' server */
+      }
+      return { ok: true, authMode };
     } catch {
-      return false;
+      return { ok: false, authMode: 'none' };
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Back-compat boolean health probe. Returns true on a 2xx, false otherwise. */
+  async probeHealth(): Promise<boolean> {
+    return (await this.probeHealthInfo()).ok;
   }
 
   // ==================== PROJECTS ====================
@@ -529,8 +549,35 @@ export class MaestroClient {
     });
   }
 
-  async getProjectDocs(projectId: string): Promise<DocEntry[]> {
-    return this.request<DocEntry[]>(`/projects/${projectId}/docs`);
+  async getProjectDocs(projectId: string, kind?: 'markdown' | 'diagram'): Promise<DocEntry[]> {
+    return this.request<DocEntry[]>(`/projects/${projectId}/docs${buildQuery({ kind })}`);
+  }
+
+  // ==================== AGENT LOGS ====================
+  // Raw provider (Claude/Codex) transcripts, exposed for non-Tauri clients.
+  // Keyed by the project cwd + provider; a file's maestroSessionId links it to a
+  // session. See maestro-server/src/api/agentLogRoutes.ts.
+
+  async listAgentLogs(provider: LogProvider, cwd: string): Promise<AgentLogFile[]> {
+    return this.request<AgentLogFile[]>(`/agent-logs/list${buildQuery({ provider, cwd })}`);
+  }
+
+  async readAgentLog(provider: LogProvider, cwd: string, filename: string): Promise<string> {
+    const res = await this.request<{ content: string }>(
+      `/agent-logs/read${buildQuery({ provider, cwd, filename })}`,
+    );
+    return res.content;
+  }
+
+  async tailAgentLog(
+    provider: LogProvider,
+    cwd: string,
+    filename: string,
+    offset: number,
+  ): Promise<LogTailResult> {
+    return this.request<LogTailResult>(
+      `/agent-logs/tail${buildQuery({ provider, cwd, filename, offset })}`,
+    );
   }
 
   async getProjectDocsPaginated(

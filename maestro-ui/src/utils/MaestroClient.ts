@@ -55,6 +55,7 @@ import type {
     GitDiffSummary,
     GitPrInfo,
     SessionStatsResponse,
+    SessionTranscript,
     SessionPrompt,
     SessionCommandUsage,
     Huddle,
@@ -483,6 +484,22 @@ class MaestroClient {
 
     async getSessionPrompts(sessionId: string): Promise<SessionPrompt[]> {
         return this.fetch<SessionPrompt[]>(`/sessions/${encodeURIComponent(sessionId)}/prompts`);
+    }
+
+    /**
+     * Fetch a window of structured chat turns from a session's JSONL transcript.
+     * Pass the previous response's `nextOffset` as `afterOffset` to tail-poll for
+     * only the turns appended since the last call.
+     */
+    async getSessionTranscript(
+        sessionId: string,
+        opts: { afterOffset?: number; limit?: number } = {},
+    ): Promise<SessionTranscript> {
+        const params = new URLSearchParams();
+        if (opts.afterOffset !== undefined) params.set('afterOffset', String(opts.afterOffset));
+        if (opts.limit !== undefined) params.set('limit', String(opts.limit));
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        return this.fetch<SessionTranscript>(`/sessions/${encodeURIComponent(sessionId)}/transcript${qs}`);
     }
 
     async getSessionCommandUsage(sessionId: string): Promise<SessionCommandUsage> {
