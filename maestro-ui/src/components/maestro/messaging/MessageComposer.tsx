@@ -315,65 +315,6 @@ export function MessageComposer({
 
   return (
     <div className="messagingComposer">
-      <div className="messagingComposerToolbar">
-        <button
-          type="button"
-          className={`messagingComposerIconBtn ${attaching ? "messagingComposerIconBtn--busy" : ""}`}
-          title={
-            canAttach
-              ? `Attach file (max ${MAX_ATTACHMENT_KB} KB)`
-              : "Sign in to attach files"
-          }
-          aria-label={attaching ? "Uploading attachment" : "Attach file"}
-          aria-busy={attaching}
-          onClick={openFilePicker}
-          disabled={!canAttach || attaching || sending}
-        >
-          {attaching ? (
-            <span className="messagingAttachSpinner" aria-hidden="true" />
-          ) : (
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <path d="M11 7.5l-4 4a2 2 0 1 1-2.8-2.8l5-5a3.2 3.2 0 0 1 4.5 4.5l-5.5 5.5a4.6 4.6 0 0 1-6.5-6.5l5-5" strokeLinecap="round" />
-            </svg>
-          )}
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="messagingAttachInput"
-          onChange={(e) => void handleFilePicked(e)}
-          aria-label="Choose a file to attach"
-          tabIndex={-1}
-        />
-      </div>
-
-      {(staged.length > 0 || attachError) && (
-        <div className="messagingComposerAttachments">
-          {staged.map((s) => (
-            <span key={s.id} className="messagingAttachChip messagingAttachChip--pending">
-              <span className="messagingAttachChipName" title={s.file.name}>
-                {s.file.name}
-              </span>
-              <span className="messagingAttachChipSize">{formatKb(s.file.size)}</span>
-              <button
-                type="button"
-                className="messagingAttachChipRemove"
-                aria-label={`Remove attachment ${s.file.name}`}
-                onClick={() => removeAttachment(s.id)}
-                disabled={sending || attaching}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-          {attachError && (
-            <span className="messagingAttachError" role="alert">
-              {attachError}
-            </span>
-          )}
-        </div>
-      )}
-
       <div className="messagingComposerRow">
         {popupOpen && (
           <div className="messagingMentionPopup" role="listbox">
@@ -427,12 +368,70 @@ export function MessageComposer({
           {sending ? "…" : "Send"}
         </button>
       </div>
-      <div className="messagingComposerHint">
-        {tooLong
-          ? `Message too long (${value.length}/${MESSAGE_MAX_LENGTH})`
-          : attaching
-            ? "Uploading attachments…"
+
+      {(staged.length > 0 || attachError) && (
+        <div className="messagingComposerAttachments">
+          {staged.map((s) => (
+            <span key={s.id} className="messagingAttachChip messagingAttachChip--pending">
+              <span className="messagingAttachChipName" title={s.file.name}>
+                {s.file.name}
+              </span>
+              <span className="messagingAttachChipSize">{formatKb(s.file.size)}</span>
+              <button
+                type="button"
+                className="messagingAttachChipRemove"
+                aria-label={`Remove attachment ${s.file.name}`}
+                onClick={() => removeAttachment(s.id)}
+                disabled={sending || attaching}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {attachError && (
+            <span className="messagingAttachError" role="alert">
+              {attachError}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="messagingComposerFooter">
+        <button
+          type="button"
+          className={`messagingAttachBtn ${attaching ? "messagingAttachBtn--busy" : ""} ${!canAttach ? "messagingAttachBtn--disabled" : ""}`}
+          title={
+            canAttach
+              ? `Attach any file (max ${MAX_ATTACHMENT_KB} KB)`
+              : "Sign in to attach files"
+          }
+          aria-label={attaching ? "Uploading attachment" : "Attach any file"}
+          aria-busy={attaching}
+          onClick={openFilePicker}
+          disabled={!canAttach || attaching || sending}
+        >
+          {attaching ? (
+            <span className="messagingAttachSpinner" aria-hidden="true" />
+          ) : (
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path d="M11 7.5l-4 4a2 2 0 1 1-2.8-2.8l5-5a3.2 3.2 0 0 1 4.5 4.5l-5.5 5.5a4.6 4.6 0 0 1-6.5-6.5l5-5" strokeLinecap="round" />
+            </svg>
+          )}
+          <span>{attaching ? "Uploading…" : "Attach file"}</span>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="messagingAttachInput"
+          onChange={(e) => void handleFilePicked(e)}
+          aria-label="Choose a file to attach"
+          tabIndex={-1}
+        />
+        <div className="messagingComposerHint">
+          {tooLong
+            ? `Message too long (${value.length}/${MESSAGE_MAX_LENGTH})`
             : "Enter to send · Shift+Enter for newline"}
+        </div>
       </div>
     </div>
   );

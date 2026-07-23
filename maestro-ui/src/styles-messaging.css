@@ -523,6 +523,51 @@
   padding: 8px 0;
 }
 
+/* ─── Composer footer (attach + hint) ───────────────────────────── */
+.messagingComposerFooter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 2px;
+  border-top: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  margin-top: 4px;
+}
+
+.messagingAttachBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
+  color: var(--text-secondary, #aaa);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.messagingAttachBtn:hover:not(:disabled) {
+  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.06));
+  border-color: var(--border-strong, rgba(255, 255, 255, 0.2));
+  color: var(--text-primary, #ddd);
+}
+
+.messagingAttachBtn:disabled,
+.messagingAttachBtn--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.messagingAttachBtn--busy {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 /* ─── Create channel modal (reuses collabSpaceModal* shells) ─────── */
 
 .messagingChannelHint {
@@ -674,4 +719,102 @@
     justify-content: center;
     padding: 8px;
   }
+}
+
+/* ─── Redesign-context: use pn-* tokens so dark/light axis is respected ── */
+html[data-redesign] .messagingRoot {
+  background: var(--pn-surface);
+  border-color: var(--pn-line);
+}
+html[data-redesign] .messagingSidebar {
+  background: var(--pn-card);
+  border-right-color: var(--pn-line);
+}
+html[data-redesign] .messagingSidebarHeader { border-bottom-color: var(--pn-line); }
+html[data-redesign] .messagingSidebarTitle { color: var(--pn-ink-3); }
+html[data-redesign] .messagingSidebarAddBtn {
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .messagingChannelRow { color: var(--pn-ink-2); }
+html[data-redesign] .messagingChannelRow:hover { background: var(--pn-hover); color: var(--pn-ink); }
+html[data-redesign] .messagingChannelRowActive { background: var(--pn-brand-soft); color: var(--pn-ink); font-weight: 600; }
+html[data-redesign] .messagingChannelRowActive:hover { background: var(--pn-brand-soft); }
+html[data-redesign] .messagingChannelHash { color: var(--pn-ink-4); }
+html[data-redesign] .messagingChannelEmpty,
+html[data-redesign] .messagingChannelLoading { color: var(--pn-ink-4); }
+
+html[data-redesign] .messagingChannelHeader { border-bottom-color: var(--pn-line); }
+html[data-redesign] .messagingChannelHeaderName { color: var(--pn-ink); }
+html[data-redesign] .messagingChannelHeaderDescription { color: var(--pn-ink-3); border-left-color: var(--pn-line); }
+
+html[data-redesign] .messagingBubble:hover { background: var(--pn-hover); }
+html[data-redesign] .messagingBubbleAuthor { color: var(--pn-ink); }
+html[data-redesign] .messagingBubbleTime { color: var(--pn-ink-3); }
+html[data-redesign] .messagingBubbleContent { color: var(--pn-ink); }
+html[data-redesign] .messagingBubbleDeleted { color: var(--pn-ink-4); }
+html[data-redesign] .messagingBubbleContent code { background: var(--pn-active); color: var(--pn-ink); }
+html[data-redesign] .messagingBubbleContent pre { background: var(--pn-card); border: 1px solid var(--pn-line); }
+html[data-redesign] .messagingBubbleContent a { color: var(--pn-brand); }
+html[data-redesign] .messagingEmptyState { color: var(--pn-ink-3); }
+html[data-redesign] .messagingEmptyStateTitle { color: var(--pn-ink-2); }
+
+html[data-redesign] .messagingComposer { border-top-color: var(--pn-line); }
+html[data-redesign] .messagingComposerTextarea {
+  color: var(--pn-ink);
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .messagingComposerTextarea:focus { border-color: var(--pn-brand); }
+html[data-redesign] .messagingComposerTextarea::placeholder { color: var(--pn-ink-4); }
+html[data-redesign] .messagingComposerHint { color: var(--pn-ink-4); }
+html[data-redesign] .messagingComposerDisabled { color: var(--pn-ink-3); }
+html[data-redesign] .messagingComposerIconBtn { color: var(--pn-ink-3); }
+html[data-redesign] .messagingComposerIconBtn:hover:not(:disabled) { background: var(--pn-hover); color: var(--pn-ink); }
+html[data-redesign] .messagingComposerFooter { border-top-color: var(--pn-line); }
+
+html[data-redesign] .messagingEditTextarea {
+  color: var(--pn-ink);
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .messagingEditTextarea:focus { border-color: var(--pn-brand); }
+
+html[data-redesign] .messagingBubbleActions {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .messagingBubbleActionBtn { color: var(--pn-ink-2); }
+html[data-redesign] .messagingBubbleActionBtn:hover { background: var(--pn-hover); color: var(--pn-ink); }
+
+html[data-redesign] .messagingMentionPopup {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .messagingMentionOption { color: var(--pn-ink-2); }
+html[data-redesign] .messagingMentionOptionActive { background: var(--pn-brand-soft); color: var(--pn-ink); }
+html[data-redesign] .messagingMentionOptionName { color: var(--pn-ink); }
+html[data-redesign] .messagingMentionOptionSub { color: var(--pn-ink-4); }
+
+html[data-redesign] .messagingLoadOlderBtn {
+  border-color: var(--pn-line);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .messagingLoadOlderBtn:hover:not(:disabled) { background: var(--pn-hover); color: var(--pn-ink); }
+
+html[data-redesign] .messagingAttachChip { background: var(--pn-active); border-color: var(--pn-line-2); color: var(--pn-ink-2); }
+html[data-redesign] .messagingAttachChipName { color: var(--pn-ink); }
+html[data-redesign] .messagingAttachChipSize { color: var(--pn-ink-3); }
+html[data-redesign] .messagingAttachChipRemove { color: var(--pn-ink-3); }
+html[data-redesign] .messagingAttachChipRemove:hover { background: var(--pn-hover); color: var(--pn-block); }
+
+html[data-redesign] .messagingComposerFooter { border-top-color: var(--pn-line); }
+html[data-redesign] .messagingAttachBtn {
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .messagingAttachBtn:hover:not(:disabled) {
+  background: var(--pn-hover);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-2);
 }

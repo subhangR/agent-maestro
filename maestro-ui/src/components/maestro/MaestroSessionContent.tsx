@@ -166,8 +166,34 @@ export const MaestroSessionContent = React.memo(function MaestroSessionContent({
     );
   }
 
+  const completedCount = tasks.filter((t) => t.status === 'completed').length;
+  const isFinished = session.status === 'completed' || session.status === 'stopped' || session.status === 'failed';
+  const finishTime = session.completedAt ?? session.lastActivity;
+
   return (
     <div className="maestroSessionContent" onClick={(e) => e.stopPropagation()}>
+      {/* Natural language completion banner — shown when terminal job ends */}
+      {isFinished && (
+        <div className={`maestroSessionCompletionBanner maestroSessionCompletionBanner--${session.status}`}>
+          <span className="maestroSessionCompletionIcon" aria-hidden="true">
+            {session.status === 'completed' ? '✓' : session.status === 'failed' ? '✗' : '◾'}
+          </span>
+          <div className="maestroSessionCompletionBody">
+            <span className="maestroSessionCompletionTitle">
+              {session.status === 'completed'
+                ? 'Session finished successfully'
+                : session.status === 'failed'
+                  ? 'Session ended with errors'
+                  : 'Session stopped'}
+            </span>
+            <span className="maestroSessionCompletionMeta">
+              {formatTimeAgo(finishTime)}
+              {tasks.length > 0 && ` · ${completedCount} of ${tasks.length} task${tasks.length === 1 ? '' : 's'} completed`}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Session Info Header */}
       <div className="maestroSessionContentHeader">
         <StrategyBadge

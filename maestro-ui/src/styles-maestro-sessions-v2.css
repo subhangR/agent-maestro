@@ -1311,6 +1311,53 @@
 
 /* ==================== Maestro Session Content ==================== */
 
+/* ─── Completion banner — natural language job-done notice ────────── */
+.maestroSessionCompletionBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.22);
+  border-left: 3px solid #22c55e;
+}
+.maestroSessionCompletionBanner--stopped {
+  background: rgba(148, 163, 184, 0.08);
+  border-color: rgba(148, 163, 184, 0.22);
+  border-left-color: #94a3b8;
+}
+.maestroSessionCompletionBanner--failed {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.22);
+  border-left-color: #ef4444;
+}
+.maestroSessionCompletionIcon {
+  font-size: 14px;
+  line-height: 1.3;
+  flex-shrink: 0;
+  color: #22c55e;
+}
+.maestroSessionCompletionBanner--stopped .maestroSessionCompletionIcon { color: #94a3b8; }
+.maestroSessionCompletionBanner--failed .maestroSessionCompletionIcon { color: #ef4444; }
+.maestroSessionCompletionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.maestroSessionCompletionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #f0f4f8);
+}
+.maestroSessionCompletionMeta {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--style-font-code, 'JetBrains Mono', monospace);
+}
+
 .maestroSessionContent {
   width: 100%;
   margin-top: 8px;

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MaestroTask, MaestroProject, TeamMember, MemberLaunchOverride, TaskImage } from "../../app/types/maestro";
+import { MaestroTask, MaestroProject, TeamMember, MemberLaunchOverride, TaskImage, LaunchConfig } from "../../app/types/maestro";
 import { ClaudeCodeSkillsSelector } from "./ClaudeCodeSkillsSelector";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { maestroClient } from "../../utils/MaestroClient";
@@ -50,6 +50,7 @@ type CreateTaskModalProps = {
         teamMemberId?: string;
         teamMemberIds?: string[];
         memberOverrides?: Record<string, MemberLaunchOverride>;
+        launchConfig?: LaunchConfig;
     }) => Promise<void> | void;
     onStartTask?: (taskId: string) => Promise<void> | void;
     project: MaestroProject;
@@ -135,6 +136,7 @@ export function CreateTaskModal({
         dueDate: "" as string,
         useWorktree: false,
         dangerousMode: false,
+        taskLaunchConfig: null as LaunchConfig | null,
     });
 
     const draft = useDraftTaskLifecycle({
@@ -154,6 +156,7 @@ export function CreateTaskModal({
             dueDate: formStateRef.current.dueDate || undefined,
             useWorktree: formStateRef.current.useWorktree || false,
             dangerousMode: formStateRef.current.dangerousMode || false,
+            launchConfig: formStateRef.current.taskLaunchConfig || undefined,
         }),
     }) as ReturnType<typeof useDraftTaskLifecycle> & { _triggerAutoCreate: () => void; _uploadStagedImages: (taskId: string, files: File[]) => Promise<TaskImage[]> };
 
@@ -171,6 +174,7 @@ export function CreateTaskModal({
         dueDate: form.dueDate,
         useWorktree: form.useWorktree,
         dangerousMode: form.dangerousMode,
+        taskLaunchConfig: form.taskLaunchConfig,
     };
 
     const effectiveEditMode = isEditMode || draft.phase === "created";
@@ -708,6 +712,11 @@ export function CreateTaskModal({
                                         onUseWorktreeChange={form.setUseWorktree}
                                         dangerousMode={form.dangerousMode}
                                         onDangerousModeChange={form.setDangerousMode}
+                                        taskLaunchConfig={form.taskLaunchConfig}
+                                        onTaskLaunchConfigChange={form.setTaskLaunchConfig}
+                                        soleMember={form.selectedTeamMemberIds.length === 1
+                                            ? teamMembers.find(m => m.id === form.selectedTeamMemberIds[0])
+                                            : undefined}
                                         isEditMode={effectiveEditMode}
                                         task={effectiveTask || undefined}
                                     />
@@ -748,6 +757,8 @@ export function CreateTaskModal({
                     onDangerousModeChange={form.setDangerousMode}
                     useWorktree={form.useWorktree}
                     onUseWorktreeChange={form.setUseWorktree}
+                    taskLaunchConfig={form.taskLaunchConfig}
+                    onTaskLaunchConfigChange={form.setTaskLaunchConfig}
                     onClose={handleClose}
                     onSave={handleSave}
                     onSubmit={handleSubmit}

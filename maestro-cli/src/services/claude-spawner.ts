@@ -9,6 +9,7 @@ import { prepareSpawnerEnvironment } from './spawner-env.js';
 import { PromptComposer, type PromptEnvelope } from '../prompting/prompt-composer.js';
 import { STDIN_UNAVAILABLE_WARNING } from '../prompts/index.js';
 import { spawnWithUlimit } from './spawn-with-ulimit.js';
+import { trustClaudeWorkspace } from './claude-workspace-trust.js';
 
 /**
  * Result of spawning an agent session
@@ -274,6 +275,11 @@ export class ClaudeSpawner {
 
     // Determine working directory
     const cwd = options.cwd || manifest.session.workingDirectory || process.cwd();
+
+    // Maestro task runs are unattended. Seed Claude's per-workspace trust bit
+    // before entering its interactive UI so the run cannot stall on a prompt
+    // that is visible only in the raw terminal (and not in Chat view).
+    await trustClaudeWorkspace(cwd, env);
 
     // Spawn Claude process with raised file descriptor limit
     const claudeProcess = spawnWithUlimit('claude', args, {

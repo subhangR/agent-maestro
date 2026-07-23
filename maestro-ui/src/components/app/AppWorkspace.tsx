@@ -480,10 +480,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             </button>
           </div>
         )}
-        {showActivity && active?.maestroSessionId && (
-          <div className="pn-activity-overlay">
+        {active?.maestroSessionId && (
+          <div
+            className="pn-activity-overlay"
+            style={showActivity ? undefined : { display: "none" }}
+            aria-hidden={!showActivity}
+          >
             <SessionActivityPanel
               session={activeMaestroSession ?? maestroSessions[active.maestroSessionId] ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
+              visible={showActivity}
             />
           </div>
         )}

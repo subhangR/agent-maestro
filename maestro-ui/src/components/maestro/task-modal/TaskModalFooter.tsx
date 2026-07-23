@@ -1,9 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { TeamMember, Team } from "../../../app/types/maestro";
+import { TeamMember, Team, LaunchConfig } from "../../../app/types/maestro";
 import { AutoSaveStatus } from "../../../hooks/useAutoSave";
 import { TeamTaskPicker } from "./TeamTaskPicker";
-import { Icon, AgentTile } from "../redesign/kit";
+import { ModelPickerChip } from "./ModelPickerChip";
+import { Icon } from "../redesign/kit";
 
 type TaskModalFooterProps = {
     isEditMode: boolean;
@@ -18,6 +19,8 @@ type TaskModalFooterProps = {
     onDangerousModeChange: (value: boolean) => void;
     useWorktree: boolean;
     onUseWorktreeChange: (value: boolean) => void;
+    taskLaunchConfig: LaunchConfig | null;
+    onTaskLaunchConfigChange: (config: LaunchConfig | null) => void;
     onClose: () => void;
     onSave: () => Promise<void>;
     onSubmit: (startImmediately: boolean) => void;
@@ -52,6 +55,8 @@ export function TaskModalFooter({
     onDangerousModeChange,
     useWorktree,
     onUseWorktreeChange,
+    taskLaunchConfig,
+    onTaskLaunchConfigChange,
     onClose,
     onSave,
     onSubmit,
@@ -149,12 +154,6 @@ export function TaskModalFooter({
         </button>
     ) : null;
 
-    const modelBadge = soleMember?.model ? (
-        <span className="pn-badge pn-badge--model" style={{ marginLeft: 4 }}>
-            <AgentTile kind={soleMember.agentTool || 'claude'} /> {soleMember.model}
-        </span>
-    ) : null;
-
     return (
         <div className="pn-mdl__foot">
             <div className="pn-mdl__footL">
@@ -219,8 +218,12 @@ export function TaskModalFooter({
                 >
                     <Icon name="gitBranch" size={13} /> {useWorktree ? 'worktree' : 'in-place'}
                 </button>
+                <ModelPickerChip
+                    value={taskLaunchConfig}
+                    onChange={onTaskLaunchConfigChange}
+                    fallbackMember={soleMember}
+                />
                 {gearBtn}
-                {modelBadge}
                 {((isEditMode && autoSaveStatus) || (!isEditMode && isDraft && autoSaveStatus)) && (
                     <AutoSaveIndicator status={autoSaveStatus} />
                 )}

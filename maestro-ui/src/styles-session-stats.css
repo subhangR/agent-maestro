@@ -616,11 +616,11 @@
   margin-bottom: 8px;
 }
 .ssv-prompt-text {
-  font-family: var(--ssv-font-mono);
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--ssv-fg-3);
-  white-space: pre-wrap;
+  font-family: var(--ssv-font-ui);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ssv-fg-2);
+  white-space: pre-line;
   word-break: break-word;
 }
 

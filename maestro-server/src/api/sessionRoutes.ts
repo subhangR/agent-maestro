@@ -1690,6 +1690,12 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         useWorktree = true;
       }
 
+      // Task-level launch config (model assigned on the task itself). Applied
+      // below when neither the request nor a per-member override sets one.
+      const taskLaunchConfig = sanitizeLaunchConfig(
+        verifiedTasks.find((t) => t?.launchConfig)?.launchConfig
+      );
+
       // Inherit memberOverrides from task when not provided in request
       // This ensures stored launch-config overrides are applied when spawning from task list
       if (!normalizedMemberOverrides && verifiedTasks.length === 1 && verifiedTasks[0].memberOverrides) {
@@ -1789,7 +1795,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'gpt-5-codex-mini': 1.5,
         'haiku': 1,
       };
-      let teamMemberDefaults: { mode?: AgentMode; model?: string; agentTool?: AgentTool; permissionMode?: string; launchConfig?: LaunchConfig } = {};
+      let teamMemberDefaults: { mode?: AgentMode; model?: string; agentTool?: AgentTool; permissionMode?: string; launchConfig?: LaunchConfig; overrideLaunchConfig?: LaunchConfig } = {};
       const teamMemberSnapshots: TeamMemberSnapshot[] = [];
 
       if (effectiveTeamMemberIds.length > 0 && projectId) {
@@ -1840,6 +1846,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
                 teamMemberDefaults.agentTool = effectiveAgentTool;
                 teamMemberDefaults.permissionMode = effectivePermissionMode;
                 teamMemberDefaults.launchConfig = effectiveLaunchConfig;
+                teamMemberDefaults.overrideLaunchConfig = override?.launchConfig;
               }
               // Build snapshot for UI display (with overrides applied)
               teamMemberSnapshots.push({
@@ -1875,10 +1882,12 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const hasCoordinator = !!resolvedParentSessionId;
       const resolvedMode: AgentMode = normalizeMode(rawMode, hasCoordinator);
 
-      // Resolve launch config and agent tool: explicit launch config wins over team
-      // member defaults, which in turn prefer a resolved profile/override config
-      // (carries reasoning/speed/access) before reconstructing from the bare model.
+      // Resolve launch config and agent tool. Precedence: explicit request >
+      // per-member override (task-scoped gear config) > task-level model >
+      // member profile/defaults > reconstruction from the bare member model.
       const resolvedLaunchConfig: LaunchConfig | undefined = requestedLaunchConfig
+        || sanitizeLaunchConfig(teamMemberDefaults.overrideLaunchConfig)
+        || taskLaunchConfig
         || sanitizeLaunchConfig(teamMemberDefaults.launchConfig)
         || sanitizeLaunchConfig(
           teamMemberDefaults.model

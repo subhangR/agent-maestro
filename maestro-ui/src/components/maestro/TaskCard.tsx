@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from "react";
 import { MaestroTask } from "../../app/types/maestro";
 import { Glyph } from "./redesign/kit";
+import { getModelDisplayLabel } from "../../app/constants/agentTools";
 
 // Priority dot colours (boards.jsx PRIO_DOT) — CSS vars, flip with theme.
 const PRIO_DOT: Record<string, string> = {
@@ -118,6 +119,14 @@ export const TaskCard = React.memo(function TaskCard({
                         <span className="pn-bcard__progbar">
                             <i style={{ width: `${(completedSubtasks / subtaskCount) * 100}%` }} />
                         </span>
+                    </span>
+                )}
+                {task.launchConfig?.model && (
+                    <span
+                        className="pn-bcard__due"
+                        title={`Runs with ${getModelDisplayLabel(String(task.launchConfig.model))}`}
+                    >
+                        {getModelDisplayLabel(String(task.launchConfig.model))}
                     </span>
                 )}
                 {task.dueDate && (

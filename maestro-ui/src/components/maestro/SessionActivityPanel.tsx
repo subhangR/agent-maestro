@@ -1,7 +1,7 @@
 import React from "react";
 import { AgentTile, type AgentKind } from "./redesign/kit";
 import { maestroClient } from "../../utils/MaestroClient";
-import type { AgentTool, MaestroProject, SessionStatsResponse, SessionTranscriptMessage } from "../../app/types/maestro";
+import type { AgentTool, MaestroProject, SessionLogDigestResponse, SessionTranscriptMessage } from "../../app/types/maestro";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useSessionStore } from "../../stores/useSessionStore";
@@ -339,7 +339,14 @@ const IconSpin = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" className="pn-chat__spin"><path d="M12 3a9 9 0 1 0 9 9" opacity=".9" /></svg>
 );
 
-export function SessionActivityPanel({ session }: { session: any }) {
+export function normalizeTranscriptMessage(message: SessionTranscriptMessage): SessionTranscriptMessage {
+  if (message.source !== "user") return message;
+
+  const text = message.text.replace(/^\[PROMPT\]\s*/, "");
+  return text === message.text ? message : { ...message, text };
+}
+
+export function SessionActivityPanel({ session, visible = true }: { session: any; visible?: boolean }) {
   const sessionId: string = session?.id;
   const events: TimelineEvent[] = Array.isArray(session?.timeline) ? session.timeline : [];
   const kind = kindFor(session?.metadata?.agentTool);
@@ -348,37 +355,49 @@ export function SessionActivityPanel({ session }: { session: any }) {
   const status: string = session?.status || "idle";
   const working = status === "working";
 
-  const [stats, setStats] = React.useState<SessionStatsResponse | null>(null);
+  const [digest, setDigest] = React.useState<SessionLogDigestResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const digestRef = React.useRef<SessionLogDigestResponse | null>(null);
   const feedRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!sessionId) return;
+
+    // Keep the last response mounted for instant Terminal → Chat switches, but
+    // stop recurring work while the terminal covers this panel. If the active
+    // session changed while hidden, do one inexpensive prefetch so its first
+    // Chat reveal is still immediate.
+    const hasCurrentDigest = digestRef.current?.sessionId === sessionId;
+    if (!visible && hasCurrentDigest) return;
+
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
     const load = async () => {
       try {
-        const res = await maestroClient.getSessionStats(sessionId, { lastMessages: 60 });
+        const res = await maestroClient.getSessionLogDigest(sessionId, { last: 60, maxLength: 220 });
         if (!cancelled) {
-          setStats(res);
+          digestRef.current = res;
+          setDigest(res);
           setLoading(false);
         }
       } catch {
         if (!cancelled) setLoading(false);
       }
-      if (!cancelled) timer = setTimeout(load, working ? 2500 : 8000);
+      if (!cancelled && visible) timer = setTimeout(load, working ? 2500 : 8000);
     };
-    setLoading(true);
-    load();
+    if (!hasCurrentDigest) setLoading(true);
+    void load();
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [sessionId, working]);
+  }, [sessionId, visible, working]);
+
+  const currentDigest = digest?.sessionId === sessionId ? digest : null;
 
   const messages: SessionTranscriptMessage[] = React.useMemo(
-    () => (Array.isArray(stats?.lastMessages) ? stats!.lastMessages : []),
-    [stats],
+    () => (Array.isArray(currentDigest?.entries) ? currentDigest.entries.map(normalizeTranscriptMessage) : []),
+    [currentDigest],
   );
 
   React.useEffect(() => {
@@ -395,10 +414,6 @@ export function SessionActivityPanel({ session }: { session: any }) {
   const flow = firstUserIdx >= 0 ? messages.slice(firstUserIdx + 1) : messages;
   const hasFlow = flow.length > 0;
 
-  const toolSummary = stats?.toolCallCount
-    ? `${stats.toolCallCount} tool call${stats.toolCallCount === 1 ? "" : "s"}`
-    : "";
-
   return (
     <div className="pn-chat">
       <div className="pn-chat__head">
@@ -408,7 +423,6 @@ export function SessionActivityPanel({ session }: { session: any }) {
           <span className="pn-chat__sub">
             {kind}
             {model ? ` · ${model}` : ""} · {mode}
-            {toolSummary ? ` · ${toolSummary}` : ""}
           </span>
         </div>
         <span className={"pn-chat__status pn-chat__status--" + status}>
@@ -471,7 +485,7 @@ export function SessionActivityPanel({ session }: { session: any }) {
                 </div>
               ) : (
                 <div className="pn-chat__waiting">
-                  {stats && !stats.jsonlFound
+                  {currentDigest
                     ? "The agent hasn't produced any output yet — its steps will appear here as it works."
                     : "Getting started…"}
                 </div>
@@ -481,9 +495,6 @@ export function SessionActivityPanel({ session }: { session: any }) {
                 <div className="pn-chat__thinking">
                   <span className="pn-chat__dots"><span /><span /><span /></span>
                   {kind} is finishing up
-                  {stats?.tokens?.total ? (
-                    <span className="pn-chat__thinking-meta"> · {stats.tokens.total.toLocaleString()} tokens</span>
-                  ) : null}
                 </div>
               )}
             </>
