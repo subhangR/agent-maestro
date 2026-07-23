@@ -28,9 +28,13 @@ export interface PickerOption {
   id: string;
   label: string;
   sublabel?: string;
-  iconName?: IconName;
-  /** Free-form swatch/colour token for status/model rows; Palette styles it. */
+  /** A compact chip shown above the option's metadata (for example, a provider). */
+  badge?: string;
+  /** Colour used for the option's dot / badge dot. Accepts a theme token or CSS colour. */
   tone?: string;
+  /** Render the secondary metadata using the app's monospaced typeface. */
+  monoSublabel?: boolean;
+  iconName?: IconName;
   disabled?: boolean;
 }
 

@@ -1,26 +1,28 @@
 // RunConfigSheet — the body for `{ type: 'runConfig'; taskId; sessionId? }`.
-// Inline spawn configuration (model / agent tool / mode / permissions / worktree)
+// Inline spawn configuration (provider / model / reasoning / mode / permissions / worktree)
 // seeded from the task's assigned team member, then POST /api/sessions/spawn via
 // the @/state client. The new session arrives over the session:spawn IMMEDIATE WS
 // event (Pulse ingests it — idempotent), so we DO NOT insert it ourselves: on
 // success we just dismiss and navigate to the (soon-to-exist) session detail.
 //
 // spawnSource is FORCED to 'ui' inside the client — never set here.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 import { StyleSheet } from 'react-native-unistyles';
 
 import { Button, Input, SheetHeader, SheetSection, FieldRow, Toggle, Text } from '@/components';
-import { getMaestroClient, useTask, useTeamMember, useUiStore } from '@/state';
+import { getMaestroClient, useModelProfiles, useTask, useTeamMember, useUiStore } from '@/state';
 import {
   AGENT_MODES,
-  AGENT_TOOLS,
+  LAUNCH_REASONING_EFFORTS,
   PERMISSION_MODES,
   asTaskId,
   asTeamMemberId,
   type AgentMode,
-  type AgentTool,
+  type LaunchProvider,
+  type LaunchReasoningEffort,
+  type ModelProfile,
   type PermissionMode,
 } from '@/domain';
 import { spawnSessionRequestSchema, type SpawnSessionRequest } from '@/domain/schemas/spawn';
@@ -35,11 +37,18 @@ const MODE_LABEL: Record<AgentMode, string> = {
   'coordinated-worker': 'Coordinated worker',
   'coordinated-coordinator': 'Coordinated coordinator',
 };
-const TOOL_LABEL: Record<AgentTool, string> = {
-  'claude-code': 'Claude Code',
-  codex: 'Codex',
-  hermes: 'Hermes',
+const PROVIDER_LABEL: Record<LaunchProvider, string> = {
+  claude: 'Claude',
+  openai: 'OpenAI',
   gemini: 'Gemini',
+  hermes: 'Hermes',
+};
+// Matches the web provider-chip palette.
+const PROVIDER_COLOR: Record<LaunchProvider, string> = {
+  claude: '#A78BFA',
+  openai: '#10B981',
+  gemini: '#38BDF8',
+  hermes: '#F59E0B',
 };
 const PERMISSION_LABEL: Record<PermissionMode, string> = {
   acceptEdits: 'Accept edits',
@@ -47,6 +56,38 @@ const PERMISSION_LABEL: Record<PermissionMode, string> = {
   readOnly: 'Read only',
   bypassPermissions: 'Bypass permissions',
 };
+
+const CUSTOM_MODEL_ID = '__custom_model__';
+const DEFAULT_REASONING_ID = '__default_reasoning__';
+const RUN_PROVIDERS = ['claude', 'openai', 'gemini', 'hermes'] as const satisfies readonly LaunchProvider[];
+
+function providerForLegacyTool(agentTool?: string): LaunchProvider {
+  switch (agentTool) {
+    case 'codex':
+      return 'openai';
+    case 'gemini':
+      return 'gemini';
+    case 'hermes':
+      return 'hermes';
+    default:
+      return 'claude';
+  }
+}
+
+function applyProfile(
+  profile: ModelProfile,
+  setProvider: (provider: LaunchProvider) => void,
+  setModel: (model: string) => void,
+  setReasoningEffort: (effort: LaunchReasoningEffort | undefined) => void,
+  setSelectedProfileId: (id: string | null) => void,
+  setIsCustomModel: (isCustom: boolean) => void,
+): void {
+  setProvider(profile.launchConfig.provider);
+  setModel(profile.launchConfig.model);
+  setReasoningEffort(profile.launchConfig.reasoningEffort);
+  setSelectedProfileId(profile.id);
+  setIsCustomModel(false);
+}
 
 export function RunConfigSheet({
   intent,
@@ -57,10 +98,16 @@ export function RunConfigSheet({
 
   const task = useTask(asTaskId(intent.taskId));
   const member = useTeamMember(asTeamMemberId(task?.teamMemberId ?? ''));
+  const modelProfiles = useModelProfiles();
 
-  // Config seeded from the assigned member; falls back to safe defaults.
+  // Profiles load independently of members, so the bound/default profile is
+  // applied once both are in the entity store. A legacy member.model remains a
+  // custom-model fallback when no profile applies.
   const [model, setModel] = useState<string>(member?.model ?? '');
-  const [agentTool, setAgentTool] = useState<AgentTool>(member?.agentTool ?? 'claude-code');
+  const [provider, setProvider] = useState<LaunchProvider>(() => providerForLegacyTool(member?.agentTool));
+  const [reasoningEffort, setReasoningEffort] = useState<LaunchReasoningEffort | undefined>(undefined);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
+  const [isCustomModel, setIsCustomModel] = useState<boolean>(Boolean(member?.model));
   const [mode, setMode] = useState<AgentMode>(member?.mode ?? 'worker');
   const [permissionMode, setPermissionMode] = useState<PermissionMode>(
     member?.permissionMode ?? 'acceptEdits',
@@ -69,8 +116,41 @@ export function RunConfigSheet({
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const seededProfile = useRef(false);
 
   const taskTitle = task?.title ?? intent.taskId;
+
+  const orderedProfiles = useMemo(
+    () =>
+      [...modelProfiles].sort(
+        (a, b) => Number(Boolean(b.isDefault)) - Number(Boolean(a.isDefault)) || a.name.localeCompare(b.name),
+      ),
+    [modelProfiles],
+  );
+  const selectedProfile = orderedProfiles.find((profile) => profile.id === selectedProfileId);
+  const providerProfiles = orderedProfiles.filter((profile) => profile.launchConfig.provider === provider);
+
+  useEffect(() => {
+    // Do not let an early profile response beat the task/member response: a
+    // member-bound profile must take precedence over the workspace default.
+    if (seededProfile.current || !task || orderedProfiles.length === 0) return;
+    if (task.teamMemberId && !member) return;
+    const initialProfile =
+      orderedProfiles.find((profile) => profile.id === member?.modelProfileId) ??
+      orderedProfiles.find((profile) => profile.isDefault);
+
+    if (initialProfile) {
+      applyProfile(
+        initialProfile,
+        setProvider,
+        setModel,
+        setReasoningEffort,
+        setSelectedProfileId,
+        setIsCustomModel,
+      );
+    }
+    seededProfile.current = true;
+  }, [member, orderedProfiles, task]);
 
   // Open the universal single-select picker, mapping its result back to a setter.
   function pick<T extends string>(
@@ -94,6 +174,77 @@ export function RunConfigSheet({
     });
   }
 
+  function selectProvider(nextProvider: LaunchProvider): void {
+    setProvider(nextProvider);
+    const firstProfile = orderedProfiles.find((profile) => profile.launchConfig.provider === nextProvider);
+    if (firstProfile) {
+      applyProfile(
+        firstProfile,
+        setProvider,
+        setModel,
+        setReasoningEffort,
+        setSelectedProfileId,
+        setIsCustomModel,
+      );
+      return;
+    }
+    setSelectedProfileId(null);
+    setIsCustomModel(true);
+    setModel('');
+    setReasoningEffort(undefined);
+  }
+
+  function openModelPicker(): void {
+    sheet.open({
+      type: 'picker',
+      config: {
+        title: `${PROVIDER_LABEL[provider]} models`,
+        selectedIds: [isCustomModel ? CUSTOM_MODEL_ID : selectedProfileId].filter(
+          (id): id is string => Boolean(id),
+        ),
+        searchable: true,
+        options: [
+          ...providerProfiles.map((profile) => ({
+            id: profile.id,
+            label: profile.name,
+            badge: PROVIDER_LABEL[profile.launchConfig.provider],
+            tone: PROVIDER_COLOR[profile.launchConfig.provider],
+            sublabel: [profile.launchConfig.model, profile.launchConfig.reasoningEffort]
+              .filter(Boolean)
+              .join(' · '),
+            monoSublabel: true,
+          })),
+          {
+            id: CUSTOM_MODEL_ID,
+            label: 'Custom…',
+            sublabel: 'Enter a raw model ID',
+          },
+        ],
+        onSubmit: (ids) => {
+          const nextId = ids[0];
+          if (nextId === CUSTOM_MODEL_ID) {
+            setSelectedProfileId(null);
+            setIsCustomModel(true);
+            setModel('');
+            setReasoningEffort(undefined);
+            return;
+          }
+          const profile = orderedProfiles.find((candidate) => candidate.id === nextId);
+          if (profile) {
+            applyProfile(
+              profile,
+              setProvider,
+              setModel,
+              setReasoningEffort,
+              setSelectedProfileId,
+              setIsCustomModel,
+            );
+          }
+        },
+      },
+    });
+  }
+
   const projectId = useMemo(
     () => task?.projectId ?? activeProjectId ?? undefined,
     [task?.projectId, activeProjectId],
@@ -102,6 +253,10 @@ export function RunConfigSheet({
   async function onSpawn(): Promise<void> {
     if (busy) return;
     setError(null);
+    if (!model.trim()) {
+      setError('Choose a model profile or enter a custom model ID.');
+      return;
+    }
     setBusy(true);
     try {
       // NOTE: no cols/rows here — the server's spawn schema is strict and the PTY
@@ -113,9 +268,12 @@ export function RunConfigSheet({
         ...(projectId ? { projectId } : {}),
         ...(member?.id ? { teamMemberId: member.id } : {}),
         mode,
-        agentTool,
         permissionMode,
-        ...(model.trim() ? { model: model.trim() } : {}),
+        launchConfig: {
+          provider,
+          model: model.trim(),
+          ...(reasoningEffort ? { reasoningEffort } : {}),
+        },
         useWorktree,
       });
 
@@ -146,23 +304,70 @@ export function RunConfigSheet({
         </SheetSection>
 
         <View style={styles.card}>
-          <FieldRow label="Model">
-            <View style={styles.modelInput}>
+          <FieldRow
+            label="Provider"
+            value={PROVIDER_LABEL[provider]}
+            onPress={() =>
+              sheet.open({
+                type: 'picker',
+                config: {
+                  title: 'Provider',
+                  selectedIds: [provider],
+                  options: RUN_PROVIDERS.map((option) => ({
+                    id: option,
+                    label: PROVIDER_LABEL[option],
+                    tone: PROVIDER_COLOR[option],
+                  })),
+                  onSubmit: (ids) => {
+                    const next = ids[0] as LaunchProvider | undefined;
+                    if (next) selectProvider(next);
+                  },
+                },
+              })
+            }
+            accessibilityHint="Choose the model provider"
+          />
+          <FieldRow
+            label="Model"
+            value={isCustomModel ? (model || 'Custom…') : (selectedProfile?.name ?? 'Choose a model')}
+            onPress={openModelPicker}
+            accessibilityHint="Choose a server-defined model profile or enter a custom model"
+          />
+          {isCustomModel ? (
+            <View style={styles.customModelInput}>
               <Input
                 value={model}
                 onChangeText={setModel}
-                placeholder="Default"
+                placeholder="Model ID"
                 autoCapitalize="none"
                 autoCorrect={false}
               />
             </View>
-          </FieldRow>
-          <FieldRow
-            label="Agent"
-            value={TOOL_LABEL[agentTool]}
-            onPress={() => pick('Agent tool', AGENT_TOOLS, agentTool, (v) => TOOL_LABEL[v], setAgentTool)}
-            accessibilityHint="Choose the agent tool"
-          />
+          ) : null}
+          {provider === 'claude' ? (
+            <FieldRow
+              label="Reasoning"
+              value={reasoningEffort ?? 'Default'}
+              onPress={() =>
+                sheet.open({
+                  type: 'picker',
+                  config: {
+                    title: 'Reasoning effort',
+                    selectedIds: reasoningEffort ? [reasoningEffort] : [DEFAULT_REASONING_ID],
+                    options: [
+                      { id: DEFAULT_REASONING_ID, label: 'Default', sublabel: 'Use the model default' },
+                      ...LAUNCH_REASONING_EFFORTS.map((effort) => ({ id: effort, label: effort })),
+                    ],
+                    onSubmit: (ids) => {
+                      const next = ids[0] as LaunchReasoningEffort | typeof DEFAULT_REASONING_ID | undefined;
+                      setReasoningEffort(next === DEFAULT_REASONING_ID || !next ? undefined : next);
+                    },
+                  },
+                })
+              }
+              accessibilityHint="Choose Claude reasoning effort"
+            />
+          ) : null}
           <FieldRow
             label="Mode"
             value={MODE_LABEL[mode]}
@@ -234,9 +439,10 @@ const styles = StyleSheet.create((theme) => ({
     borderColor: theme.colors.line,
     overflow: 'hidden',
   },
-  modelInput: {
-    flex: 1,
-    minWidth: 140,
+  customModelInput: {
+    paddingHorizontal: theme.space[4],
+    paddingBottom: theme.space[2],
+    paddingLeft: theme.space[4] + 96 + theme.space[3],
   },
   error: {
     paddingHorizontal: theme.space[4],
