@@ -66,6 +66,7 @@ export default function RootLayout(): React.JSX.Element | null {
                 name="whiteboard/[sessionId]"
                 options={{ presentation: 'fullScreenModal' }}
               />
+              <Stack.Screen name="docs/[docId]" />
             </Stack>
             <NotificationToaster />
             <SheetHost />

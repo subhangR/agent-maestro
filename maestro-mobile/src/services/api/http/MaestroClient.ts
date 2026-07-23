@@ -54,6 +54,9 @@ import type {
   ClaudeCodeSkill,
   SessionCommandUsage,
   SessionStatsResponse,
+  LogProvider,
+  AgentLogFile,
+  LogTailResult,
 } from '@/domain';
 import { spawnSessionRequestSchema, type SpawnSessionRequest } from '@/domain/schemas/spawn';
 
@@ -546,8 +549,35 @@ export class MaestroClient {
     });
   }
 
-  async getProjectDocs(projectId: string): Promise<DocEntry[]> {
-    return this.request<DocEntry[]>(`/projects/${projectId}/docs`);
+  async getProjectDocs(projectId: string, kind?: 'markdown' | 'diagram'): Promise<DocEntry[]> {
+    return this.request<DocEntry[]>(`/projects/${projectId}/docs${buildQuery({ kind })}`);
+  }
+
+  // ==================== AGENT LOGS ====================
+  // Raw provider (Claude/Codex) transcripts, exposed for non-Tauri clients.
+  // Keyed by the project cwd + provider; a file's maestroSessionId links it to a
+  // session. See maestro-server/src/api/agentLogRoutes.ts.
+
+  async listAgentLogs(provider: LogProvider, cwd: string): Promise<AgentLogFile[]> {
+    return this.request<AgentLogFile[]>(`/agent-logs/list${buildQuery({ provider, cwd })}`);
+  }
+
+  async readAgentLog(provider: LogProvider, cwd: string, filename: string): Promise<string> {
+    const res = await this.request<{ content: string }>(
+      `/agent-logs/read${buildQuery({ provider, cwd, filename })}`,
+    );
+    return res.content;
+  }
+
+  async tailAgentLog(
+    provider: LogProvider,
+    cwd: string,
+    filename: string,
+    offset: number,
+  ): Promise<LogTailResult> {
+    return this.request<LogTailResult>(
+      `/agent-logs/tail${buildQuery({ provider, cwd, filename, offset })}`,
+    );
   }
 
   async getProjectDocsPaginated(
