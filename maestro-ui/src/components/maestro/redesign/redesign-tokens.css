@@ -701,11 +701,16 @@ html[data-redesign] .pn-mp { width: 340px; flex: 0 0 auto; display: flex; flex-d
 html[data-redesign] .pn-sp { width: 340px; flex: 0 0 auto; display: flex; flex-direction: column; background: var(--pn-surface); min-height: 0; overflow: hidden; border-left: 1px solid var(--pn-line); }
 
 /* left sub-tab / action bar */
-html[data-redesign] .pn-subbar { display: flex; align-items: center; gap: 6px; padding: 4px 12px 12px; flex: 0 0 auto; }
+html[data-redesign] .pn-subbar {
+  display: flex; align-items: center; gap: 3px; padding: 4px 10px 8px; flex: 0 0 auto;
+  flex-wrap: wrap; row-gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none;
+}
+html[data-redesign] .pn-subbar::-webkit-scrollbar { display: none; }
 html[data-redesign] .pn-subtab {
-  position: relative; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 9px;
+  position: relative; display: inline-flex; align-items: center; gap: 4px; height: 27px; padding: 0 8px;
   border-radius: var(--pn-r-sm); color: var(--pn-ink-3); background: transparent; border: 1px solid transparent;
-  font-family: var(--pn-mono); font-size: 11px; font-weight: 600; transition: background 140ms, color 140ms;
+  font-family: var(--pn-mono); font-size: 10.5px; font-weight: 600; transition: background 140ms, color 140ms;
+  white-space: nowrap; flex-shrink: 0;
 }
 html[data-redesign] .pn-subtab:hover { background: var(--pn-hover); color: var(--pn-ink-2); }
 html[data-redesign] .pn-subtab--active { background: var(--pn-active); color: var(--pn-ink); }

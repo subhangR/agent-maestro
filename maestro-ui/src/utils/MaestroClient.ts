@@ -54,6 +54,7 @@ import type {
     GitCapabilities,
     GitDiffSummary,
     GitPrInfo,
+    SessionLogDigestResponse,
     SessionStatsResponse,
     SessionPrompt,
     SessionCommandUsage,
@@ -479,6 +480,24 @@ class MaestroClient {
     async getSessionStats(sessionId: string, opts: { lastMessages?: number } = {}): Promise<SessionStatsResponse> {
         const qs = opts.lastMessages !== undefined ? `?lastMessages=${opts.lastMessages}` : '';
         return this.fetch<SessionStatsResponse>(`/sessions/${sessionId}/stats${qs}`);
+    }
+
+    /**
+     * Fetch the recent, human-readable transcript tail. This endpoint is
+     * intentionally used by live chat because it avoids rescanning the full
+     * JSONL file on every refresh.
+     */
+    async getSessionLogDigest(
+        sessionId: string,
+        opts: { last?: number; maxLength?: number } = {},
+    ): Promise<SessionLogDigestResponse> {
+        const params = new URLSearchParams();
+        if (opts.last !== undefined) params.set('last', String(opts.last));
+        if (opts.maxLength !== undefined) params.set('maxLength', String(opts.maxLength));
+        const query = params.toString();
+        return this.fetch<SessionLogDigestResponse>(
+            `/sessions/${encodeURIComponent(sessionId)}/log-digest${query ? `?${query}` : ''}`,
+        );
     }
 
     async getSessionPrompts(sessionId: string): Promise<SessionPrompt[]> {

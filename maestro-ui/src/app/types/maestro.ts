@@ -528,6 +528,10 @@ export interface MaestroTask {
   // Per-member launch overrides saved on the task
   memberOverrides?: Record<string, MemberLaunchOverride>;
 
+  // Task-level launch config (agent tool + model) chosen in the task modal.
+  // Applied at spawn when neither the request nor a member override sets one.
+  launchConfig?: LaunchConfig | null;
+
   // Run this task with --dangerously-skip-permissions
   dangerousMode?: boolean;
 
@@ -621,6 +625,7 @@ export interface CreateTaskPayload {
   teamMemberIds?: string[];
   teamId?: string | null;
   memberOverrides?: Record<string, MemberLaunchOverride>;
+  launchConfig?: LaunchConfig;
   dueDate?: string;
   useWorktree?: boolean;
   dangerousMode?: boolean;
@@ -644,6 +649,8 @@ export interface UpdateTaskPayload {
   teamMemberIds?: string[];
   teamId?: string | null;
   dueDate?: string | null;
+  memberOverrides?: Record<string, MemberLaunchOverride>;
+  launchConfig?: LaunchConfig | null;  // null clears the task-level model
   dangerousMode?: boolean;
   useWorktree?: boolean;
   // NOTE: timeline moved to Session - use addTimelineEvent on session
@@ -1210,6 +1217,24 @@ export interface SessionTranscriptMessage {
   timestamp: number;
   text: string;
   source: 'assistant' | 'user';
+}
+
+/**
+ * Lightweight, tail-only transcript response used by live conversation views.
+ * Unlike SessionStatsResponse, this does not scan the complete session log.
+ */
+export interface SessionLogDigestResponse {
+  sessionId: string;
+  workerName?: string;
+  taskIds: string[];
+  state: 'active' | 'idle' | 'needs_input';
+  entries: SessionTranscriptMessage[];
+  stuck: {
+    silentDurationMs: number;
+    toolCallsSinceLastText: number;
+    warning: string;
+  } | null;
+  lastActivityTimestamp: number;
 }
 
 export interface SessionStatsResponse {

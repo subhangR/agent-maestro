@@ -30,14 +30,16 @@ export function ChannelList({
             title="Create channel"
             aria-label="Create channel"
           >
-            +
+            <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <path d="M6 1v10M1 6h10" />
+            </svg>
           </button>
         )}
       </div>
 
       <div className="messagingChannelList">
         {loading && channels.length === 0 && (
-          <div className="messagingChannelLoading">Loading channels…</div>
+          <div className="messagingChannelLoading">Loading…</div>
         )}
         {!loading && channels.length === 0 && (
           <div className="messagingChannelEmpty">No channels yet</div>
@@ -50,8 +52,9 @@ export function ChannelList({
               c.id === activeChannelId ? "messagingChannelRowActive" : ""
             }`}
             onClick={() => onSelectChannel(c.id)}
+            title={`#${c.name}${c.description ? ` — ${c.description}` : ""}`}
           >
-            <span className="messagingChannelHash">#</span>
+            <span className="messagingChannelHash" aria-hidden="true">#</span>
             <span className="messagingChannelName">{c.name}</span>
           </button>
         ))}

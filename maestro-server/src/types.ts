@@ -471,6 +471,10 @@ export interface Task {
   // Per-member launch overrides saved on the task
   memberOverrides?: Record<string, MemberLaunchOverride>;
 
+  // Task-level launch config (agent tool + model) chosen in the task modal.
+  // Applied at spawn when neither the request nor a member override sets one.
+  launchConfig?: LaunchConfig;
+
   // Run this task with --dangerously-skip-permissions
   dangerousMode?: boolean;
 
@@ -996,6 +1000,7 @@ export interface CreateTaskPayload {
   teamMemberIds?: string[];
   teamId?: string | null;
   memberOverrides?: Record<string, MemberLaunchOverride>;
+  launchConfig?: LaunchConfig;
   dangerousMode?: boolean;
   useWorktree?: boolean;
   dueDate?: string;
@@ -1022,6 +1027,7 @@ export interface UpdateTaskPayload {
   teamId?: string | null;
   dueDate?: string | null;
   memberOverrides?: Record<string, MemberLaunchOverride>;  // Per-member launch overrides
+  launchConfig?: LaunchConfig | null;  // Task-level launch config; null clears it
   dangerousMode?: boolean;
   useWorktree?: boolean;
   images?: TaskImage[];

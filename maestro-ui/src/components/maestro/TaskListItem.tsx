@@ -242,11 +242,14 @@ export const TaskListItem = React.memo(function TaskListItem({
 
     // Mirror the server: the "top" member (most-powerful model) is what launches,
     // not simply the first assigned. Keeps the badge consistent with the spawn.
+    // Precedence: transient row override > task-level model > member model.
     const assignedTeamMember = pickTopMember(assignedTeamMembers);
-    const effectiveModel = launchOverride?.model || assignedTeamMember?.model || null;
+    const effectiveModel = launchOverride?.model || task.launchConfig?.model || assignedTeamMember?.model || null;
     const effectiveModelLabel = launchOverride
         ? formatLaunchConfigLabel(launchOverride)
-        : (effectiveModel || 'default');
+        : task.launchConfig
+            ? formatLaunchConfigLabel(task.launchConfig)
+            : (effectiveModel || 'default');
     const isSubtask = task.parentId !== null;
 
     // For subtasks, also fetch parent task sessions
@@ -690,7 +693,7 @@ export const TaskListItem = React.memo(function TaskListItem({
                                     const willOpen = !showLaunchDropdown;
                                     setShowLaunchDropdown(willOpen);
                                     if (willOpen) {
-                                        setExpandedTool(getAgentToolForLaunchConfig(launchOverride || undefined) || 'claude-code');
+                                        setExpandedTool(getAgentToolForLaunchConfig(launchOverride || task.launchConfig || undefined) || 'claude-code');
                                     }
                                 }}
                                 title={effectiveModel ? `Model: ${effectiveModelLabel}` : 'No model set'}

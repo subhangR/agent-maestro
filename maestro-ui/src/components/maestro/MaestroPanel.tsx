@@ -418,7 +418,7 @@ export const MaestroPanel = React.memo(function MaestroPanel({
         const mode = member?.mode || 'worker';
         const effectiveLaunchConfig = task.dangerousMode
             ? {
-                ...(launchConfig || createLaunchConfig(
+                ...(launchConfig || task.launchConfig || createLaunchConfig(
                     member?.agentTool || 'claude-code',
                     member?.model || DEFAULT_MODEL_BY_AGENT_TOOL[member?.agentTool || 'claude-code'],
                 )),
@@ -451,6 +451,7 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                 teamMemberId: taskData.teamMemberId,
                 teamMemberIds: taskData.teamMemberIds,
                 memberOverrides: taskData.memberOverrides,
+                launchConfig: taskData.launchConfig,
                 useWorktree: taskData.useWorktree,
             });
             if (taskData._stagedFiles?.length > 0) {

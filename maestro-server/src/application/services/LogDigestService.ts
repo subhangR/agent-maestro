@@ -801,7 +801,7 @@ export class LogDigestService {
       } else if (type === 'user') {
         const text = this.extractUserText(line, maxLength);
         if (text) {
-          entries.push({ timestamp, text: `[PROMPT] ${text}`, source: 'user' });
+          entries.push({ timestamp, text, source: 'user' });
         }
       }
     }
@@ -852,11 +852,11 @@ export class LogDigestService {
           });
         }
       } else if (role === 'user') {
-        const cleaned = this.cleanText(text);
+        const cleaned = this.humanizeUserPrompt(text);
         if (cleaned && cleaned.length >= 3) {
           this.pushEntry(entries, {
             timestamp,
-            text: `[PROMPT] ${this.truncateText(cleaned, maxLength)}`,
+            text: this.truncateText(cleaned, maxLength),
             source: 'user',
           });
         }
@@ -1008,18 +1008,67 @@ export class LogDigestService {
       return null;
     }
 
+    const humanized = this.humanizeUserPrompt(text);
+    if (!humanized) return null;
+
     // Filter noise tags
     for (const pattern of NOISE_TAG_PATTERNS) {
-      if (pattern.test(text)) {
+      if (pattern.test(humanized)) {
         return null;
       }
     }
 
     // Skip empty or very short messages
-    const cleaned = text.trim();
+    const cleaned = humanized.trim();
     if (cleaned.length < 3) return null;
 
     return this.truncateText(cleaned, maxLength);
+  }
+
+  /**
+   * Turn Maestro's injected XML envelopes into user-facing prose. These
+   * envelopes are useful to the agent but should never be rendered as chat.
+   */
+  private humanizeUserPrompt(text: string): string | null {
+    const taskBlock = text.match(/<maestro_task_prompt\b[^>]*>[\s\S]*?<\/maestro_task_prompt>/i)?.[0];
+    let taskSummary = '';
+
+    if (taskBlock) {
+      const title = this.decodeXmlText(taskBlock.match(/<title>([\s\S]*?)<\/title>/i)?.[1] || '');
+      const description = this.decodeXmlText(taskBlock.match(/<description>([\s\S]*?)<\/description>/i)?.[1] || '');
+      if (title) {
+        taskSummary = `Task: ${title}`;
+        if (description && description.toLocaleLowerCase() !== title.toLocaleLowerCase()) {
+          taskSummary += ` — ${description}`;
+        }
+      }
+    }
+
+    let remaining = text
+      .replace(/<environment_context\b[^>]*>[\s\S]*?<\/environment_context>/gi, '')
+      .replace(/<maestro_task_prompt\b[^>]*>[\s\S]*?<\/maestro_task_prompt>/gi, '')
+      .trim();
+
+    // Fail closed for malformed or partial internal markup: raw tags are more
+    // confusing than omitting a non-human transcript entry.
+    if (/<(?:maestro_|environment_context\b|identity_kernel\b|mode_identity\b)/i.test(remaining)) {
+      remaining = '';
+    }
+
+    const readable = [taskSummary, remaining].filter(Boolean).join('\n');
+    return readable || null;
+  }
+
+  private decodeXmlText(value: string): string {
+    return value
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   /**

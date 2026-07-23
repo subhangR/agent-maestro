@@ -266,6 +266,7 @@ export class FileSystemTaskRepository implements ITaskRepository {
       teamId: input.teamId ?? null,
       dueDate: input.dueDate || null,
       memberOverrides: input.memberOverrides,
+      launchConfig: input.launchConfig,
       dangerousMode: input.dangerousMode,
       useWorktree: input.useWorktree,
       clientRequestId: input.clientRequestId,
@@ -437,6 +438,7 @@ export class FileSystemTaskRepository implements ITaskRepository {
     if (updates.images !== undefined) task.images = updates.images;
     if (updates.dueDate !== undefined) task.dueDate = updates.dueDate;
     if (updates.memberOverrides !== undefined) task.memberOverrides = updates.memberOverrides;
+    if (updates.launchConfig !== undefined) task.launchConfig = updates.launchConfig ?? undefined;
     if (updates.dangerousMode !== undefined) task.dangerousMode = updates.dangerousMode;
     if (updates.useWorktree !== undefined) task.useWorktree = updates.useWorktree;
 

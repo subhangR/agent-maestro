@@ -1,7 +1,8 @@
 import React from "react";
-import { TaskPriority, MaestroTask } from "../../../app/types/maestro";
+import { TaskPriority, MaestroTask, LaunchConfig, TeamMember } from "../../../app/types/maestro";
 import { Icon } from "../redesign/kit";
 import { TaskSpellAssignment } from "../../spells/TaskSpellAssignment";
+import { ModelPickerChip } from "./ModelPickerChip";
 
 const STATUS_LABELS: Record<string, string> = {
     todo: "Todo",
@@ -33,11 +34,14 @@ type DetailsTabProps = {
     onUseWorktreeChange: (value: boolean) => void;
     dangerousMode: boolean;
     onDangerousModeChange: (value: boolean) => void;
+    taskLaunchConfig: LaunchConfig | null;
+    onTaskLaunchConfigChange: (config: LaunchConfig | null) => void;
+    soleMember?: TeamMember;
     isEditMode: boolean;
     task?: MaestroTask;
 };
 
-export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChange, useWorktree, onUseWorktreeChange, dangerousMode, onDangerousModeChange, isEditMode, task }: DetailsTabProps) {
+export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChange, useWorktree, onUseWorktreeChange, dangerousMode, onDangerousModeChange, taskLaunchConfig, onTaskLaunchConfigChange, soleMember, isEditMode, task }: DetailsTabProps) {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div className="pn-fld">
@@ -58,6 +62,17 @@ export function DetailsTab({ priority, onPriorityChange, dueDate, onDueDateChang
             </div>
 
             <div className="pn-frow">
+                <div className="pn-fld">
+                    <span className="pn-flabel">Model</span>
+                    <div style={{ display: 'flex', alignItems: 'center', height: 38 }}>
+                        <ModelPickerChip
+                            value={taskLaunchConfig}
+                            onChange={onTaskLaunchConfigChange}
+                            fallbackMember={soleMember}
+                        />
+                    </div>
+                </div>
+
                 <div className="pn-fld" style={{ flex: 1 }}>
                     <span className="pn-flabel">Due date</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

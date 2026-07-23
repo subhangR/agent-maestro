@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { TaskPriority, MaestroTask, MemberLaunchOverride, TeamMember, TaskImage } from "../app/types/maestro";
+import { TaskPriority, MaestroTask, MemberLaunchOverride, TeamMember, TaskImage, LaunchConfig } from "../app/types/maestro";
 import { maestroClient } from "../utils/MaestroClient";
 import { MemberConfig, buildDefaultMemberConfig, buildMemberConfigFromOverride, buildOverridesFromConfigs } from "../components/maestro/task-modal/LaunchConfigPanel";
 
@@ -21,6 +21,8 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
     const [dueDate, _setDueDate] = useState<string>("");
     const [useWorktree, _setUseWorktree] = useState<boolean>(false);
     const [dangerousMode, _setDangerousMode] = useState<boolean>(false);
+    // Task-level model (null = auto: assignee default or server default)
+    const [taskLaunchConfig, _setTaskLaunchConfig] = useState<LaunchConfig | null>(null);
 
     const setTitle = useCallback((v: string) => { _setTitle(v); bumpVersion(); }, [bumpVersion]);
     const setPrompt = useCallback((v: string) => { _setPrompt(v); bumpVersion(); }, [bumpVersion]);
@@ -31,6 +33,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
     const setDueDate = useCallback((v: string) => { _setDueDate(v); bumpVersion(); }, [bumpVersion]);
     const setUseWorktree = useCallback((v: boolean) => { _setUseWorktree(v); bumpVersion(); }, [bumpVersion]);
     const setDangerousMode = useCallback((v: boolean) => { _setDangerousMode(v); bumpVersion(); }, [bumpVersion]);
+    const setTaskLaunchConfig = useCallback((v: LaunchConfig | null) => { _setTaskLaunchConfig(v); bumpVersion(); }, [bumpVersion]);
 
     // Subtask state
     const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
@@ -66,8 +69,9 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
             _setDueDate(task.dueDate || "");
             _setUseWorktree(task.useWorktree ?? false);
             _setDangerousMode(task.dangerousMode ?? false);
+            _setTaskLaunchConfig(task.launchConfig ?? null);
         }
-    }, [isEditMode, isOpen, task?.id, task?.title, task?.description, task?.priority, task?.teamMemberId, JSON.stringify(task?.teamMemberIds), task?.teamId, JSON.stringify(task?.referenceTaskIds), task?.dueDate, task?.useWorktree, task?.dangerousMode]);
+    }, [isEditMode, isOpen, task?.id, task?.title, task?.description, task?.priority, task?.teamMemberId, JSON.stringify(task?.teamMemberIds), task?.teamId, JSON.stringify(task?.referenceTaskIds), task?.dueDate, task?.useWorktree, task?.dangerousMode, JSON.stringify(task?.launchConfig)]);
 
     // Fetch task docs in edit mode
     useEffect(() => {
@@ -99,6 +103,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
             _setDueDate("");
             _setUseWorktree(false);
             _setDangerousMode(false);
+            _setTaskLaunchConfig(null);
             setActiveTab(null);
             setChangeVersion(0);
         }
@@ -114,6 +119,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
                 dueDate !== (baselineTask.dueDate || "") ||
                 useWorktree !== (baselineTask.useWorktree ?? false) ||
                 dangerousMode !== (baselineTask.dangerousMode ?? false) ||
+                JSON.stringify(taskLaunchConfig ?? null) !== JSON.stringify(baselineTask.launchConfig ?? null) ||
                 JSON.stringify(selectedTeamMemberIds) !== JSON.stringify(baselineTask.teamMemberIds || (baselineTask.teamMemberId ? [baselineTask.teamMemberId] : [])) ||
                 (selectedTeamId ?? null) !== (baselineTask.teamId ?? null) ||
                 JSON.stringify(selectedSkills) !== JSON.stringify(baselineTask.skillIds || []) ||
@@ -122,7 +128,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         }
         // No baseline — pure create mode, no draft yet
         return title.trim() !== "" || prompt.trim() !== "" || stagedImageFiles.length > 0;
-    }, [baselineTask, title, prompt, priority, dueDate, useWorktree, dangerousMode, selectedTeamMemberIds, selectedTeamId, selectedSkills, selectedReferenceTasks, stagedImageFiles.length]);
+    }, [baselineTask, title, prompt, priority, dueDate, useWorktree, dangerousMode, taskLaunchConfig, selectedTeamMemberIds, selectedTeamId, selectedSkills, selectedReferenceTasks, stagedImageFiles.length]);
 
     const isValid = title.trim() !== "" && prompt.trim() !== "";
 
@@ -198,6 +204,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         _setDueDate("");
         _setUseWorktree(false);
         _setDangerousMode(false);
+        _setTaskLaunchConfig(null);
         setShowLaunchConfig(false);
         setMemberConfigs({});
         setTaskImages([]);
@@ -214,6 +221,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         dueDate: dueDate || undefined,
         useWorktree: useWorktree || undefined,
         dangerousMode: dangerousMode || undefined,
+        launchConfig: taskLaunchConfig || undefined,
         skillIds: selectedSkills.length > 0 ? selectedSkills : undefined,
         referenceTaskIds: referenceTaskIds && referenceTaskIds.length > 0 ? referenceTaskIds : undefined,
         parentId,
@@ -243,6 +251,9 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         if (dueDate !== currentDueDate) updates.dueDate = dueDate || null;
         if (useWorktree !== (baselineTask.useWorktree ?? false)) updates.useWorktree = useWorktree;
         if (dangerousMode !== (baselineTask.dangerousMode ?? false)) updates.dangerousMode = dangerousMode;
+        if (JSON.stringify(taskLaunchConfig ?? null) !== JSON.stringify(baselineTask.launchConfig ?? null)) {
+            updates.launchConfig = taskLaunchConfig;
+        }
         if (JSON.stringify(selectedSkills) !== JSON.stringify(baselineTask.skillIds || [])) updates.skillIds = selectedSkills;
         if (JSON.stringify(referenceTaskIds) !== JSON.stringify(baselineTask.referenceTaskIds || [])) updates.referenceTaskIds = referenceTaskIds;
         // Include memberOverrides if launch config was modified
@@ -263,6 +274,7 @@ export function useTaskForm(mode: "create" | "edit", isOpen: boolean, task?: Mae
         dueDate, setDueDate,
         useWorktree, setUseWorktree,
         dangerousMode, setDangerousMode,
+        taskLaunchConfig, setTaskLaunchConfig,
         selectedTeamMemberIds, setSelectedTeamMemberIds,
         selectedTeamId, setSelectedTeamId,
         selectedSkills, setSelectedSkills,

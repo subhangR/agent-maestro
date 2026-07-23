@@ -1,4 +1,5 @@
-import React, { useState, useRef, useLayoutEffect } from "react";
+import React, { useState, useRef, useLayoutEffect, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Icon } from "./Icon";
 import { Icon as PnIcon } from "./maestro/redesign/kit";
 import { useRedesignTheme } from "./maestro/redesign/useRedesignTheme";
@@ -345,10 +346,12 @@ export function ProjectTabBar({
   const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ projectId: string; position: 'before' | 'after' } | null>(null);
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [addMenuPos, setAddMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
   const [savedProjectsLoading, setSavedProjectsLoading] = useState(false);
   const [savedProjectsOpen, setSavedProjectsOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement | null>(null);
+  const addBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const tabsRef = useRef<HTMLDivElement | null>(null);
   const previousItemRectsRef = useRef<Map<string, DOMRect>>(new Map());
@@ -385,13 +388,21 @@ export function ProjectTabBar({
     }
   };
 
-  // Close add menu on outside click
-  React.useEffect(() => {
+  // Compute portal position when menu opens
+  useEffect(() => {
+    if (!addMenuOpen || !addBtnRef.current) { setAddMenuPos(null); return; }
+    const rect = addBtnRef.current.getBoundingClientRect();
+    setAddMenuPos({ top: rect.bottom + 6, left: rect.left });
+  }, [addMenuOpen]);
+
+  // Close add menu on outside click (both button and portal menu)
+  useEffect(() => {
     if (!addMenuOpen) return;
     const handler = (e: MouseEvent) => {
-      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
-        setAddMenuOpen(false);
-      }
+      const target = e.target as Node;
+      const inBtn = addBtnRef.current?.contains(target);
+      const inMenu = addMenuRef.current?.contains(target);
+      if (!inBtn && !inMenu) setAddMenuOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -638,11 +649,11 @@ export function ProjectTabBar({
             );
           })}
         </div>
-        {/* Add-project menu lives OUTSIDE the .projectTabs scroller: that
-            scroller sets overflow-x:auto, which forces overflow-y to auto too
-            and would clip this dropdown (rendering it unclickable). */}
-        <div className="projectAddMenuWrapper" ref={addMenuRef}>
+        {/* Add-project button. The dropdown is portalled to document.body so
+            the backdrop-filter stacking context of .pn-top cannot clip it. */}
+        <div className="projectAddMenuWrapper">
           <button
+            ref={addBtnRef}
             type="button"
             className="pn-ib"
             style={{ width: 26, height: 26 }}
@@ -651,30 +662,35 @@ export function ProjectTabBar({
           >
             <PnIcon name="plus" size={14} />
           </button>
-          {addMenuOpen && (
-            <div className="projectAddMenu">
-              <button
-                type="button"
-                className="projectAddMenuItem"
-                onClick={() => {
-                  setAddMenuOpen(false);
-                  onNewProject();
-                }}
-              >
-                <PnIcon name="plus" size={12} />
-                NEW PROJECT
-              </button>
-              <button
-                type="button"
-                className="projectAddMenuItem"
-                onClick={() => void handleOpenSavedProjects()}
-              >
-                <PnIcon name="folder" size={12} />
-                OPEN SAVED PROJECT
-              </button>
-            </div>
-          )}
         </div>
+        {addMenuOpen && addMenuPos && createPortal(
+          <div
+            ref={addMenuRef}
+            className="projectAddMenu"
+            style={{ position: 'fixed', top: addMenuPos.top, left: addMenuPos.left, zIndex: 9999 }}
+          >
+            <button
+              type="button"
+              className="projectAddMenuItem"
+              onClick={() => {
+                setAddMenuOpen(false);
+                onNewProject();
+              }}
+            >
+              <PnIcon name="plus" size={12} />
+              NEW PROJECT
+            </button>
+            <button
+              type="button"
+              className="projectAddMenuItem"
+              onClick={() => void handleOpenSavedProjects()}
+            >
+              <PnIcon name="folder" size={12} />
+              OPEN SAVED PROJECT
+            </button>
+          </div>,
+          document.body,
+        )}
         <div className="pn-top-r">
           <div className="pn-ensemble" title="Maestro — conducting your agent ensemble" aria-hidden="true">
             <span className="pn-ensemble__bars">

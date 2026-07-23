@@ -39,7 +39,9 @@ export const STYLES: Record<StyleId, StyleMeta> = {
 };
 
 export const STYLE_IDS = Object.keys(STYLES) as StyleId[];
-export const DEFAULT_STYLE_ID: StyleId = 'terminal';
+// The redesign is built around translucent, layered surfaces. Keep the style
+// picker and the first-run experience in sync with that visual language.
+export const DEFAULT_STYLE_ID: StyleId = 'glass';
 
 /* ------------------------------------------------------------------ */
 /*  Color Theme Definitions — each style has its own color palette     */
