@@ -587,9 +587,11 @@ html[data-redesign][data-redesign][data-theme='dark'] .pn-st__infobadge {
   background: rgba(31, 38, 48, 0.88) !important;
   border-color: rgba(75, 88, 105, 0.82) !important;
 }
-html[data-redesign][data-redesign][data-theme='dark'] .pn-search { background: rgba(30, 37, 47, 0.84) !important; }
-html[data-redesign][data-redesign][data-theme='dark'] .pn-filters { background: rgba(15, 19, 25, 0.78) !important; }
-html[data-redesign][data-redesign][data-theme='dark'] .pn-filter--active { background: var(--pn-hover) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-search { background: var(--pn-card) !important; border-color: var(--pn-line-2) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filters { background: var(--pn-active) !important; border-color: var(--pn-line) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filter--active { background: var(--pn-card) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filter { color: var(--pn-ink-3) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filter--active { color: var(--pn-ink) !important; }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-ptab--active { background: var(--pn-card) !important; }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-st--needsInput {
   background: linear-gradient(180deg, rgba(66, 53, 28, 0.72), rgba(39, 35, 27, 0.72)) !important;

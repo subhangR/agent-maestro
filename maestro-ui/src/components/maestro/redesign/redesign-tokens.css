@@ -361,6 +361,53 @@ html[data-redesign] .pn-filter .pn-tab-n {
 }
 html[data-redesign] .pn-filter--active .pn-tab-n { color: var(--pn-ink-3); }
 
+/* Dropdown-affordance filters */
+html[data-redesign] .pn-filter--dd {
+  gap: 5px;
+}
+html[data-redesign] .pn-filters-div {
+  width: 1px; height: 14px; background: var(--pn-line-2);
+  flex: 0 0 auto; margin: 0 1px; align-self: center;
+}
+/* Active filter count badge inside filter button */
+html[data-redesign] .pn-filter-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  background: var(--pn-brand-soft); color: var(--pn-brand);
+  border-radius: var(--pn-r-pill); font-size: 9px; font-weight: 700;
+  font-family: var(--pn-mono); line-height: 1;
+}
+/* Clear-all button */
+html[data-redesign] .pn-filter--clear {
+  color: var(--pn-ink-3);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-pill);
+  padding: 3px 7px;
+  gap: 3px;
+}
+html[data-redesign] .pn-filter--clear:hover {
+  color: var(--pn-block); background: var(--pn-block-soft);
+  border-color: rgba(187,77,61,0.3);
+}
+/* Dropdown popup header & footer */
+html[data-redesign] .pn-pop-header {
+  font-family: var(--pn-ui); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--pn-ink-4); padding: 4px 9px 2px;
+}
+html[data-redesign] .pn-pop-footer {
+  border-top: 1px solid var(--pn-line); margin-top: 3px; padding-top: 3px;
+}
+html[data-redesign] .pn-pop-clear {
+  display: block; width: 100%;
+  font-family: var(--pn-ui); font-size: 11px; color: var(--pn-ink-3);
+  padding: 5px 9px; border: none; background: transparent;
+  text-align: left; cursor: pointer; border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .pn-pop-clear:hover { background: var(--pn-hover); color: var(--pn-block); }
+/* Filters bar variant (no wrap, single line) */
+html[data-redesign] .pn-filters--bar { flex-wrap: nowrap; }
+
 /* ==========================================================================
    SECTION + ROWS
    ========================================================================== */
@@ -605,8 +652,8 @@ html[data-redesign] .pn-shell-body { flex: 1; min-height: 0; display: flex; }
 
 /* top bar */
 html[data-redesign] .pn-top {
-  height: 42px; flex: 0 0 auto;
-  display: flex; align-items: center; gap: 12px; padding: 0 14px;
+  height: 46px; flex: 0 0 auto;
+  display: flex; align-items: center; gap: 10px; padding: 0 12px 0 14px;
   background: var(--pn-paper); border-bottom: 1px solid var(--pn-line);
 }
 html[data-redesign] .pn-lights { display: flex; gap: 7px; }
@@ -614,15 +661,20 @@ html[data-redesign] .pn-lights i { width: 11px; height: 11px; border-radius: 50%
 html[data-redesign] .pn-lights i:nth-child(1) { background: #d98b73; }
 html[data-redesign] .pn-lights i:nth-child(2) { background: #d8be79; }
 html[data-redesign] .pn-lights i:nth-child(3) { background: #9bbd8a; }
-html[data-redesign] .pn-ptabs { display: flex; align-items: center; gap: 4px; margin-left: 8px; }
+html[data-redesign] .pn-ptabs { display: flex; align-items: center; gap: 2px; margin-left: 6px; }
 html[data-redesign] .pn-ptab {
-  display: inline-flex; align-items: center; gap: 7px; height: 27px; padding: 0 11px; white-space: nowrap;
-  border-radius: var(--pn-r-sm); font-size: 12.5px; font-weight: 500; color: var(--pn-ink-3);
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; white-space: nowrap;
+  border-radius: var(--pn-r-sm); font-size: 13px; font-weight: 500; color: var(--pn-ink-3);
   background: transparent; border: 1px solid transparent;
+  transition: background 140ms, color 140ms; cursor: pointer;
 }
-html[data-redesign] .pn-ptab--active { background: var(--pn-card); color: var(--pn-ink); border-color: var(--pn-line); font-weight: 600; box-shadow: var(--pn-sh-sm); }
+html[data-redesign] .pn-ptab:hover:not(.pn-ptab--active) { background: var(--pn-hover); color: var(--pn-ink-2); }
+html[data-redesign] .pn-ptab--active {
+  background: var(--pn-card); color: var(--pn-ink); border-color: var(--pn-line); font-weight: 600;
+  box-shadow: var(--pn-sh-sm), inset 0 2px 0 var(--pn-brand);
+}
 html[data-redesign] .pn-ptab .pn-dot { width: 6px; height: 6px; }
-html[data-redesign] .pn-top-r { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+html[data-redesign] .pn-top-r { margin-left: auto; display: flex; align-items: center; gap: 3px; }
 
 /* far-left icon rail */
 html[data-redesign] .pn-rail {
