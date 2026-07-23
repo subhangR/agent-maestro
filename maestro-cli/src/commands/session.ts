@@ -929,17 +929,46 @@ export function registerSessionCommands(program: Command) {
         });
 
     // session needs-input - Mark session as needing user input (called by Stop hook)
+    //
+    // --source names the hook that fired so the server can tell a genuine
+    // turn-end (stop/notification/permission_request => session leaves 'working')
+    // from a mid-turn tool failure (tool_failure => the agent is still running
+    // and recovers on its own, so status must NOT be demoted).
+    //
+    // There is deliberately NO default value: an omitted flag must yield an
+    // omitted `source` in the PATCH, not a manufactured one. A pre-upgrade plugin
+    // bundle calls this from PostToolUseFailure with no --source exactly as it
+    // does from Stop, so defaulting to 'stop' here would demote a session to idle
+    // mid-turn on a mere tool failure — a false "done". Leaving `source` absent
+    // lets the server fall back to its conservative "do not demote" path. An
+    // unrecognised value is treated the same as absent (and logged under --debug).
+    const NEEDS_INPUT_SOURCES = ['stop', 'notification', 'permission_request', 'tool_failure', 'manual'] as const;
+    type NeedsInputSource = typeof NEEDS_INPUT_SOURCES[number];
     session
         .command('needs-input')
-        .description('Mark session as needing user input (called by Stop hook)')
-        .action(async () => {
+        .description('Mark session as needing user input (called by Stop/Notification hooks)')
+        .option('--source <source>', `Originating hook: ${NEEDS_INPUT_SOURCES.join(' | ')}`)
+        .action(async (cmdOpts: { source?: string }) => {
             const globalOpts = program.opts();
             const isJson = globalOpts.json;
             const sessionId = config.sessionId;
 
             const isDebugNeedsInput = config.debug;
+
+            // Omitted flag => undefined => `source` is left off the payload.
+            // An unrecognised value is discarded (not coerced), so a stale or
+            // typo'd hook cannot silently masquerade as a turn-end 'stop'.
+            const rawSource = cmdOpts.source;
+            const source: NeedsInputSource | undefined =
+                (NEEDS_INPUT_SOURCES as readonly string[]).includes(rawSource ?? '')
+                    ? (rawSource as NeedsInputSource)
+                    : undefined;
+            if (isDebugNeedsInput && rawSource !== undefined && source === undefined) {
+                console.log(`[session:needs-input] Unrecognised --source '${rawSource}' ignored; sending without source`);
+            }
+
             if (isDebugNeedsInput) {
-                console.log(`[session:needs-input] Hook fired (Stop)`);
+                console.log(`[session:needs-input] Hook fired (source=${source ?? '(none)'})`);
                 console.log(`[session:needs-input]    Session ID: ${sessionId || '(not set)'}`);
             }
 
@@ -949,18 +978,22 @@ export function registerSessionCommands(program: Command) {
             }
 
             try {
-                if (isDebugNeedsInput) console.log(`[session:needs-input]    PATCH /api/sessions/${sessionId} -> needsInput: { active: true }`);
+                if (isDebugNeedsInput) console.log(`[session:needs-input]    PATCH /api/sessions/${sessionId} -> needsInput: { active: true${source ? `, source: '${source}'` : ''} }`);
                 await api.patch(`/api/sessions/${sessionId}`, {
                     needsInput: {
                         active: true,
                         message: 'Session is waiting for user input',
                         since: Date.now(),
+                        // Only include `source` when known — never as `undefined`,
+                        // which would change the payload shape.
+                        ...(source ? { source } : {}),
                     },
                     timeline: [{
                         id: `evt-${Date.now()}`,
                         type: 'needs_input',
                         timestamp: Date.now(),
                         message: 'Session is waiting for user input',
+                        ...(source ? { metadata: { source } } : {}),
                     }],
                 });
 

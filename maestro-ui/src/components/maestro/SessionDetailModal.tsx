@@ -5,6 +5,7 @@ import { MaestroSessionStatus } from "../../app/types/maestro";
 import { SessionTimeline } from "./SessionTimeline";
 import { DocsList } from "./DocsList";
 import { useSessionDocs } from "../../hooks/useSessionDocs";
+import { useSessionLiveness } from "../../hooks/useSessionLiveness";
 import { StrategyBadge } from "./StrategyBadge";
 import { GitPanel } from "./GitPanel";
 import { WorktreeBadge, getWorktreeInfo } from "./WorktreeBadge";
@@ -84,6 +85,9 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
   const fetchSession = useMaestroStore((s) => s.fetchSession);
   // session.docs carries metadata only; hydrate content so docs open properly.
   const hydratedDocs = useSessionDocs(session, isOpen);
+  // Shared liveness derivation (must run before the isOpen early-return).
+  // See hooks/useSessionLiveness.ts for the precedence ladder.
+  const liveness = useSessionLiveness(session);
 
   const timelineContainerRef = useRef<HTMLDivElement>(null);
   const isUserScrolledToBottomRef = useRef(true);
@@ -131,10 +135,11 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
     ?.map((taskId) => tasks[taskId])
     .filter((t) => t !== undefined) ?? [];
 
-  const needsInput = session?.needsInput?.active;
+  const needsInput = liveness.state === "needsInput";
   const pillVariant = session ? (needsInput ? "wait" : STATUS_PILL[session.status]) : "idle";
   const dotVariant = session ? (needsInput ? "wait" : STATUS_DOT[session.status]) : "idle";
-  const statusLive = !!session && session.status === "working" && !needsInput;
+  // The live dot rides on liveness, not on the sticky server status.
+  const statusLive = !!session && liveness.isWorking;
   // Model badge: prefer the per-spawn launch model over the stored default, then render
   // a friendly label (claude-fable-5 -> Fable 5). Enriched session carries metadata/
   // launchConfig; fall through model -> launchConfig.model -> metadata.model -> teamMemberSnapshot.model.

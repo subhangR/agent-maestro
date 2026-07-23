@@ -11,7 +11,7 @@ import { getWorktreeInfo } from "./WorktreeBadge";
 import { getModelDisplayLabel, isAgentToolResumable } from "../../app/constants/agentTools";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useUIStore } from "../../stores/useUIStore";
-import { useSessionStore } from "../../stores/useSessionStore";
+import { useSessionLiveness } from "../../hooks/useSessionLiveness";
 import type { TeamColor } from "../../app/constants/teamColors";
 import type { SessionLifecycleTab } from "../../utils/sessionLifecycle";
 import { willOpenStatsOnClick } from "../../utils/sessionClickRouting";
@@ -124,7 +124,24 @@ export const SessionListItem = React.memo(function SessionListItem({
   const showElapsed = useUIStore((s) => s.sessionShowElapsed);
 
   const status = session.status;
-  const needsInput = session.needsInput?.active;
+
+  // Everything liveness-flavoured on this row — the pulse dot, the status
+  // glyph, the needs-input highlight and both hover tooltips — reads this one
+  // derivation, so the row can never contradict itself. Shared with
+  // SessionActivityPanel / SessionLiveIndicator / SessionDetailModal; see
+  // hooks/useSessionLiveness.ts for the precedence ladder. Passing
+  // localSessionId (even as null) pins the terminal lookup to the resolved link
+  // instead of searching by maestroSessionId.
+  const liveness = useSessionLiveness(session, {
+    localSessionId: link?.localSessionId ?? null,
+  });
+  // `state === "needsInput"`, NOT the raw session.needsInput?.active: the
+  // server sets needsInput.active unconditionally, including from
+  // PostToolUseFailure, so a mid-turn tool failure leaves the raw flag set
+  // while the agent auto-recovers and the PTY keeps streaming. Tier 2 of the
+  // ladder (live bytes beat needsInput) resolves that; reading the raw flag
+  // here would put "waiting on you" on a row whose dot is pulsing live.
+  const needsInput = liveness.state === "needsInput";
   // Liveness comes from the local terminal (linkMap), NOT the unreliable `status`
   // field. No live terminal (exited, or never reopened this session) → non-live.
   const isLinkedLive = Boolean(link && !link.exited);
@@ -175,7 +192,7 @@ export const SessionListItem = React.memo(function SessionListItem({
   const detailsTooltip = useMemo(() => {
     const lines: string[] = [];
     lines.push(`Session: ${title}`);
-    lines.push(`Status: ${SESSION_STATUS_LABELS[status]}${session.needsInput?.active ? " (needs input)" : ""}`);
+    lines.push(`Status: ${SESSION_STATUS_LABELS[status]}${needsInput ? " (needs input)" : ""}`);
     if (mode) lines.push(`Mode: ${MODE_LABELS[mode]}`);
     if (session.model) lines.push(`Model: ${session.model}`);
     if (linkedTasks.length > 0) {
@@ -187,7 +204,7 @@ export const SessionListItem = React.memo(function SessionListItem({
       }
     }
     return lines.join("\n");
-  }, [title, status, session.needsInput?.active, session.model, mode, linkedTasks]);
+  }, [title, status, needsInput, session.model, mode, linkedTasks]);
 
   useEffect(() => {
     if (showModeDropdown && modeBtnRef.current) {
@@ -222,14 +239,8 @@ export const SessionListItem = React.memo(function SessionListItem({
 
   // The blink (ping ring) rides on raw PTY byte-streaming, not on a terminal
   // merely existing. A live-but-idle terminal shows a solid green dot; only a
-  // terminal pushing bytes right now pulses. `agentWorking` is the authoritative
-  // streaming signal (2s idle debounce in useSessionStore).
-  const isStreaming = useSessionStore((s) => {
-    if (!link) return false;
-    const term = s.sessions.find((t) => t.id === link.localSessionId);
-    if (!term || term.exited || term.closing) return false;
-    return Boolean(term.agentWorking);
-  });
+  // terminal pushing bytes right now pulses.
+  const isStreaming = liveness.isStreaming;
 
   // Agent logo for the tile. Known tools → real logo; anything else
   // (hermes, persona-only) → initial-letter fallback from the kit's AgentTile.
@@ -243,8 +254,11 @@ export const SessionListItem = React.memo(function SessionListItem({
           ? "gemini"
           : agentTool;
 
-  // Glyph status kind — needs-input wins; otherwise the raw session status
-  // (all six map onto kit Glyph kinds 1:1).
+  // Glyph status kind — derived needs-input wins; otherwise the session status
+  // (all six map onto kit Glyph kinds 1:1). Only the needs-input arm goes
+  // through liveness: the other five statuses have no liveness equivalent and
+  // `status` is what tier 4 of the ladder reads anyway, so this is exactly the
+  // shape SessionDetailModal uses for its pill/dot variants.
   const statusKind = needsInput ? "needsInput" : status;
   const elapsed = session.completedAt
     ? formatDuration(session.startedAt, session.completedAt)

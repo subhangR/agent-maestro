@@ -17,6 +17,9 @@ const taskStatusSchema = z.enum(['todo', 'in_progress', 'in_review', 'completed'
 const taskSessionStatusSchema = z.enum(['working', 'blocked', 'completed', 'failed', 'skipped']);
 const taskPrioritySchema = z.enum(['low', 'medium', 'high']);
 const sessionStatusSchema = z.enum(['spawning', 'idle', 'working', 'completed', 'failed', 'stopped']);
+// Which hook reported needsInput. Only some of these mean the turn actually
+// ended — see NeedsInputSource in types.ts.
+const needsInputSourceSchema = z.enum(['stop', 'notification', 'permission_request', 'tool_failure', 'manual']);
 const workerStrategySchema = z.enum(['simple', 'tree']);
 const orchestratorStrategySchema = z.enum(['default', 'intelligent-batching', 'dag']);
 const agentModeSchema = z.enum(['worker', 'coordinator', 'coordinated-worker', 'coordinated-coordinator', 'execute', 'coordinate']);
@@ -398,6 +401,7 @@ export const updateSessionSchema = z.object({
     active: z.boolean(),
     message: z.string().max(1000).optional(),
     since: z.number().optional(),
+    source: needsInputSourceSchema.optional(),
   }).optional(),
 }).strict();
 

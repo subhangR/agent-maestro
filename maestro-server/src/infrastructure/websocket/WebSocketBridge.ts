@@ -68,6 +68,19 @@ export class WebSocketBridge {
 
   // --- Per-entity throttling ---
   private lastQueued = new Map<string, { time: number; data: any }>();
+  /**
+   * Trailing-edge redelivery timers, keyed the same way as `lastQueued`.
+   * Guarantee: an event accepted by queueBroadcast is always delivered, even if
+   * it arrived inside a throttle window after the batch had already flushed.
+   */
+  private trailingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /**
+   * Last status/needsInput pair broadcast per session, used to tell a real
+   * transition from repeated identical churn. Carries the time it was last set
+   * so it can be age-pruned alongside `lastQueued` rather than growing one entry
+   * per session for the life of the process.
+   */
+  private lastStatusSignature = new Map<string, { time: number; signature: string }>();
   private readonly THROTTLE_MS: Record<string, number> = {
     'session:updated': 500,          // Max 2/sec per session
     'session:status_changed': 500,   // Same throttle for lightweight status events
@@ -232,7 +245,20 @@ export class WebSocketBridge {
     for (const event of events) {
       const handler = (data: any) => {
         queueMicrotask(() => {
-          if (IMMEDIATE_EVENTS.has(event)) {
+          // Free per-session throttle/signature state once a session is gone.
+          if (event === 'session:deleted') this.evictSessionState(data?.id);
+
+          const immediate = IMMEDIATE_EVENTS.has(event) || this.isMeaningfulStatusChange(event, data);
+
+          // A status frame about to jump the queue on the immediate lane must
+          // first fold its newer status into any session:updated still waiting
+          // for the same session, or that older full snapshot would overwrite it
+          // when it lands. See reconcileQueuedSessionUpdate for the invariant.
+          if (immediate && event === 'session:status_changed') {
+            this.reconcileQueuedSessionUpdate(data);
+          }
+
+          if (immediate) {
             this.broadcastImmediate(event, data);
           } else {
             this.queueBroadcast(event, data);
@@ -247,7 +273,109 @@ export class WebSocketBridge {
   }
 
   /**
+   * Is this a session status event that actually changes what the UI shows?
+   *
+   * session:status_changed carries status + needsInput, and a transition between
+   * them (notably the end of an agent's turn) has to reach the client at once —
+   * the 500ms throttle below is meant to damp repeated identical churn, not to
+   * delay real transitions. Repeats of the same pair still take the throttled
+   * path, so a chatty producer cannot flood clients.
+   */
+  private isMeaningfulStatusChange(event: string, data: any): boolean {
+    if (event !== 'session:status_changed') return false;
+
+    const sessionId = data?.id;
+    if (!sessionId) return true; // Unkeyed: cannot dedupe, so never delay it.
+
+    const signature = `${data?.status ?? ''}|${data?.needsInput?.active ? 1 : 0}`;
+    if (this.lastStatusSignature.get(sessionId)?.signature === signature) return false;
+
+    this.lastStatusSignature.set(sessionId, { time: Date.now(), signature });
+    return true;
+  }
+
+  /**
+   * Fold a newer status frame into any session:updated for the same session that
+   * is still queued, so the older full snapshot cannot overwrite it on delivery.
+   *
+   * Why this is needed: session:updated and session:status_changed are separate
+   * throttle buckets. SessionService has a status-only lane that emits ONLY
+   * session:status_changed and never refreshes the session:updated bucket, so a
+   * session:updated snapshot queued earlier can hold a status up to 500ms stale
+   * (longer while it lingers in lastQueued for trailing delivery). The status
+   * frame now takes the immediate lane and can overtake that still-queued
+   * snapshot; because the UI FULL-REPLACES the session object on session:updated
+   * (status and needsInput included) — whereas session:status_changed patches in
+   * place — the stale snapshot would clobber the newer status back. Trailing
+   * delivery widens the window but the immediate lane alone already breaks the
+   * FIFO that used to protect these two events when they shared one batch.
+   *
+   * Ordering invariant: event-bus emissions are serialized and this frame is
+   * delivered synchronously on emission, so any session:updated still queued for
+   * this session was emitted earlier and is therefore no newer than this status.
+   * Folding status/lastActivity/needsInput forward can only advance the queued
+   * snapshot, never regress a genuinely newer one — there is none to protect, so
+   * no "leave the newer session:updated alone" branch is required.
+   *
+   * Mutation safety: FileSystemSessionRepository hands back LIVE references into
+   * its in-memory sessions Map, and these payloads ARE those objects. They are
+   * replaced with shallow copies here, never mutated in place, or server state
+   * would be corrupted.
+   */
+  private reconcileQueuedSessionUpdate(statusData: any): void {
+    const sessionId = statusData?.id;
+    if (!sessionId) return;
+
+    // The three status-ish fields the status frame is authoritative for; every
+    // structural field on the session:updated snapshot is left untouched.
+    const patch = {
+      status: statusData.status,
+      lastActivity: statusData.lastActivity,
+      needsInput: statusData.needsInput,
+    };
+
+    const queued = this.lastQueued.get(`session:updated:${sessionId}`);
+    if (queued && queued.data?.id === sessionId) {
+      queued.data = { ...queued.data, ...patch };
+    }
+
+    for (const message of this.pendingMessages) {
+      if (message.event === 'session:updated' && message.data?.id === sessionId) {
+        message.data = { ...message.data, ...patch };
+      }
+    }
+  }
+
+  /**
+   * Drop all per-session throttle bookkeeping for a deleted session: its status
+   * signature, any throttle entries, and any armed trailing timers. Keys are
+   * `${event}:${entityId}`, and session ids carry a `sess_` prefix distinct from
+   * other entity ids, so a `:${sessionId}` suffix match is unambiguous.
+   */
+  private evictSessionState(sessionId?: string): void {
+    if (!sessionId) return;
+
+    this.lastStatusSignature.delete(sessionId);
+
+    const suffix = `:${sessionId}`;
+    for (const key of [...this.lastQueued.keys()]) {
+      if (key.endsWith(suffix)) this.lastQueued.delete(key);
+    }
+    for (const [key, timer] of [...this.trailingTimers]) {
+      if (key.endsWith(suffix)) {
+        clearTimeout(timer);
+        this.trailingTimers.delete(key);
+      }
+    }
+  }
+
+  /**
    * Queue a message for batched delivery. Applies per-entity throttling.
+   *
+   * Throttling delays an event; it must never discard one. If the newest data
+   * arrives inside a throttle window and the previous batch has already been
+   * flushed, there is nothing left in `pendingMessages` to overwrite, so a
+   * trailing-edge redelivery is scheduled instead.
    */
   private queueBroadcast(event: string, data: any): void {
     const throttleMs = this.THROTTLE_MS[event];
@@ -262,7 +390,13 @@ export class WebSocketBridge {
         const idx = this.pendingMessages.findIndex(
           (m) => m.event === event && (m.data?.id || m.data?.sessionId || m.data?.taskId) === entityId
         );
-        if (idx >= 0) this.pendingMessages[idx].data = data;
+        if (idx >= 0) {
+          this.pendingMessages[idx].data = data;
+          return;
+        }
+        // Already flushed — nothing to coalesce into. Deliver on the trailing
+        // edge rather than dropping this update on the floor.
+        this.scheduleTrailingDelivery(key, event, throttleMs, last.time);
         return;
       }
       this.lastQueued.set(key, { time: now, data });
@@ -272,6 +406,30 @@ export class WebSocketBridge {
     if (!this.flushTimer) {
       this.flushTimer = setTimeout(() => this.flushBatch(), this.BATCH_WINDOW_MS);
     }
+  }
+
+  /**
+   * Re-queue the newest data for a throttled key once its window closes.
+   * At most one timer per key; it always sends whatever `lastQueued` holds at
+   * fire time, so further updates arriving meanwhile are folded in for free.
+   */
+  private scheduleTrailingDelivery(key: string, event: string, throttleMs: number, lastTime: number): void {
+    if (this.trailingTimers.has(key)) return;
+
+    const delay = Math.max(0, throttleMs - (Date.now() - lastTime));
+    const timer = setTimeout(() => {
+      this.trailingTimers.delete(key);
+      const pending = this.lastQueued.get(key);
+      if (!pending) return; // Pruned as stale; nothing left to send.
+
+      this.lastQueued.set(key, { time: Date.now(), data: pending.data });
+      this.pendingMessages.push({ event, data: pending.data });
+      if (!this.flushTimer) {
+        this.flushTimer = setTimeout(() => this.flushBatch(), this.BATCH_WINDOW_MS);
+      }
+    }, delay);
+
+    this.trailingTimers.set(key, timer);
   }
 
   /**
@@ -333,6 +491,12 @@ export class WebSocketBridge {
     const cutoff = now - 10_000;
     for (const [key, entry] of this.lastQueued) {
       if (entry.time < cutoff) this.lastQueued.delete(key);
+    }
+    // Same age cutoff for status signatures. session:deleted evicts them
+    // eagerly; this bounds the rest so a long-lived session that stops churning
+    // does not pin its entry for the life of the process.
+    for (const [key, entry] of this.lastStatusSignature) {
+      if (entry.time < cutoff) this.lastStatusSignature.delete(key);
     }
   }
 
@@ -444,6 +608,12 @@ export class WebSocketBridge {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
+    // Cancel trailing redeliveries before the final flush so they cannot
+    // resurrect a batch after shutdown.
+    for (const timer of this.trailingTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.trailingTimers.clear();
     // Flush remaining messages
     if (this.pendingMessages.length > 0) {
       this.flushBatch();
@@ -456,6 +626,7 @@ export class WebSocketBridge {
     this.subscriptions.clear();
     this.backpressuredClients.clear();
     this.lastQueued.clear();
+    this.lastStatusSignature.clear();
     this.pendingMessages = [];
     this.logger.info('WebSocketBridge shut down');
   }

@@ -7,6 +7,7 @@ import { useProjectStore } from "../../stores/useProjectStore";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { createMaestroSession } from "../../services/maestroService";
 import { useComposerImagePaste } from "../../hooks/useComposerImagePaste";
+import { useSessionLiveness } from "../../hooks/useSessionLiveness";
 import {
   AGENT_TOOLS,
   AGENT_TOOL_LABELS,
@@ -367,7 +368,23 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
   const model: string = session?.metadata?.model || session?.model || "";
   const mode: string = session?.mode || session?.metadata?.mode || "worker";
   const status: string = session?.status || "idle";
-  const working = status === "working";
+
+  // Liveness — NOT `status === "working"`. The server-side status is a sticky,
+  // client-driven field that routinely strands sessions at working/spawning
+  // long after the turn ended; useSessionLiveness composes needsInput + the
+  // linked terminal's byte-stream instead. See hooks/useSessionLiveness.ts.
+  const liveness = useSessionLiveness(session);
+  const working = liveness.isWorking;
+
+  const statusLabel =
+    liveness.state === "working"
+      ? "Working"
+      : liveness.state === "needsInput"
+        ? "Needs input"
+        : status === "working" || status === "spawning"
+          ? // Liveness says the turn is over; the sticky status hasn't caught up.
+            "Idle"
+          : status;
 
   const [digest, setDigest] = React.useState<SessionLogDigestResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -439,9 +456,9 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
             {model ? ` · ${model}` : ""} · {mode}
           </span>
         </div>
-        <span className={"pn-chat__status pn-chat__status--" + status}>
+        <span className={"pn-chat__status pn-chat__status--" + liveness.state}>
           {working && <span className="pn-chat__livedot" />}
-          {working ? "Working" : status}
+          {statusLabel}
         </span>
       </div>
 
