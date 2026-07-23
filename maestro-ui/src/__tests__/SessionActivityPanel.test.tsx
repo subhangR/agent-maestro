@@ -29,8 +29,11 @@ vi.mock("../stores/useMaestroStore", () => ({
 }));
 
 vi.mock("../stores/useSessionStore", () => ({
+  // `sessions` backs useSessionLiveness (the panel derives working/idle from it,
+  // not the raw sticky status). Empty here → no local terminal → the hook falls
+  // back to session.status, so status "working" still reads as working.
   useSessionStore: <T,>(selector: (state: any) => T): T =>
-    selector({ sendPromptToActive: vi.fn() }),
+    selector({ sendPromptToActive: vi.fn(), sessions: [] }),
 }));
 
 vi.mock("../services/maestroService", () => ({

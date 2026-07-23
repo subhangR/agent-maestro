@@ -136,8 +136,18 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
     .filter((t) => t !== undefined) ?? [];
 
   const needsInput = liveness.state === "needsInput";
-  const pillVariant = session ? (needsInput ? "wait" : STATUS_PILL[session.status]) : "idle";
-  const dotVariant = session ? (needsInput ? "wait" : STATUS_DOT[session.status]) : "idle";
+  // The pill, dot AND label all read the liveness-derived status, not the raw
+  // sticky `session.status`: a session stranded at working/spawning after its
+  // turn ended must render Idle here, exactly as SessionActivityPanel does.
+  // Only exited/closing or a demoted server status flip it — see
+  // hooks/useSessionLiveness.ts.
+  const effectiveStatus: MaestroSessionStatus = liveness.isWorking
+    ? "working"
+    : session && (session.status === "working" || session.status === "spawning")
+      ? "idle"
+      : session?.status ?? "idle";
+  const pillVariant = session ? (needsInput ? "wait" : STATUS_PILL[effectiveStatus]) : "idle";
+  const dotVariant = session ? (needsInput ? "wait" : STATUS_DOT[effectiveStatus]) : "idle";
   // The live dot rides on liveness, not on the sticky server status.
   const statusLive = !!session && liveness.isWorking;
   // Model badge: prefer the per-spawn launch model over the stored default, then render
@@ -160,7 +170,7 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
                 <span className={`pn-pill pn-pill--${pillVariant}`}>
                   <span className="pn-dot-wrap"><span className={`pn-dot pn-dot--${dotVariant}${statusLive ? " pn-dot--live" : ""}`}></span></span>
-                  {needsInput ? "Needs Input" : SESSION_STATUS_LABELS[session.status]}
+                  {needsInput ? "Needs Input" : SESSION_STATUS_LABELS[effectiveStatus]}
                 </span>
                 <StrategyBadge strategy={session.strategy} orchestratorStrategy={session.orchestratorStrategy} />
                 {modelLabel && (

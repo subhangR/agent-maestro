@@ -8,7 +8,7 @@ import { renderHook } from "@testing-library/react";
      1 · terminal exited / closing   → not working (definitive)
      2 · terminal streaming bytes    → WORKING, even if needsInput is set
      3 · needsInput.active           → not working, state "needsInput"
-     4 · no terminal attached        → fall back to the server status
+     4 · silent or no terminal       → fall back to the server status
 --------------------------------------------------------------------------- */
 
 type FakeTerminal = {
@@ -106,15 +106,29 @@ describe("useSessionLiveness", () => {
     expect(r.state).toBe("working");
   });
 
-  // Regression guard for a dropped session:status_changed event — the
-  // WebSocket bridge throttles and can discard the turn-end transition, so the
-  // local terminal signal has to stand on its own.
-  it("goes quiet from local terminal state alone when no status event ever arrives", () => {
+  // agentWorking clears after a 2s idle debounce, but a live agent is routinely
+  // silent while it waits on a command, a network call or a model response. A
+  // silent-but-attached terminal must therefore DEFER to the server status, not
+  // force idle — otherwise every mid-turn pause flashed the turn as finished
+  // and slowed the activity poll. Turn-end idle now comes from an exit (tier 1)
+  // or needsInput (tier 3), never from local silence alone.
+  it("keeps working when the terminal falls silent mid-turn but status is still working", () => {
     terminals = [{ id: "t1", maestroSessionId: SESSION_ID, agentWorking: false }];
 
-    // Server still insists the session is working, and needsInput was never
-    // delivered either.
     const r = live(session({ status: "working" }));
+
+    expect(r.isStreaming).toBe(false);
+    expect(r.hasTerminal).toBe(true);
+    expect(r.isWorking).toBe(true);
+    expect(r.state).toBe("working");
+  });
+
+  // …but a silent terminal whose server status is NOT working stays idle: the
+  // deferral is to the status, not an unconditional "working".
+  it("stays idle when the terminal is silent and the server status is not working", () => {
+    terminals = [{ id: "t1", maestroSessionId: SESSION_ID, agentWorking: false }];
+
+    const r = live(session({ status: "idle" }));
 
     expect(r.isWorking).toBe(false);
     expect(r.state).toBe("idle");
@@ -172,18 +186,21 @@ describe("useSessionLiveness", () => {
 
 describe("deriveSessionLiveness", () => {
   it.each([
-    // terminalLive, statusWorking, needsInput → isWorking, state
-    [true, false, false, true, "working"],
-    [true, false, true, true, "working"],
-    [false, true, false, false, "idle"],
-    [false, true, true, false, "needsInput"],
-    [null, true, false, true, "working"],
-    [null, true, true, false, "needsInput"],
-    [null, false, false, false, "idle"],
+    // terminal, statusWorking, needsInput → isWorking, state
+    ["streaming", false, false, true, "working"], // 2 · live bytes
+    ["streaming", false, true, true, "working"], //  2 · beats needsInput
+    ["exited", true, false, false, "idle"], //        1 · exit ignores status
+    ["exited", true, true, false, "needsInput"], //   1 · not working; flag shows
+    ["silent", true, false, true, "working"], //      4 · THE FIX: defer to status
+    ["silent", false, false, false, "idle"], //       4 · status not working
+    ["silent", true, true, false, "needsInput"], //   3 · needsInput outranks tier 4
+    ["none", true, false, true, "working"], //        4 · no terminal → status
+    ["none", true, true, false, "needsInput"], //     3 · needsInput
+    ["none", false, false, false, "idle"], //         4 · status idle
   ] as const)(
-    "terminalLive=%s statusWorking=%s needsInput=%s → isWorking=%s state=%s",
-    (terminalLive, statusWorking, needsInput, isWorking, state) => {
-      const r = deriveSessionLiveness(terminalLive, statusWorking, needsInput);
+    "terminal=%s statusWorking=%s needsInput=%s → isWorking=%s state=%s",
+    (terminal, statusWorking, needsInput, isWorking, state) => {
+      const r = deriveSessionLiveness(terminal, statusWorking, needsInput);
       expect(r.isWorking).toBe(isWorking);
       expect(r.state).toBe(state);
     },

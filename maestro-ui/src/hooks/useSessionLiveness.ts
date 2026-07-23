@@ -18,8 +18,14 @@ import { useSessionStore } from "../stores/useSessionStore";
          followed by the agent recovering and carrying on. A false "done" is
          worse than a late one.
      3 · needsInput.active — the agent is blocked on the human; not working.
-     4 · status === "working" — the fallback, and only for sessions with no
-         local terminal (remote / coordinator sessions).
+     4 · status === "working" — the fallback for a terminal that is attached
+         but *silent* (agentWorking clears after that 2s debounce, yet a live
+         agent is routinely quiet while it waits on a command, a network call
+         or a model response) AND for sessions with no local terminal at all
+         (remote / coordinator). A silent terminal must NOT declare the turn
+         over on its own — turn-end idle comes from tier 1 (the terminal exits)
+         or tier 3 (needsInput fires), never from local silence, which would
+         flash "idle" on every mid-turn pause and stall the activity poll.
 
    Tiers 1–2 are computed from local PTY state and never traverse the
    WebSocket, so the chat stays correct even when a session:status_changed
@@ -40,6 +46,14 @@ import { useSessionStore } from "../stores/useSessionStore";
 --------------------------------------------------------------------------- */
 
 export type SessionLivenessState = "working" | "needsInput" | "idle";
+
+/**
+ * The four states a session's local terminal can be in, most-to-least
+ * informative. `exited` is definitive (tier 1); `streaming` is live evidence
+ * (tier 2); `silent` and `none` both defer to the server status (tier 4) — a
+ * quiet-but-attached terminal is NOT proof the turn ended.
+ */
+export type TerminalLiveness = "streaming" | "silent" | "exited" | "none";
 
 export interface SessionLiveness {
   /** The PTY is pushing bytes right now. Drives pulses/blinks, not solid dots. */
@@ -85,25 +99,31 @@ export interface SessionLivenessOptions {
  * Pure composition of the three signals. Exported for direct unit testing and
  * for non-hook call sites.
  *
- * @param terminalLive `null` when no local terminal is attached, `false` when
- *   one is attached but exited/closing/idle, `true` when it is streaming.
+ * @param terminal the local terminal's state: `"none"` when no terminal is
+ *   attached, `"exited"` when one is attached but exited/closing, `"silent"`
+ *   when attached and quiet (agentWorking cleared), `"streaming"` when it is
+ *   pushing bytes. `silent` and `none` behave identically — both defer to the
+ *   server status — but stay distinct so callers can tell "no terminal" from
+ *   "terminal, just quiet".
  */
 export function deriveSessionLiveness(
-  terminalLive: boolean | null,
+  terminal: TerminalLiveness,
   statusWorking: boolean,
   needsInput: boolean,
 ): SessionLiveness {
-  const hasTerminal = terminalLive !== null;
-  const isStreaming = terminalLive === true;
+  const hasTerminal = terminal !== "none";
+  const isStreaming = terminal === "streaming";
 
-  // The ladder is the contract — tier 2 deliberately outranks needsInput.
-  const isWorking = isStreaming
-    ? true // 2 · live PTY evidence beats a possibly-stale needsInput flag
-    : needsInput
-      ? false // 3 · flagged as waiting on the human
-      : hasTerminal
-        ? false // 1 · attached but silent, exited or closing
-        : statusWorking; // 4 · no terminal — the server status is all we have
+  // The ladder is the contract — tier 2 deliberately outranks needsInput, and
+  // a silent terminal defers to the server status instead of forcing idle.
+  const isWorking =
+    terminal === "exited"
+      ? false // 1 · exited/closing — definitive, the turn is over
+      : isStreaming
+        ? true // 2 · live PTY evidence beats a possibly-stale needsInput flag
+        : needsInput
+          ? false // 3 · flagged as waiting on the human
+          : statusWorking; // 4 · silent or no terminal — defer to server status
 
   return {
     isStreaming,
@@ -122,24 +142,24 @@ export function useSessionLiveness(
   const explicitTerminalId = options.localSessionId;
   const useExplicitLink = explicitTerminalId !== undefined;
 
-  const terminalLive = useSessionStore((s) => {
-    const terminal = useExplicitLink
+  const terminal = useSessionStore((s): TerminalLiveness => {
+    const t = useExplicitLink
       ? explicitTerminalId
-        ? s.sessions.find((t) => t.id === explicitTerminalId)
+        ? s.sessions.find((term) => term.id === explicitTerminalId)
         : undefined
       : maestroSessionId
-        ? s.sessions.find((t) => t.maestroSessionId === maestroSessionId)
+        ? s.sessions.find((term) => term.maestroSessionId === maestroSessionId)
         : undefined;
-    if (!terminal) return null;
-    if (terminal.exited || terminal.closing) return false;
-    return Boolean(terminal.agentWorking);
+    if (!t) return "none";
+    if (t.exited || t.closing) return "exited";
+    return t.agentWorking ? "streaming" : "silent";
   });
 
   const statusWorking = session?.status === "working";
   const needsInput = session?.needsInput?.active === true;
 
   return useMemo(
-    () => deriveSessionLiveness(terminalLive, statusWorking, needsInput),
-    [terminalLive, statusWorking, needsInput],
+    () => deriveSessionLiveness(terminal, statusWorking, needsInput),
+    [terminal, statusWorking, needsInput],
   );
 }
