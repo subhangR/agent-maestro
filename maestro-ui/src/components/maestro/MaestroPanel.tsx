@@ -418,7 +418,7 @@ export const MaestroPanel = React.memo(function MaestroPanel({
         const mode = member?.mode || 'worker';
         const effectiveLaunchConfig = task.dangerousMode
             ? {
-                ...(launchConfig || createLaunchConfig(
+                ...(launchConfig || task.launchConfig || createLaunchConfig(
                     member?.agentTool || 'claude-code',
                     member?.model || DEFAULT_MODEL_BY_AGENT_TOOL[member?.agentTool || 'claude-code'],
                 )),

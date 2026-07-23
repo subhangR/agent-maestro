@@ -9,6 +9,29 @@ import ora from 'ora';
 import { readFileSync } from 'fs';
 import { resolveProjectScope } from '../utils/project-scope.js';
 
+// Infer the provider a model belongs to from its name. Mirrors
+// providerForModel() in maestro-server/src/api/sessionRoutes.ts.
+function providerForModel(model: string): 'claude' | 'openai' | 'gemini' | 'hermes' | undefined {
+    const m = model.toLowerCase();
+    if (m.startsWith('claude') || m.startsWith('opus') || m.startsWith('sonnet') || m.startsWith('haiku')) return 'claude';
+    if (m.startsWith('gpt') || /^o\d/.test(m)) return 'openai';
+    if (m.startsWith('gemini')) return 'gemini';
+    if (m.startsWith('hermes')) return 'hermes';
+    return undefined;
+}
+
+// Build the task-level launchConfig for a --model flag; exits with a clear
+// error when the provider cannot be inferred from the model name.
+function launchConfigForModelFlag(model: string, isJson: boolean): { provider: string; model: string } {
+    const provider = providerForModel(model);
+    if (!provider) {
+        const err = { message: `Cannot infer provider for model "${model}". Use a provider-prefixed model name (claude-*, gpt-*, gemini-*, hermes-*).` };
+        if (isJson) { outputErrorJSON(err); process.exit(1); }
+        else { console.error(err.message); process.exit(1); }
+    }
+    return { provider: provider as string, model };
+}
+
 export function registerTaskCommands(program: Command) {
     const task = program.command('task').description('Manage tasks');
 
@@ -86,6 +109,7 @@ export function registerTaskCommands(program: Command) {
         .option('--parent <parentId>', 'Parent task ID (creates child task)')
         .option('--team-member <teamMemberId>', 'Assign a team member to this task')
         .option('--team <teamId>', 'Assign a team to this task (spawns the team leader as coordinator)')
+        .option('--model <model>', 'Model to run this task with (e.g. claude-fable-5, gpt-5.6-sol)')
         .action(async (title, cmdOpts) => {
             await guardCommand('task:create');
             const globalOpts = program.opts();
@@ -118,6 +142,7 @@ export function registerTaskCommands(program: Command) {
                     parentId: cmdOpts.parent,
                     ...(cmdOpts.teamMember ? { teamMemberId: cmdOpts.teamMember } : {}),
                     ...(cmdOpts.team ? { teamId: cmdOpts.team } : {}),
+                    ...(cmdOpts.model ? { launchConfig: launchConfigForModelFlag(cmdOpts.model, isJson) } : {}),
                 });
 
                 spinner?.succeed('Task created');
@@ -144,6 +169,7 @@ export function registerTaskCommands(program: Command) {
         .option('--priority <priority>', 'New priority (high, medium, low)')
         .option('--team-member <teamMemberId>', 'Assign a team member to this task')
         .option('--team <teamId>', 'Assign a team to this task ("" to clear)')
+        .option('--model <model>', 'Model to run this task with ("" to clear)')
         .action(async (id, cmdOpts) => {
             await guardCommand('task:edit');
             const globalOpts = program.opts();
@@ -155,9 +181,12 @@ export function registerTaskCommands(program: Command) {
             if (cmdOpts.priority) updateData.priority = cmdOpts.priority;
             if (cmdOpts.teamMember !== undefined) updateData.teamMemberId = cmdOpts.teamMember;
             if (cmdOpts.team !== undefined) updateData.teamId = cmdOpts.team || null;
+            if (cmdOpts.model !== undefined) {
+                updateData.launchConfig = cmdOpts.model ? launchConfigForModelFlag(cmdOpts.model, isJson) : null;
+            }
 
             if (Object.keys(updateData).length === 0) {
-                const err = { message: 'Nothing to edit. Use --title, --desc, --priority, --team, or --team-member.' };
+                const err = { message: 'Nothing to edit. Use --title, --desc, --priority, --team, --team-member, or --model.' };
                 if (isJson) { outputErrorJSON(err); process.exit(1); }
                 else { console.error(err.message); process.exit(1); }
             }
