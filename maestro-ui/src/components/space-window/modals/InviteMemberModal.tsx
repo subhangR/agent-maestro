@@ -8,6 +8,7 @@ import {
 import { CollabSpaceClient } from "../../../firebase/CollabSpaceClient";
 import { useFirebaseAuthStore } from "../../../stores/useFirebaseAuthStore";
 import { useModalA11y } from "../shared/useModalA11y";
+import { copyToClipboard } from "../../../utils/domUtils";
 
 type Props = {
     space: CollabSpace;
@@ -100,11 +101,11 @@ export const InviteMemberModal: React.FC<Props> = ({ space, onClose }) => {
 
     const copy = async () => {
         if (!shareValue) return;
-        try {
-            await navigator.clipboard.writeText(shareValue);
+        const ok = await copyToClipboard(shareValue);
+        if (ok) {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 1500);
-        } catch {
+        } else {
             setError("Clipboard access is unavailable. Select the value and copy it manually.");
         }
     };

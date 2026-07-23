@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useEnsembleStore } from '../../stores/useEnsembleStore';
+import { useComposerImagePaste } from '../../hooks/useComposerImagePaste';
 
 export interface EnsembleMessageComposerProps {
   ensembleId: string;
@@ -18,6 +19,18 @@ export const EnsembleMessageComposer = React.memo(function EnsembleMessageCompos
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Paste / drop a screenshot → uploaded, and the server-side path is inserted
+  // at the caret. Every recipient here is a local session on this machine, so
+  // the path is exactly what they need to Read the image.
+  const imagePaste = useComposerImagePaste({
+    value: content,
+    setValue: setContent,
+    inputRef,
+    sessionId: senderSessionId ?? undefined,
+    disabled: sending,
+  });
 
   if (!ensemble) return null;
 
@@ -46,12 +59,16 @@ export const EnsembleMessageComposer = React.memo(function EnsembleMessageCompos
         <button type="button" onClick={onClose} aria-label="Close">✕</button>
       </header>
       <textarea
+        ref={inputRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         maxLength={4000}
         placeholder="Write a message to the ensemble…"
         rows={4}
         aria-label="Message body"
+        onPaste={imagePaste.onPaste}
+        onDrop={imagePaste.onDrop}
+        onDragOver={imagePaste.onDragOver}
         onKeyDown={(e) => {
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
             e.preventDefault();

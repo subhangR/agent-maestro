@@ -778,6 +778,30 @@ export const alexaUtteranceSchema = z.object({
   deviceId: z.string().max(512).optional(),
 }).strict();
 
+// --- Clipboard image schemas ---
+
+/**
+ * Multipart text fields accepted alongside the uploaded blob. `sessionId` is
+ * grouping/telemetry only — it never influences where the file is written.
+ */
+export const clipboardUploadFieldsSchema = z.object({
+  sessionId: safeId.optional(),
+}).strict();
+
+/**
+ * Path params for GET /api/clipboard/images/:date/:filename.
+ *
+ * Both segments are server-generated, so they can be pinned to exact shapes.
+ * Anything containing `/`, `\` or `..` fails these regexes outright — the
+ * repository's root-confinement check is the second line of defence.
+ */
+export const clipboardImageParamsSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must be YYYY-MM-DD'),
+  filename: z
+    .string()
+    .regex(/^clip_\d+_[a-f0-9]+\.(png|jpg|jpeg|gif|webp)$/, 'invalid clipboard image filename'),
+});
+
 // --- Middleware factories ---
 
 /**

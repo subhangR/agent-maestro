@@ -6,6 +6,7 @@ import { Icon } from "./Icon";
 import { Icon as PnIcon } from "./maestro/redesign/kit";
 import { FileIcon } from "./FileIcon";
 import { ConfirmActionModal } from "./modals/ConfirmActionModal";
+import { copyToClipboardOrWarn } from "../utils/domUtils";
 
 // Cache for downloaded SSH files to avoid re-downloading during the same session
 const sshFileCache = new Map<string, string>();
@@ -100,18 +101,6 @@ function relativePath(rootDir: string, absolutePath: string): string {
   if (path === root) return "";
   if (path.startsWith(`${root}/`)) return path.slice(root.length + 1);
   return path;
-}
-
-async function copyToClipboard(text: string): Promise<boolean> {
-  const value = text ?? "";
-  if (!value) return false;
-
-  try {
-    await navigator.clipboard.writeText(value);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function FileExplorerPanel({
@@ -1118,7 +1107,7 @@ export function FileExplorerPanel({
             role="menuitem"
             onClick={() => {
               const rel = relativePath(root, contextMenu.entry.path);
-              void copyToClipboard(rel);
+              void copyToClipboardOrWarn(rel, "Path");
               setContextMenu(null);
             }}
           >
@@ -1129,7 +1118,7 @@ export function FileExplorerPanel({
             className="sidebarActionMenuItem"
             role="menuitem"
             onClick={() => {
-              void copyToClipboard(contextMenu.entry.path);
+              void copyToClipboardOrWarn(contextMenu.entry.path, "Path");
               setContextMenu(null);
             }}
           >

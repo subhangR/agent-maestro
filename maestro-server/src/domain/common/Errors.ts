@@ -62,6 +62,15 @@ export class UnauthorizedError extends AppError {
 }
 
 /**
+ * Payload too large error (413).
+ */
+export class PayloadTooLargeError extends AppError {
+  constructor(message: string, details?: any) {
+    super(413, 'PAYLOAD_TOO_LARGE', message, details);
+  }
+}
+
+/**
  * Business rule violation error (422).
  */
 export class BusinessRuleError extends AppError {

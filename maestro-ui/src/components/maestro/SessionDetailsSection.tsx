@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import type { MaestroSession, WorkerStrategy } from "../../app/types/maestro";
 import { WorktreeBadge, getWorktreeInfo } from "./WorktreeBadge";
 import { SessionLiveIndicator } from "./SessionLiveIndicator";
+import { copyToClipboardOrWarn } from "../../utils/domUtils";
 
 interface SessionDetailsSectionProps {
   session: MaestroSession;
@@ -27,13 +28,10 @@ function CopyableId({ label, value }: { label: string; value?: string | null }) 
 
   const handleCopy = async () => {
     if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // Clipboard unavailable — non-fatal
-    }
+    const ok = await copyToClipboardOrWarn(value, label);
+    if (!ok) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (

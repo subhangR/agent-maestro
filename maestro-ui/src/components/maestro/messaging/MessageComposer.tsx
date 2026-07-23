@@ -9,6 +9,7 @@ import {
 import { SpaceShareClient } from "../../../firebase/SpaceShareClient";
 import { encodeFileToBase64 } from "../../../firebase/SpaceFilesClient";
 import { SPACE_FILE_MAX_RAW_BYTES } from "../../../firebase/spaceShareTypes";
+import { extractImageFiles, dataTransferHasFiles } from "../../../utils/clipboardImages";
 
 type Props = {
   channelId: string;
@@ -180,30 +181,76 @@ export function MessageComposer({
     fileInputRef.current?.click();
   };
 
-  const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file
-    if (!file || !spaceId || !user) return;
-    if (staged.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
+  /**
+   * Stage files for upload-on-send, enforcing the per-message count and size
+   * limits. Shared by the file picker and by image paste/drop so both routes
+   * obey exactly the same rules and surface errors the same way.
+   */
+  const stageFiles = (files: File[]) => {
+    if (files.length === 0 || !spaceId || !user) return;
+
+    const room = MAX_ATTACHMENTS_PER_MESSAGE - staged.length;
+    if (room <= 0) {
       setAttachError(`A message can carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.`);
       return;
     }
-    if (file.size === 0) {
-      setAttachError(`"${file.name}" is empty — there's nothing to attach.`);
-      return;
+
+    // Accept what fits; the last rejection is what the user sees, so a partly
+    // accepted batch still explains why the rest did not make it.
+    const accepted: { id: string; file: File }[] = [];
+    let rejection: string | null = null;
+    for (const file of files) {
+      if (accepted.length >= room) {
+        rejection = `A message can carry at most ${MAX_ATTACHMENTS_PER_MESSAGE} attachments.`;
+        break;
+      }
+      if (file.size === 0) {
+        rejection = `"${file.name}" is empty — there's nothing to attach.`;
+        continue;
+      }
+      if (file.size > SPACE_FILE_MAX_RAW_BYTES) {
+        rejection = `"${file.name}" is ${formatKb(file.size)} — attachments must be ${MAX_ATTACHMENT_KB} KB or smaller.`;
+        continue;
+      }
+      accepted.push({ id: `staged_${Date.now()}_${staged.length + accepted.length}`, file });
     }
-    if (file.size > SPACE_FILE_MAX_RAW_BYTES) {
-      setAttachError(
-        `"${file.name}" is ${formatKb(file.size)} — attachments must be ${MAX_ATTACHMENT_KB} KB or smaller.`,
-      );
-      return;
-    }
-    setAttachError(null);
-    setStaged((prev) => [
-      ...prev,
-      { id: `staged_${Date.now()}_${prev.length}`, file },
-    ]);
+
+    setAttachError(rejection);
+    if (accepted.length > 0) setStaged((prev) => [...prev, ...accepted]);
     ref.current?.focus();
+  };
+
+  const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    stageFiles([file]);
+  };
+
+  // Pasting or dropping a screenshot stages it as a real Collab attachment
+  // rather than injecting a maestro-server path the way the session composers
+  // do: a channel is read from other machines, where an absolute local path
+  // resolves to nothing. Non-image pastes fall through to the browser, so plain
+  // text still pastes natively.
+  const claimImages = (data: DataTransfer | null, e: React.SyntheticEvent) => {
+    if (sending || !canAttach) return;
+    const images = extractImageFiles(data, { renameAll: true });
+    if (images.length === 0) return;
+    e.preventDefault();
+    stageFiles(images);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    claimImages(e.clipboardData, e);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    claimImages(e.dataTransfer, e);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    if (sending || !canAttach) return;
+    if (dataTransferHasFiles(e.dataTransfer)) e.preventDefault();
   };
 
   const removeAttachment = (id: string) => {
@@ -416,6 +463,9 @@ export function MessageComposer({
           onKeyDown={handleKey}
           onSelect={handleSelect}
           onClick={handleSelect}
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
           disabled={sending}
         />
         <button

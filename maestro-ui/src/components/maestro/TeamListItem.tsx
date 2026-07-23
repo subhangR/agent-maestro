@@ -4,6 +4,7 @@ import { Team } from "../../app/types/maestro";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { ConfirmActionModal } from "../modals/ConfirmActionModal";
 import { Icon } from "./redesign/kit";
+import { copyToClipboardOrWarn } from "../../utils/domUtils";
 
 type TeamTab = 'members' | 'subteams' | 'details';
 
@@ -91,10 +92,11 @@ export function TeamListItem({
     };
 
     const handleCopyField = useCallback((label: string, value: string) => {
-        navigator.clipboard.writeText(value).then(() => {
+        void copyToClipboardOrWarn(value, label).then((ok) => {
+            if (!ok) return;
             setCopiedField(label);
             setTimeout(() => setCopiedField(null), 1500);
-        }).catch(() => {});
+        });
     }, []);
 
     const handleSubTeamToggle = (e: React.MouseEvent) => {
