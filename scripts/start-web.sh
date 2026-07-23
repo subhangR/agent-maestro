@@ -35,6 +35,8 @@ DATA_DIR="${DATA_DIR:-$HOME/.maestro/data}"
 SESSION_DIR="${SESSION_DIR:-$HOME/.maestro/sessions}"
 UI_URL="http://localhost:${PORT}"
 
+LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
+
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
 echo "=========================================================="
 echo "  Maestro Web UI — kill + clean build + start"
@@ -103,6 +105,12 @@ echo "  Maestro Web UI is starting (branch: ${BRANCH})."
 echo ""
 echo "  Open in your browser:  ${UI_URL}"
 echo "    (hard-refresh: Cmd+Shift+R to drop the cached bundle)"
+echo ""
+if [ -n "${LAN_IP}" ] && [ "${HOST}" = "0.0.0.0" ]; then
+  echo "  Connect from the mobile app (same Wi-Fi):  ${LAN_IP}:${PORT}"
+else
+  echo "  Connect from the mobile app: could not detect LAN IP — find it via 'ipconfig getifaddr en0'"
+fi
 echo ""
 echo "  Data:    ${DATA_DIR}"
 echo "  Session: ${SESSION_DIR}"
