@@ -116,12 +116,55 @@
 .spaceWindowChrome {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   padding: 10px 16px;
   border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
   background: var(--space-chrome-bg, #0a0c12);
   flex-shrink: 0;
-  height: 48px;
+  height: 52px;
+}
+
+.spaceWindowChromeAvatarPlaceholder {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.spaceWindowChromeVisBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.spaceWindowChromeVisBadge--public {
+  background: rgba(102, 221, 170, 0.12);
+  color: #66ddaa;
+  border: 1px solid rgba(102, 221, 170, 0.25);
+}
+
+.spaceWindowChromeVisBadge--private {
+  background: rgba(255, 200, 100, 0.12);
+  color: #e8b84b;
+  border: 1px solid rgba(255, 200, 100, 0.25);
+}
+
+.spaceWindowChromeMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #6e7785);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 5px;
+  padding: 3px 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .spaceWindowBack {
@@ -151,11 +194,6 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  align-items: center;
-  text-align: center;
-}
-
-.spaceWindowChrome--inline .spaceWindowChromeTitleWrap {
   align-items: flex-start;
   text-align: left;
 }
@@ -168,6 +206,9 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 
 .spaceWindowChromeSubtitle {
@@ -210,19 +251,23 @@
   display: flex;
   align-items: stretch;
   gap: 0;
-  padding: 0 12px;
+  padding: 0 10px;
   background: var(--space-chrome-bg, #0a0c12);
-  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.07));
   flex-shrink: 0;
-  height: 38px;
+  height: 40px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+
+.spaceTopTabs::-webkit-scrollbar { display: none; }
 
 .spaceTopTab {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 14px;
+  gap: 6px;
+  padding: 0 12px;
   background: transparent;
   border: none;
   font-family: inherit;
@@ -232,22 +277,25 @@
   cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
   letter-spacing: 0.01em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .spaceTopTab:hover {
   color: var(--text-primary, #e6e9f0);
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .spaceTopTab--active {
   color: var(--theme-primary, #66ddaa);
+  font-weight: 600;
 }
 
 .spaceTopTab--active::after {
   content: '';
   position: absolute;
-  left: 12px;
-  right: 12px;
+  left: 10px;
+  right: 10px;
   bottom: -1px;
   height: 2px;
   background: var(--theme-primary, #66ddaa);
@@ -258,10 +306,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  opacity: 0.85;
+}
+
+.spaceTopTab--active .spaceTopTabIcon {
+  opacity: 1;
 }
 
 .spaceTopTabLabel {
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1481,44 +1534,52 @@ img.spaceMemberFullAvatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 32px;
 }
 
 .spaceWindowEmptyCard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   text-align: center;
   max-width: 400px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 32px 28px;
 }
 
 .spaceWindowEmptyTitle {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary, #e6e9f0);
+  letter-spacing: -0.01em;
 }
 
 .spaceWindowEmptyText {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted, #6e7785);
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .spaceWindowEmptyButton {
-  margin-top: 8px;
+  margin-top: 6px;
   font-family: inherit;
   font-size: 12px;
-  padding: 6px 12px;
-  background: transparent;
+  font-weight: 600;
+  padding: 7px 16px;
+  background: rgba(102, 221, 170, 0.1);
   color: var(--theme-primary, #66ddaa);
-  border: 1px solid var(--theme-primary, #66ddaa);
-  border-radius: 4px;
+  border: 1px solid rgba(102, 221, 170, 0.3);
+  border-radius: 6px;
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
 }
 
 .spaceWindowEmptyButton:hover {
-  background: rgba(102, 221, 170, 0.08);
+  background: rgba(102, 221, 170, 0.16);
+  border-color: rgba(102, 221, 170, 0.5);
 }
 
 /* Empty state inside an entity body (no items at all) */

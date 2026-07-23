@@ -1,25 +1,23 @@
 /* Collab Space Panel */
 
 .collabSpacePanel {
-  /* Fill the side-panel column and own the vertical scroll. Without
-     flex:1 + min-height:0 the panel can't shrink below its content height, so
-     tall Collab content overflows and is clipped by the pn-mp overflow:hidden
-     column while this overflow-y:auto never engages. Mirrors the tasks pn-scroll. */
   flex: 1 1 0;
   min-height: 0;
-  padding: 12px 16px;
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
 }
 
+/* ── Header ────────────────────────────────────────────────────────── */
+
 .collabSpaceHeader {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.07));
 }
 
 .collabSpaceUser,
@@ -35,15 +33,17 @@
 .collabSpaceUserLabel,
 .collabSpaceRepoLabel {
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.07em;
   font-size: 10px;
-  color: var(--text-muted, #8a93a3);
+  font-weight: 600;
+  color: var(--text-muted, #666);
 }
 
 .collabSpaceUserEmail,
 .collabSpaceRepoValue {
   font-family: 'JetBrains Mono', monospace;
-  color: var(--text-primary, #ddd);
+  font-size: 11px;
+  color: var(--text-primary, #e0e0e0);
 }
 
 .collabSpaceRepoEdit {
@@ -53,10 +53,14 @@
   align-items: center;
 }
 
+/* ── Action row ─────────────────────────────────────────────────────── */
+
 .collabSpaceActionRow {
   display: flex;
   gap: 8px;
 }
+
+/* ── Section titles ─────────────────────────────────────────────────── */
 
 .collabSpaceSection {
   display: flex;
@@ -65,25 +69,42 @@
 }
 
 .collabSpaceSectionTitle {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--text-muted, #8a93a3);
-  font-weight: 600;
+  color: var(--text-muted, #666);
+  font-weight: 700;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.collabSpaceSectionTitle::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle, rgba(255, 255, 255, 0.06));
 }
 
 .collabSpaceSectionEmpty {
   font-size: 12px;
-  color: var(--text-muted, #8a93a3);
+  color: var(--text-muted, #666);
   font-style: italic;
-  padding: 8px 0;
+  padding: 10px 4px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.015);
+  border-radius: 6px;
+  border: 1px dashed rgba(255, 255, 255, 0.06);
 }
 
 .collabSpaceList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
+
+/* ── Space rows ─────────────────────────────────────────────────────── */
 
 .collabSpaceRow {
   display: flex;
@@ -91,15 +112,15 @@
   justify-content: space-between;
   gap: 12px;
   padding: 10px 12px;
-  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.025));
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
-  border-radius: 6px;
-  transition: background 0.1s, border-color 0.1s;
+  border-radius: 8px;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .collabSpaceRow:hover {
-  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.05));
-  border-color: var(--border-default, rgba(255, 255, 255, 0.12));
+  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.045));
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .collabSpaceRowMain {
@@ -110,10 +131,10 @@
 .collabSpaceRowName {
   font-weight: 600;
   font-size: 13px;
-  color: var(--text-primary, #ddd);
+  color: var(--text-primary, #e0e0e0);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
 }
 
 .collabSpaceRowDescription {
@@ -127,8 +148,11 @@
 
 .collabSpaceRowMeta {
   font-size: 11px;
-  color: var(--text-muted, #8a93a3);
+  color: var(--text-muted, #666);
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .collabSpaceVisBadge {
@@ -136,47 +160,64 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding: 2px 6px;
-  background: var(--bg-overlay, rgba(255, 200, 100, 0.15));
-  color: var(--accent, #ffc864);
-  border-radius: 3px;
-  font-weight: 500;
+  background: rgba(255, 200, 100, 0.14);
+  color: #e8b84b;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 200, 100, 0.2);
 }
 
-/* Buttons */
+/* ── Buttons ─────────────────────────────────────────────────────────── */
 
 .collabSpaceButton {
   font-family: inherit;
   font-size: 12px;
-  padding: 6px 12px;
-  background: var(--bg-elevated, rgba(255, 255, 255, 0.05));
+  padding: 6px 13px;
+  background: var(--bg-elevated, rgba(255, 255, 255, 0.06));
   color: var(--text-primary, #ddd);
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
-  border-radius: 4px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.13));
+  border-radius: 5px;
   cursor: pointer;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.12s, border-color 0.12s;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .collabSpaceButton:hover:not(:disabled) {
-  background: var(--bg-elevated-hover, rgba(255, 255, 255, 0.08));
-  border-color: var(--border-strong, rgba(255, 255, 255, 0.2));
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .collabSpaceButton:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .collabSpaceButtonPrimary {
   background: var(--accent, #66ddaa);
-  color: var(--bg-primary, #111);
+  color: #0a0c12;
   border-color: var(--accent, #66ddaa);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .collabSpaceButtonPrimary:hover:not(:disabled) {
   background: var(--accent-hover, #88eebb);
   border-color: var(--accent-hover, #88eebb);
+}
+
+.collabSpaceButtonJoin {
+  font-size: 11px;
+  padding: 5px 12px;
+  font-weight: 600;
+  background: rgba(102, 221, 170, 0.12);
+  color: #66ddaa;
+  border-color: rgba(102, 221, 170, 0.3);
+  flex-shrink: 0;
+}
+
+.collabSpaceButtonJoin:hover:not(:disabled) {
+  background: rgba(102, 221, 170, 0.2);
+  border-color: rgba(102, 221, 170, 0.5);
 }
 
 .collabSpaceTextButton {
@@ -186,66 +227,90 @@
   font-family: inherit;
   font-size: 11px;
   cursor: pointer;
-  padding: 4px 6px;
-  text-decoration: underline;
+  padding: 3px 5px;
+  text-decoration: none;
+  border-radius: 3px;
+  transition: background 0.1s, color 0.1s;
 }
 
 .collabSpaceTextButton:hover {
   color: var(--accent-hover, #88eebb);
+  background: rgba(102, 221, 170, 0.08);
 }
 
-/* Inputs */
+/* ── Inputs ──────────────────────────────────────────────────────────── */
 
 .collabSpaceInput {
   font-family: inherit;
   font-size: 13px;
-  padding: 8px 10px;
-  background: var(--bg-input, rgba(0, 0, 0, 0.2));
+  padding: 8px 11px;
+  background: rgba(0, 0, 0, 0.25);
   color: var(--text-primary, #ddd);
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
-  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
   flex: 1;
   min-width: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .collabSpaceInput:focus {
   outline: none;
-  border-color: var(--accent, #66ddaa);
+  border-color: #7c6fff;
+  box-shadow: 0 0 0 2px rgba(124, 111, 255, 0.15);
 }
 
 .collabSpaceInput:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .collabSpaceInput[type="email"],
 .collabSpaceInput[type="password"] {
   width: 100%;
+  box-sizing: border-box;
 }
 
 textarea.collabSpaceInput {
   resize: vertical;
   font-family: inherit;
+  line-height: 1.5;
 }
 
-/* Forms */
+/* ── Forms ───────────────────────────────────────────────────────────── */
 
 .collabSpaceForm {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .collabSpaceField {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .collabSpaceFieldLabel {
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.07em;
+  font-weight: 700;
   color: var(--text-muted, #8a93a3);
+}
+
+.collabSpaceInputReadOnly {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 11px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary, #aaa);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 5px;
+  cursor: default;
+  user-select: all;
 }
 
 .collabSpaceVisRow {
@@ -258,70 +323,126 @@ textarea.collabSpaceInput {
 
 .collabSpaceVisOption {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   cursor: pointer;
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.collabSpaceVisOption:has(input:checked) {
+  background: rgba(124, 111, 255, 0.08);
+  border-color: rgba(124, 111, 255, 0.3);
+}
+
+.collabSpaceVisOption:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.collabSpaceVisOption input[type="radio"] {
+  margin-top: 2px;
+  accent-color: #7c6fff;
+  flex-shrink: 0;
+}
+
+.collabSpaceVisOptionTitle {
+  font-weight: 600;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.collabSpaceVisOptionDesc {
+  color: var(--text-secondary, #999);
 }
 
 .collabSpaceFormActions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .collabSpaceError {
   font-size: 12px;
   color: var(--space-error-fg, #ff8080);
-  background: var(--space-error-bg, rgba(255, 80, 80, 0.1));
-  border: 1px solid var(--space-error-border, rgba(255, 80, 80, 0.3));
-  border-radius: 4px;
-  padding: 8px 10px;
+  background: var(--space-error-bg, rgba(255, 80, 80, 0.08));
+  border: 1px solid var(--space-error-border, rgba(255, 80, 80, 0.25));
+  border-radius: 5px;
+  padding: 8px 11px;
   cursor: pointer;
+  line-height: 1.5;
 }
 
-.collabInviteJoin { margin: 0 12px 10px; }
-.collabInviteJoinForm { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; gap: 6px; margin-top: 6px; }
-.collabInviteJoinForm .collabSpaceError { grid-column: 1 / -1; }
-@media (max-width: 560px) { .collabInviteJoinForm { grid-template-columns: 1fr; } }
+/* ── Private invite join card ─────────────────────────────────────── */
 
-/* Modal */
+.collabInviteJoin {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.collabInviteJoinForm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.collabInviteJoinForm .collabSpaceError {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .collabInviteJoinForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Modal ───────────────────────────────────────────────────────────── */
 
 .collabSpaceModalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.65);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(2px);
 }
 
 .collabSpaceModal {
-  background: var(--bg-primary, #1a1a1a);
-  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.12));
-  border-radius: 8px;
-  padding: 20px;
+  background: #13151f;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
   width: 90%;
-  max-width: 480px;
+  max-width: 500px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .collabSpaceModalTitle {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary, #ddd);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary, #e6e9f0);
+  letter-spacing: -0.01em;
 }
 
-/* Sign-in view */
+/* ── Sign-in view ─────────────────────────────────────────────────── */
 
 .collabSpaceSignInContainer {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 28px 16px;
+  flex: 1;
 }
 
 .collabSpaceSignInCard {
@@ -330,36 +451,49 @@ textarea.collabSpaceInput {
   gap: 14px;
   width: 100%;
   max-width: 320px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 28px 24px;
 }
 
 .collabSpaceSignInTitle {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary, #ddd);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary, #e6e9f0);
   text-align: center;
+  letter-spacing: -0.01em;
 }
 
 .collabSpaceSignInSubtitle {
   font-size: 12px;
-  color: var(--text-muted, #888);
+  color: var(--text-muted, #777);
   text-align: center;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  line-height: 1.5;
 }
 
 .collabSpaceGoogleButton {
   width: 100%;
-  padding: 10px;
+  padding: 10px 14px;
   font-size: 13px;
+  font-weight: 600;
+  box-sizing: border-box;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .collabSpaceDivider {
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: var(--text-muted, #8a93a3);
+  gap: 10px;
+  color: var(--text-muted, #666);
   font-size: 11px;
   text-transform: uppercase;
-  margin: 4px 0;
+  letter-spacing: 0.05em;
 }
 
 .collabSpaceDivider::before,
@@ -367,56 +501,67 @@ textarea.collabSpaceInput {
   content: "";
   flex: 1;
   height: 1px;
-  background: var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .collabSpaceSignInToggle {
   align-self: center;
+  font-size: 12px;
 }
 
-/* Empty / not configured state */
+/* ── Empty / not configured ─────────────────────────────────────────── */
 
 .collabSpaceEmptyState {
-  padding: 24px;
+  padding: 28px 16px;
   text-align: center;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  align-items: center;
 }
 
 .collabSpaceEmptyTitle {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary, #ddd);
 }
 
 .collabSpaceEmptyText {
   font-size: 12px;
-  color: var(--text-muted, #888);
-  line-height: 1.5;
+  color: var(--text-muted, #777);
+  line-height: 1.6;
+  max-width: 280px;
 }
 
 .collabSpaceEmptyText code {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 1px 4px;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 1px 5px;
   border-radius: 3px;
+  color: #aaa;
 }
 
-/* Row clickable + chevron */
+/* ── Row clickable + chevron ─────────────────────────────────────── */
 
 .collabSpaceRowClickable {
   cursor: pointer;
 }
 
 .collabSpaceRowChevron {
-  color: var(--text-muted, #8a93a3);
-  font-size: 18px;
-  padding: 0 6px;
+  color: var(--text-muted, #555);
+  display: flex;
+  align-items: center;
+  opacity: 0.6;
+  flex-shrink: 0;
 }
 
-/* Space Detail */
+.collabSpaceRow:hover .collabSpaceRowChevron {
+  opacity: 1;
+  color: var(--text-secondary, #999);
+}
+
+/* ── Space Detail ────────────────────────────────────────────────── */
 
 .collabSpaceDetail {
   padding: 12px 16px;
@@ -456,8 +601,8 @@ textarea.collabSpaceInput {
 .collabSpaceDetailRepo {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  color: var(--text-muted, #888);
-  margin-top: 2px;
+  color: var(--text-muted, #777);
+  margin-top: 3px;
 }
 
 .collabSpaceDetailDescription {
@@ -468,21 +613,26 @@ textarea.collabSpaceInput {
 
 .collabSpaceDetailMeta {
   font-size: 11px;
-  color: var(--text-muted, #8a93a3);
+  color: var(--text-muted, #777);
 }
 
 .collabSpaceMetaSep {
-  color: var(--text-muted, #8a93a3);
+  color: var(--text-muted, #555);
+  margin: 0 4px;
 }
 
-/* Tab bar inside detail */
+/* ── Tab bar inside detail ───────────────────────────────────────── */
 
 .collabSpaceTabBar {
   display: flex;
-  gap: 4px;
-  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  gap: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   margin-top: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+
+.collabSpaceTabBar::-webkit-scrollbar { display: none; }
 
 .collabSpaceTabButton {
   background: transparent;
@@ -490,13 +640,15 @@ textarea.collabSpaceInput {
   border-bottom: 2px solid transparent;
   font-family: inherit;
   font-size: 12px;
-  color: var(--text-muted, #888);
+  color: var(--text-muted, #777);
   padding: 8px 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
   margin-bottom: -1px;
+  white-space: nowrap;
+  transition: color 0.12s;
 }
 
 .collabSpaceTabButton:hover {
@@ -506,6 +658,7 @@ textarea.collabSpaceInput {
 .collabSpaceTabButtonActive {
   color: var(--text-primary, #ddd);
   border-bottom-color: var(--accent, #66ddaa);
+  font-weight: 600;
 }
 
 .collabSpaceTabCount {
@@ -522,35 +675,36 @@ textarea.collabSpaceInput {
   flex-direction: column;
 }
 
-/* When the messages tab mounts MessagingView, the tab content acts as the
-   flex container and gives the messaging UI a height to fill. The parent
-   .collabSpaceDetail also disables its own scroll so the timeline scrolls
-   internally rather than the whole panel. */
 .collabSpaceDetail:has(.messagingRoot) {
   overflow: hidden;
 }
 
-/* Members list */
+/* ── Members list ────────────────────────────────────────────────── */
 
 .collabSpaceMembersList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .collabSpaceMemberRow {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  background: var(--bg-elevated, rgba(255, 255, 255, 0.03));
-  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
-  border-radius: 6px;
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+
+.collabSpaceMemberRow:hover {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .collabSpaceAvatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
@@ -558,7 +712,7 @@ textarea.collabSpaceInput {
 
 .collabSpaceAvatarFallback {
   background: var(--accent, #66ddaa);
-  color: var(--bg-primary, #111);
+  color: #0a0c12;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -577,11 +731,12 @@ textarea.collabSpaceInput {
   display: flex;
   align-items: center;
   gap: 8px;
+  font-weight: 500;
 }
 
 .collabSpaceMemberEmail {
   font-size: 11px;
-  color: var(--text-muted, #8a93a3);
+  color: var(--text-muted, #666);
   margin-top: 2px;
 }
 
@@ -590,20 +745,22 @@ textarea.collabSpaceInput {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding: 2px 6px;
-  background: rgba(102, 221, 170, 0.15);
+  background: rgba(102, 221, 170, 0.14);
   color: var(--accent, #66ddaa);
-  border-radius: 3px;
-  font-weight: 500;
+  border-radius: 4px;
+  font-weight: 600;
+  border: 1px solid rgba(102, 221, 170, 0.25);
 }
 
-/* Placeholder content for messages / tasks tabs */
+/* ── Placeholder content ─────────────────────────────────────────── */
 
 .collabSpacePlaceholder {
-  padding: 24px 12px;
+  padding: 28px 12px;
   text-align: center;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  align-items: center;
 }
 
 .collabSpacePlaceholderTitle {
@@ -614,13 +771,14 @@ textarea.collabSpaceInput {
 
 .collabSpacePlaceholderText {
   font-size: 12px;
-  color: var(--text-muted, #8a93a3);
+  color: var(--text-muted, #666);
   line-height: 1.5;
   max-width: 320px;
   margin: 0 auto;
 }
 
-/* ── Collab notifications (Phase 1: in-app toasts + bell inbox) ─────────── */
+/* ── Collab notifications ──────────────────────────────────────────── */
+
 .collab-notify-stack {
   position: fixed;
   bottom: 20px;
@@ -631,99 +789,208 @@ textarea.collabSpaceInput {
   gap: 8px;
   max-width: 380px;
 }
+
 .collab-notify-toast {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 10px 12px;
-  background: var(--pn-ink, #1c1c1e);
-  color: var(--pn-paper, #f6f6f4);
+  padding: 11px 14px;
+  background: #1a1c28;
+  color: var(--pn-paper, #f0f0f0);
   border-radius: 10px;
-  box-shadow: var(--pn-sh-pop, 0 8px 28px rgba(0, 0, 0, 0.32));
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
   font-family: var(--pn-ui, system-ui, sans-serif);
   font-size: 13px;
   cursor: pointer;
-  border-left: 3px solid rgba(255, 255, 255, 0.35);
-  animation: collab-toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  border-left: 3px solid rgba(102, 221, 170, 0.6);
+  animation: collab-toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.collab-notify-toast--mention { border-left-color: #6366f1; }
+
+.collab-notify-toast--mention {
+  border-left-color: #6366f1;
+}
+
 .collab-notify-toast__icon { line-height: 1.3; }
-.collab-notify-toast__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+
+.collab-notify-toast__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
 .collab-notify-toast__heading { font-weight: 600; }
+
 .collab-notify-toast__msg {
-  opacity: 0.9;
+  opacity: 0.85;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 }
-.collab-notify-toast__meta { font-size: 11px; opacity: 0.6; }
+
+.collab-notify-toast__meta { font-size: 11px; opacity: 0.55; }
+
 .collab-notify-toast__close {
-  background: none; border: none; color: inherit; cursor: pointer;
-  font-size: 16px; line-height: 1; opacity: 0.6; padding: 0 2px;
-}
-.collab-notify-toast__close:hover { opacity: 1; }
-@keyframes collab-toast-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.5;
+  padding: 0 2px;
 }
 
-/* Bell + dropdown inbox */
+.collab-notify-toast__close:hover { opacity: 1; }
+
+@keyframes collab-toast-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Bell + dropdown inbox ───────────────────────────────────────── */
+
 .collab-notify-bell { position: relative; display: inline-flex; }
+
 .collab-notify-bell__button {
-  position: relative; background: none; border: none; cursor: pointer;
-  font-size: 15px; padding: 4px 6px; border-radius: 6px; line-height: 1;
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  color: var(--text-muted, #888);
+  transition: background 0.1s, color 0.1s;
 }
-.collab-notify-bell__button:hover { background: rgba(127, 127, 127, 0.14); }
+
+.collab-notify-bell__button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary, #ddd);
+}
+
 .collab-notify-bell__badge {
-  position: absolute; top: -2px; right: -2px;
-  min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
-  background: #ef4444; color: #fff; border-radius: 8px;
-  font-size: 10px; font-weight: 700; line-height: 16px; text-align: center;
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
 }
+
 .collab-notify-panel {
-  position: absolute; top: calc(100% + 6px); right: 0;
-  width: 340px; max-height: 460px; overflow: hidden;
-  display: flex; flex-direction: column;
-  background: var(--pn-paper, #fff); color: var(--pn-ink, #1c1c1e);
-  border: 1px solid rgba(127, 127, 127, 0.24); border-radius: 10px;
-  box-shadow: var(--pn-sh-pop, 0 8px 28px rgba(0, 0, 0, 0.24));
-  z-index: var(--spell-toast-z, 9999);
-  font-family: var(--pn-ui, system-ui, sans-serif); font-size: 13px;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 340px;
+  max-height: 460px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #1a1c28;
+  color: #e0e0e0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  font-family: var(--pn-ui, system-ui, sans-serif);
+  font-size: 13px;
 }
+
 .collab-notify-panel__head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 12px; border-bottom: 1px solid rgba(127, 127, 127, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-weight: 600;
+  font-size: 13px;
 }
+
 .collab-notify-panel__headActions { display: flex; gap: 6px; }
+
 .collab-notify-panel__headActions button {
-  background: none; border: none; cursor: pointer; font-size: 12px;
-  color: #6366f1; padding: 2px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: #6366f1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background 0.1s;
 }
+
+.collab-notify-panel__headActions button:hover { background: rgba(99, 102, 241, 0.12); }
 .collab-notify-panel__headActions button:disabled { opacity: 0.4; cursor: default; }
+
 .collab-notify-panel__prefs {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 10px 12px; border-bottom: 1px solid rgba(127, 127, 127, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-.collab-notify-panel__prefs label { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.collab-notify-panel__prefs select { font-size: 12px; padding: 2px 4px; }
+
+.collab-notify-panel__prefs label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.collab-notify-panel__prefs select {
+  font-size: 12px;
+  padding: 2px 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #ddd;
+}
+
 .collab-notify-panel__toggle { cursor: pointer; }
 .collab-notify-panel__list { overflow-y: auto; }
-.collab-notify-panel__empty { padding: 24px 12px; text-align: center; opacity: 0.55; }
+.collab-notify-panel__empty { padding: 28px 14px; text-align: center; opacity: 0.5; }
+
 .collab-notify-row {
-  display: flex; gap: 10px; width: 100%; text-align: left;
-  padding: 10px 12px; background: none; border: none; cursor: pointer;
-  border-bottom: 1px solid rgba(127, 127, 127, 0.1);
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: #e0e0e0;
+  transition: background 0.1s;
 }
-.collab-notify-row:hover { background: rgba(127, 127, 127, 0.08); }
-.collab-notify-row--unread { background: rgba(99, 102, 241, 0.08); }
+
+.collab-notify-row:hover { background: rgba(255, 255, 255, 0.04); }
+.collab-notify-row--unread { background: rgba(99, 102, 241, 0.06); }
 .collab-notify-row__icon { line-height: 1.3; }
 .collab-notify-row__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
 .collab-notify-row__top { display: flex; gap: 6px; align-items: baseline; }
 .collab-notify-row__author { font-weight: 600; }
-.collab-notify-row__chan { opacity: 0.6; font-size: 12px; }
-.collab-notify-row__time { margin-left: auto; opacity: 0.5; font-size: 11px; }
+.collab-notify-row__chan { opacity: 0.55; font-size: 12px; }
+.collab-notify-row__time { margin-left: auto; opacity: 0.45; font-size: 11px; white-space: nowrap; }
 .collab-notify-row__preview {
-  opacity: 0.85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12px;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
