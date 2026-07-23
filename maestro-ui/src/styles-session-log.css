@@ -1661,3 +1661,52 @@ html[data-redesign] .sessionLogModal {
     padding: 10px 12px;
   }
 }
+
+/* ===========================================================================
+   TEXT SELECTION POLICY (universal clipboard bridge)
+   ---------------------------------------------------------------------------
+   Copying out of the session log has to actually work. The rule is:
+
+     · CHROME is unselectable — chevrons, icons, badges, click-to-collapse
+       header rows, toggle pills, and GUTTERS (line numbers, diff +/- prefixes,
+       the bash `$` prompt). Excluding gutters is deliberate: it is what lets a
+       user drag across a code block and paste clean code, GitHub-style.
+     · CONTENT is selectable — message text, thinking bodies, tool output,
+       diffs, code, and the file paths / command summaries rendered INSIDE the
+       collapse headers. Those live in a `user-select: none` row purely so the
+       click target behaves, but the text itself is exactly what people copy.
+
+   These rules are stated affirmatively (`user-select: text`) rather than by
+   deleting the `none` declarations above, so an ancestor that turns selection
+   off — a panel, a drag surface, a future redesign token — cannot silently
+   take log text with it.
+   ========================================================================= */
+
+.sessionLogViewer,
+.sessionLogModalBody,
+.sessionLogGroup,
+.sessionLogUserText,
+.sessionLogTextBlock,
+.sessionLogThinkingBody,
+.sessionLogToolCardBody,
+.sessionLogDiffBody,
+.sessionLogDiffLine,
+.sessionLogCodeBody,
+.sessionLogLineContent,
+.sessionLogBashOutput {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Meaningful text inside otherwise-unselectable click headers. The header row
+   keeps `user-select: none` so the chevron/icon don't drag-select; the spans
+   carrying the tool name, the argument summary (usually a file path or a
+   command) and the thinking preview opt back in. */
+.sessionLogToolCardName,
+.sessionLogToolCardSummary,
+.sessionLogThinkingLabel,
+.sessionLogThinkingPreview,
+.sessionLogFileName {
+  -webkit-user-select: text;
+  user-select: text;
+}

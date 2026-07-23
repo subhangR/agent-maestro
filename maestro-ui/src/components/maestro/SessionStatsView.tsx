@@ -21,6 +21,7 @@ import { SessionTimeline } from "./SessionTimeline";
 import { StrategyBadge } from "./StrategyBadge";
 import { StatIcon, type StatIconName } from "./SessionStatsIcons";
 import { PromptList } from "./PromptList";
+import { copyToClipboardOrWarn } from "../../utils/domUtils";
 import { maestroClient } from "../../utils/MaestroClient";
 import { buildChildrenByParent, collectSubtreeIds } from "../../utils/sessionLifecycle";
 import { isCoordinatorRole } from "../../utils/coordinatorRole";
@@ -433,13 +434,11 @@ function StatusChip({ kind }: { kind: TaskSessionStatus }) {
 function useCopy(): [string | null, (key: string, value: string) => void] {
   const [copied, setCopied] = useState<string | null>(null);
   const copy = (key: string, value: string) => {
-    try {
-      void navigator.clipboard.writeText(value);
-    } catch {
-      /* ignore */
-    }
-    setCopied(key);
-    window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1300);
+    void copyToClipboardOrWarn(value, "Value").then((ok) => {
+      if (!ok) return;
+      setCopied(key);
+      window.setTimeout(() => setCopied((c) => (c === key ? null : c)), 1300);
+    });
   };
   return [copied, copy];
 }

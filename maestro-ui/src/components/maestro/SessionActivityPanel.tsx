@@ -6,6 +6,7 @@ import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useSessionStore } from "../../stores/useSessionStore";
 import { createMaestroSession } from "../../services/maestroService";
+import { useComposerImagePaste } from "../../hooks/useComposerImagePaste";
 import {
   AGENT_TOOLS,
   AGENT_TOOL_LABELS,
@@ -109,6 +110,16 @@ function ChatComposer({ session, kind }: { session: any; kind: AgentKind }) {
   const createTask = useMaestroStore((s) => s.createTask);
   const teamMembers = useMaestroStore((s) => s.teamMembers);
   const sendPromptToActive = useSessionStore((s) => s.sendPromptToActive);
+
+  // Paste / drop a screenshot into the composer → upload → the server-side path
+  // is inserted at the caret, so the agent can Read the image by path.
+  const imagePaste = useComposerImagePaste({
+    value: text,
+    setValue: setText,
+    inputRef,
+    sessionId: session?.id,
+    disabled: busy,
+  });
 
   const project: MaestroProject | null =
     projects.find((p) => p.id === session?.projectId) ??
@@ -227,6 +238,9 @@ function ChatComposer({ session, kind }: { session: any; kind: AgentKind }) {
             placeholder={placeholder}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={imagePaste.onPaste}
+            onDrop={imagePaste.onDrop}
+            onDragOver={imagePaste.onDragOver}
             disabled={busy}
             aria-label="Message the agent or describe a new task"
           />

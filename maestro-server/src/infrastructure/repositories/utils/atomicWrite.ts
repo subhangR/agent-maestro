@@ -21,3 +21,20 @@ export async function atomicWriteFile(filePath: string, data: string): Promise<v
     throw err;
   }
 }
+
+/**
+ * Binary sibling of {@link atomicWriteFile}, for blobs (images, attachments)
+ * that must never be interpreted as UTF-8. Same write-to-temp + rename
+ * guarantee: a reader either sees no file or sees the complete file.
+ */
+export async function atomicWriteBinaryFile(filePath: string, data: Buffer): Promise<void> {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const tmpPath = `${filePath}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+  try {
+    await fs.writeFile(tmpPath, data);
+    await fs.rename(tmpPath, filePath);
+  } catch (err) {
+    try { await fs.unlink(tmpPath); } catch {}
+    throw err;
+  }
+}

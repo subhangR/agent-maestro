@@ -11,6 +11,11 @@ import {
   setLastFittedSize,
 } from "./stores/useSessionStore";
 import { measureSpawnTerminalSize } from "./utils/terminalSize";
+import { copyToClipboardOrWarn } from "./utils/domUtils";
+import { dispatchClipboardData } from "./utils/clipboardPaste";
+import { dataTransferHasFiles } from "./utils/clipboardImages";
+import { uploadClipboardImage } from "./utils/clipboardUpload";
+import { notifyUser, dismissNotice } from "./utils/notify";
 
 export type TerminalRegistry = Map<
   string,
@@ -89,15 +94,55 @@ function isXtermRendererReady(term: Terminal): boolean {
   return Boolean(renderer && cellWidth > 0);
 }
 
-async function copyToClipboard(text: string): Promise<boolean> {
-  const value = text ?? "";
-  if (!value) return false;
+/**
+ * Inject one pasted/dropped image into the running agent's prompt.
+ *
+ * The blob is uploaded to the server (agent-agnostic) and only the returned
+ * ABSOLUTE SERVER-SIDE path is written into the PTY, followed by a space so the
+ * agent's argument parser sees a complete token. We NEVER write a carriage
+ * return — the path lands at the prompt for the user to send, matching the
+ * "paste, don't submit" contract. Injecting a short path (never base64) is also
+ * why platform.terminal's oversized-write guard never trips.
+ *
+ * On any failure the user gets a toast and NOTHING is written to the PTY.
+ */
+async function injectImagesIntoTerminal(
+  sessionId: string,
+  files: File[],
+  readOnly: boolean,
+): Promise<void> {
+  if (readOnly || files.length === 0) return;
 
+  const label = files.length === 1 ? "image" : `${files.length} images`;
+  const progressId = notifyUser(`Uploading ${label}…`, "info", sessionId);
+
+  const paths: string[] = [];
   try {
-    await navigator.clipboard.writeText(value);
-    return true;
+    for (const file of files) {
+      const result = await uploadClipboardImage(file, sessionId);
+      paths.push(result.path);
+    }
+  } catch (err) {
+    dismissNotice(progressId);
+    const message = err instanceof Error ? err.message : "Image upload failed.";
+    notifyUser(message, "warn", sessionId);
+    return;
+  }
+
+  dismissNotice(progressId);
+  if (paths.length === 0) return;
+
+  // A trailing space terminates each path token at the agent's prompt.
+  const injection = paths.map((p) => `${p} `).join("");
+  try {
+    await platform.terminal.write(sessionId, injection, "user");
+    notifyUser(
+      paths.length === 1 ? "Image path pasted into the terminal." : `${paths.length} image paths pasted.`,
+      "success",
+      sessionId,
+    );
   } catch {
-    return false;
+    notifyUser("Could not write the image path into the terminal.", "warn", sessionId);
   }
 }
 
@@ -141,6 +186,10 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
   onResizeRef.current = props.onResize;
   const onUserEnterRef = useRef(props.onUserEnter);
   onUserEnterRef.current = props.onUserEnter;
+  // The mount effect captures props at mount (its deps intentionally exclude
+  // readOnly), so the paste/drop listeners read the live value through a ref.
+  const readOnlyRef = useRef(props.readOnly);
+  readOnlyRef.current = props.readOnly;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -359,7 +408,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
           !event.altKey &&
           key.toLowerCase() === "c";
         if (isCopy && term.hasSelection()) {
-          void copyToClipboard(term.getSelection());
+          void copyToClipboardOrWarn(term.getSelection(), "Selection");
           return false;
         }
 
@@ -391,7 +440,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
           !event.altKey &&
           key.toLowerCase() === "c";
         if (isCopy && term.hasSelection()) {
-          void copyToClipboard(term.getSelection());
+          void copyToClipboardOrWarn(term.getSelection(), "Selection");
           return false;
         }
 
@@ -407,6 +456,60 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 
 	    termRef.current = term;
 	    fitRef.current = fit;
+
+    // ---- Universal paste + drag-and-drop -----------------------------------
+    // The native 'paste' event is the one clipboard-READ path that works in
+    // every browser on any origin (no navigator.clipboard, no secure context).
+    // We intercept it in the CAPTURE phase on the container so we can claim
+    // image pastes (upload + inject a server path) before xterm's own textarea
+    // handler — which only knows how to paste text — ever sees them. Plain text
+    // still goes through term.paste() for a proper bracketed paste so a
+    // multi-line paste never auto-submits.
+    const handleTerminalPaste = (event: ClipboardEvent) => {
+      if (readOnlyRef.current) return;
+      const result = dispatchClipboardData(event.clipboardData, {
+        onText: (text) => {
+          term.paste(text);
+        },
+        onImages: (files) => {
+          void injectImagesIntoTerminal(props.id, files, readOnlyRef.current);
+        },
+      });
+      if (result.handled) {
+        // Stop xterm's textarea handler (and the browser default) from also
+        // acting on this paste — otherwise text would paste twice.
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    const handleTerminalDragOver = (event: DragEvent) => {
+      if (readOnlyRef.current) return;
+      if (dataTransferHasFiles(event.dataTransfer)) {
+        // Required so the browser fires a 'drop' instead of navigating to the file.
+        event.preventDefault();
+      }
+    };
+
+    const handleTerminalDrop = (event: DragEvent) => {
+      if (readOnlyRef.current) return;
+      const result = dispatchClipboardData(event.dataTransfer, {
+        onText: (text) => {
+          term.paste(text);
+        },
+        onImages: (files) => {
+          void injectImagesIntoTerminal(props.id, files, readOnlyRef.current);
+        },
+      });
+      if (result.handled) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    container.addEventListener("paste", handleTerminalPaste, true);
+    container.addEventListener("dragover", handleTerminalDragOver);
+    container.addEventListener("drop", handleTerminalDrop);
 
     const oscDisposables: Array<{ dispose: () => void }> = [];
     const reportCwd = (cwd: string) => {
@@ -684,6 +787,9 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      themeObserver.disconnect();
 	      for (const t of fontReflowTimers) window.clearTimeout(t);
 	      resizeObserver.disconnect();
+	      container.removeEventListener("paste", handleTerminalPaste, true);
+	      container.removeEventListener("dragover", handleTerminalDragOver);
+	      container.removeEventListener("drop", handleTerminalDrop);
 	      window.removeEventListener("maestro:panel-resize-end", handlePanelResizeEnd);
 	      if (resizeRafRef.current !== null) {
 	        window.cancelAnimationFrame(resizeRafRef.current);

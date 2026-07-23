@@ -5,3 +5,4 @@ export * from './FileSystemOrderingRepository';
 export * from './FileSystemTaskListRepository';
 export * from './FileSystemTeamMemberRepository';
 export * from './FileSystemTeamRepository';
+export * from './FileSystemClipboardImageRepository';

@@ -8,6 +8,7 @@ import { homedir } from 'os';
 import { createContainer, Container } from './container';
 import { createProjectRoutes } from './api/projectRoutes';
 import { createTaskRoutes } from './api/taskRoutes';
+import { createClipboardRoutes } from './api/clipboardRoutes';
 import { createTaskListRoutes } from './api/taskListRoutes';
 import { createTaskGraphRoutes } from './api/taskGraphRoutes';
 import { createSessionRoutes } from './api/sessionRoutes';
@@ -44,7 +45,7 @@ async function startServer() {
   // Auth service — reads env vars; throws on misconfiguration before any port is bound
   const authService = new AuthService(container.config.dataDir);
 
-  const { config, logger, eventBus, projectService, taskService, taskListService, taskGraphService, sessionService, logDigestService, orderingService, teamMemberService, teamService, modelProfileService, sessionPromptService, huddleService, commandUsageService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, skillLoader, ptyHostService, sessionPromptDeliveryService } = container;
+  const { config, logger, eventBus, projectService, taskService, taskListService, taskGraphService, sessionService, logDigestService, orderingService, teamMemberService, teamService, modelProfileService, sessionPromptService, clipboardImageService, huddleService, commandUsageService, projectRepo, taskRepo, teamMemberRepo, modelProfileRepo, skillLoader, ptyHostService, sessionPromptDeliveryService } = container;
 
   // Create Express app
   const app = express();
@@ -139,6 +140,7 @@ async function startServer() {
   // API routes using services
   const projectRoutes = createProjectRoutes(projectService, sessionService);
   const taskRoutes = createTaskRoutes(taskService, sessionService, config.dataDir);
+  const clipboardRoutes = createClipboardRoutes(clipboardImageService);
   const taskListRoutes = createTaskListRoutes(taskListService);
   const taskGraphRoutes = createTaskGraphRoutes(taskGraphService);
   const sessionRoutes = createSessionRoutes({
@@ -175,6 +177,7 @@ async function startServer() {
 
   app.use('/api', projectRoutes);
   app.use('/api', taskRoutes);
+  app.use('/api', clipboardRoutes);
   app.use('/api', taskListRoutes);
   app.use('/api', taskGraphRoutes);
   app.use('/api', sessionRoutes);

@@ -18,6 +18,7 @@ import { FileSystemSpellRepository } from './infrastructure/repositories/FileSys
 import { FileSystemEnsembleRepository } from './infrastructure/repositories/FileSystemEnsembleRepository';
 import { FileSystemModelProfileRepository } from './infrastructure/repositories/FileSystemModelProfileRepository';
 import { FileSystemSessionPromptRepository } from './infrastructure/repositories/FileSystemSessionPromptRepository';
+import { FileSystemClipboardImageRepository } from './infrastructure/repositories/FileSystemClipboardImageRepository';
 import { MultiScopeSkillLoader } from './infrastructure/skills/MultiScopeSkillLoader';
 import { ProjectService } from './application/services/ProjectService';
 import { TaskService } from './application/services/TaskService';
@@ -31,6 +32,7 @@ import { TeamMemberService } from './application/services/TeamMemberService';
 import { TeamService } from './application/services/TeamService';
 import { ModelProfileService } from './application/services/ModelProfileService';
 import { SessionPromptService } from './application/services/SessionPromptService';
+import { ClipboardImageService } from './application/services/ClipboardImageService';
 import { HuddleService } from './application/services/HuddleService';
 import { CommandUsageService } from './application/services/CommandUsageService';
 import { FileSystemSessionCommandUsageRepository } from './infrastructure/repositories/FileSystemSessionCommandUsageRepository';
@@ -60,6 +62,7 @@ import { ISpellRepository } from './domain/repositories/ISpellRepository';
 import { IEnsembleRepository } from './domain/repositories/IEnsembleRepository';
 import { IModelProfileRepository } from './domain/repositories/IModelProfileRepository';
 import { ISessionPromptRepository } from './domain/repositories/ISessionPromptRepository';
+import { IClipboardImageRepository } from './domain/repositories/IClipboardImageRepository';
 import { ISkillLoader } from './domain/services/ISkillLoader';
 
 /**
@@ -209,6 +212,7 @@ export interface Container {
   ensembleRepo: IEnsembleRepository;
   modelProfileRepo: IModelProfileRepository;
   sessionPromptRepo: ISessionPromptRepository;
+  clipboardImageRepo: IClipboardImageRepository;
 
   // Loaders
   skillLoader: ISkillLoader;
@@ -225,6 +229,7 @@ export interface Container {
   teamService: TeamService;
   modelProfileService: ModelProfileService;
   sessionPromptService: SessionPromptService;
+  clipboardImageService: ClipboardImageService;
   huddleService: HuddleService;
   commandUsageService: CommandUsageService;
   spellService: SpellService;
@@ -273,6 +278,7 @@ export async function createContainer(): Promise<Container> {
   const ensembleRepo = new FileSystemEnsembleRepository(config.dataDir, logger);
   const modelProfileRepo = new FileSystemModelProfileRepository(config.dataDir, idGenerator, logger);
   const sessionPromptRepo = new FileSystemSessionPromptRepository(config.dataDir, logger);
+  const clipboardImageRepo = new FileSystemClipboardImageRepository(config.dataDir, logger);
 
   // 4. Loaders
   const skillLoader = new MultiScopeSkillLoader(logger);
@@ -289,6 +295,13 @@ export async function createContainer(): Promise<Container> {
   const teamService = new TeamService(teamRepo, teamMemberRepo, eventBus, idGenerator);
   const modelProfileService = new ModelProfileService(modelProfileRepo, eventBus, idGenerator);
   const sessionPromptService = new SessionPromptService(sessionPromptRepo, sessionRepo, eventBus, idGenerator);
+  const clipboardMaxBytesEnv = Number(process.env.MAESTRO_CLIPBOARD_MAX_BYTES);
+  const clipboardImageService = new ClipboardImageService(
+    clipboardImageRepo,
+    Number.isFinite(clipboardMaxBytesEnv) && clipboardMaxBytesEnv > 0
+      ? { maxBytes: clipboardMaxBytesEnv }
+      : undefined,
+  );
   const huddleService = new HuddleService(sessionPromptService, sessionService);
   const commandUsageRepo = new FileSystemSessionCommandUsageRepository(config.dataDir, logger);
   const commandUsageService = new CommandUsageService(commandUsageRepo);
@@ -379,6 +392,7 @@ export async function createContainer(): Promise<Container> {
     ensembleRepo,
     modelProfileRepo,
     sessionPromptRepo,
+    clipboardImageRepo,
     skillLoader,
     projectService,
     taskService,
@@ -391,6 +405,7 @@ export async function createContainer(): Promise<Container> {
     teamService,
     modelProfileService,
     sessionPromptService,
+    clipboardImageService,
     huddleService,
     commandUsageService,
     spellService,
