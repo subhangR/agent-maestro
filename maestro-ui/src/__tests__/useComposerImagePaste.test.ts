@@ -103,8 +103,10 @@ describe("useComposerImagePaste", () => {
     expect(uploadClipboardImage.mock.calls[0][1]).toBe("sess_abc");
     // The ABSOLUTE server-side path is what lands in the textarea — never a blob
     // URL or base64 — because that is what the agent will Read.
+    // …and it lands as its own whitespace-delimited token, trailing space and
+    // all, so the next thing typed cannot glue onto the path.
     expect(setValue).toHaveBeenCalledWith(
-      "look at /Users/dev/.maestro/data/clipboard/2026-07-23/image1.png",
+      "look at /Users/dev/.maestro/data/clipboard/2026-07-23/image1.png ",
     );
   });
 
@@ -128,14 +130,56 @@ describe("useComposerImagePaste", () => {
     expect(setValue.mock.calls[0][0]).toContain("before /data/clipboard/2026-07-23/image1.png");
     expect(setValue.mock.calls[0][0]).not.toContain("REPLACE");
 
-    // KNOWN DEFECT (useComposerImagePaste.ts:43-46): `spliceAtSelection` adds a
-    // leading space when needed but never a TRAILING one, despite its comment
-    // claiming the path ends up "its own whitespace-delimited token", and unlike
-    // the terminal path (SessionTerminal.tsx:136) which appends "$path ". So the
-    // following word glues onto the path — and so does the next character the
-    // user types, since the caret is parked flush against it. Asserted as-is so
-    // the suite reflects reality; flip to a trailing space when it is fixed.
-    expect(setValue).toHaveBeenCalledWith("before /data/clipboard/2026-07-23/image1.pngafter");
+    // The word that followed the replaced selection stays a separate token —
+    // "…image1.pngafter" would hand the agent a path that does not exist.
+    expect(setValue).toHaveBeenCalledWith("before /data/clipboard/2026-07-23/image1.png after");
+  });
+
+  it("does not glue the path onto the text the caret sits in front of", async () => {
+    uploadClipboardImage.mockResolvedValue({
+      filename: "image1.png",
+      path: "/tmp/image1.png",
+      url: "",
+      mimeType: "image/png",
+      bytes: 1,
+    });
+    // Caret at the very start, with existing text to the right of it.
+    const { view, setValue, textarea } = setup("after", { start: 0, end: 0 });
+
+    const event = makeEvent(makeDataTransfer({ itemFiles: [makeFile("image.png", "image/png")] }), "clipboardData");
+    await act(async () => {
+      view.result.current.onPaste(event as never);
+    });
+
+    expect(setValue).toHaveBeenCalledWith("/tmp/image1.png after");
+    // Nothing precedes the path, so no leading space is invented either.
+    expect(setValue.mock.calls[0][0].startsWith(" ")).toBe(false);
+    // The caret parks past the trailing space, ready for the next word.
+    await act(async () => {
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+    });
+    expect(textarea.selectionStart).toBe("/tmp/image1.png ".length);
+  });
+
+  it("does not double a space that already surrounds the insertion point", async () => {
+    uploadClipboardImage.mockResolvedValue({
+      filename: "image1.png",
+      path: "/tmp/image1.png",
+      url: "",
+      mimeType: "image/png",
+      bytes: 1,
+    });
+    // Caret between the existing trailing space and the following space.
+    const { view, setValue } = setup("look at  after", { start: 8, end: 8 });
+
+    const event = makeEvent(makeDataTransfer({ itemFiles: [makeFile("image.png", "image/png")] }), "clipboardData");
+    await act(async () => {
+      view.result.current.onPaste(event as never);
+    });
+
+    // One space either side — the hook adds neither, because both are present.
+    expect(setValue).toHaveBeenCalledWith("look at /tmp/image1.png after");
+    expect(setValue.mock.calls[0][0]).not.toContain("  ");
   });
 
   it("uploads every image in a multi-image paste and joins the paths", async () => {
@@ -153,7 +197,7 @@ describe("useComposerImagePaste", () => {
     });
 
     expect(uploadClipboardImage).toHaveBeenCalledTimes(2);
-    expect(setValue).toHaveBeenCalledWith("/tmp/image1.png /tmp/image2.png");
+    expect(setValue).toHaveBeenCalledWith("/tmp/image1.png /tmp/image2.png ");
   });
 
   it("claims an image DROP the same way it claims a paste", async () => {
@@ -172,7 +216,7 @@ describe("useComposerImagePaste", () => {
     });
 
     expect(event.preventDefault).toHaveBeenCalledTimes(1);
-    expect(setValue).toHaveBeenCalledWith("/tmp/dropped.png");
+    expect(setValue).toHaveBeenCalledWith("/tmp/dropped.png ");
   });
 
   // ---- text is NOT claimed ------------------------------------------------

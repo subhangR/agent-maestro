@@ -38,10 +38,15 @@ function spliceAtSelection(
 ): { next: string; caret: number } {
   const before = value.slice(0, start);
   const after = value.slice(end);
-  // Keep a single space between an existing word and the path, and after it, so
-  // the path is always its own whitespace-delimited token.
+  // Keep a single space between an existing word and the path, AND after it, so
+  // the path is always its own whitespace-delimited token. Without the trailing
+  // space the following word — or the next character the user types, since the
+  // caret parks flush against the path — glues onto it and the agent reads a
+  // garbage path. Same reason the terminal bridge writes "$path "
+  // (SessionTerminal.tsx). Never double a space that is already there.
   const needsLeadingSpace = before.length > 0 && !/\s$/.test(before);
-  const glued = `${needsLeadingSpace ? " " : ""}${insert}`;
+  const needsTrailingSpace = !/^\s/.test(after);
+  const glued = `${needsLeadingSpace ? " " : ""}${insert}${needsTrailingSpace ? " " : ""}`;
   const next = `${before}${glued}${after}`;
   return { next, caret: before.length + glued.length };
 }
