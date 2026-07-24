@@ -34,6 +34,7 @@
     "build:binary:cli": "cd maestro-cli && bun run build && bun run build:binary:darwin-arm64",
     "build:web": "cd maestro-ui && bun run build:web && cd ../maestro-server && bun run build && cd ../maestro-cli && bun run build",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "check:website": "node scripts/validate-website.mjs",
     "test:primary": "bun --cwd maestro-pty-protocol test && bun --cwd maestro-ui test && bun --cwd maestro-server test -- --runInBand && bun --cwd maestro-cli test -- --run",
     "check": "bun run check:architecture && bun run build:all && bun run test:primary"
   },
