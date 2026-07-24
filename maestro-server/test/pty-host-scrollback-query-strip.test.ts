@@ -231,7 +231,7 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     expect(replayData(svc, 's1').toString('utf8')).toBe(`tail${ESC}[6`);
   });
 
-  it('leaves the LIVE output stream untouched so real-time terminal queries still reach the client', () => {
+  it('leaves the LIVE output stream untouched so real-time terminal queries still reach the client', async () => {
     const svc = makeService();
     svc.spawn(spawnParams('s1'));
     const proc = spawnedPtys[0];
@@ -243,8 +243,10 @@ describe('PtyHostService scrollback replay — device-query stripping', () => {
     ws.send.mockClear();
 
     // A running program queries the terminal AFTER attach — must pass through
-    // verbatim so xterm can answer it live.
+    // verbatim so xterm can answer it live. Live fan-out is coalesced, so wait
+    // out the flush window before asserting.
     proc.emitData(Buffer.from(`${ESC}[6nLIVE`));
+    await new Promise((r) => setTimeout(r, 25));
 
     expect(received(ws)).toBe(`${ESC}[6nLIVE`);
   });
