@@ -29,6 +29,15 @@ import {
   type ResourceDefinition,
 } from './notificationEvents';
 
+export {
+  grantSupabaseAuthenticatedRoleOnCreate,
+  grantSupabaseAuthenticatedRoleOnSignIn,
+} from './supabaseAuth';
+export {
+  createCollabFileDownload,
+  createCollabFileUpload,
+} from './collabStorageBroker';
+
 initializeApp();
 
 const REGION = 'asia-southeast1';

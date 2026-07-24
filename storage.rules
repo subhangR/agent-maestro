@@ -1,0 +1,19 @@
+rules_version = '2';
+
+// Collab V2 blobs are authorized exclusively by the callable storage broker.
+// Firebase Storage Rules cannot read live Supabase/Postgres membership, so a
+// client-access rule here would disagree with graph RLS. Cloud Storage signed
+// URLs issued by the broker bypass these rules after it has verified membership.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /spaces/{spaceId}/{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Keep this default-deny until a different, separately authorized bucket
+    // use is deliberately introduced.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
