@@ -164,16 +164,6 @@ const PN_AGENT_SRC: Record<string, string> = {
   gemini: geminiIcon,
 };
 
-/* Provider identity marks — inline SVG on a provider-colored tile (redesign v2).
-   Makes each spawning model instantly recognizable at a glance. Falls back to
-   PN_AGENT_SRC images, then an initial-letter avatar, for unknown kinds. */
-const PN_AGENT_MARK: Record<string, { bg: string; el: JSX.Element }> = {
-  claude: { bg: "#D9552E", el: <path fill="currentColor" d="M12 2c.5 3 .9 4.4 1.8 5.3S16 8.5 19 9c-3 .5-4.4.9-5.2 1.8S12 13.5 12 16c-.5-2.5-.9-4-1.8-4.9S8 9.5 5 9c3-.5 4.4-.9 5.2-1.8S11.5 5 12 2z" /> },
-  codex: { bg: "#0E9E86", el: <g fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 4.2a4.6 4.6 0 0 1 4.1 2.4 4.6 4.6 0 0 1 .3 5.2 4.6 4.6 0 0 1-4.4 6.6" /><path d="M12 19.8a4.6 4.6 0 0 1-4.1-2.4 4.6 4.6 0 0 1-.3-5.2A4.6 4.6 0 0 1 12 5.6" /></g> },
-  gemini: { bg: "#2E7DF6", el: <path fill="currentColor" d="M12 2c.4 5.2 4.4 9.2 9.6 9.6C16.4 12 12.4 16 12 21.2 11.6 16 7.6 12 2.4 11.6 7.6 11.2 11.6 7.2 12 2z" /> },
-  hermes: { bg: "#C98A12", el: <g fill="currentColor"><path d="M12 5c1.6 0 3 1 3.6 2.5.9-.2 2-.1 3.4.5-1.2.3-2 .8-2.5 1.5H16c0 2.2-1.8 4-4 4s-4-1.8-4-4h-.5C7 8.8 6.2 8.3 5 8c1.4-.6 2.5-.7 3.4-.5C9 6 10.4 5 12 5z" /><rect x="11" y="12.5" width="2" height="6" rx="1" /></g> },
-};
-
 export interface AgentTileProps {
   kind: AgentKind;
   lg?: boolean;
@@ -184,21 +174,6 @@ export function AgentTile({ kind, lg }: AgentTileProps) {
 
   if (kind === "terminal") {
     return <div className={"pn-agent pn-agent--term" + lgCls}>&gt;_</div>;
-  }
-
-  const mark = PN_AGENT_MARK[kind];
-  if (mark) {
-    return (
-      <div
-        className={"pn-agent pn-agent--brand" + lgCls}
-        style={{ background: mark.bg, borderColor: "transparent", color: "#fff" }}
-        aria-label={kind}
-      >
-        <svg viewBox="0 0 24 24" width={lg ? 18 : 15} height={lg ? 18 : 15} aria-hidden="true">
-          {mark.el}
-        </svg>
-      </div>
-    );
   }
 
   const src = PN_AGENT_SRC[kind];
