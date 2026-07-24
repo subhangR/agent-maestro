@@ -38,4 +38,4 @@ The website collects and stores no personal data. Do not add forms, analytics, t
 
 Firebase Hosting is explicitly pinned to site `maestro-web-fleet` in `firebase.json`, under Firebase project `maestro-5f3fc`. Pull requests receive temporary preview channels; pushes to `main` deploy live after validation and production-environment approval.
 
-Configure the GitHub repository secret `FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC` using a least-privilege Firebase service account before enabling the workflow. Never commit the service-account JSON.
+Configure the GitHub repository secret `FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC` using a least-privilege Firebase service account before enabling the workflow. `FIREBASE_SERVICE_ACCOUNT_MAESTRO_WEB_FLEET` is accepted as a compatibility alias. If neither secret exists, validation still runs and deployment is explicitly skipped instead of failing the workflow. Never commit the service-account JSON.
