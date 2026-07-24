@@ -40,8 +40,8 @@ img, svg { display: block; max-width: 100%; }
 .site-header.scrolled { background: rgba(243, 240, 232, .88); border-color: rgba(23, 25, 20, .12); backdrop-filter: blur(18px); }
 .header-inner { height: 76px; display: flex; align-items: center; gap: 34px; }
 .brand { display: inline-flex; align-items: center; gap: 11px; font-size: 1.02rem; font-weight: 700; letter-spacing: -.02em; }
-.brand-logo { width: 58px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(0,229,255,.18); border-radius: 8px; background: var(--obsidian); }
-.brand-logo img { width: 52px; height: 31px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,229,255,.18)); }
+.brand-logo { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(0,229,255,.18); border-radius: 10px; background: var(--obsidian); }
+.brand-logo img { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 2px 5px rgba(0,229,255,.18)); }
 .brand-word { display: inline-flex; align-items: baseline; }
 .brand-word small { color: var(--moss); font: 500 .7em var(--mono); letter-spacing: -.04em; }
 
