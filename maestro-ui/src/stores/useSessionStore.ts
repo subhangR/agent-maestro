@@ -16,6 +16,12 @@ import { maestroClient } from '../utils/MaestroClient';
 import { formatError } from '../utils/formatters';
 import { sleep } from '../utils/domUtils';
 import { hasMeaningfulOutput } from '../services/terminalService';
+import {
+  initTerminalWriteScheduler,
+  queueTerminalOutput,
+  flushTerminalOutput,
+  dropTerminalOutput,
+} from '../services/terminalWriteScheduler';
 import { shortenPathSmart } from '../pathDisplay';
 import * as DEFAULTS from '../app/constants/defaults';
 import type { MutableRefObject } from 'react';
@@ -36,6 +42,16 @@ import { usePersistentSessionStore } from './usePersistentSessionStore';
 export const pendingExitCodes = new Map<string, number | null>();
 export const closingSessions = new Map<string, number>();
 export const agentIdleTimersRef = new Map<string, number>();
+/**
+ * Last time markAgentWorkingFromOutput did its full (scan + idle-timer re-arm)
+ * pass per session. While a session is already agentWorking, subsequent chunks
+ * within WORKING_REARM_THROTTLE_MS are no-ops — a streaming TUI can emit
+ * hundreds of chunks/sec and each full pass costs an O(chunk) escape-sequence
+ * scan plus a setTimeout re-arm. The idle timeout (≥2000ms) is far larger than
+ * the throttle window, so the working indicator's behavior is unchanged.
+ */
+const lastWorkingMarkAtRef = new Map<string, number>();
+const WORKING_REARM_THROTTLE_MS = 250;
 export const lastResizeAtRef = new Map<string, number>();
 export const commandLifecycleSessionsRef = new Set<string>();
 export const spawningSessionsRef = new Set<string>();
@@ -264,22 +280,26 @@ export function initSessionStoreRefs(
       pendingDataRef.current.set(id, buffer);
     };
 
+    initTerminalWriteScheduler({
+      getTerm: (id) => registryRef?.current.get(id)?.term as
+        | { write(data: string): void; element?: HTMLElement }
+        | undefined,
+      isReady: _isRendererReady,
+      bufferPending: bufferOutput,
+    });
+
     void platform.terminal.onOutput((id, data) => {
       if (closingSessions.has(id)) return;
       useSessionStore.getState().markAgentWorkingFromOutput(id, data);
-
-      const entry = registryRef?.current.get(id);
-      if (entry && _isRendererReady(entry.term)) {
-        entry.term.write(data);
-        return;
-      }
-      bufferOutput(id, data);
+      queueTerminalOutput(id, data);
     });
 
     void platform.terminal.onReplay?.((id, data) => {
       if (closingSessions.has(id)) return;
       useSessionStore.getState().markAgentWorkingFromOutput(id, data);
 
+      // Replay must not interleave with queued live output — flush first.
+      flushTerminalOutput(id);
       const entry = registryRef?.current.get(id);
       if (entry && _isRendererReady(entry.term)) {
         entry.hydrateReplay(data);
@@ -295,6 +315,7 @@ export function initSessionStoreRefs(
       // terminal already rendered some/all of that history pre-drop, so wipe
       // it first or the replay would duplicate it. Also drop any buffered
       // pre-mount output — it belongs to the stale connection.
+      dropTerminalOutput(id);
       pendingDataRef?.current.delete(id);
       pendingReplayHydrations.delete(id);
       const entry = registryRef?.current.get(id);
@@ -746,6 +767,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     if ((!session.effectId && !session.maestroSessionId) || session.exited || session.closing) return;
     if (!data) return;
 
+    if (session.agentWorking) {
+      const lastMark = lastWorkingMarkAtRef.get(id);
+      if (lastMark !== undefined && Date.now() - lastMark < WORKING_REARM_THROTTLE_MS) {
+        return;
+      }
+    }
+
     const lastResize = lastResizeAtRef.get(id);
     if (
       lastResize !== undefined &&
@@ -762,6 +790,8 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         ),
       }));
     }
+
+    lastWorkingMarkAtRef.set(id, Date.now());
 
     // Schedule agent idle — for process-effect terminals AND maestro agent
     // sessions (no effectId, default idle timeout) so agentWorking resets when

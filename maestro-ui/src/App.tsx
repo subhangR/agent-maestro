@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "./platform";
 import { useAuthStore } from "./stores/useAuthStore";
@@ -315,18 +316,29 @@ export default function App() {
     return counts;
   }, [sessions]);
 
-  const maestroSessions = useMaestroStore((s) => s.sessions);
+  // Narrow subscription: the maestro sessions map is replaced on every
+  // WebSocket batch (~300-500ms while any agent works). Subscribing to the
+  // whole map here re-rendered the entire app shell on every tick. The tab
+  // bar only needs "which maestro sessions currently need input" — a tiny
+  // shallow-compared record that stays reference-stable across ticks.
+  const needsInputActiveIds = useMaestroStore(
+    useShallow((s) => {
+      const ids: Record<string, true> = {};
+      for (const id in s.sessions) {
+        if (s.sessions[id]?.needsInput?.active) ids[id] = true;
+      }
+      return ids;
+    }),
+  );
   const needsInputByProject = useMemo(() => {
     const result = new Map<string, boolean>();
     for (const s of sessions) {
-      if (!s.maestroSessionId) continue;
-      const ms = maestroSessions[s.maestroSessionId];
-      if (ms?.needsInput?.active) {
+      if (s.maestroSessionId && needsInputActiveIds[s.maestroSessionId]) {
         result.set(s.projectId, true);
       }
     }
     return result;
-  }, [sessions, maestroSessions]);
+  }, [sessions, needsInputActiveIds]);
 
   // ---------- prompts (kept store import for keyboard shortcuts) ----------
 
@@ -351,14 +363,19 @@ export default function App() {
   const teamViewRootId = useUIStore((s) => s.teamViewRootId);
   const setTeamViewRootId = useUIStore((s) => s.setTeamViewRootId);
 
+  // Only subscribe to the full maestro sessions map while Team View is open —
+  // when closed the selector returns null and per-tick map swaps don't
+  // re-render the app shell.
+  const teamViewSessions = useMaestroStore((s) => (teamViewRootId ? s.sessions : null));
+
   const teamViewData = useMemo(
-    () => resolveTeamView(teamViewRootId, maestroSessions),
-    [teamViewRootId, maestroSessions],
+    () => (teamViewRootId && teamViewSessions ? resolveTeamView(teamViewRootId, teamViewSessions) : null),
+    [teamViewRootId, teamViewSessions],
   );
 
   const teamViewChildStats = useMemo(
-    () => buildChildStatsFn(maestroSessions),
-    [maestroSessions],
+    () => buildChildStatsFn(teamViewSessions ?? {}),
+    [teamViewSessions],
   );
 
   // maestroSessionId -> live local terminal session id (single source of truth
