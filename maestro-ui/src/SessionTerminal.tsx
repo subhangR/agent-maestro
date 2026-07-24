@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { platform } from "./platform";
+import { platform, IS_TAURI } from "./platform";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import type { PendingDataBuffer } from "./app/types/app-state";
@@ -218,6 +218,30 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     term.loadAddon(fit);
     term.open(container);
     patchXtermRenderServiceDimensions(term);
+
+    // Web (Chromium) only: swap the DOM renderer for WebGL. The DOM renderer
+    // burns an entire core re-laying-out rows while an agent TUI streams; the
+    // WebGL renderer is ~5-10x cheaper. Deliberately NOT loaded under Tauri —
+    // the addon crashes in the WKWebView/StrictMode setup (see project memory
+    // "xterm renderer-addon dead-end"). Any failure falls back to the DOM
+    // renderer: on webglcontextlost we dispose the addon (xterm reverts), and
+    // a load-time throw is swallowed.
+    if (!IS_TAURI) {
+      import("@xterm/addon-webgl")
+        .then(({ WebglAddon }) => {
+          if (termRef.current !== term || !term.element) return; // unmounted meanwhile
+          try {
+            const webgl = new WebglAddon();
+            webgl.onContextLoss(() => {
+              try { webgl.dispose(); } catch { /* already disposed */ }
+            });
+            term.loadAddon(webgl);
+          } catch {
+            // WebGL unavailable (headless GPU, blocked context) — DOM renderer stays.
+          }
+        })
+        .catch(() => { /* chunk load failed — DOM renderer stays */ });
+    }
 
     // Keep the terminal background in sync with the app light/dark toggle.
     // The terminal stays dark in both modes; only the bg flips between two

@@ -88,7 +88,46 @@ interface StripStats {
   model: string | null;
 }
 
-function computeStripStats(messages: ParsedMessage[]): StripStats {
+/**
+ * Running aggregates for messages that have been trimmed out of the retained
+ * window. The strip keeps only the most recent MAX_STRIP_MESSAGES in memory
+ * (a long-lived agent session produces tens of thousands of log messages;
+ * retaining and re-scanning all of them on every 2s poll made the whole app
+ * progressively slower the longer a session ran). Folding trimmed messages
+ * in here keeps the displayed totals exact.
+ */
+interface TrimmedBaseStats {
+  totalOutput: number;
+  turns: number;
+  toolCalls: number;
+  messageCount: number;
+  minTs: number; // NaN until a valid timestamp is folded in
+  maxTs: number;
+}
+
+const MAX_STRIP_MESSAGES = 400;
+
+function emptyBaseStats(): TrimmedBaseStats {
+  return { totalOutput: 0, turns: 0, toolCalls: 0, messageCount: 0, minTs: NaN, maxTs: NaN };
+}
+
+function foldIntoBaseStats(base: TrimmedBaseStats, dropped: ParsedMessage[]): void {
+  for (const msg of dropped) {
+    base.toolCalls += msg.toolCalls.length;
+    if (msg.usage) {
+      base.totalOutput += msg.usage.output_tokens ?? 0;
+      base.turns++;
+    }
+    base.messageCount++;
+    const t = msg.timestamp.getTime();
+    if (!isNaN(t)) {
+      if (isNaN(base.minTs) || t < base.minTs) base.minTs = t;
+      if (isNaN(base.maxTs) || t > base.maxTs) base.maxTs = t;
+    }
+  }
+}
+
+function computeStripStats(messages: ParsedMessage[], base?: TrimmedBaseStats): StripStats {
   let totalOutput = 0;
   let turns = 0;
   let toolCalls = 0;
@@ -97,6 +136,7 @@ function computeStripStats(messages: ParsedMessage[]): StripStats {
   let model: string | null = null;
 
   const timestamps = messages.map(m => m.timestamp.getTime()).filter(t => !isNaN(t));
+  if (base && !isNaN(base.minTs)) timestamps.push(base.minTs, base.maxTs);
   let durationMs = 0;
   if (timestamps.length >= 2) {
     let min = timestamps[0], max = timestamps[0];
@@ -129,10 +169,10 @@ function computeStripStats(messages: ParsedMessage[]): StripStats {
   return {
     contextTokens,
     cacheHitPct,
-    totalOutput,
-    turns,
-    toolCalls,
-    messageCount: messages.length,
+    totalOutput: totalOutput + (base?.totalOutput ?? 0),
+    turns: turns + (base?.turns ?? 0),
+    toolCalls: toolCalls + (base?.toolCalls ?? 0),
+    messageCount: messages.length + (base?.messageCount ?? 0),
     durationMs,
     model,
   };
@@ -174,6 +214,19 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   // live `cwd` prop once the agent has cd'd into a subdirectory.
   const [resolvedCwd, setResolvedCwd] = useState<string>(cwd);
   const [allMessages, setAllMessages] = useState<ParsedMessage[]>([]);
+  // Source of truth mirrored by allMessages; lets the poll append + trim
+  // outside a functional setState updater (folding into baseStatsRef inside an
+  // updater would double-count under StrictMode's double-invoke).
+  const allMessagesRef = useRef<ParsedMessage[]>([]);
+  const baseStatsRef = useRef<TrimmedBaseStats>(emptyBaseStats());
+  const applyMessages = useCallback((next: ParsedMessage[]) => {
+    if (next.length > MAX_STRIP_MESSAGES) {
+      foldIntoBaseStats(baseStatsRef.current, next.slice(0, next.length - MAX_STRIP_MESSAGES));
+      next = next.slice(next.length - MAX_STRIP_MESSAGES);
+    }
+    allMessagesRef.current = next;
+    setAllMessages(next);
+  }, []);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -256,18 +309,19 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   // Initial full load
   useEffect(() => {
     if (!selectedFile) return;
-    setAllMessages([]);
+    baseStatsRef.current = emptyBaseStats();
+    applyMessages([]);
     offsetRef.current = 0;
 
     platform.logs.read(resolvedProvider, resolvedCwd, selectedFile)
       .then((content) => {
         const messages = parseJsonlText(content);
-        setAllMessages(messages);
+        applyMessages(messages);
         offsetRef.current = new Blob([content]).size;
         setTimeout(autoScroll, 50);
       })
       .catch(() => {});
-  }, [resolvedCwd, selectedFile, autoScroll, resolvedProvider]);
+  }, [resolvedCwd, selectedFile, autoScroll, resolvedProvider, applyMessages]);
 
   // Live polling
   useEffect(() => {
@@ -279,7 +333,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
         if (result.content.length > 0) {
           const newMessages = parseJsonlText(result.content);
           if (newMessages.length > 0) {
-            setAllMessages((prev) => [...prev, ...newMessages]);
+            applyMessages([...allMessagesRef.current, ...newMessages]);
             setTimeout(autoScroll, 50);
           }
           offsetRef.current = result.newOffset;
@@ -291,7 +345,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
 
     const interval = setInterval(poll, POLL_INTERVAL);
     return () => clearInterval(interval);
-  }, [selectedFile, resolvedCwd, autoScroll, resolvedProvider]);
+  }, [selectedFile, resolvedCwd, autoScroll, resolvedProvider, applyMessages]);
 
   const { groups, isOngoing, stats } = useMemo(() => {
     if (allMessages.length === 0) {
@@ -304,7 +358,7 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
     return {
       groups: groupMessages(allMessages),
       isOngoing: checkMessagesOngoing(allMessages),
-      stats: computeStripStats(allMessages),
+      stats: computeStripStats(allMessages, baseStatsRef.current),
     };
   }, [allMessages]);
 

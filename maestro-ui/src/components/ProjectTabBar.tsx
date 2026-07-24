@@ -322,7 +322,7 @@ function ProjectSettingsDialog({ project, sessionCount, onClose, onDelete, onClo
   );
 }
 
-export function ProjectTabBar({
+export const ProjectTabBar = React.memo(function ProjectTabBar({
   projects,
   activeProjectId,
   sessionCountByProject,
@@ -824,4 +824,4 @@ export function ProjectTabBar({
       )}
     </>
   );
-}
+});

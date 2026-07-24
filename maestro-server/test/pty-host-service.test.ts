@@ -537,7 +537,7 @@ describe('PtyHostService replay→subscribe ordering seam (#150)', () => {
     );
   }
 
-  it('delivers each post-snapshot byte exactly once when a subscriber joins right after the snapshot (no gap, no duplicate)', () => {
+  it('delivers each post-snapshot byte exactly once when a subscriber joins right after the snapshot (no gap, no duplicate)', async () => {
     const { svc } = makeService();
     svc.spawn({ sessionId: 's1', ...baseParams });
 
@@ -554,8 +554,10 @@ describe('PtyHostService replay→subscribe ordering seam (#150)', () => {
     const ws = fakeWs();
     svc.addSubscriber('s1', ws);
 
-    // 3) Live output produced AFTER the join.
+    // 3) Live output produced AFTER the join. Live fan-out is coalesced
+    //    (SEND_COALESCE_MS), so wait out the flush window before asserting.
     mockSpawnedProcs[0]._onData(Buffer.from('BBBB', 'utf8'));
+    await new Promise((r) => setTimeout(r, 25));
 
     // The subscriber saw ONLY the post-snapshot bytes: the replayed bytes are NOT
     // re-sent live (no duplicate) and the live bytes are NOT missing (no gap).
@@ -605,9 +607,14 @@ describe('PtyHostService replay→subscribe ordering seam (#150)', () => {
     expect(snapshot.data.toString('utf8')).not.toContain('TAIL');
 
     expect(svc.activatePendingSubscriber('snapshot-gap', ws)).toBe(true);
+    // TAIL may still sit in the coalescing buffer at activation; it is
+    // delivered live to the just-promoted socket on the next flush — same
+    // bytes, same order, exactly once.
+    await new Promise((r) => setTimeout(r, 25));
     expect(liveBytes(ws).toString('utf8')).toBe('TAIL');
 
     mockSpawnedProcs[0]._onData(Buffer.from('LIVE', 'utf8'));
+    await new Promise((r) => setTimeout(r, 25));
     expect(liveBytes(ws).toString('utf8')).toBe('TAILLIVE');
   });
 });
