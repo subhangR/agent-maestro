@@ -17,6 +17,7 @@ import {
 } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { defineString } from 'firebase-functions/params';
+export { submitWebsiteInquiry } from './websiteInquiry';
 import {
   RESOURCE_DEFINITIONS,
   actorNameFromSpace,

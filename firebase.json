@@ -13,6 +13,15 @@
     ],
     "cleanUrls": true,
     "trailingSlash": false,
+    "rewrites": [
+      {
+        "source": "/api/contact",
+        "function": {
+          "functionId": "submitWebsiteInquiry",
+          "region": "asia-southeast1"
+        }
+      }
+    ],
     "headers": [
       {
         "source": "**",
@@ -53,7 +62,7 @@
       "source": "functions",
       "codebase": "notifications",
       "predeploy": [
-        "npm --prefix functions run build"
+        "bun run --cwd functions build"
       ],
       "ignore": [
         "node_modules",

@@ -9,8 +9,12 @@
   <meta property="og:description" content="Plan work, delegate to multiple coding agents, and understand what changed from one focused command center.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://maestro-web-fleet.web.app/">
+  <meta property="og:image" content="https://maestro-web-fleet.web.app/assets/brand/maestro-tc8-social.jpeg">
+  <meta property="og:image:alt" content="Maestro_TC8 — terminal commander at infinity scale">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://maestro-web-fleet.web.app/assets/brand/maestro-tc8-social.jpeg">
   <link rel="canonical" href="https://maestro-web-fleet.web.app/">
+  <link rel="icon" href="assets/brand/maestro-tc8-mark-v2.png" type="image/png">
   <link rel="preconnect" href="https://github.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,11 +25,29 @@
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
 
+  <div class="brand-intro" data-brand-intro aria-hidden="true">
+    <div class="brand-intro-glow"></div>
+    <img src="assets/brand/maestro-tc8-mark-v2.png" alt="">
+    <div class="identity-sequence" aria-hidden="true">
+      <p>Ticket control</p>
+      <p>Token coordinator</p>
+      <p>Tool commander</p>
+      <p>Task commander</p>
+      <p>Team member coordination</p>
+      <p>Team commander</p>
+      <p>Terminal commander</p>
+      <p>Terminal coordination</p>
+      <p>Collaboration control</p>
+      <p>Infinity scale</p>
+    </div>
+    <span class="intro-signoff">Maestro_TC8</span>
+  </div>
+
   <header class="site-header" data-header>
     <div class="shell header-inner">
-      <a class="brand" href="#top" aria-label="Maestro home">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span data-content="productName">Maestro</span>
+      <a class="brand" href="#top" aria-label="Replay Maestro identity reveal and return home" data-brand-trigger>
+        <span class="brand-logo" aria-hidden="true"><img src="assets/brand/maestro-tc8-mark-v2.png" alt=""></span>
+        <span class="brand-word"><span data-content="productName">Maestro</span><small>_TC8</small></span>
       </a>
 
       <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav" data-menu-button>
@@ -37,6 +59,7 @@
         <a href="#product">Product</a>
         <a href="#workflow">Workflow</a>
         <a href="#principles">Principles</a>
+        <a href="#contact">Contact</a>
         <a href="https://github.com/subhangR/agent-maestro/tree/staging/docs" target="_blank" rel="noreferrer">Docs</a>
       </nav>
 
@@ -232,15 +255,57 @@
         </div>
       </div>
     </section>
+
+    <section class="section contact-section" id="contact">
+      <div class="shell contact-grid">
+        <div class="contact-copy reveal">
+          <p class="section-number">05 / Contact</p>
+          <h2>Start a thoughtful conversation.</h2>
+          <p>Tell us what you are building, where your agent workflow is getting difficult, or how you would like to work with Maestro.</p>
+          <dl class="contact-promises">
+            <div><dt>Useful context</dt><dd>Product questions, demos, partnerships, contributions, and support.</dd></div>
+            <div><dt>Private by default</dt><dd>Your enquiry is stored privately and used only to respond.</dd></div>
+          </dl>
+        </div>
+
+        <form class="contact-form reveal" data-contact-form data-delay="1">
+          <div class="form-row">
+            <label>Full name <span>*</span><input name="name" type="text" autocomplete="name" maxlength="100" required></label>
+            <label>Email address <span>*</span><input name="email" type="email" autocomplete="email" maxlength="254" required></label>
+          </div>
+          <div class="form-row">
+            <label>Phone number <small>Optional</small><input name="phone" type="tel" autocomplete="tel" maxlength="40"></label>
+            <label>Company <small>Optional</small><input name="company" type="text" autocomplete="organization" maxlength="120"></label>
+          </div>
+          <label>Reach-out type <span>*</span>
+            <select name="type" required>
+              <option value="">Choose one</option>
+              <option value="general">General enquiry</option>
+              <option value="demo">Product demo</option>
+              <option value="partnership">Partnership</option>
+              <option value="contributor">Contribute to Maestro</option>
+              <option value="support">Product support</option>
+            </select>
+          </label>
+          <label>Your message <span>*</span><textarea name="message" rows="7" minlength="20" maxlength="4000" placeholder="Share your goals, current setup, and what a useful outcome would look like." required></textarea></label>
+          <label class="form-honeypot" aria-hidden="true">Website<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+          <label class="consent-row"><input name="consent" type="checkbox" required><span>I agree that Maestro may use these details to respond to this enquiry. <b>*</b></span></label>
+          <div class="form-action-row">
+            <button class="button button-dark" type="submit" data-contact-submit>Send enquiry</button>
+            <p class="form-status" data-contact-status role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
     <div class="shell footer-grid">
       <div>
-        <a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span data-content="productName">Maestro</span></a>
+        <a class="brand footer-brand" href="#top" data-brand-trigger><span class="brand-logo" aria-hidden="true"><img src="assets/brand/maestro-tc8-mark-v2.png" alt=""></span><span class="brand-word"><span data-content="productName">Maestro</span><small>_TC8</small></span></a>
         <p>Focused oversight for parallel agent work.</p>
       </div>
-      <div><h2>Product</h2><a href="#product">Features</a><a href="#workflow">Workflow</a><a href="#principles">Principles</a></div>
+      <div><h2>Product</h2><a href="#product">Features</a><a href="#workflow">Workflow</a><a href="#principles">Principles</a><a href="#contact">Contact</a></div>
       <div><h2>Resources</h2><a href="https://github.com/subhangR/agent-maestro" target="_blank" rel="noreferrer">GitHub ↗</a><a href="https://github.com/subhangR/agent-maestro/tree/staging/docs" target="_blank" rel="noreferrer">Documentation ↗</a><a href="https://github.com/subhangR/agent-maestro/issues" target="_blank" rel="noreferrer">Issues ↗</a></div>
       <div><h2>Build</h2><a href="https://github.com/subhangR/agent-maestro#quick-start" target="_blank" rel="noreferrer">Quick start ↗</a><a href="https://github.com/subhangR/agent-maestro/blob/staging/LICENSE" target="_blank" rel="noreferrer">License ↗</a></div>
     </div>
