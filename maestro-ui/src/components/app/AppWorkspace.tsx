@@ -559,12 +559,24 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
               </div>
             )}
             {sessions.map((s) => {
+              // An exited maestro-backed session never renders its terminal
+              // again — selecting it shows the stats view instead (isInactive
+              // below). Keeping its xterm mounted was pure dead weight: every
+              // finished agent retained up to 5000 lines of scrollback buffer
+              // and DOM forever, so renderer memory grew with each agent run.
+              // Unmounting disposes the xterm (SessionTerminal cleanup). Kept
+              // mounted while Team View is open so its DOM reparenting can
+              // still find `[data-terminal-id]` elements, and when active so
+              // the stats-view container renders.
+              const isExitedAgent = Boolean(s.exited) && Boolean(s.maestroSessionId);
+              if (isExitedAgent && s.id !== activeId && !teamViewOpen) {
+                return null;
+              }
               // LOCKED predicate: show stats when the PTY has exited for an
               // active maestro-backed session. `s.exited` IS the linkMap liveness
               // signal (see SessionsSection.tsx:937-945). `closing` is dropped to
               // avoid flashing stats during the close animation.
-              const isInactive =
-                Boolean(s.exited) && Boolean(s.maestroSessionId) && s.id === activeId;
+              const isInactive = isExitedAgent && s.id === activeId;
               // isInactive implies s.id === activeId && s.exited, so the
               // maestro session for this row IS statsMaestroSession.
               const inactiveMaestroSession = isInactive ? statsMaestroSession : null;
