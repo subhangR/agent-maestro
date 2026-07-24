@@ -13,6 +13,15 @@
     ],
     "cleanUrls": true,
     "trailingSlash": false,
+    "rewrites": [
+      {
+        "source": "/api/contact",
+        "function": {
+          "functionId": "submitWebsiteInquiry",
+          "region": "asia-southeast1"
+        }
+      }
+    ],
     "headers": [
       {
         "source": "**",
