@@ -23,6 +23,18 @@ Maestro gives you a **desktop app**, a **CLI**, and a **server** that work toget
 
 Think of it like a project manager for your Claude agents. You define the work, Maestro coordinates who does what.
 
+## Repository organization
+
+The monorepo is grouped by responsibility without renaming stable package paths:
+
+- **Frontend:** `maestro-ui`, `maestro-web`, `maestro-mobile`, `website`
+- **Backend:** `maestro-server`, `maestro-gateway`, `functions`
+- **Interfaces:** `maestro-cli`
+- **Shared contracts:** `maestro-pty-protocol`
+- **Operations:** `deploy`, `scripts`
+
+See [`docs/architecture/README.md`](docs/architecture/README.md) for dependency rules and run `bun run check:architecture` to enforce them.
+
 ---
 
 ## Quick start

@@ -1,0 +1,29 @@
+{
+  "$schema": "./docs/architecture/architecture.schema.json",
+  "frontends": [
+    "maestro-ui",
+    "maestro-web",
+    "maestro-mobile",
+    "website"
+  ],
+  "backends": [
+    "maestro-server",
+    "maestro-gateway",
+    "functions"
+  ],
+  "interfaces": [
+    "maestro-cli"
+  ],
+  "shared": [
+    "maestro-pty-protocol"
+  ],
+  "operations": [
+    "deploy",
+    "scripts"
+  ],
+  "rules": {
+    "sharedPackagesMustBeRuntimeIndependent": true,
+    "frontendPackagesMayNotDependOnBackendPackages": true,
+    "backendPackagesMayNotDependOnFrontendPackages": true
+  }
+}

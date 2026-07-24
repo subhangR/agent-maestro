@@ -45,6 +45,17 @@ function fmtTime(ts: number): string {
   }
 }
 
+function statusCopy(status: string): { label: string; detail: string } {
+  switch (status) {
+    case "spawning": return { label: "Starting", detail: "Preparing the agent and workspace" };
+    case "working": return { label: "In progress", detail: "The agent is actively working" };
+    case "completed": return { label: "Completed", detail: "The requested work is finished" };
+    case "failed": return { label: "Needs attention", detail: "The run ended before it could finish" };
+    case "stopped": return { label: "Stopped", detail: "The run was stopped" };
+    default: return { label: "Ready", detail: "Waiting for the next instruction" };
+  }
+}
+
 // Split a message into a short title (first sentence / line) + the remaining detail.
 function splitTitle(text: string): { title: string; detail: string } {
   const clean = (text || "").trim();
@@ -427,6 +438,10 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
   // Everything after the opening ask becomes the conversation flow.
   const flow = firstUserIdx >= 0 ? messages.slice(firstUserIdx + 1) : messages;
   const hasFlow = flow.length > 0;
+  const assistantMessages = flow.filter((message) => message.source === "assistant");
+  const completedSteps = working ? Math.max(0, assistantMessages.length - 1) : assistantMessages.length;
+  const finalMessage = assistantMessages[assistantMessages.length - 1];
+  const outcome = statusCopy(status);
 
   return (
     <div className="pn-chat">
@@ -439,9 +454,9 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
             {model ? ` · ${model}` : ""} · {mode}
           </span>
         </div>
-        <span className={"pn-chat__status pn-chat__status--" + status}>
+        <span className={"pn-chat__status pn-chat__status--" + status} title={outcome.detail}>
           {working && <span className="pn-chat__livedot" />}
-          {working ? "Working" : status}
+          {outcome.label}
         </span>
       </div>
 
@@ -467,6 +482,11 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
                 <div className="pn-chat__agentav"><AgentTile kind={kind} /></div>
                 <b>{session?.name && kind ? kind : "Agent"}</b>
                 <span className="pn-chat__agentsub">{working ? "is working on it" : "worked on it"}</span>
+                {assistantMessages.length > 0 && (
+                  <span className="pn-chat__progress" aria-label={`${completedSteps} steps completed`}>
+                    {working ? `${completedSteps} steps done` : `${completedSteps} steps`}
+                  </span>
+                )}
               </div>
 
               {hasFlow ? (
@@ -510,6 +530,21 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
                   <span className="pn-chat__dots"><span /><span /><span /></span>
                   {kind} is finishing up
                 </div>
+              )}
+              {!working && finalMessage && (
+                <section className={`pn-chat__outcome pn-chat__outcome--${status}`} aria-label="Completion summary">
+                  <div className="pn-chat__outcome-icon" aria-hidden="true">
+                    {status === "completed" ? <IconCheck /> : status === "failed" ? "!" : "·"}
+                  </div>
+                  <div className="pn-chat__outcome-body">
+                    <div className="pn-chat__outcome-label">{outcome.label}</div>
+                    <h3>Final summary</h3>
+                    <p>{finalMessage.text}</p>
+                    <div className="pn-chat__outcome-meta">
+                      {completedSteps} {completedSteps === 1 ? "step" : "steps"} recorded · {outcome.detail}
+                    </div>
+                  </div>
+                </section>
               )}
             </>
           )}

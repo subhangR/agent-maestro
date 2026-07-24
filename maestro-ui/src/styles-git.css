@@ -166,7 +166,7 @@
 .git-panel__file-status--a { color: var(--color-success, #4ade80); }
 .git-panel__file-status--d { color: var(--color-error, #f87171); }
 .git-panel__file-status--r { color: var(--color-info, #60a5fa); }
-.git-panel__file-status--\\? { color: var(--text-muted, #888); }
+.git-panel__file-status--\? { color: var(--text-muted, #888); }
 
 .git-panel__file-path {
   flex: 1;
@@ -930,7 +930,7 @@ html[data-redesign] .git-panel__file-row:hover {
   background: var(--pn-brand-soft);
 }
 
-html[data-redesign] .git-panel__file-status--\\? {
+html[data-redesign] .git-panel__file-status--\? {
   color: var(--pn-ink-3);
 }
 

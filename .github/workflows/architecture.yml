@@ -1,0 +1,20 @@
+name: Architecture boundaries
+
+on:
+  pull_request:
+  push:
+    branches: [main, staging]
+    paths:
+      - "architecture.json"
+      - "package.json"
+      - "*/package.json"
+      - "scripts/check-architecture.mjs"
+      - ".github/workflows/architecture.yml"
+
+jobs:
+  boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun run check:architecture

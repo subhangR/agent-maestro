@@ -117,4 +117,19 @@ describe("SessionActivityPanel", () => {
       }).text,
     ).toBe("[PROMPT] is part of this answer");
   });
+
+  it("shows plain-language progress instead of the raw working state", async () => {
+    render(<SessionActivityPanel session={session} />);
+
+    expect(await screen.findByText("In progress")).toBeTruthy();
+    expect(screen.getByLabelText("0 steps completed")).toBeTruthy();
+  });
+
+  it("shows a final completion summary when the run is finished", async () => {
+    render(<SessionActivityPanel session={{ ...session, status: "completed" }} />);
+
+    expect(await screen.findByRole("region", { name: "Completion summary" })).toBeTruthy();
+    expect(screen.getByText("Final summary")).toBeTruthy();
+    expect(screen.getAllByText("Completed")).toHaveLength(2);
+  });
 });

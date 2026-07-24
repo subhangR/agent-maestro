@@ -36,6 +36,8 @@ import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { useEnsembleStore } from "../../stores/useEnsembleStore";
 import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
+import { useSessionViewMode } from "../../hooks/useSessionViewMode";
+import { SessionViewSelector } from "../maestro/SessionViewSelector";
 
 /**
  * Wraps a .terminalContainer so it can render concentric spell rings for the
@@ -147,7 +149,12 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   // Redesign Phase 4 — plain-language Chat view (additive overlay over the terminal).
   // Default ON for maestro-linked terminals so the conversational view leads and the
   // raw terminal is one click away.
-  const [showActivity, setShowActivity] = useState(true);
+  const {
+    mode: sessionViewMode,
+    selectMode: selectSessionView,
+    showActivity,
+    showTerminal,
+  } = useSessionViewMode();
 
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
@@ -452,33 +459,12 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             onDraw={handleDraw}
           />
         )}
-        <div className="terminalDeck">
+        <div className={`terminalDeck terminalDeck--${sessionViewMode}`}>
         {/* Redesign Phase 4 — Activity ⇄ Terminal toggle + additive overlay.
             The terminal deck stays mounted underneath; the overlay simply covers
             it when Activity is on, so nothing unmounts or breaks. */}
         {active?.maestroSessionId && (
-          <div className="pn-viewseg" role="tablist" aria-label="Session view">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={showActivity}
-              className={"pn-viewseg__btn" + (showActivity ? " pn-viewseg__btn--on" : "")}
-              onClick={() => setShowActivity(true)}
-              title="Plain-language conversation view"
-            >
-              Chat
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={!showActivity}
-              className={"pn-viewseg__btn" + (!showActivity ? " pn-viewseg__btn--on" : "")}
-              onClick={() => setShowActivity(false)}
-              title="Raw terminal output"
-            >
-              Terminal
-            </button>
-          </div>
+          <SessionViewSelector mode={sessionViewMode} onChange={selectSessionView} />
         )}
         {active?.maestroSessionId && (
           <div
@@ -568,7 +554,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                   key={s.id}
                   maestroSessionId={s.maestroSessionId ?? null}
                   dataTerminalId={s.id}
-                  className={`terminalContainer ${visible ? "" : "terminalHidden"} ${visible && activeIsCoordinator ? "coordinator-glow" : ""}`}
+                  className={`terminalContainer ${visible ? "" : "terminalHidden"} ${visible && activeIsCoordinator ? "coordinator-glow" : ""} ${visible && !showTerminal ? "terminalViewHidden" : ""}`}
                 >
                   {inactiveMaestroSession ? (
                     <SessionStatsView session={inactiveMaestroSession} />

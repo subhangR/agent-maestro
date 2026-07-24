@@ -401,6 +401,16 @@ html[data-redesign][data-redesign] .pn-viewseg__btn--on {
   box-shadow: 0 1px 6px -1px rgba(var(--theme-primary-rgb), 0.6);
 }
 
+html[data-redesign][data-redesign] .terminalDeck--split .pn-activity-overlay {
+  right: auto; width: clamp(360px, 52%, 760px);
+  border-right: 1px solid var(--pn-line-2);
+  box-shadow: 14px 0 32px -28px rgba(0, 0, 0, .75);
+}
+html[data-redesign][data-redesign] .terminalDeck--split > .terminalContainer {
+  left: clamp(360px, 52%, 760px);
+}
+html[data-redesign][data-redesign] .terminalViewHidden { visibility: hidden !important; pointer-events: none !important; }
+
 /* --------------------------------------------------------------------------
    11 · PLAIN-LANGUAGE CHAT VIEW (SessionActivityPanel) — editorial timeline on
    the warm canvas, ambient glow, glass header (blur surface #2 of 4).
@@ -452,6 +462,51 @@ html[data-redesign][data-redesign] .pn-chat__agentline { display: flex; align-it
 html[data-redesign][data-redesign] .pn-chat__agentav { transform: scale(.82); transform-origin: left center; }
 html[data-redesign][data-redesign] .pn-chat__agentline b { font-weight: 600; font-size: 13.5px; color: var(--pn-ink); text-transform: capitalize; }
 html[data-redesign][data-redesign] .pn-chat__agentsub { font-family: var(--pn-mono); font-size: 11px; color: var(--pn-ink-4); }
+html[data-redesign][data-redesign] .pn-chat__progress {
+  margin-left: auto; padding: 3px 8px; border-radius: 999px;
+  background: var(--pn-active); color: var(--pn-ink-3); border: 1px solid var(--pn-line);
+  font-family: var(--pn-mono); font-size: 10px; white-space: nowrap;
+}
+
+html[data-redesign][data-redesign] .pn-chat__outcome {
+  display: flex; gap: 12px; margin: 22px 0 6px; padding: 16px;
+  border: 1px solid rgba(var(--theme-primary-rgb), .28); border-radius: 14px;
+  background: linear-gradient(145deg, var(--pn-brand-soft), var(--pn-card));
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign][data-redesign] .pn-chat__outcome--failed { border-color: rgba(220, 80, 70, .4); }
+html[data-redesign][data-redesign] .pn-chat__outcome-icon {
+  width: 30px; height: 30px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center;
+  background: var(--pn-brand); color: var(--pn-on-accent); font-weight: 800;
+}
+html[data-redesign][data-redesign] .pn-chat__outcome--failed .pn-chat__outcome-icon { background: #b7473f; color: #fff; }
+html[data-redesign][data-redesign] .pn-chat__outcome-body { min-width: 0; }
+html[data-redesign][data-redesign] .pn-chat__outcome-label {
+  color: var(--pn-brand); font: 700 10px/1 var(--pn-mono); letter-spacing: .08em; text-transform: uppercase;
+}
+html[data-redesign][data-redesign] .pn-chat__outcome h3 { margin: 5px 0 6px; color: var(--pn-ink); font-size: 16px; }
+html[data-redesign][data-redesign] .pn-chat__outcome p { margin: 0; color: var(--pn-ink-2); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+html[data-redesign][data-redesign] .pn-chat__outcome-meta { margin-top: 9px; color: var(--pn-ink-4); font: 10.5px/1.35 var(--pn-mono); }
+
+@media (max-width: 900px) {
+  html[data-redesign][data-redesign] .pn-viewseg__btn--split { display: none; }
+  html[data-redesign][data-redesign] .terminalDeck--split .pn-activity-overlay { right: 0; width: auto; border-right: 0; box-shadow: none; }
+  html[data-redesign][data-redesign] .terminalDeck--split > .terminalContainer { left: 0; }
+  html[data-redesign][data-redesign] .pn-viewseg { top: 8px; right: 8px; }
+  html[data-redesign][data-redesign] .pn-chat__head { padding-right: 150px; }
+}
+
+@media (max-width: 520px) {
+  html[data-redesign][data-redesign] .pn-chat__head { padding: 10px 128px 10px 12px; gap: 8px; }
+  html[data-redesign][data-redesign] .pn-chat__sub { display: none; }
+  html[data-redesign][data-redesign] .pn-chat__feed { padding: 18px 12px; }
+  html[data-redesign][data-redesign] .pn-chat__composer { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  html[data-redesign][data-redesign] .pn-chat__composer-bar { flex-direction: column; align-items: stretch; padding: 10px; }
+  html[data-redesign][data-redesign] .pn-chat__composer-tools { justify-content: space-between; }
+  html[data-redesign][data-redesign] .pn-chat__composer-hint { display: none; }
+  html[data-redesign][data-redesign] .pn-chat__composer-coord { display: none; }
+  html[data-redesign][data-redesign] .pn-chat__progress { display: none; }
+}
 
 /* steps timeline */
 html[data-redesign][data-redesign] .pn-chat__steps { position: relative; padding-left: 38px; }
@@ -587,9 +642,11 @@ html[data-redesign][data-redesign][data-theme='dark'] .pn-st__infobadge {
   background: rgba(31, 38, 48, 0.88) !important;
   border-color: rgba(75, 88, 105, 0.82) !important;
 }
-html[data-redesign][data-redesign][data-theme='dark'] .pn-search { background: rgba(30, 37, 47, 0.84) !important; }
-html[data-redesign][data-redesign][data-theme='dark'] .pn-filters { background: rgba(15, 19, 25, 0.78) !important; }
-html[data-redesign][data-redesign][data-theme='dark'] .pn-filter--active { background: var(--pn-hover) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-search { background: var(--pn-card) !important; border-color: var(--pn-line-2) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filters { background: var(--pn-active) !important; border-color: var(--pn-line) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filter--active { background: var(--pn-card) !important; box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filter { color: var(--pn-ink-3) !important; }
+html[data-redesign][data-redesign][data-theme='dark'] .pn-filter--active { color: var(--pn-ink) !important; }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-ptab--active { background: var(--pn-card) !important; }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-st--needsInput {
   background: linear-gradient(180deg, rgba(66, 53, 28, 0.72), rgba(39, 35, 27, 0.72)) !important;

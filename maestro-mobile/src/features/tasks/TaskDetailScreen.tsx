@@ -17,13 +17,14 @@ import {
   Tag,
   Text,
 } from '@/components';
-import { asProjectId, toUiSessionStatus, type Session, type Task } from '@/domain';
+import { asProjectId, toUiSessionStatus, type DocEntry, type Session, type Task } from '@/domain';
 import { getMaestroClient, useProjectMembers, type TaskTreeNode } from '@/state';
 import { useTheme } from '@/theme';
 
 import { optimisticEdit } from '../_shared';
 import { routes, sheets, type PickerOption } from '../../../navigation';
-import { Screen, SectionLabel, StatusBlock } from '../more/kit';
+import { DocRow } from '../docs';
+import { Screen, SectionLabel, StatusBlock, useRest } from '../more/kit';
 import { TASK_STATUS_LABEL } from './useTasksScreen';
 import { useTaskDetail } from './useTaskDetail';
 
@@ -41,6 +42,7 @@ export function TaskDetailScreen({ id }: { id: string }): React.JSX.Element {
   const theme = useTheme();
   const { task, tree, sessions, loading } = useTaskDetail(id);
   const members = useProjectMembers(asProjectId(task?.projectId ?? ''));
+  const { data: taskDocs } = useRest<DocEntry[]>(() => getMaestroClient().getTaskDocs(id), [id]);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [actionError, setActionError] = useState<string | null>(null);
   const toggle = (tid: string) =>
@@ -226,6 +228,30 @@ export function TaskDetailScreen({ id }: { id: string }): React.JSX.Element {
               onPress={() => router.push(routes.session(s.id))}
             />
           ))}
+        </View>
+      )}
+
+      {/* Docs */}
+      {(taskDocs?.length ?? 0) > 0 && (
+        <View style={{ gap: theme.space[2] }}>
+          <SectionLabel label="Docs" count={taskDocs?.length} />
+          <View
+            style={{
+              borderRadius: theme.radii.md,
+              backgroundColor: theme.colors.card,
+              borderWidth: 1,
+              borderColor: theme.colors.line,
+              overflow: 'hidden',
+            }}
+          >
+            {taskDocs?.map((d) => (
+              <DocRow
+                key={d.id}
+                doc={d}
+                onPress={() => router.push(routes.docViewer(d.id, 'task', task.id))}
+              />
+            ))}
+          </View>
         </View>
       )}
     </Screen>
