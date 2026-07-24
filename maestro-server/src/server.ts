@@ -27,6 +27,9 @@ import { createAlexaRoutes } from './api/alexaRoutes';
 import { createGitRoutes } from './api/gitRoutes';
 import { createAgentLogRoutes } from './api/agentLogRoutes';
 import { createFsRoutes } from './api/fsRoutes';
+import { createCollabV2Routes } from './api/collabV2Routes';
+import { CollabV2Service } from './application/services/CollabV2Service';
+import { SupabaseCollabV2Repository } from './infrastructure/repositories/SupabaseCollabV2Repository';
 import { WebSocketBridge } from './infrastructure/websocket/WebSocketBridge';
 import { PtyWebSocketServer } from './infrastructure/websocket/PtyWebSocketServer';
 import { errorHandler } from './api/middleware/errorHandler';
@@ -241,6 +244,12 @@ async function startServer() {
     }
     return [...roots];
   }));
+
+  // Collab V2 uses its own Firebase token forwarding header and Supabase RLS.
+  // It remains configuration-gated, so installations without Supabase retain all
+  // existing server behavior and receive a clear 500 configuration response only
+  // when they call the new façade.
+  app.use('/api', createCollabV2Routes(new CollabV2Service(new SupabaseCollabV2Repository())));
 
   // Browser SPA static serve — mounted AFTER all API/WS/PTY routes.
   // Serves maestro-ui/dist so a browser can access the full app from the server origin.

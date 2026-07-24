@@ -877,6 +877,37 @@ export const paginationQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).optional(),
 });
 
+// --- Collab V2 graph facade ---
+// UUIDs are enforced here because these IDs become PostgREST filter values.
+const collabId = z.string().uuid();
+const collabActorSchema = collabId;
+const collabEntityKindSchema = z.enum(['channel','task','message','member','team_member','doc','file','spell','skill','pull_request','commit']);
+const collabTaskStatusSchema = z.enum(['open','pulled','working','in_review','done','blocked','cancelled']);
+const collabPrioritySchema = z.enum(['low','medium','high','urgent']);
+
+export const collabSpaceIdParamsSchema = z.object({ spaceId: collabId }).strict();
+export const collabEntityIdParamsSchema = z.object({ entityId: collabId }).strict();
+export const collabTaskIdParamsSchema = z.object({ taskId: collabId }).strict();
+export const collabCreateSpaceSchema = z.object({ name: z.string().trim().min(1).max(200), description: z.string().max(10_000).optional(), githubRepo: z.string().max(500).nullable().optional() }).strict();
+export const collabEntityListQuerySchema = paginationQuerySchema.extend({ kind: collabEntityKindSchema.optional(), parentId: z.union([collabId, z.literal('null')]).optional(), includeDeleted: z.coerce.boolean().optional() }).strict();
+export const collabCreateTaskSchema = z.object({ actorId: collabActorSchema, title: z.string().trim().min(1).max(500), description: z.string().max(100_000).optional(), axes: z.record(z.string().min(1).max(100), z.string().min(1).max(200)).optional(), parentId: collabId.nullable().optional(), position: z.number().finite().optional(), priority: collabPrioritySchema.optional(), acceptanceCriteria: z.array(z.unknown()).max(100).optional(), pointsEstimate: z.number().int().min(0).nullable().optional(), dueDate: z.string().date().nullable().optional() }).strict();
+export const collabUpdateTaskSchema = collabCreateTaskSchema.partial().extend({ actorId: collabActorSchema, workStatus: collabTaskStatusSchema.optional() }).strict();
+export const collabCreateTaskAxisSchema = z.object({ name: z.string().trim().min(1).max(100), values: z.array(z.string().trim().min(1).max(200)).max(100).optional(), kind: z.enum(['default','manual']).optional(), position: z.number().int().optional() }).strict();
+export const collabPostMessageSchema = z.object({ actorId: collabActorSchema, body: z.string().trim().min(1).max(10_000), parentMessageId: collabId.nullable().optional(), mentions: z.array(z.unknown()).max(100).optional(), attachments: z.array(z.unknown()).max(100).optional(), clientMessageId: z.string().min(1).max(200).nullable().optional() }).strict();
+export const collabReactionSchema = z.object({ actorId: collabActorSchema, type: z.enum(['likes','dislikes','stars']), active: z.boolean() }).strict();
+export const collabPointsSchema = z.object({ actorId: collabActorSchema, amount: z.number().int().refine(value => value !== 0), reason: z.enum(['grant','award','seed']).optional(), referenceId: collabId.nullable().optional(), clientEventId: z.string().min(1).max(200).nullable().optional() }).strict();
+export const collabCollectionQuerySchema = z.object({
+  spaceId: collabId,
+  kinds: z.array(collabEntityKindSchema).min(1).max(11).optional(),
+  parentId: collabId.nullable().optional(),
+  cursor: z.string().min(1).max(500).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  filters: z.object({ deleted: z.enum(['exclude','only','include']).optional() }).strict().optional(),
+  layout: z.enum(['list','board','tree','feed','gallery','graph']).optional(),
+  groupBy: z.string().max(120).optional(),
+  sort: z.enum(['activityAt_desc','createdAt_desc','position','dueDate','priority']).optional(),
+}).strict();
+
 export const projectDocsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),
   offset: z.coerce.number().int().min(0).optional(),

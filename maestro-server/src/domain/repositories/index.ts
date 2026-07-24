@@ -4,3 +4,4 @@ export * from './ITaskListRepository';
 export * from './ISessionRepository';
 export * from './IEnsembleRepository';
 export * from './IClipboardImageRepository';
+export * from './ICollabV2Repository';
