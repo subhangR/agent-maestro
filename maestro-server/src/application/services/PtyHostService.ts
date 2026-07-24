@@ -71,7 +71,21 @@ interface PtyEntry {
    *  new epoch. The client compares it by equality only (a change ⇒ authoritative
    *  reset) and never infers ordering. Echoed to clients in the `attached` frame. */
   epoch: string;
+  /** Output chunks awaiting coalesced delivery to subscribers. A busy TUI emits
+   *  hundreds of tiny chunks/sec; sending each as its own WebSocket frame made
+   *  clients decode N×hundreds of messages/sec with many concurrent agents.
+   *  Chunks are appended to the ring buffers synchronously (offset accounting
+   *  and snapshots are unaffected); only the socket sends are delayed, and every
+   *  attach/replay/snapshot boundary flushes first so no byte is ever seen twice. */
+  sendBuf: Buffer[];
+  sendBytes: number;
+  sendTimer: NodeJS.Timeout | null;
 }
+
+/** Coalescing window for live output fan-out. Well under perceptible echo latency. */
+const SEND_COALESCE_MS = 16;
+/** Force a flush when this much output accumulates inside one window. */
+const SEND_COALESCE_MAX_BYTES = 64 * 1024;
 
 interface PendingPromptDelivery {
   content: string;
@@ -274,31 +288,25 @@ export class PtyHostService {
       cols: initialCols,
       rows: initialRows,
       epoch: this.newEpoch(),
+      sendBuf: [],
+      sendBytes: 0,
+      sendTimer: null,
     };
     this.sessions.set(sessionId, entry);
 
     proc.onData((data: string | Buffer) => {
       const chunk = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8');
+      // Ring buffers MUST stay synchronous — offset accounting, replay, and
+      // snapshot boundaries all read them in the same turn as onData. Only the
+      // socket fan-out below is coalesced.
       entry.output.append(chunk);
       entry.state.append(chunk);
-      for (const ws of entry.subscribers) {
-        this.safeSend(ws, chunk);
-      }
-      for (const [ws, pending] of entry.pendingSubscribers) {
-        pending.chunks.push(chunk);
-        pending.bytes += chunk.length;
-        if (pending.bytes > MAX_PENDING_SNAPSHOT_BYTES) {
-          entry.pendingSubscribers.delete(ws);
-          this.logger.warn('PtyHostService: terminal snapshot backlog exceeded', {
-            sessionId,
-            bytes: pending.bytes,
-          });
-          try {
-            ws.close(1013, 'terminal replay backlog exceeded');
-          } catch {
-            // ignore
-          }
-        }
+      entry.sendBuf.push(chunk);
+      entry.sendBytes += chunk.length;
+      if (entry.sendBytes >= SEND_COALESCE_MAX_BYTES) {
+        this.flushOutput(entry, sessionId);
+      } else if (entry.sendTimer === null) {
+        entry.sendTimer = setTimeout(() => this.flushOutput(entry, sessionId), SEND_COALESCE_MS);
       }
     });
 
@@ -643,6 +651,9 @@ export class PtyHostService {
   getReplay(sessionId: string, fromOffset: number): ReplaySlice | null {
     const entry = this.sessions.get(sessionId);
     if (!entry) return null;
+    // The ring already contains any coalesced-but-unsent bytes; flush them to
+    // existing subscribers now so the slice boundary and the live stream agree.
+    this.flushOutput(entry, sessionId);
     const slice = entry.output.replayFrom(fromOffset);
     return { ...slice, data: stripScrollbackDeviceQueries(slice.data) };
   }
@@ -673,6 +684,9 @@ export class PtyHostService {
   addSubscriber(sessionId: string, ws: WebSocket): boolean {
     const entry = this.sessions.get(sessionId);
     if (!entry) return false;
+    // Flush before attaching: this socket's replay already covers everything in
+    // the ring (incl. coalesced bytes), so it must not receive them again live.
+    this.flushOutput(entry, sessionId);
     entry.subscribers.add(ws);
     return true;
   }
@@ -684,6 +698,9 @@ export class PtyHostService {
   addPendingSubscriber(sessionId: string, ws: WebSocket): boolean {
     const entry = this.sessions.get(sessionId);
     if (!entry) return false;
+    // Flush so the pending backlog starts exactly at the snapshot boundary —
+    // coalesced pre-registration bytes belong to the snapshot, not the backlog.
+    this.flushOutput(entry, sessionId);
     entry.pendingSubscribers.set(ws, { chunks: [], bytes: 0 });
     return true;
   }
@@ -726,6 +743,9 @@ export class PtyHostService {
    * only sees a socket close and reconnects onto the new PTY.
    */
   private notifyExit(entry: PtyEntry, exitCode: number | null): void {
+    // Deliver any coalesced tail output before the exit frame — the client
+    // treats {type:'exit'} as stream end and must have seen every byte first.
+    this.flushOutput(entry);
     for (const ws of entry.subscribers) {
       this.safeSend(ws, JSON.stringify({ type: 'exit', exitCode }));
     }
@@ -734,6 +754,7 @@ export class PtyHostService {
 
   /** Close every subscriber socket and clear the set (no exit frame). */
   private closeSubscribers(entry: PtyEntry): void {
+    this.flushOutput(entry);
     for (const ws of entry.subscribers) {
       try {
         ws.close();
@@ -750,6 +771,42 @@ export class PtyHostService {
       }
     }
     entry.pendingSubscribers.clear();
+  }
+
+  /**
+   * Deliver all coalesced output as one frame to live subscribers and append it
+   * to pending-subscriber backlogs. MUST run before any attach/replay/snapshot
+   * boundary and before exit frames — a boundary taken while bytes sit in
+   * sendBuf would replay those bytes AND deliver them again on the next flush.
+   */
+  private flushOutput(entry: PtyEntry, sessionId?: string): void {
+    if (entry.sendTimer !== null) {
+      clearTimeout(entry.sendTimer);
+      entry.sendTimer = null;
+    }
+    if (entry.sendBuf.length === 0) return;
+    const frame = entry.sendBuf.length === 1 ? entry.sendBuf[0] : Buffer.concat(entry.sendBuf);
+    entry.sendBuf = [];
+    entry.sendBytes = 0;
+    for (const ws of entry.subscribers) {
+      this.safeSend(ws, frame);
+    }
+    for (const [ws, pending] of entry.pendingSubscribers) {
+      pending.chunks.push(frame);
+      pending.bytes += frame.length;
+      if (pending.bytes > MAX_PENDING_SNAPSHOT_BYTES) {
+        entry.pendingSubscribers.delete(ws);
+        this.logger.warn('PtyHostService: terminal snapshot backlog exceeded', {
+          sessionId,
+          bytes: pending.bytes,
+        });
+        try {
+          ws.close(1013, 'terminal replay backlog exceeded');
+        } catch {
+          // ignore
+        }
+      }
+    }
   }
 
   private safeSend(ws: WebSocket, data: string | Buffer): void {
