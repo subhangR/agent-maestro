@@ -36,22 +36,40 @@ jobs:
       - name: Validate website package
         run: node scripts/validate-website.mjs
 
-  deploy-preview:
-    if: github.event_name == 'pull_request'
+  deployment-config:
     needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.credentials.outputs.ready }}
+    steps:
+      - name: Check Firebase deployment credential
+        id: credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC || secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_WEB_FLEET }}
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Firebase deployment not configured::Add repository secret FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC (or FIREBASE_SERVICE_ACCOUNT_MAESTRO_WEB_FLEET). Website validation passed; deployment was skipped."
+          fi
+
+  deploy-preview:
+    if: github.event_name == 'pull_request' && needs.deployment-config.outputs.ready == 'true'
+    needs: [validate, deployment-config]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC || secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_WEB_FLEET }}"
           projectId: maestro-5f3fc
           expires: 7d
 
   deploy-live:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: validate
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.deployment-config.outputs.ready == 'true'
+    needs: [validate, deployment-config]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -59,6 +77,6 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: "${{ secrets.GITHUB_TOKEN }}"
-          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC }}"
+          firebaseServiceAccount: "${{ secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_5F3FC || secrets.FIREBASE_SERVICE_ACCOUNT_MAESTRO_WEB_FLEET }}"
           projectId: maestro-5f3fc
           channelId: live
