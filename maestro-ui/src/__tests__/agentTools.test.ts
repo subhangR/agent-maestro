@@ -52,13 +52,30 @@ describe('agent tool UI constants', () => {
       label: 'OpenRouter Claude Opus 4.8',
     });
     expect(MODELS_BY_AGENT_TOOL.hermes).toContainEqual({
-      value: 'openai/gpt-5.5',
-      label: 'Codex OAuth GPT 5.5',
-    });
-    expect(MODELS_BY_AGENT_TOOL.hermes).toContainEqual({
       value: 'openai/gpt-5.6-sol',
       label: 'Codex OAuth 5.6 Sol',
     });
+    expect(MODELS_BY_AGENT_TOOL.hermes.map((model) => model.value)).not.toEqual(
+      expect.arrayContaining(['openai/gpt-5.5', 'openai/gpt-5.4', 'gpt-5.3-codex', 'gpt-5.3-codex-spark']),
+    );
+  });
+
+  it('drops retired Opus 4.7/4.6, pre-5.6 Codex, and Gemini 2.5 Pro from the pickers', () => {
+    expect(MODELS_BY_AGENT_TOOL['claude-code'].map((model) => model.value)).not.toEqual(
+      expect.arrayContaining(['claude-opus-4-7', 'claude-opus-4-7[1m]', 'claude-opus-4-6']),
+    );
+    expect(MODELS_BY_AGENT_TOOL.codex.map((model) => model.value)).toEqual([
+      'gpt-5.6-sol',
+      'gpt-5.6-terra',
+      'gpt-5.6-luna',
+    ]);
+    expect(MODELS_BY_AGENT_TOOL.gemini).toEqual([
+      { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+    ]);
+    expect(DEFAULT_MODEL_BY_AGENT_TOOL.gemini).toBe('gemini-3-pro-preview');
+    // Retired ids remain resolvable for backward compat with existing data.
+    expect(getModelDisplayLabel('claude-opus-4-7')).toBe('Opus 4.7');
+    expect(getModelDisplayLabel('gemini-2.5-pro')).toBe('Gemini 2.5 Pro');
   });
 
   it('pins Hermes in the default quick-launch shortcuts', () => {
@@ -286,5 +303,18 @@ describe('agent tool UI constants', () => {
     // Fable 5 (6.0) outranks Opus 4.8 (5.8).
     const members = [{ model: 'claude-fable-5' }, { model: 'claude-opus-4-8' }];
     expect(pickTopMember(members)?.model).toBe('claude-fable-5');
+  });
+
+  it('offers Claude Opus 5 and ranks it above Opus 4.8', () => {
+    const claudeValues = MODELS_BY_AGENT_TOOL['claude-code'].map((model) => model.value);
+    expect(claudeValues).toContain('claude-opus-5');
+    expect(claudeValues).toContain('claude-opus-5[1m]');
+    expect(getModelDisplayLabel('claude-opus-5')).toBe('Opus 5');
+    expect(getModelDisplayLabel('claude-opus-5[1m]')).toBe('Opus 5 1M');
+    expect(normalizeModelId('claude-opus-5')).toBe('claude-opus-5');
+    expect(MODEL_POWER['claude-opus-5']).toBeGreaterThan(MODEL_POWER['claude-opus-4-8']);
+    expect(MODEL_POWER['claude-opus-5[1m]']).toBeGreaterThan(MODEL_POWER['claude-opus-4-8[1m]']);
+    const members = [{ model: 'claude-opus-5' }, { model: 'claude-opus-4-8' }];
+    expect(pickTopMember(members)?.model).toBe('claude-opus-5');
   });
 });

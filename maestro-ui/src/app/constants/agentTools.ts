@@ -17,26 +17,19 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
   "claude-code": [
     { value: "claude-fable-5", label: "Fable 5" },
     { value: "claude-fable-5[1m]", label: "Fable 5 1M" },
+    { value: "claude-opus-5", label: "Opus 5" },
+    { value: "claude-opus-5[1m]", label: "Opus 5 1M" },
     { value: "claude-opus-4-8", label: "Opus 4.8" },
     { value: "claude-opus-4-8[1m]", label: "Opus 4.8 1M" },
-    { value: "claude-opus-4-7", label: "Opus 4.7" },
-    { value: "claude-opus-4-7[1m]", label: "Opus 4.7 1M" },
     { value: "claude-sonnet-5", label: "Sonnet 5" },
     { value: "claude-sonnet-5[1m]", label: "Sonnet 5 1M" },
     { value: "claude-sonnet-4-6", label: "Sonnet 4.6" },
     { value: "claude-haiku-4-5", label: "Haiku 4.5" },
-    { value: "claude-opus-4-6", label: "Opus 4.6 Legacy" },
   ],
   codex: [
     { value: "gpt-5.6-sol", label: "5.6 Sol" },
     { value: "gpt-5.6-terra", label: "5.6 Terra" },
     { value: "gpt-5.6-luna", label: "5.6 Luna" },
-    { value: "gpt-5.5", label: "GPT-5.5" },
-    { value: "gpt-5.4", label: "GPT-5.4" },
-    { value: "gpt-5.4-mini", label: "GPT-5.4-Mini" },
-    { value: "gpt-5.3-codex", label: "GPT-5.3-Codex" },
-    { value: "gpt-5.3-codex-spark", label: "GPT-5.3-Codex-Spark" },
-    { value: "gpt-5.2", label: "GPT-5.2" },
   ],
   hermes: [
     { value: "hermes-default", label: "Hermes default" },
@@ -46,17 +39,10 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
     { value: "openai/gpt-5.6-sol", label: "Codex OAuth 5.6 Sol" },
     { value: "openai/gpt-5.6-terra", label: "Codex OAuth 5.6 Terra" },
     { value: "openai/gpt-5.6-luna", label: "Codex OAuth 5.6 Luna" },
-    { value: "openai/gpt-5.5", label: "Codex OAuth GPT 5.5" },
-    { value: "openai/gpt-5.4", label: "Codex OAuth GPT 5.4" },
-    { value: "openai/gpt-5.4-mini", label: "Codex OAuth GPT 5.4 Mini" },
-    { value: "gpt-5.3-codex", label: "Codex OAuth GPT 5.3 Codex" },
-    { value: "gpt-5.3-codex-spark", label: "Codex OAuth GPT 5.3 Codex Spark" },
-    { value: "openai/gpt-5.2", label: "Codex OAuth GPT 5.2" },
     { value: "anthropic/claude-sonnet-4.6", label: "Anthropic Claude Sonnet 4.6" },
   ],
   gemini: [
     { value: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview" },
-    { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   ],
 };
 
@@ -64,7 +50,7 @@ export const DEFAULT_MODEL_BY_AGENT_TOOL: Record<AgentTool, ModelType> = {
   "claude-code": "claude-opus-4-8",
   codex: "gpt-5.6-sol",
   hermes: "hermes-default",
-  gemini: "gemini-2.5-pro",
+  gemini: "gemini-3-pro-preview",
 };
 
 // Retired model IDs mapped to active replacements. Currently empty — Claude
@@ -85,6 +71,8 @@ export function normalizeModelId(model?: string): string | undefined {
 export const MODEL_POWER: Record<string, number> = {
   "claude-fable-5[1m]": 6.1,
   "claude-fable-5": 6.0,
+  "claude-opus-5[1m]": 5.95,
+  "claude-opus-5": 5.85,
   "claude-opus-4-8[1m]": 5.9,
   "claude-opus-4-8": 5.8,
   "gpt-5.6-sol": 5.6,
@@ -300,6 +288,8 @@ export function sanitizeLaunchConfig(config?: Partial<LaunchConfig> | null): Lau
 const MODEL_LABEL_OVERRIDES: Record<string, string> = {
   "claude-fable-5": "Fable 5",
   "claude-fable-5[1m]": "Fable 5 1M",
+  "claude-opus-5": "Opus 5",
+  "claude-opus-5[1m]": "Opus 5 1M",
   "claude-opus-4-8": "Opus 4.8",
   "claude-opus-4-8[1m]": "Opus 4.8 1M",
   "claude-opus-4-7": "Opus 4.7",

@@ -39,6 +39,9 @@ export class HermesSpawner {
     'anthropic:claude-fable-5',
     'anthropic/claude-fable-5',
     'claude-fable-5',
+    'anthropic:claude-opus-5',
+    'anthropic/claude-opus-5',
+    'claude-opus-5',
     'anthropic:claude-opus-4-8',
     'nous:anthropic/claude-opus-4.8',
     'openrouter:anthropic/claude-opus-4.8',
@@ -51,14 +54,9 @@ export class HermesSpawner {
     'openai/gpt-5.6-sol',
     'openai/gpt-5.6-terra',
     'openai/gpt-5.6-luna',
-    'openai/gpt-5.5',
-    'openai/gpt-5.4',
     'gpt-5.6-sol',
     'gpt-5.6-terra',
     'gpt-5.6-luna',
-    'gpt-5.3-codex',
-    'gpt-5.3-codex-spark',
-    'gpt-5.4',
   ] as const;
 
   private shouldUseYolo(permissionMode: string): boolean {

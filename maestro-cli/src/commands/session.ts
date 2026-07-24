@@ -103,7 +103,7 @@ function defaultModelForAgentTool(agentTool: AgentTool): string {
         case 'hermes':
             return 'hermes-default';
         case 'gemini':
-            return 'gemini-2.5-pro';
+            return 'gemini-3-pro-preview';
         case 'claude-code':
         default:
             return 'claude-opus-4-8';

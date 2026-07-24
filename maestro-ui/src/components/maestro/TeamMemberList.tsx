@@ -27,6 +27,8 @@ function getModelDisplayLabel(model?: string, agentTool?: AgentTool): string {
         opus: "Opus",
         "claude-fable-5": "Fable 5",
         "claude-fable-5[1m]": "Fable 5 1M",
+        "claude-opus-5": "Opus 5",
+        "claude-opus-5[1m]": "Opus 5 1M",
         "claude-sonnet-5": "Sonnet 5",
         "claude-sonnet-5[1m]": "Sonnet 5 1M",
         "claude-opus-4-8": "Opus 4.8",

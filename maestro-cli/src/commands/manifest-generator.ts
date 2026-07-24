@@ -223,7 +223,7 @@ function defaultModelForAgentTool(agentTool: AgentTool): string {
     case 'hermes':
       return 'hermes-default';
     case 'gemini':
-      return 'gemini-2.5-pro';
+      return 'gemini-3-pro-preview';
     case 'claude-code':
     default:
       return 'claude-opus-4-8';
@@ -602,6 +602,8 @@ export class ManifestGeneratorCLICommand {
         const MODEL_POWER: Record<string, number> = {
           'claude-fable-5[1m]': 6.1,
           'claude-fable-5': 6.0,
+          'claude-opus-5[1m]': 5.95,
+          'claude-opus-5': 5.85,
           'claude-opus-4-8[1m]': 5.9,
           'claude-opus-4-8': 5.8,
           'gpt-5.6-sol': 5.6,

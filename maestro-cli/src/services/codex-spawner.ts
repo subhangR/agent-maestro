@@ -39,12 +39,6 @@ export class CodexSpawner {
     'gpt-5.6-sol',
     'gpt-5.6-terra',
     'gpt-5.6-luna',
-    'gpt-5.5',
-    'gpt-5.4',
-    'gpt-5.4-mini',
-    'gpt-5.3-codex',
-    'gpt-5.3-codex-spark',
-    'gpt-5.2',
   ] as const;
 
   /**
@@ -57,12 +51,12 @@ export class CodexSpawner {
       case 'gpt-5.2-codex':
       case 'gpt-5.1-codex':
       case 'gpt-5-codex':
-        return 'gpt-5.2';
+        return 'gpt-5.6-luna';
       case 'gpt-5.1-codex-max':
-        return 'gpt-5.3-codex';
+        return 'gpt-5.6-terra';
       case 'gpt-5.1-codex-mini':
       case 'gpt-5-codex-mini':
-        return 'gpt-5.4-mini';
+        return 'gpt-5.6-luna';
     }
 
     // Pass through if already a native Codex/OpenAI model
@@ -78,6 +72,8 @@ export class CodexSpawner {
       case 'claude-sonnet-5':
       case 'claude-sonnet-5[1m]':
         return 'gpt-5.6-terra';
+      case 'claude-opus-5[1m]':
+      case 'claude-opus-5':
       case 'claude-opus-4-8[1m]':
       case 'claude-opus-4-8':
       case 'claude-opus-4-7[1m]':
@@ -89,10 +85,10 @@ export class CodexSpawner {
       case 'sonnet[1m]':
         // Map to a current Codex model. 'gpt-5.2-codex' was removed in PR #83 and
         // would be passed verbatim to a CLI that no longer recognizes it.
-        return 'gpt-5.2';
+        return 'gpt-5.6-luna';
       case 'haiku':
         // 'gpt-5.1-codex-mini' was removed in PR #83; use its current equivalent.
-        return 'gpt-5.4-mini';
+        return 'gpt-5.6-luna';
       default:
         return 'gpt-5.6-sol';
     }

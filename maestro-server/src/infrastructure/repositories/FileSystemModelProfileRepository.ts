@@ -64,6 +64,15 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
         updatedAt: now,
       },
       {
+        id: 'mp_opus5',
+        name: 'Opus 5',
+        description: 'High-capability tier — Opus 5.',
+        launchConfig: { provider: 'claude', model: 'claude-opus-5' },
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
         id: 'mp_heavy',
         name: 'Heavy',
         description: 'High-capability tier — Opus 4.8.',
