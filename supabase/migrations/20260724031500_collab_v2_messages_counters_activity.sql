@@ -28,8 +28,13 @@ create index messages_mentions_gin_idx on public.messages using gin (mentions js
 create or replace function private.ensure_entity_counter() returns trigger
 language plpgsql set search_path = public, private, pg_temp as $$
 begin
-  insert into public.entity_counters(entity_id) values (new.id)
-  on conflict (entity_id) do nothing;
+  -- Command RPCs create counters explicitly for every entity type except
+  -- messages. Restrict the trigger to that implicit path so later statements
+  -- in those RPCs do not collide with an already-created counter row.
+  if new.kind = 'message' then
+    insert into public.entity_counters(entity_id) values (new.id)
+    on conflict (entity_id) do nothing;
+  end if;
   return new;
 end;
 $$;

@@ -91,7 +91,7 @@ async function startServer() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Session-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Session-Id', 'X-Collab-Firebase-Token', 'X-Collab-Firebase-Uid'],
     exposedHeaders: ['Content-Length', 'X-Request-Id']
   }));
   // JSON body parser with size limit (50mb for image uploads)

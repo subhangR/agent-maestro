@@ -55,6 +55,7 @@
 @import './styles-space-window.css';
 @import './styles-space-docs.css';
 @import './styles-space-files.css';
+@import './styles-collab-workspace.css';
 
 /* Self-hosted JetBrains Mono */
 @font-face {

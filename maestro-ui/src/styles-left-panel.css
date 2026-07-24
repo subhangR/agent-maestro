@@ -28,6 +28,25 @@
   contain: strict;
 }
 
+/* Collab V2 is a complete workspace, not a sidebar. On desktop, keep the
+   global icon rail in place and let the Collab surface cover the application
+   area to its right. The regular Maestro/File panels retain their persisted
+   sidebar width. */
+@media (min-width: 769px) {
+  .appLeftPanel--collabV2 {
+    position: relative;
+    overflow: visible;
+    contain: layout style;
+    z-index: 20;
+  }
+
+  .appLeftPanel--collabV2 .appLeftPanelContent {
+    position: absolute;
+    inset: 0 auto 0 56px;
+    z-index: 1;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Mobile overrides (≤768px) — desktop layout above breakpoint is    */
 /*  UNCHANGED — all rules here are strictly additive.                  */
@@ -47,4 +66,3 @@
     contain: content;
   }
 }
-

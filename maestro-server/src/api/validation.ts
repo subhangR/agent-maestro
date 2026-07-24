@@ -888,7 +888,7 @@ const collabPrioritySchema = z.enum(['low','medium','high','urgent']);
 export const collabSpaceIdParamsSchema = z.object({ spaceId: collabId }).strict();
 export const collabEntityIdParamsSchema = z.object({ entityId: collabId }).strict();
 export const collabTaskIdParamsSchema = z.object({ taskId: collabId }).strict();
-export const collabCreateSpaceSchema = z.object({ name: z.string().trim().min(1).max(200), description: z.string().max(10_000).optional(), githubRepo: z.string().max(500).nullable().optional() }).strict();
+export const collabCreateSpaceSchema = z.object({ name: z.string().trim().min(1).max(200), description: z.string().max(10_000).optional(), githubRepo: z.string().max(500).nullable().optional(), visibility: z.enum(['public','private']).optional() }).strict();
 export const collabEntityListQuerySchema = paginationQuerySchema.extend({ kind: collabEntityKindSchema.optional(), parentId: z.union([collabId, z.literal('null')]).optional(), includeDeleted: z.coerce.boolean().optional() }).strict();
 export const collabCreateTaskSchema = z.object({ actorId: collabActorSchema, title: z.string().trim().min(1).max(500), description: z.string().max(100_000).optional(), axes: z.record(z.string().min(1).max(100), z.string().min(1).max(200)).optional(), parentId: collabId.nullable().optional(), position: z.number().finite().optional(), priority: collabPrioritySchema.optional(), acceptanceCriteria: z.array(z.unknown()).max(100).optional(), pointsEstimate: z.number().int().min(0).nullable().optional(), dueDate: z.string().date().nullable().optional() }).strict();
 export const collabUpdateTaskSchema = collabCreateTaskSchema.partial().extend({ actorId: collabActorSchema, workStatus: collabTaskStatusSchema.optional() }).strict();
@@ -898,6 +898,11 @@ export const collabReactionSchema = z.object({ actorId: collabActorSchema, type:
 export const collabPointsSchema = z.object({ actorId: collabActorSchema, amount: z.number().int().refine(value => value !== 0), reason: z.enum(['grant','award','seed']).optional(), referenceId: collabId.nullable().optional(), clientEventId: z.string().min(1).max(200).nullable().optional() }).strict();
 export const collabCollectionQuerySchema = z.object({
   spaceId: collabId,
+  // Accepted for compatibility with early V2 browser bundles. These fields
+  // are harmless saved-view metadata and are not used to construct SQL.
+  id: z.string().trim().min(1).max(200).optional(),
+  title: z.string().trim().min(1).max(500).optional(),
+  subtreeOf: collabId.optional(),
   kinds: z.array(collabEntityKindSchema).min(1).max(11).optional(),
   parentId: collabId.nullable().optional(),
   cursor: z.string().min(1).max(500).optional(),
@@ -907,6 +912,31 @@ export const collabCollectionQuerySchema = z.object({
   groupBy: z.string().max(120).optional(),
   sort: z.enum(['activityAt_desc','createdAt_desc','position','dueDate','priority']).optional(),
 }).strict();
+
+const collabMutationId = z.string().trim().min(1).max(200).optional();
+export const collabDiscoverQuerySchema = z.object({ githubRepo: z.string().trim().min(1).max(500).optional() }).strict();
+export const collabEdgeIdParamsSchema = z.object({ edgeId: collabId }).strict();
+export const collabNotificationIdParamsSchema = z.object({ notificationId: collabId }).strict();
+export const collabDocIdParamsSchema = z.object({ docId: collabId }).strict();
+export const collabFileIdParamsSchema = z.object({ fileId: collabId }).strict();
+export const collabEdgeCreateSchema = z.object({ actorId: collabActorSchema, srcId: collabId, dstId: collabId, type: z.string().regex(/^(?:[a-z][a-z0-9_]*|x:[a-z0-9][a-z0-9_.-]*)$/).max(100), props: z.record(z.string(), z.unknown()).optional(), clientMutationId: collabMutationId }).strict();
+export const collabEdgeUpdateSchema = z.object({ actorId: collabActorSchema, props: z.record(z.string(), z.unknown()), clientMutationId: collabMutationId }).strict();
+export const collabActorCommandSchema = z.object({ actorId: collabActorSchema, clientMutationId: collabMutationId }).strict();
+export const collabPlacementSchema = z.object({ actorId: collabActorSchema, sourceId: collabId, targetId: collabId, intent: z.enum(['attach','assign','depend','subtask','embed','reparent']), embedMessage: z.string().max(10_000).optional(), position: z.number().finite().optional(), clientMutationId: collabMutationId }).strict();
+export const collabMoveSchema = z.object({ actorId: collabActorSchema, parentId: collabId.nullable(), position: z.number().finite(), expectedVersion: z.number().int().positive(), clientMutationId: collabMutationId }).strict();
+export const collabCompleteTaskSchema = z.object({ actorId: collabActorSchema, expectedVersion: z.number().int().positive(), completerIds: z.array(collabId).min(1).max(100), clientMutationId: collabMutationId }).strict();
+export const collabPullSchema = z.object({ actorId: collabActorSchema, localId: z.string().max(1000).nullable().optional(), pinnedVersion: z.number().int().positive(), clientMutationId: collabMutationId }).strict();
+export const collabWorkSchema = z.object({ actorId: collabActorSchema, status: collabTaskStatusSchema, startedAt: z.string().datetime({ offset: true }).optional(), note: z.string().max(10_000).optional(), clientMutationId: collabMutationId }).strict();
+const collabParentPosition = { parentId: collabId.nullable().optional(), position: z.number().finite().optional() };
+export const collabCreateDocumentSchema = z.object({ actorId: collabActorSchema, title: z.string().trim().min(1).max(500), body: z.string().max(1_000_000).optional(), format: z.enum(['markdown','mermaid','excalidraw']).optional(), ...collabParentPosition, clientMutationId: collabMutationId }).strict();
+export const collabCreateFileSchema = z.object({ actorId: collabActorSchema, name: z.string().trim().min(1).max(500), mimeType: z.string().trim().min(1).max(255), sizeBytes: z.number().int().nonnegative(), storagePath: z.string().trim().min(1).max(2000), checksum: z.string().max(500).nullable().optional(), ...collabParentPosition, clientMutationId: collabMutationId }).strict();
+export const collabUpdateDocumentSchema = collabCreateDocumentSchema.omit({ parentId: true, position: true }).partial().extend({ actorId: collabActorSchema, expectedVersion: z.number().int().positive() }).strict();
+export const collabUpdateFileSchema = collabCreateFileSchema.omit({ parentId: true, position: true }).partial().extend({ actorId: collabActorSchema, expectedVersion: z.number().int().positive() }).strict();
+export const collabGraphQuerySchema = collabCollectionQuerySchema.extend({ focusId: collabId.optional(), hops: z.number().int().min(0).max(8).optional(), edgeTypes: z.array(z.string().min(1).max(100)).max(100).optional(), mode: z.enum(['free','dependency']).optional() }).strict();
+export const collabInboxQuerySchema = z.object({ spaceId: collabId, cursor: z.string().min(1).max(500).optional(), limit: z.coerce.number().int().min(1).max(100).optional() }).strict();
+export const collabEventsQuerySchema = z.object({ cursor: z.string().min(1).max(500).optional(), limit: z.coerce.number().int().min(1).max(500).optional() }).strict();
+export const collabCreateChannelSchema = z.object({ actorId: collabActorSchema, name: z.string().trim().regex(/^[a-z0-9][a-z0-9_-]{0,79}$/), topic: z.string().max(10_000).optional(), parentId: collabId.nullable().optional() }).strict();
+export const collabTrackingRefreshSchema = z.object({ entityIds: z.array(collabId).min(1).max(500).optional(), spaceId: collabId.optional() }).strict();
 
 export const projectDocsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).optional(),

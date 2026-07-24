@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/maestro-design-system-a8dfb2b3-38e3-4e2e-bce2-41b36c3a18a8/colors_and_type.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-a8dfb2b3-38e3-4e2e-bce2-41b36c3a18a8/styles.css">
+  <script src="_ds/maestro-design-system-a8dfb2b3-38e3-4e2e-bce2-41b36c3a18a8/_ds_bundle.js"></script>
+  <script src="./icons.js"></script>
+  <style>
+    body{margin:0;background:var(--pn-paper);color:var(--pn-ink);font-family:'Hanken Grotesk',sans-serif}
+    a{color:var(--pn-brand);text-decoration:none} a:hover{color:var(--pn-ink)}
+    @keyframes ping{0%{transform:scale(1);opacity:.6}100%{transform:scale(2.4);opacity:0}}
+  </style>
+</helmet>
+<div style="display:flex; height:100vh; min-width:1280px; overflow:auto; background:var(--pn-paper)" data-screen-label="Collab workspace">
+  <!-- Icon rail -->
+  <div style="width:56px; flex:none; border-right:1px solid var(--pn-line); display:flex; flex-direction:column; align-items:center; padding:12px 0; gap:6px; background:var(--pn-paper)">
+    <div style="font-family:'JetBrains Mono',monospace; color:var(--pn-brand); font-weight:700; font-size:15px; margin-bottom:10px" title="Maestro">&gt;···+</div>
+    <div style="width:36px; height:36px; border-radius:10px; background:var(--pn-active); border:1px solid var(--pn-line-2); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; position:relative" title="maestro-core">MC<div style="position:absolute; left:-13px; top:8px; bottom:8px; width:3px; border-radius:2px; background:var(--pn-brand)"></div></div>
+    <div style="width:36px; height:36px; border-radius:10px; border:1px solid var(--pn-line); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--pn-ink-3)" title="atelier-ds">AD</div>
+    <div style="flex:1"></div>
+    <div style="width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--pn-ink-3); position:relative" title="Inbox"><l-i n="inbox" s="18"></l-i><div style="position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:var(--pn-brand)"></div></div>
+  </div>
+  <!-- Left rail -->
+  <div style="width:232px; flex:none; border-right:1px solid var(--pn-line); background:var(--pn-surface); display:flex; flex-direction:column; overflow:hidden">
+    <div style="padding:14px 14px 10px">
+      <div class="t-eyebrow">SPACE</div>
+      <div style="font-weight:700; font-size:15px; margin-top:2px">maestro-core</div>
+    </div>
+    <div style="padding:0 8px 14px; overflow-y:auto; display:flex; flex-direction:column; gap:1px">
+      <sc-for list="{{ navItems }}" as="nv" hint-placeholder-count="8">
+        <div onClick="{{ nv.go }}" style="{{ nv.style }}" style-hover="background:var(--pn-hover)">
+          <l-i n="{{ nv.icon }}" s="16"></l-i><span style="flex:1">{{ nv.label }}</span><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ nv.badge }}</span>
+        </div>
+      </sc-for>
+      <div class="t-eyebrow" style="padding:12px 10px 4px">CHANNELS</div>
+      <sc-for list="{{ channels }}" as="ch" hint-placeholder-count="3">
+        <div onClick="{{ ch.go }}" style="{{ ch.style }}" style-hover="background:var(--pn-hover)">
+          <l-i n="hash" s="15"></l-i><span style="flex:1">{{ ch.name }}</span><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ ch.unread }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <!-- Center: Home (My Work) -->
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper); overflow-y:auto" data-screen-label="Home — My Work">
+    <div style="padding:20px 24px 14px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface)">
+      <div class="t-eyebrow">HOME</div>
+      <div style="font-family:'Newsreader',serif; font-size:26px; font-weight:600; margin-top:2px">My work</div>
+      <div style="color:var(--pn-ink-3); font-size:13px; margin-top:2px">You and your agents — Forge is working, one task needs your review.</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; padding:18px 24px; align-items:start">
+      <sc-for list="{{ homeCols }}" as="col" hint-placeholder-count="3">
+        <div style="min-width:0">
+          <div class="t-eyebrow" style="display:flex; gap:6px; align-items:center">{{ col.label }}<span style="color:var(--pn-ink-3)">{{ col.count }}</span></div>
+          <div style="display:flex; flex-direction:column; gap:9px; margin-top:9px">
+            <sc-for list="{{ col.items }}" as="it" hint-placeholder-count="2">
+              <div onClick="{{ openTask }}" draggable="true" style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:11px 13px; cursor:pointer; box-shadow:var(--pn-sh-sm)" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+                <div style="display:flex; align-items:center; gap:7px">
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ it.id }}</span>
+                  <span style="font-weight:600; font-size:13.5px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ it.title }}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:7px; margin-top:8px; flex-wrap:wrap">
+                  <span style="{{ it.pillStyle }}">{{ it.status }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:{{ it.metaColor }}; flex:1">{{ it.meta }}</span>
+                  <sc-if value="{{ it.canPull }}" hint-placeholder-val="{{ false }}">
+                    <span style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; padding:3px 9px; border-radius:6px; cursor:pointer; color:var(--pn-brand); border:1px solid var(--pn-brand); background:rgba(178,106,43,.06)" style-hover="background:rgba(178,106,43,.14)" title="Pull into your local maestro — pins current version"><l-i n="download" s="11"></l-i>PULL</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: Tracking (PRs & commits) -->
+  <sc-if value="{{ isTracking }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper); overflow-y:auto" data-screen-label="Tracking">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface); display:flex; align-items:center; gap:10px; flex-wrap:wrap; row-gap:8px">
+      <l-i n="git-pull-request" s="17"></l-i><span style="font-weight:700; font-size:15px; flex:none">Tracking</span>
+      <span style="color:var(--pn-ink-3); font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">PRs and commits linked by tracks edges · manual refresh in v1</span>
+      <div style="flex:1"></div>
+      <span style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3); cursor:pointer; flex:none" style-hover="color:var(--pn-ink)"><l-i n="refresh" s="13"></l-i>REFRESH ALL</span>
+    </div>
+    <div style="max-width:820px; width:100%; margin:0 auto; padding:20px 24px 50px; box-sizing:border-box">
+      <div class="t-eyebrow">PULL REQUESTS</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px">
+        <sc-for list="{{ trkPRs }}" as="tp" hint-placeholder-count="2">
+          <div style="display:flex; align-items:center; gap:11px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:11px 14px; box-shadow:var(--pn-sh-sm); flex-wrap:wrap; row-gap:8px" style-hover="border-color:var(--pn-line-2)">
+            <l-i n="git-pull-request" s="16" style="{{ tp.iconStyle }}"></l-i>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--pn-ink-3); flex:none">{{ tp.repo }}</span>
+            <span style="font-weight:600; font-size:13.5px; flex:1; min-width:140px">{{ tp.title }}</span>
+            <span onClick="{{ tp.goTask }}" style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:99px; background:var(--pn-active); border:1px solid var(--pn-line-2); font-size:11.5px; cursor:pointer; flex:none" style-hover="border-color:var(--pn-brand)"><l-i n="list-checks" s="12"></l-i>{{ tp.task }}</span>
+            <span style="{{ tp.pillStyle }}">{{ tp.state }}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:{{ tp.fetchColor }}; flex:none" title="Last fetched from GitHub">{{ tp.fetched }}</span>
+            <l-i n="refresh" s="13" style="color:var(--pn-ink-3); cursor:pointer"></l-i>
+          </div>
+        </sc-for>
+      </div>
+      <div class="t-eyebrow" style="margin-top:26px">RECENT COMMITS</div>
+      <div style="display:flex; flex-direction:column; margin-top:8px">
+        <sc-for list="{{ trkCommits }}" as="tc2" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--pn-line); font-size:13px">
+            <l-i n="git-commit" s="14" style="color:var(--pn-ink-3)"></l-i>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-brand)">{{ tc2.sha }}</span>
+            <span style="color:var(--pn-ink-2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ tc2.msg }}</span>
+            <span style="{{ tc2.avStyle }}" title="{{ tc2.who }}">{{ tc2.av }}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3); flex:none">{{ tc2.time }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: Leaderboard -->
+  <sc-if value="{{ isBoardLd }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper); overflow-y:auto" data-screen-label="Leaderboard">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface); display:flex; align-items:center; gap:10px">
+      <l-i n="trophy" s="17"></l-i><span style="font-weight:700; font-size:15px">Leaderboard</span>
+      <span style="color:var(--pn-ink-3); font-size:13px">points from completions and grants · humans and agents alike</span>
+    </div>
+    <div style="max-width:680px; width:100%; margin:0 auto; padding:22px 24px 50px; box-sizing:border-box">
+      <div class="t-eyebrow">SCORES</div>
+      <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px">
+        <sc-for list="{{ ldRows }}" as="lr" hint-placeholder-count="5">
+          <div style="display:flex; align-items:center; gap:12px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:10px 14px; box-shadow:var(--pn-sh-sm)">
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:700; color:{{ lr.rankColor }}; width:20px">{{ lr.rank }}</span>
+            <span style="{{ lr.avStyle }}">{{ lr.av }}</span>
+            <span style="font-weight:650; font-size:13.5px; width:110px">{{ lr.name }}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3)">{{ lr.tag }}</span>
+            <div style="flex:1; height:6px; border-radius:3px; background:var(--pn-active); overflow:hidden"><div style="{{ lr.barStyle }}"></div></div>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700; width:56px; text-align:right">{{ lr.pts }} pts</span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="t-eyebrow" style="margin-top:28px">RECENT AWARDS</div>
+      <div style="display:flex; flex-direction:column; margin-top:8px">
+        <sc-for list="{{ ldAwards }}" as="la" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:9px; padding:9px 4px; border-bottom:1px solid var(--pn-line); font-size:13px; color:var(--pn-ink-2)">
+            <l-i n="award" s="14" style="color:var(--pn-brand)"></l-i>
+            <span>{{ la.text }}</span>
+            <span style="flex:1"></span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ la.time }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: Entity Z4 full view (any kind) -->
+  <sc-if value="{{ isEntity }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper); overflow-y:auto" data-screen-label="Entity full view">
+    <div style="padding:12px 20px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface); display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+      <span onClick="{{ entBack }}" style="display:flex; align-items:center; gap:4px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3); cursor:pointer; padding:4px 8px; border-radius:6px" style-hover="background:var(--pn-hover); color:var(--pn-ink)"><l-i n="chevron-left" s="13"></l-i>BACK</span>
+      <span style="width:1px; height:16px; background:var(--pn-line-2)"></span>
+      <sc-for list="{{ entCrumbs }}" as="cr" hint-placeholder-count="2">
+        <span onClick="{{ cr.go }}" style="{{ cr.style }}" style-hover="color:var(--pn-brand)">{{ cr.label }}</span>
+        <l-i n="chevron-right" s="11" style="color:var(--pn-ink-3)"></l-i>
+      </sc-for>
+      <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink)">{{ entCrumbSelf }}</span>
+    </div>
+    <div style="max-width:780px; width:100%; margin:0 auto; padding:28px 36px 60px; box-sizing:border-box">
+      <div class="t-eyebrow" style="display:flex; align-items:center; gap:7px"><l-i n="{{ entIcon }}" s="13"></l-i>{{ entKind }}</div>
+      <h1 style="font-family:'Newsreader',serif; font-size:30px; font-weight:600; margin:8px 0 0; line-height:1.15">{{ entTitle }}</h1>
+      <div style="display:flex; align-items:center; gap:10px; margin-top:14px; padding-bottom:16px; border-bottom:1px solid var(--pn-line); flex-wrap:wrap">
+        <span style="{{ entPillStyle }}">{{ entStatus }}</span>
+        <span style="{{ entAvStyle }}">{{ entAv }}</span>
+        <span style="font-size:13px; color:var(--pn-ink-2)">{{ entWho }}</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ entMeta }}</span>
+      </div>
+      <sc-for list="{{ entParas }}" as="ep" hint-placeholder-count="2">
+        <p style="font-size:15px; line-height:1.65; color:var(--pn-ink-2); margin:16px 0 0; text-wrap:pretty">{{ ep.text }}</p>
+      </sc-for>
+      <sc-if value="{{ entHasKids }}" hint-placeholder-val="{{ true }}">
+        <div class="t-eyebrow" style="margin-top:30px; display:flex; align-items:center; gap:7px">CHILDREN<span style="color:var(--pn-ink-3)">{{ entKidCount }}</span></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:10px; margin-top:10px">
+          <sc-for list="{{ entKids }}" as="ek" hint-placeholder-count="3">
+            <div onClick="{{ ek.go }}" draggable="true" style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:11px 13px; cursor:pointer; box-shadow:var(--pn-sh-sm)" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+              <div style="display:flex; align-items:center; gap:7px">
+                <l-i n="{{ ek.icon }}" s="14" style="color:var(--pn-ink-3)"></l-i>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ ek.id }}</span>
+                <span style="{{ ek.avStyle }}">{{ ek.av }}</span>
+              </div>
+              <div style="font-weight:600; font-size:13px; margin-top:5px; line-height:1.35">{{ ek.title }}</div>
+              <div style="margin-top:8px"><span style="{{ ek.pillStyle }}">{{ ek.status }}</span></div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: Docs (hierarchical tree + reader) -->
+  <sc-if value="{{ isDocs }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; background:var(--pn-paper)" data-screen-label="Docs">
+    <div style="width:264px; flex:none; border-right:1px solid var(--pn-line); background:var(--pn-surface); display:flex; flex-direction:column">
+      <div style="padding:14px 14px 10px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--pn-line)">
+        <l-i n="file-text" s="16"></l-i><span style="font-weight:700; font-size:14px; flex:1">Docs</span>
+        <l-i n="plus" s="15" style="color:var(--pn-ink-3); cursor:pointer"></l-i>
+      </div>
+      <div style="flex:1; overflow-y:auto; padding:8px">
+        <sc-for list="{{ docTree }}" as="dt" hint-placeholder-count="6">
+          <div onClick="{{ dt.go }}" draggable="true" style="{{ dt.rowStyle }}" style-hover="background:var(--pn-hover)">
+            <span style="{{ dt.indentStyle }}"></span>
+            <l-i n="{{ dt.chev }}" s="12" style="color:var(--pn-ink-3)"></l-i>
+            <l-i n="file-text" s="14" style="color:var(--pn-ink-3)"></l-i>
+            <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; font-weight:{{ dt.weight }}">{{ dt.name }}</span>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3)">{{ dt.ver }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="flex:1; min-width:0; overflow-y:auto">
+      <div style="max-width:720px; margin:0 auto; padding:32px 36px 60px">
+        <div style="display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ docCrumb }}</div>
+        <h1 style="font-family:'Newsreader',serif; font-size:32px; font-weight:600; margin:10px 0 0; line-height:1.15">{{ docTitle }}</h1>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:12px; padding-bottom:16px; border-bottom:1px solid var(--pn-line)">
+          <span style="{{ docAvStyle }}">{{ docAv }}</span>
+          <span style="font-size:13px; color:var(--pn-ink-2)">{{ docAuthor }}</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; padding:3px 9px; border-radius:99px; background:var(--pn-active); border:1px solid var(--pn-line-2)">{{ docVer }}</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ docUpdated }}</span>
+          <div style="flex:1"></div>
+          <span onClick="{{ docExpand }}" style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3); cursor:pointer" style-hover="color:var(--pn-ink)"><l-i n="maximize-2" s="12"></l-i>FULL VIEW</span>
+          <span style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3); cursor:pointer" style-hover="color:var(--pn-ink)"><l-i n="history" s="13"></l-i>HISTORY</span>
+          <span style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3); cursor:pointer" style-hover="color:var(--pn-ink)"><l-i n="message-circle" s="13"></l-i>{{ docThreads }}</span>
+        </div>
+        <sc-for list="{{ docParas }}" as="dp" hint-placeholder-count="4">
+          <sc-if value="{{ dp.isHead }}" hint-placeholder-val="{{ false }}">
+            <h2 style="font-family:'Newsreader',serif; font-size:21px; font-weight:600; margin:28px 0 0">{{ dp.text }}</h2>
+          </sc-if>
+          <sc-if value="{{ dp.isBody }}" hint-placeholder-val="{{ true }}">
+            <p style="font-size:15px; line-height:1.65; color:var(--pn-ink-2); margin:14px 0 0; text-wrap:pretty">{{ dp.text }}</p>
+          </sc-if>
+        </sc-for>
+        <div class="t-eyebrow" style="margin-top:36px; padding-top:18px; border-top:1px solid var(--pn-line); display:flex; align-items:center; gap:7px"><l-i n="message-circle" s="13"></l-i>DISCUSSION<span style="color:var(--pn-ink-3)">{{ docThreadCount }}</span></div>
+        <sc-for list="{{ docThreadList }}" as="th" hint-placeholder-count="1">
+          <div style="margin-top:14px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:13px 15px; box-shadow:var(--pn-sh-sm)">
+            <div style="font-family:'Newsreader',serif; font-style:italic; font-size:13.5px; color:var(--pn-ink-3); border-left:2px solid var(--pn-line-2); padding-left:10px">"{{ th.quote }}"</div>
+            <div style="display:flex; flex-direction:column; gap:11px; margin-top:12px">
+              <sc-for list="{{ th.msgs }}" as="tm2" hint-placeholder-count="2">
+                <div style="{{ tm2.wrapStyle }}">
+                  <span style="{{ tm2.avStyle }}">{{ tm2.av }}</span>
+                  <div style="min-width:0">
+                    <div style="display:flex; align-items:baseline; gap:7px">
+                      <span style="font-weight:700; font-size:13px">{{ tm2.author }}</span>
+                      <sc-if value="{{ tm2.isAgent }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; letter-spacing:.08em; padding:1px 5px; border-radius:4px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">AGENT</span></sc-if>
+                      <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ tm2.time }}</span>
+                    </div>
+                    <div style="font-size:13.5px; line-height:1.5; color:var(--pn-ink-2); margin-top:2px">{{ tm2.body }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:16px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:10px 14px; color:var(--pn-ink-3); font-size:13px"><span style="color:var(--pn-brand); font-family:'JetBrains Mono',monospace">&gt;</span>Comment on this doc — @ mentions, # entities, select text to anchor a thread<div style="flex:1"></div><l-i n="plus" s="15"></l-i></div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: Team (members + hierarchical TM org-trees) -->
+  <sc-if value="{{ isTeam }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper); overflow-y:auto" data-screen-label="Team">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface); display:flex; align-items:center; gap:10px">
+      <l-i n="users" s="17"></l-i><span style="font-weight:700; font-size:15px">Team</span>
+      <span style="color:var(--pn-ink-3); font-size:13px">2 humans · 3 agents · 2 working</span>
+      <div style="flex:1"></div>
+      <span class="t-eyebrow" style="display:flex; align-items:center; gap:6px"><l-i n="plus" s="13"></l-i>NEW TEAM MEMBER</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:16px; padding:18px 20px; align-items:start">
+      <sc-for list="{{ teamCards }}" as="tc" hint-placeholder-count="2">
+        <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:14px; box-shadow:var(--pn-sh-sm); overflow:hidden; min-width:0" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+          <div onClick="{{ tc.go }}" style="display:flex; align-items:center; gap:12px; padding:16px 18px 14px; cursor:pointer">
+            <div style="position:relative; flex:none">
+              <div style="{{ tc.avStyle }}">{{ tc.av }}</div>
+              <span style="position:absolute; right:-2px; bottom:-2px; width:11px; height:11px; border-radius:50%; background:{{ tc.presColor }}; border:2px solid var(--pn-card)"></span>
+            </div>
+            <div style="flex:1; min-width:0">
+              <div style="display:flex; align-items:baseline; gap:8px">
+                <span style="font-weight:700; font-size:15px">{{ tc.name }}</span>
+                <span style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; padding:2px 7px; border-radius:99px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">{{ tc.roleTag }}</span>
+              </div>
+              <div style="font-size:12.5px; color:var(--pn-ink-3); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ tc.tagline }}</div>
+            </div>
+            <l-i n="more-horizontal" s="16" style="color:var(--pn-ink-3); cursor:pointer"></l-i>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; border-top:1px solid var(--pn-line); border-bottom:1px solid var(--pn-line); background:var(--pn-surface)">
+            <sc-for list="{{ tc.stats }}" as="st" hint-placeholder-count="3">
+              <div style="{{ st.style }}">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:700">{{ st.val }}</div>
+                <div class="t-eyebrow" style="font-size:9.5px; margin-top:1px">{{ st.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:13px 18px 16px">
+            <div style="display:flex; align-items:center; gap:8px">
+              <div class="t-eyebrow" style="font-size:10px; flex:1">AGENT TEAM</div>
+              <span style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3); cursor:pointer" style-hover="color:var(--pn-ink)"><l-i n="plus" s="12"></l-i>SPAWN</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:2px; margin-top:9px">
+              <sc-for list="{{ tc.agents }}" as="ag" hint-placeholder-count="3">
+                <div onClick="{{ ag.go }}" draggable="true" style="{{ ag.rowStyle }}" style-hover="background:var(--pn-hover); border-color:var(--pn-line)">
+                  <span style="{{ ag.indentStyle }}"></span>
+                  <div style="{{ ag.tileStyle }}"><l-i n="bot" s="14"></l-i></div>
+                  <div style="flex:1; min-width:0">
+                    <div style="display:flex; align-items:center; gap:7px">
+                      <span style="font-weight:650; font-size:13px">{{ ag.name }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:.06em; padding:1px 6px; border-radius:4px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">{{ ag.mode }}</span>
+                    </div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3); margin-top:2px">{{ ag.model }}</div>
+                  </div>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:{{ ag.statColor }}; flex:none; text-align:right">{{ ag.stat }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ tc.empty }}" hint-placeholder-val="{{ false }}">
+                <div style="border:1px dashed var(--pn-line-2); border-radius:10px; padding:14px; text-align:center; font-size:12.5px; color:var(--pn-ink-3)">No agents yet. Spawn one to get started.</div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: Tasks (hierarchical list + board) -->
+  <sc-if value="{{ isTasks }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper)" data-screen-label="Tasks">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface); display:flex; align-items:center; gap:10px">
+      <l-i n="list-checks" s="17"></l-i><span style="font-weight:700; font-size:15px">Tasks</span>
+      <div style="display:flex; gap:2px; margin-left:8px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:7px; padding:2px">
+        <span onClick="{{ layoutTree }}" style="{{ treeBtnStyle }}"><l-i n="folder-tree" s="13"></l-i>Tree</span>
+        <span onClick="{{ layoutBoard }}" style="{{ boardBtnStyle }}"><l-i n="columns" s="13"></l-i>Board</span>
+      </div>
+      <div style="flex:1"></div>
+      <span class="t-eyebrow">GROUP BY</span>
+      <sc-for list="{{ axisChips }}" as="ax" hint-placeholder-count="4">
+        <span onClick="{{ ax.go }}" style="{{ ax.style }}" style-hover="border-color:var(--pn-line-2)">{{ ax.label }}</span>
+      </sc-for>
+    </div>
+    <sc-if value="{{ isTree }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1; overflow-y:auto; padding:14px 20px">
+      <sc-for list="{{ taskTree }}" as="tr" hint-placeholder-count="8">
+        <div onClick="{{ tr.go }}" draggable="true" style="{{ tr.rowStyle }}" style-hover="background:var(--pn-hover)">
+          <span style="{{ tr.indentStyle }}"></span>
+          <l-i n="{{ tr.chev }}" s="13" style="color:var(--pn-ink-3)"></l-i>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3); width:44px; flex:none">{{ tr.id }}</span>
+          <span style="font-weight:{{ tr.weight }}; font-size:13.5px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ tr.title }}</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ tr.axis }}</span>
+          <span style="{{ tr.pillStyle }}">{{ tr.status }}</span>
+          <span style="{{ tr.avStyle }}" title="{{ tr.who }}">{{ tr.av }}</span>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+    <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1; overflow:auto; display:flex; gap:14px; padding:16px 20px; align-items:flex-start">
+      <sc-for list="{{ boardCols }}" as="bc" hint-placeholder-count="4">
+        <div style="width:250px; flex:none">
+          <div class="t-eyebrow" style="display:flex; gap:6px; align-items:center">{{ bc.label }}<span style="color:var(--pn-ink-3)">{{ bc.count }}</span></div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px; min-height:60px; border-radius:10px">
+            <sc-for list="{{ bc.items }}" as="bi" hint-placeholder-count="2">
+              <div onClick="{{ openTask }}" draggable="true" style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:10px 12px; cursor:pointer; box-shadow:var(--pn-sh-sm)" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+                <div style="display:flex; gap:6px; align-items:center"><span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ bi.id }}</span><span style="{{ bi.avStyle }}">{{ bi.av }}</span></div>
+                <div style="font-weight:600; font-size:13px; margin-top:4px; line-height:1.35">{{ bi.title }}</div>
+                <div style="display:flex; gap:6px; align-items:center; margin-top:8px; flex-wrap:wrap">
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:10px; padding:2px 7px; border-radius:5px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">{{ bi.axis }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:{{ bi.metaColor }}">{{ bi.meta }}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    </sc-if>
+  </div>
+  </sc-if>
+  <!-- Center: Graph canvas -->
+  <sc-if value="{{ isGraph }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper)" data-screen-label="Graph canvas">
+    <div style="padding:14px 20px; border-bottom:1px solid var(--pn-line); background:var(--pn-surface); display:flex; align-items:center; gap:10px; flex-wrap:wrap; row-gap:8px">
+      <l-i n="share-2" s="17"></l-i><span style="font-weight:700; font-size:15px; flex:none">Graph</span>
+      <span style="color:var(--pn-ink-3); font-size:13px; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">{{ gSubtitle }}</span>
+      <div style="flex:1"></div>
+      <span class="t-eyebrow" style="flex:none">SUBGRAPHS</span>
+      <sc-for list="{{ gComps }}" as="gc" hint-placeholder-count="3">
+        <span onClick="{{ gc.go }}" style="{{ gc.style }}" style-hover="border-color:var(--pn-line-2)">{{ gc.label }}</span>
+      </sc-for>
+    </div>
+    <div style="flex:1; position:relative; overflow:auto">
+      <svg width="1100" height="620" style="position:absolute; inset:0; pointer-events:none; z-index:1">
+        <defs><marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#A29C8E"></path></marker>
+        <marker id="arrRed" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#BB4D3D"></path></marker></defs>
+        <sc-for list="{{ graphEdges }}" as="ge" hint-placeholder-count="5">
+          <g opacity="{{ ge.op }}"><path d="{{ ge.d }}" fill="none" stroke="{{ ge.color }}" stroke-width="1.5" stroke-dasharray="{{ ge.dash }}" marker-end="{{ ge.marker }}"></path>
+          <text x="{{ ge.lx }}" y="{{ ge.ly }}" font-family="JetBrains Mono,monospace" font-size="10.5" font-weight="600" fill="{{ ge.color }}" paint-order="stroke" stroke="#F4F2EC" stroke-width="4" stroke-linejoin="round">{{ ge.label }}</text></g>
+        </sc-for>
+      </svg>
+      <!-- hierarchy containment cluster -->
+      <sc-if value="{{ gCluster }}" hint-placeholder-val="{{ true }}">
+      <div style="position:absolute; left:270px; top:60px; width:560px; height:430px; border:1.5px dashed var(--pn-line-2); border-radius:14px; background:rgba(255,255,255,.25)">
+        <div class="t-eyebrow" style="position:absolute; top:-9px; left:14px; background:var(--pn-paper); padding:0 7px">{{ gClusterLabel }}</div>
+      </div>
+      </sc-if>
+      <sc-for list="{{ graphNodes }}" as="gn" hint-placeholder-count="6">
+        <div onClick="{{ gn.click }}" onMouseEnter="{{ gn.enter }}" onMouseLeave="{{ gn.leave }}" draggable="true" style="{{ gn.style }}" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+          <div style="display:flex; align-items:center; gap:6px">
+            <l-i n="{{ gn.icon }}" s="14" style="{{ gn.iconStyle }}"></l-i>
+            <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ gn.id }}</span>
+          </div>
+          <div style="font-weight:600; font-size:12.5px; margin-top:4px; line-height:1.3">{{ gn.title }}</div>
+          <div style="margin-top:6px"><span style="{{ gn.pillStyle }}">{{ gn.status }}</span></div>
+        </div>
+      </sc-for>
+      <div style="position:absolute; right:16px; bottom:16px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:10px 13px; box-shadow:var(--pn-sh-sm); font-size:11.5px; color:var(--pn-ink-2); display:flex; flex-direction:column; gap:5px">
+        <div class="t-eyebrow" style="font-size:10px">LEGEND</div>
+        <div style="display:flex; gap:7px; align-items:center"><span style="width:18px; border-top:1.5px solid #A29C8E"></span>edge (typed)</div>
+        <div style="display:flex; gap:7px; align-items:center"><span style="width:18px; border-top:1.5px solid #BB4D3D"></span>blocked path</div>
+        <div style="display:flex; gap:7px; align-items:center"><span style="width:18px; border-top:1.5px dashed var(--pn-line-2)"></span>hierarchy (containment)</div>
+        <div style="color:var(--pn-ink-3)">drag node→node to link · click → panel</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Center: channel hub -->
+  <sc-if value="{{ isChannel }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1; min-width:0; display:flex; flex-direction:column; background:var(--pn-paper)">
+    <div style="padding:14px 20px 0; border-bottom:1px solid var(--pn-line); background:var(--pn-surface)">
+      <div style="display:flex; align-items:center; gap:10px">
+        <l-i n="hash" s="18"></l-i>
+        <span style="font-weight:700; font-size:16px; flex:none; white-space:nowrap">collab-v2</span>
+        <span style="color:var(--pn-ink-3); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0">Entity graph rebuild — the graph is the UI</span>
+        <div style="flex:1"></div>
+        <span style="display:flex; align-items:center; flex:none; padding-left:6px">
+          <sc-for list="{{ presAvs }}" as="pa" hint-placeholder-count="4"><span style="{{ pa.style }}" title="{{ pa.name }}">{{ pa.av }}</span></sc-for>
+        </span>
+        <span class="t-eyebrow" style="display:flex; align-items:center; gap:6px; flex:none"><span style="width:7px; height:7px; border-radius:50%; background:#3E8E5A; position:relative"><span style="position:absolute; inset:0; border-radius:50%; background:#3E8E5A; animation:ping 2.4s infinite"></span></span>2 WORKING</span>
+      </div>
+      <!-- Shelf -->
+      <div style="display:flex; gap:8px; margin:12px 0; overflow-x:auto">
+        <sc-for list="{{ shelf }}" as="sp" hint-placeholder-count="3">
+          <div draggable="true" style="display:flex; align-items:center; gap:7px; padding:7px 11px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; font-size:13px; flex:none; cursor:grab; box-shadow:var(--pn-sh-sm)" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+            <l-i n="pin" s="13" style="color:var(--pn-ink-3)"></l-i><l-i n="{{ sp.icon }}" s="15" style="{{ sp.iconStyle }}"></l-i><span style="font-weight:600">{{ sp.name }}</span><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ sp.meta }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <!-- Auto-tabs -->
+      <div style="display:flex; gap:2px">
+        <sc-for list="{{ hubTabs }}" as="tb" hint-placeholder-count="5">
+          <div onClick="{{ tb.go }}" style="{{ tb.style }}" style-hover="color:var(--pn-ink)">{{ tb.label }} <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ tb.count }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+    <!-- Feed -->
+    <div style="flex:1; overflow-y:auto; padding:18px 20px; display:flex; flex-direction:column; gap:14px">
+      <sc-for list="{{ feed }}" as="m" hint-placeholder-count="5">
+        <div style="{{ m.wrapStyle }}">
+          <div style="{{ m.avStyle }}">{{ m.avText }}</div>
+          <div style="flex:1; min-width:0">
+            <div style="display:flex; align-items:baseline; gap:8px">
+              <span style="font-weight:700; font-size:13.5px">{{ m.author }}</span>
+              <sc-if value="{{ m.isAgent }}" hint-placeholder-val="{{ false }}"><span style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; padding:2px 6px; border-radius:5px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">AGENT</span></sc-if>
+              <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ m.time }}</span>
+            </div>
+            <div style="font-size:14px; line-height:1.5; color:var(--pn-ink-2); margin-top:2px">{{ m.body }}</div>
+            <sc-if value="{{ m.embed }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ openTask }}" style="margin-top:8px; max-width:440px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:12px 14px; cursor:pointer; box-shadow:var(--pn-sh-sm)" style-hover="border-color:var(--pn-line-2); box-shadow:var(--pn-sh-md)">
+                <div style="display:flex; align-items:center; gap:8px">
+                  <l-i n="list-checks" s="15" style="color:var(--pn-ink-3)"></l-i>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ m.embed.id }}</span>
+                  <span style="font-weight:600; font-size:13.5px; flex:1">{{ m.embed.title }}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:9px">
+                  <span style="{{ m.embed.pillStyle }}">{{ m.embed.status }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">{{ m.embed.meta }}</span>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="padding:12px 20px 16px; border-top:1px solid var(--pn-line); background:var(--pn-surface)">
+      <div style="display:flex; align-items:center; gap:10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:11px 14px; color:var(--pn-ink-3); font-size:13.5px"><span style="color:var(--pn-brand); font-family:'JetBrains Mono',monospace">&gt;</span>Message #collab-v2 — @ mentions, # entities, drop a chip to embed<div style="flex:1"></div><l-i n="plus" s="16"></l-i></div>
+    </div>
+  </div>
+  </sc-if>
+  <!-- Panel stack: T-103 -->
+  <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ true }}">
+  <div style="width:440px; flex:none; border-left:1px solid var(--pn-line); background:var(--pn-surface); display:flex; flex-direction:column; overflow:hidden; box-shadow:var(--pn-sh-md)" data-screen-label="Task panel T-103">
+    <div style="padding:12px 16px; border-bottom:1px solid var(--pn-line)">
+      <div style="display:flex; align-items:center; gap:6px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)"><l-i n="hash" s="12"></l-i>collab-v2<l-i n="chevron-right" s="12"></l-i>T-102 Panel stack<l-i n="chevron-right" s="12"></l-i><span style="color:var(--pn-ink)">T-103</span>
+        <div style="flex:1"></div>
+        <l-i n="pin" s="14" style="cursor:pointer" title="Pin as split"></l-i><l-i n="maximize-2" s="14" style="cursor:pointer" title="Expand to full view" onClick="{{ maximizePanel }}"></l-i><l-i n="x" s="15" style="cursor:pointer" onClick="{{ closePanel }}"></l-i>
+      </div>
+      <div style="display:flex; align-items:center; gap:9px; margin-top:9px">
+        <l-i n="list-checks" s="17" style="color:var(--pn-ink-3)"></l-i>
+        <span style="font-weight:700; font-size:15.5px; flex:1">Connections rail — edges grouped by type</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; margin-top:10px">
+        <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:.08em; padding:3px 9px; border-radius:99px; background:rgba(62,142,90,.12); color:#3E8E5A; border:1px solid rgba(62,142,90,.3)">● WORKING</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#BD8A2A" title="Forge pinned v3; content is now v5">v3 pinned · v5 → stale</span>
+        <span style="display:flex; align-items:center; gap:5px; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; padding:3px 10px; border-radius:7px; cursor:pointer; color:var(--pn-brand); border:1px solid var(--pn-brand); background:rgba(178,106,43,.06)" style-hover="background:rgba(178,106,43,.14)" title="Re-render Forge's context at v5"><l-i n="refresh" s="12"></l-i>RE-PULL v5</span>
+        <div style="flex:1"></div>
+        <span style="display:flex; gap:10px; color:var(--pn-ink-3)"><l-i n="thumbs-up" s="15"></l-i><l-i n="star" s="15"></l-i><l-i n="award" s="15" title="Grant points · pool 20"></l-i><l-i n="link" s="15" title="Link (edge composer)"></l-i></span>
+      </div>
+    </div>
+    <div style="display:flex; gap:2px; padding:0 16px; border-bottom:1px solid var(--pn-line)">
+      <sc-for list="{{ panelTabs }}" as="pt" hint-placeholder-count="4">
+        <div onClick="{{ pt.go }}" style="{{ pt.style }}" style-hover="color:var(--pn-ink)">{{ pt.label }}</div>
+      </sc-for>
+    </div>
+    <div style="flex:1; overflow-y:auto; padding:16px">
+      <sc-if value="{{ showContent }}" hint-placeholder-val="{{ true }}">
+        <div class="t-eyebrow">ACCEPTANCE CRITERIA</div>
+        <div style="display:flex; flex-direction:column; gap:7px; margin:8px 0 18px">
+          <sc-for list="{{ criteria }}" as="c" hint-placeholder-count="3">
+            <div style="display:flex; gap:9px; align-items:flex-start; font-size:13.5px"><l-i n="{{ c.icon }}" s="15" style="{{ c.iconStyle }}"></l-i><span style="{{ c.style }}">{{ c.text }}</span></div>
+          </sc-for>
+        </div>
+        <div class="t-eyebrow">AXES</div>
+        <div style="display:flex; gap:8px; margin:8px 0 18px">
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; padding:3px 9px; border-radius:5px; background:var(--pn-card); border:1px solid var(--pn-line)">type: code</span>
+          <span style="font-family:'JetBrains Mono',monospace; font-size:11px; padding:3px 9px; border-radius:5px; background:var(--pn-card); border:1px solid var(--pn-line)">milestone: v2-alpha</span>
+        </div>
+        <div class="t-eyebrow">CONNECTIONS</div>
+        <sc-for list="{{ edgeGroups }}" as="g" hint-placeholder-count="3">
+          <div style="margin-top:10px">
+            <div style="font-size:12px; font-weight:600; color:var(--pn-ink-2); display:flex; gap:6px; align-items:center">{{ g.label }}<span style="{{ g.warnStyle }}">{{ g.warn }}</span></div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px">
+              <sc-for list="{{ g.items }}" as="e" hint-placeholder-count="2">
+                <span draggable="true" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12.5px; cursor:grab" style-hover="border-color:var(--pn-line-2)"><l-i n="{{ e.icon }}" s="13" style="{{ e.iconStyle }}"></l-i>{{ e.name }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </sc-if>
+      <sc-if value="{{ showDiscussion }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ taskThread }}" as="tm" hint-placeholder-count="3">
+          <div style="{{ tm.wrapStyle }}">
+            <div style="{{ tm.avStyle }}">{{ tm.avText }}</div>
+            <div><div style="display:flex; gap:7px; align-items:baseline"><span style="font-weight:700; font-size:13px">{{ tm.author }}</span><span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">{{ tm.time }}</span></div>
+            <div style="font-size:13.5px; line-height:1.5; color:var(--pn-ink-2); margin-top:1px">{{ tm.body }}</div></div>
+          </div>
+        </sc-for>
+      </sc-if>
+    </div>
+    <div style="padding:10px 16px; border-top:1px solid var(--pn-line); display:flex; align-items:center; gap:8px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">
+      <l-i n="eye" s="13"></l-i>
+      <span style="display:flex; align-items:center; padding-left:6px">
+        <sc-for list="{{ panelViewers }}" as="pv" hint-placeholder-count="2"><span style="{{ pv.style }}" title="{{ pv.name }}">{{ pv.av }}</span></sc-for>
+      </span>viewing<div style="flex:1"></div>v5 · active 2m ago
+    </div>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:950}}">
+class Component extends DCLogic {
+  state = { view: 'channel', hubTab: 'feed', panelOpen: true, panelTab: 'content' };
+  renderVals() {
+    const s = this.state, set = (p) => () => this.setState(p);
+    const navStyle = (k) => 'display:flex; align-items:center; gap:9px; padding:7px 10px; border-radius:7px; font-size:13.5px; cursor:pointer;' + (s.view === k ? 'background:var(--pn-active); font-weight:600' : 'color:var(--pn-ink-2)');
+    const tabStyle = (on) => 'padding:9px 12px; font-size:13px; cursor:pointer; border-bottom:2px solid ' + (on ? 'var(--pn-brand); font-weight:600; color:var(--pn-ink)' : 'transparent; color:var(--pn-ink-2)');
+    const AVC = { SU: '#DCCBA4', MI: '#C7D4C0', FG: '#E3D0B9', SC: '#CBD3DB', PR: '#DBC8C3' };
+    const AG = ['FG', 'SC', 'PR'];
+    const av = (code) => 'width:32px; height:32px; border-radius:' + (AG.includes(code) ? '9px' : '50%') + '; flex:none; display:flex; align-items:center; justify-content:center; font-family:JetBrains Mono,monospace; font-size:11px; font-weight:700; color:#3D3A33; background:' + (AVC[code] || 'var(--pn-active)') + '; border:1px solid var(--pn-line-2)';
+    const pill = (c, bg) => 'font-family:JetBrains Mono,monospace; font-size:10px; font-weight:600; letter-spacing:.08em; padding:2px 8px; border-radius:99px; color:' + c + '; background:' + bg;
+    return {
+      navItems: [
+        { label: 'Home', icon: 'home', badge: '', k: 'home' }, { label: 'Tasks', icon: 'list-checks', badge: '12', k: 'tasks' },
+        { label: 'Docs', icon: 'file-text', badge: '5', k: 'docs' }, { label: 'Team', icon: 'users', badge: '', k: 'team' },
+        { label: 'Tracking', icon: 'git-pull-request', badge: '3', k: 'tracking' }, { label: 'Graph', icon: 'share-2', badge: '', k: 'graph' },
+        { label: 'Leaderboard', icon: 'trophy', badge: '', k: 'leaderboard' },
+      ].map(n => ({ ...n, style: navStyle(n.k), go: set({ view: n.k }) })),
+      channels: [
+        { name: 'general', unread: '' }, { name: 'collab-v2', unread: '' }, { name: 'design-atelier', unread: '4' },
+      ].map(c => ({ ...c, style: navStyle(c.name === 'collab-v2' ? 'channel' : '_'), go: set({ view: 'channel' }) })),
+      shelf: [
+        { icon: 'file-text', name: 'Entity Graph Design', meta: 'doc · v9', iconStyle: 'color:var(--pn-ink-3)' },
+        { icon: 'list-checks', name: 'T-100 V2 milestone', meta: '4/9 done', iconStyle: 'color:var(--pn-ink-3)' },
+        { icon: 'bot', name: 'Forge', meta: '● working', iconStyle: 'color:#3E8E5A' },
+      ],
+      hubTabs: [
+        { label: 'Feed', count: '', k: 'feed' }, { label: 'Tasks', count: '9', k: 'tasks' }, { label: 'Docs', count: '3', k: 'docs' },
+        { label: 'Team', count: '5', k: 'team' }, { label: 'PRs', count: '2', k: 'prs' },
+      ].map(t => ({ ...t, style: tabStyle(s.hubTab === t.k) + '; white-space:nowrap; flex:none', go: set({ hubTab: t.k }) })),
+      feed: [
+        { author: 'Subhang', avText: 'SU', avStyle: av('var(--pn-active)'), time: '09:41', isAgent: false, body: 'Staged the connections-rail work. Forge, this one is yours — spec doc is pinned on the shelf. 20 points on it.', embed: { id: 'T-103', title: 'Connections rail — edges grouped by type', status: '● WORKING', pillStyle: pill('#3E8E5A', 'rgba(62,142,90,.12)'), meta: '🄵 Forge · type:code · 20 pts' } },
+        { author: 'Forge', avText: 'FG', depth: 1, avStyle: av('var(--pn-card)'), time: '09:44', isAgent: true, body: 'Pulled T-103 at v3. Reading the Connections section of the spec, then scaffolding the edge-group component.', embed: null },
+        { author: 'Forge', avText: 'FG', avStyle: av('var(--pn-card)'), time: '10:12', isAgent: true, body: 'Edge groups rendering with direction labels. Depends-on rollup shows per-item resolution. Starting hover-preview wiring.', embed: null },
+        { author: 'Mira', avText: 'MI', depth: 1, avStyle: av('var(--pn-active)'), time: '10:15', isAgent: false, body: 'Forge — heads up, I bumped the spec to v5: depends_on now needs the hard/soft badge per item, not per group.', embed: null },
+        { author: 'Forge', avText: 'FG', depth: 2, avStyle: av('var(--pn-card)'), time: '10:16', isAgent: true, body: 'Acknowledged. My pin is v3 → stale. Re-pulling at v5 and adjusting the badge placement.', embed: null },
+      ].map(m => ({ ...m, avStyle: av(m.avText) + (m.depth ? '; width:26px; height:26px; font-size:9px' : ''), wrapStyle: 'display:flex; gap:11px;' + (m.depth ? 'margin-left:' + (m.depth * 28) + 'px; padding-left:13px; border-left:2px solid var(--pn-line-2)' : '') })),
+      isHome: s.view === 'home',
+      isGraph: s.view === 'graph',
+      isChannel: !['home', 'graph', 'tasks', 'team', 'docs', 'entity', 'leaderboard', 'tracking'].includes(s.view),
+      isTracking: s.view === 'tracking',
+      trkPRs: [
+        { repo: 'maestro-ui #482', title: 'Panel stack — stacking & pin-to-split', task: 'T-105', state: 'OPEN · REVIEW', c: 'rev', fetched: 'fetched 4m ago', fresh: true },
+        { repo: 'maestro-ui #479', title: 'Entity chips (Z1) component', task: 'T-101', state: 'MERGED', c: 'done', fetched: 'fetched 2d ago · stale', fresh: false },
+      ].map(p => {
+        const pal = { rev: ['#3F6C90', 'rgba(63,108,144,.1)'], done: ['#3E8E5A', 'rgba(62,142,90,.12)'] }[p.c];
+        return { ...p, iconStyle: 'color:' + pal[0], pillStyle: pill(pal[0], pal[1]) + '; flex:none',
+          fetchColor: p.fresh ? 'var(--pn-ink-3)' : '#BD8A2A',
+          goTask: () => this.setState({ view: 'entity', entityId: p.task, prevView: this.state.view }) };
+      }),
+      trkCommits: [
+        { sha: 'e4a91c2', msg: 'rail: per-item hard/soft badge on depends_on items', who: 'Forge', av: 'FG', time: '18m ago' },
+        { sha: 'b7d203f', msg: 'panel-stack: pin-to-split docking + breadcrumb pop', who: 'Scout', av: 'SC', time: '2h ago' },
+        { sha: '91c44ab', msg: 'chips: state tint tokens + hover preview hook', who: 'Scout', av: 'SC', time: 'yesterday' },
+      ].map(c => ({ ...c, avStyle: av(c.av) + '; width:20px; height:20px; font-size:7px; flex:none' })),
+      isBoardLd: s.view === 'leaderboard',
+      ldRows: [['Subhang', 'SU', 'MEMBER', 120], ['Mira', 'MI', 'MEMBER', 85], ['Forge', 'FG', 'AGENT', 60], ['Scout', 'SC', 'AGENT', 45], ['Probe', 'PR', 'AGENT', 10]].map(([name, code, tag, pts], i) => ({
+        rank: '0' + (i + 1), rankColor: i === 0 ? 'var(--pn-brand)' : 'var(--pn-ink-3)', name, tag, pts,
+        av: code, avStyle: av(code) + '; width:26px; height:26px; font-size:9px',
+        barStyle: 'height:100%; width:' + Math.round(pts / 120 * 100) + '%; background:' + (i === 0 ? 'var(--pn-brand)' : 'var(--pn-ink-3)') + '; border-radius:3px' })),
+      ldAwards: [
+        { text: 'T-101 completed — 15 pts split to Scout + Subhang', time: 'yesterday' },
+        { text: 'Mira starred T-105 panel-stack work', time: '2h ago' },
+        { text: 'Subhang granted 20 pts bounty on T-103', time: 'this morning' },
+      ],
+      maximizePanel: () => this.setState({ view: 'entity', entityId: 'T-103', prevView: s.view }),
+      ...(() => {
+        const PAL = { done: ['#3E8E5A', 'rgba(62,142,90,.12)'], work: ['#3E8E5A', 'rgba(62,142,90,.12)'], block: ['#BB4D3D', 'rgba(187,77,61,.1)'], rev: ['#3F6C90', 'rgba(63,108,144,.1)'], open: ['var(--pn-ink-2)', 'var(--pn-active)'], ink: ['var(--pn-ink-2)', 'var(--pn-active)'] };
+        const ENT = {
+          'T-100': { kind: 'TASK', icon: 'list-checks', short: 'T-100', title: 'Collab V2 milestone — entity graph UI', c: 'open', st: 'OPEN', av: 'SU', who: 'Subhang', meta: 'milestone:v2-alpha · 9 children', parent: null, kids: ['T-101', 'T-103', 'T-104', 'T-105', 'T-106'], paras: ['Umbrella milestone for the Collab V2 entity-graph UI. Each child below is a self-contained subtree an agent can pull — hierarchy is the unit of context.'] },
+          'T-101': { kind: 'TASK', icon: 'list-checks', short: 'T-101', title: 'Entity chips (Z1)', c: 'done', st: '✓ DONE', av: 'SC', who: 'Scout', meta: 'type:code · 15 pts awarded', parent: 'T-100', kids: [], paras: ['Kind icon + name + state tint. Used in message text, edge rails, breadcrumbs and board cells. Hover previews the Z2 card; click opens the panel; drag places or links.'] },
+          'T-103': { kind: 'TASK', icon: 'list-checks', short: 'T-103', title: 'Connections rail — edges grouped by type', c: 'work', st: '● WORKING', av: 'FG', who: 'Forge', meta: 'type:code · v3 pinned · v5 → stale · 20 pts', parent: 'T-100', kids: ['T-103a', 'T-103b'], paras: ['Edges grouped by type with direction labels; the depends_on group shows resolution state per item plus a blocked rollup.', 'Forge pulled at v3; the spec moved to v5 mid-flight — the pin is stale until re-pull.'] },
+          'T-103a': { kind: 'TASK', icon: 'list-checks', short: 'T-103a', title: 'Per-item hard/soft badge on depends_on', c: 'work', st: '● WORKING', av: 'FG', who: 'Forge', meta: 'type:code · 1/3 criteria', parent: 'T-103', kids: [], paras: ['As of spec v5 the hard/soft badge sits on each depends_on item, not on the group header.'] },
+          'T-103b': { kind: 'TASK', icon: 'list-checks', short: 'T-103b', title: 'Hover chip → Z2 preview popover', c: 'open', st: 'OPEN', av: '·', who: 'Unassigned', meta: 'type:code', parent: 'T-103', kids: [], paras: ['Every chip on the rail previews its Z2 card on hover — the popover reuses the collection-cell component.'] },
+          'T-104': { kind: 'TASK', icon: 'list-checks', short: 'T-104', title: 'Hover previews (Z2 popover engine)', c: 'block', st: 'BLOCKED', av: 'PR', who: 'Probe', meta: 'type:code · waiting on T-101', parent: 'T-100', kids: [], paras: ['The shared popover engine behind chip hovers. Hard-blocked until entity chips land; unblocks automatically with a notification when the dependency resolves.'] },
+          'T-105': { kind: 'TASK', icon: 'list-checks', short: 'T-105', title: 'Panel stack — stacking & pin-to-split', c: 'rev', st: 'IN REVIEW', av: 'SC', who: 'Scout', meta: 'type:design · tracks PR #482', parent: 'T-100', kids: [], paras: ['Peek panel over the right edge; chips inside stack more panels; pin docks a panel as a persistent split (2–3 max).'] },
+          'T-106': { kind: 'TASK', icon: 'list-checks', short: 'T-106', title: 'Reactions & points bar (Z2 footer)', c: 'open', st: 'OPEN', av: '·', who: 'Unassigned', meta: 'type:design · 10 pts bounty', parent: 'T-100', kids: [], paras: ['The universal footer: like/dislike, star, and the points control — identical on every entity, including messages.'] },
+          'd1': { kind: 'DOC', icon: 'file-text', short: 'Entity Graph Design', title: 'Entity Graph Design', c: 'ink', st: 'v9', av: 'SU', who: 'Subhang', meta: 'updated 2h ago · 4 threads', parent: null, kids: ['d2', 'd4'], paras: ['Everything in a space is one of a small set of first-class entities; every entity has hierarchy, edges, discussion, and reactions.'] },
+          'd2': { kind: 'DOC', icon: 'file-text', short: 'UI/UX Brief', title: 'UI/UX Brief', c: 'ink', st: 'v5', av: 'MI', who: 'Mira', meta: 'updated 25m ago · 2 threads', parent: 'd1', kids: ['d3'], paras: ['The graph is the UI: every entity is a component, every edge a navigation, every container a composition.'] },
+          'd3': { kind: 'DOC', icon: 'file-text', short: 'Connections rail spec', title: 'Connections rail spec', c: 'ink', st: 'v2', av: 'FG', who: 'Forge', meta: 'updated 1h ago', parent: 'd2', kids: [], paras: ['Two stacked sections: hierarchy up/down, and edges grouped by type with per-item resolution state.'] },
+          'd4': { kind: 'DOC', icon: 'file-text', short: 'Gaps & Extensions', title: 'Gaps & Extensions', c: 'ink', st: 'v2', av: 'SU', who: 'Subhang', meta: 'updated 3d ago', parent: 'd1', kids: [], paras: ['Search, read-marks, activity feed, visibility, and approval verdicts are designed as slots, not built in v1.'] },
+          'SU': { kind: 'MEMBER', icon: 'user', short: 'Subhang', title: 'Subhang', c: 'work', st: '● ONLINE', av: 'SU', who: 'Space owner', meta: '120 pts · 7 tasks done', parent: null, kids: ['FG'], paras: ['Plans and reviews. Owns the Forge agent team; completions by his agents attribute to him on Home.'] },
+          'MI': { kind: 'MEMBER', icon: 'user', short: 'Mira', title: 'Mira', c: 'work', st: '● ONLINE', av: 'MI', who: 'Reviewer', meta: '85 pts · 5 tasks done', parent: null, kids: [], paras: ['Reviews panel-stack work; bumped the connections spec to v5 mid-flight.'] },
+          'FG': { kind: 'TEAM MEMBER', icon: 'bot', short: 'Forge', title: 'Forge — coordinator', c: 'work', st: '● WORKING', av: 'FG', who: 'owned by Subhang', meta: 'claude-opus-4 · equips git-flow, code-review', parent: 'SU', kids: ['SC', 'PRB'], paras: ['Coordinator persona: plans work and spawns workers. Currently working on T-103 with a stale v3 pin.'] },
+          'SC': { kind: 'TEAM MEMBER', icon: 'bot', short: 'Scout', title: 'Scout — worker', c: 'work', st: '● WORKING', av: 'SC', who: 'owned by Subhang', meta: 'claude-sonnet-4 · reviewing PR #482', parent: 'FG', kids: [], paras: ['Worker persona spawned by Forge. Shipped entity chips; now carrying the panel-stack review.'] },
+          'PRB': { kind: 'TEAM MEMBER', icon: 'bot', short: 'Probe', title: 'Probe — worker', c: 'ink', st: 'IDLE', av: 'PR', who: 'owned by Subhang', meta: 'claude-sonnet-4 · blocked on T-104', parent: 'FG', kids: [], paras: ['Worker persona. Idle while its assigned task waits on an unresolved hard dependency.'] },
+        };
+        const goEnt = (id) => () => this.setState({ view: 'entity', entityId: id, prevView: s.view === 'entity' ? s.prevView : s.view });
+        this._goEnt = goEnt;
+        if (s.view !== 'entity') return { isEntity: false };
+        const e = ENT[s.entityId || 'T-103'];
+        const chain = []; let p = e.parent; while (p) { chain.unshift(p); p = ENT[p].parent; }
+        const pal = PAL[e.c];
+        const kAv = (code, size) => 'width:' + size + 'px; height:' + size + 'px; border-radius:' + (AG.includes(code) ? '6px' : '50%') + '; display:inline-flex; align-items:center; justify-content:center; font-family:JetBrains Mono,monospace; font-size:9px; font-weight:700; color:#3D3A33; background:' + (AVC[code] || 'var(--pn-active)') + '; border:1px solid var(--pn-line-2)';
+        return {
+          isEntity: true,
+          entBack: () => this.setState({ view: s.prevView || 'tasks' }),
+          entCrumbs: chain.map(cid => ({ label: ENT[cid].short, go: goEnt(cid), style: 'font-family:JetBrains Mono,monospace; font-size:11px; color:var(--pn-ink-3); cursor:pointer' })),
+          entCrumbSelf: e.short, entIcon: e.icon, entKind: e.kind, entTitle: e.title,
+          entStatus: e.st, entPillStyle: pill(pal[0], pal[1]),
+          entAv: e.av === '·' ? '·' : e.av, entAvStyle: kAv(e.av, 24), entWho: e.who, entMeta: e.meta,
+          entParas: e.paras.map(t => ({ text: t })),
+          entHasKids: e.kids.length > 0, entKidCount: e.kids.length,
+          entKids: e.kids.map(kid => { const k = ENT[kid], kp = PAL[k.c]; return { id: k.short, icon: k.icon, title: k.title, status: k.st, pillStyle: pill(kp[0], kp[1]), av: k.av === '·' ? '·' : k.av, avStyle: 'margin-left:auto;' + kAv(k.av, 20), go: goEnt(kid) }; }),
+        };
+      })(),
+      isDocs: s.view === 'docs',
+      ...(() => {
+        const docs = [
+          { id: 'd1', name: 'Entity Graph Design', d: 0, ver: 'v9', author: 'Subhang', av: 'SU', updated: 'updated 2h ago', threads: '4 THREADS', paras: [
+            { h: 'Overview' }, { t: 'Everything in a space is one of a small set of first-class entities, and every entity has the same four universal capabilities: hierarchy, edges, discussion, and reactions. If a surface cannot be composed from entity components and collection views, it does not belong in the product.' },
+            { h: 'The two axes' }, { t: 'Vertical is where an entity lives — breadcrumb up, children down. Horizontal is what it connects to — the edges rail. Every detail surface shows both, so users feel the graph without ever seeing the word graph.' },
+            { t: 'Task trees, doc chapters, team-member org charts and message threads are all the same parent mechanism. A subtree is a self-contained context unit an agent can pull.' } ] },
+          { id: 'd2', name: 'UI/UX Brief', d: 1, ver: 'v5', author: 'Mira', av: 'MI', updated: 'updated 25m ago', threads: '2 THREADS', paras: [
+            { h: 'Mission' }, { t: 'Design a collaboration workspace where the graph is the UI: every entity is a component, every edge is a navigation, every container is a composition. Humans plan and review; agents pull, work, and report — in the same rooms, on the same objects.' },
+            { h: 'Connections rail' }, { t: 'Edges are grouped by type with direction labels. The depends_on group shows resolution state per item — as of v5, the hard/soft badge sits on each item, not on the group.' } ] },
+          { id: 'd3', name: 'Connections rail spec', d: 2, ver: 'v2', author: 'Forge', av: 'FG', updated: 'updated 1h ago', threads: '1 THREAD', paras: [
+            { h: 'Anatomy' }, { t: 'Two stacked sections: hierarchy (parent chip up, ordered children down) and edges grouped by type. Each item is a chip with hover preview; click hops the panel stack.' } ] },
+          { id: 'd4', name: 'Gaps & Extensions', d: 1, ver: 'v2', author: 'Subhang', av: 'SU', updated: 'updated 3d ago', threads: '0 THREADS', paras: [
+            { h: 'Deferred' }, { t: 'Search everywhere, unread read-marks, activity feed, private visibility, and approval verdicts are designed as slots but not built in v1.' } ] },
+        ];
+        const sel = docs.find(d => d.id === (s.docSel || 'd2'));
+        return {
+          docTree: docs.map(d => ({ ...d, go: set({ docSel: d.id }),
+            weight: d.id === sel.id ? 650 : 450,
+            chev: d.d < 2 ? 'chevron-down' : 'chevron-right',
+            rowStyle: 'display:flex; align-items:center; gap:7px; padding:6px 8px; border-radius:7px; cursor:pointer;' + (d.id === sel.id ? 'background:var(--pn-active)' : ''),
+            indentStyle: 'width:' + (d.d * 16) + 'px; flex:none' })),
+          docCrumb: 'DOCS / ' + (sel.d ? 'ENTITY GRAPH DESIGN / ' : '') + sel.name.toUpperCase(),
+          docTitle: sel.name, docAuthor: sel.author, docAv: sel.av, docVer: sel.ver, docUpdated: sel.updated, docThreads: sel.threads,
+          docAvStyle: 'width:24px; height:24px; border-radius:' + (AG.includes(sel.av) ? '7px' : '50%') + '; display:inline-flex; align-items:center; justify-content:center; font-family:JetBrains Mono,monospace; font-size:9px; font-weight:700; color:#3D3A33; background:' + (AVC[sel.av] || 'var(--pn-active)') + '; border:1px solid var(--pn-line-2)',
+          docParas: sel.paras.map(p => ({ text: p.h || p.t, isHead: !!p.h, isBody: !p.h })),
+          docExpand: () => this.setState({ view: 'entity', entityId: sel.id, prevView: 'docs' }),
+          docThreadCount: ({ d1: 1, d2: 2, d3: 1, d4: 0 })[sel.id],
+          docThreadList: ({
+            d1: [{ quote: 'A subtree is a self-contained context unit an agent can pull.', msgs: [
+              { author: 'Subhang', av: 'SU', isAgent: false, time: '2h ago', body: 'This sentence is the whole product — keep it verbatim in onboarding.' }] }],
+            d2: [{ quote: 'the hard/soft badge sits on each depends_on item, not on the group header', msgs: [
+              { author: 'Mira', av: 'MI', isAgent: false, time: '25m ago', body: 'Changed this in v5 — per-item badges read better once a group mixes hard and soft deps.' },
+              { author: 'Forge', av: 'FG', isAgent: true, depth: 1, time: '22m ago', body: 'Acknowledged. Re-pulled at v5; badge placement updated in T-103a.' }] },
+            { quote: 'every edge a navigation', msgs: [
+              { author: 'Scout', av: 'SC', isAgent: true, time: '1h ago', body: 'Panel-stack hop from edge chips now covers this — see PR #482.' }] }],
+            d3: [{ quote: 'hierarchy up/down, and edges grouped by type', msgs: [
+              { author: 'Mira', av: 'MI', isAgent: false, time: '1h ago', body: 'Add the blocked rollup to the anatomy list before this merges.' }] }],
+            d4: [],
+          })[sel.id].map(t => ({ ...t, msgs: t.msgs.map(m => ({ ...m, avStyle: av(m.av) + '; width:24px; height:24px; font-size:8px', wrapStyle: 'display:flex; gap:9px;' + (m.depth ? 'margin-left:' + (m.depth * 20) + 'px; padding-left:10px; border-left:2px solid var(--pn-line-2)' : '') })) })),
+        };
+      })(),
+      isTasks: s.view === 'tasks',
+      isTeam: s.view === 'team',
+      teamCards: (() => {
+        const agRow = (a) => ({ ...a,
+          go: () => this.setState({ view: 'entity', entityId: { Forge: 'FG', Scout: 'SC', Probe: 'PRB' }[a.name], prevView: this.state.view }),
+          rowStyle: 'display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:9px; cursor:pointer; border:1px solid transparent',
+          indentStyle: 'width:' + (a.d * 20) + 'px; flex:none; align-self:stretch;' + (a.d ? 'border-left:1.5px solid var(--pn-line-2); margin-left:15px; margin-right:-4px' : ''),
+          tileStyle: 'width:28px; height:28px; border-radius:8px; flex:none; display:flex; align-items:center; justify-content:center; border:1px solid var(--pn-line-2); background:' + (a.live ? 'rgba(62,142,90,.1); color:#3E8E5A' : 'var(--pn-active); color:var(--pn-ink-3)'),
+          statColor: a.live ? '#3E8E5A' : 'var(--pn-ink-3)' });
+        const stat = (val, label, i) => ({ val, label, style: 'padding:10px 18px; text-align:left;' + (i ? 'border-left:1px solid var(--pn-line)' : '') });
+        const av2 = (c) => 'width:42px; height:42px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-family:JetBrains Mono,monospace; font-size:13px; font-weight:700; color:#3D3A33; background:' + (AVC[c] || 'var(--pn-active)') + '; border:1px solid var(--pn-line-2)';
+        return [
+          { name: 'Subhang', av: 'SU', avStyle: av2('SU'), go: () => this.setState({ view: 'entity', entityId: 'SU', prevView: this.state.view }), roleTag: 'OWNER', presColor: '#3E8E5A', tagline: 'Staging the connections-rail work in #collab-v2',
+            stats: [stat('120', 'POINTS', 0), stat('7', 'TASKS DONE', 1), stat('3', 'AGENTS', 1)], empty: false, agents: [
+            { name: 'Forge', mode: 'COORDINATOR', model: 'claude-opus-4', d: 0, live: true, stat: '● T-103' },
+            { name: 'Scout', mode: 'WORKER', model: 'claude-sonnet-4', d: 1, live: true, stat: '● PR #482' },
+            { name: 'Probe', mode: 'WORKER', model: 'claude-sonnet-4', d: 1, live: false, stat: 'idle' },
+          ].map(agRow) },
+          { name: 'Mira', av: 'MI', avStyle: av2('MI'), go: () => this.setState({ view: 'entity', entityId: 'MI', prevView: this.state.view }), roleTag: 'REVIEWER', presColor: '#3E8E5A', tagline: 'Reviewing panel-stack — bumped the spec to v5',
+            stats: [stat('85', 'POINTS', 0), stat('5', 'TASKS DONE', 1), stat('0', 'AGENTS', 1)], empty: true, agents: [] },
+        ];
+      })(),
+      isTree: (s.taskLayout || 'tree') === 'tree',
+      isBoard: s.taskLayout === 'board',
+      layoutTree: set({ taskLayout: 'tree' }), layoutBoard: set({ taskLayout: 'board' }),
+      treeBtnStyle: 'display:flex; gap:5px; align-items:center; padding:4px 10px; border-radius:5px; font-size:12px; cursor:pointer;' + ((s.taskLayout || 'tree') === 'tree' ? 'background:var(--pn-active); font-weight:600' : 'color:var(--pn-ink-3)'),
+      boardBtnStyle: 'display:flex; gap:5px; align-items:center; padding:4px 10px; border-radius:5px; font-size:12px; cursor:pointer;' + (s.taskLayout === 'board' ? 'background:var(--pn-active); font-weight:600' : 'color:var(--pn-ink-3)'),
+      axisChips: ['status', 'assignee', 'type', 'milestone'].map(a => ({ label: a, go: set({ taskAxis: a }),
+        style: 'font-family:JetBrains Mono,monospace; font-size:11px; padding:4px 10px; border-radius:99px; cursor:pointer; border:1px solid ' + ((s.taskAxis || 'status') === a ? 'var(--pn-brand); color:var(--pn-brand); background:var(--pn-brand-soft, rgba(178,106,43,.1))' : 'var(--pn-line); color:var(--pn-ink-3); background:var(--pn-card)') })),
+      taskTree: (() => {
+        const P = { done: ['#3E8E5A', 'rgba(62,142,90,.12)', '✓ DONE'], work: ['#3E8E5A', 'rgba(62,142,90,.12)', '● WORKING'], block: ['#BB4D3D', 'rgba(187,77,61,.1)', 'BLOCKED'], rev: ['#3F6C90', 'rgba(63,108,144,.1)', 'IN REVIEW'], open: ['var(--pn-ink-2)', 'var(--pn-active)', 'OPEN'] };
+        return [
+          { id: 'T-100', title: 'Collab V2 milestone — entity graph UI', d: 0, c: 'open', axis: 'milestone:v2-alpha', who: 'Subhang', av: 'SU', parent: true },
+          { id: 'T-101', title: 'Entity chips (Z1) — kind icon + state tint', d: 1, c: 'done', axis: 'type:code', who: 'Scout', av: 'SC' },
+          { id: 'T-103', title: 'Connections rail — edges grouped by type', d: 1, c: 'work', axis: 'type:code', who: 'Forge', av: 'FG' },
+          { id: 'T-103a', title: 'Per-item hard/soft badge on depends_on', d: 2, c: 'work', axis: 'type:code', who: 'Forge', av: 'FG' },
+          { id: 'T-103b', title: 'Hover chip → Z2 preview popover', d: 2, c: 'open', axis: 'type:code', who: '—', av: '·' },
+          { id: 'T-104', title: 'Hover previews (Z2 popover engine)', d: 1, c: 'block', axis: 'type:code', who: 'Probe', av: 'PR' },
+          { id: 'T-105', title: 'Panel stack — stacking & pin-to-split', d: 1, c: 'rev', axis: 'type:design', who: 'Scout', av: 'SC' },
+          { id: 'T-106', title: 'Reactions & points bar (Z2 footer)', d: 1, c: 'open', axis: 'type:design', who: '—', av: '·' },
+        ].map(t => { const p = P[t.c]; return { ...t, status: p[2], pillStyle: pill(p[0], p[1]),
+          go: () => this.setState({ view: 'entity', entityId: t.id, prevView: this.state.view }),
+          rowStyle: 'display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:7px; cursor:pointer; border-bottom:1px solid var(--pn-line)',
+          indentStyle: 'width:' + (t.d * 22) + 'px; flex:none', chev: t.parent || t.id === 'T-103' ? 'chevron-down' : 'chevron-right',
+          weight: t.parent ? 700 : (t.d === 2 ? 400 : 600),
+          avStyle: 'width:22px; height:22px; border-radius:' + (AG.includes(t.av) ? '6px' : '50%') + '; flex:none; display:flex; align-items:center; justify-content:center; font-family:JetBrains Mono,monospace; font-size:9px; font-weight:700; background:' + (AVC[t.av] || 'var(--pn-active)') + '; border:1px solid var(--pn-line-2); color:#3D3A33' }; });
+      })(),
+      boardCols: (() => {
+        const card = (id, title, av, axis, meta, mc) => ({ id, title, av, axis, meta, metaColor: mc || 'var(--pn-ink-3)', avStyle: 'margin-left:auto; width:20px; height:20px; border-radius:' + (AG.includes(av) ? '6px' : '50%') + '; display:flex; align-items:center; justify-content:center; font-family:JetBrains Mono,monospace; font-size:9px; font-weight:700; background:' + (AVC[av] || 'var(--pn-active)') + '; border:1px solid var(--pn-line-2); color:#3D3A33' });
+        return [
+          { label: 'OPEN', count: '3', items: [card('T-106', 'Reactions & points bar (Z2 footer)', '·', 'type:design', '10 pts'), card('T-103b', 'Hover chip → Z2 preview popover', '·', 'type:code', '↳ subtask of T-103'), card('T-108', 'Command palette entity actions', '·', 'type:code', 'unblocked ✓')] },
+          { label: 'WORKING', count: '2', items: [card('T-103', 'Connections rail — edges grouped by type', 'FG', 'type:code', '🄵 Forge · v3→v5 stale', '#BD8A2A'), card('T-103a', 'Per-item hard/soft badge', 'FG', 'type:code', '↳ 1/3 criteria')] },
+          { label: 'BLOCKED', count: '1', items: [card('T-104', 'Hover previews (Z2 popover engine)', 'PR', 'type:code', '⚠ waiting on T-101', '#BB4D3D')] },
+          { label: 'IN REVIEW', count: '1', items: [card('T-105', 'Panel stack — stacking & pin-to-split', 'SC', 'type:design', 'PR #482')] },
+          { label: 'DONE', count: '1', items: [card('T-101', 'Entity chips (Z1)', 'SC', 'type:code', '✓ 15 pts awarded', '#3E8E5A')] },
+        ];
+      })(),
+      ...(() => {
+        const comps = [
+          { label: 'V2 milestone', subtitle: 'dependency mode · left→right topological', cluster: true, clusterLabel: 'T-100 V2 MILESTONE — SUBTREE',
+            nodes: [
+              { id: 'DOC', title: 'Entity Graph Design', icon: 'file-text', x: 60, y: 210, st: 'v9', c: 'ink' },
+              { id: 'T-101', title: 'Entity chips (Z1)', icon: 'list-checks', x: 310, y: 100, st: 'DONE', c: 'done' },
+              { id: 'T-103', title: 'Connections rail', icon: 'list-checks', x: 570, y: 100, st: '● WORKING', c: 'work' },
+              { id: 'T-104', title: 'Hover previews (Z2)', icon: 'list-checks', x: 310, y: 290, st: 'BLOCKED', c: 'block' },
+              { id: 'T-105', title: 'Panel stack & splits', icon: 'list-checks', x: 570, y: 290, st: 'IN REVIEW', c: 'rev' },
+              { id: 'T-106', title: 'Reactions & points bar', icon: 'list-checks', x: 310, y: 420, st: 'OPEN', c: 'open' },
+              { id: 'PR', title: 'PR #482 panel-stack', icon: 'git-pull-request', x: 880, y: 290, st: 'OPEN', c: 'rev' },
+            ],
+            edges: [
+              { f: 'DOC', t: 'T-101', d: 'M232 240 C 270 240, 270 140, 308 140', label: 'attached_to', lx: 240, ly: 178 },
+              { f: 'T-101', t: 'T-103', d: 'M482 140 L 568 140', label: 'depends_on', lx: 486, ly: 132 },
+              { f: 'T-104', t: 'T-101', d: 'M482 330 C 520 330, 490 165, 478 148', label: 'depends_on · hard ⚠', hard: true, lx: 496, ly: 250 },
+              { f: 'T-105', t: 'PR', d: 'M742 330 L 878 330', label: 'tracks', lx: 790, ly: 322 },
+              { f: 'T-106', t: 'T-105', d: 'M482 460 C 540 460, 560 360, 568 348', label: 'depends_on', lx: 500, ly: 442 },
+            ] },
+          { label: 'Spec docs', subtitle: 'doc subtree · hierarchy as dashed "child" edges', cluster: false, clusterLabel: '',
+            nodes: [
+              { id: 'D1', title: 'Entity Graph Design', icon: 'file-text', x: 80, y: 220, st: 'v9', c: 'ink' },
+              { id: 'D2', title: 'UI/UX Brief', icon: 'file-text', x: 400, y: 110, st: 'v5', c: 'ink' },
+              { id: 'D3', title: 'Gaps & Extensions', icon: 'file-text', x: 400, y: 330, st: 'v2', c: 'ink' },
+            ],
+            edges: [
+              { f: 'D1', t: 'D2', d: 'M252 240 C 320 240, 320 150, 398 150', label: 'child', soft: true, lx: 300, ly: 186 },
+              { f: 'D1', t: 'D3', d: 'M252 260 C 320 260, 320 370, 398 370', label: 'child', soft: true, lx: 300, ly: 330 },
+              { f: 'D3', t: 'D2', d: 'M485 328 L 485 162', label: 'relates_to', lx: 494, ly: 250 },
+            ] },
+          { label: 'Forge kit', subtitle: 'agent loadout · equips edges', cluster: false, clusterLabel: '',
+            nodes: [
+              { id: 'FG', title: 'Forge — coordinator', icon: 'bot', x: 80, y: 210, st: '● WORKING', c: 'work' },
+              { id: 'SP', title: 'Spell: git-flow', icon: 'sparkles', x: 400, y: 110, st: 'EQUIPPED', c: 'ink' },
+              { id: 'SK', title: 'Skill: code-review', icon: 'sparkles', x: 400, y: 330, st: 'EQUIPPED', c: 'ink' },
+            ],
+            edges: [
+              { f: 'FG', t: 'SP', d: 'M252 230 C 320 230, 320 150, 398 150', label: 'equips', lx: 300, ly: 178 },
+              { f: 'FG', t: 'SK', d: 'M252 250 C 320 250, 320 370, 398 370', label: 'equips', lx: 300, ly: 322 },
+            ] },
+        ];
+        const ci = Math.min(s.gComp || 0, comps.length - 1), comp = comps[ci], hov = s.gHover, sel = s.gSel;
+        const near = (id) => !hov || id === hov || comp.edges.some(e => (e.f === hov && e.t === id) || (e.t === hov && e.f === id));
+        return {
+          gSubtitle: comp.subtitle, gCluster: comp.cluster, gClusterLabel: comp.clusterLabel,
+          gComps: comps.map((c, i) => ({ label: c.label + ' · ' + c.nodes.length, go: set({ gComp: i, gHover: null, gSel: null }),
+            style: 'font-family:JetBrains Mono,monospace; font-size:11px; padding:4px 10px; border-radius:99px; cursor:pointer; flex:none; border:1px solid ' + (i === ci ? 'var(--pn-brand); color:var(--pn-brand); background:rgba(178,106,43,.08)' : 'var(--pn-line); color:var(--pn-ink-3); background:var(--pn-card)') })),
+          graphNodes: comp.nodes.map(n => {
+            const pal = { done: ['#3E8E5A', 'rgba(62,142,90,.12)'], work: ['#3E8E5A', 'rgba(62,142,90,.12)'], block: ['#BB4D3D', 'rgba(187,77,61,.1)'], rev: ['#3F6C90', 'rgba(63,108,144,.1)'], open: ['var(--pn-ink-2)', 'var(--pn-active)'], ink: ['var(--pn-ink-2)', 'var(--pn-active)'] }[n.c];
+            const border = sel === n.id ? 'var(--pn-brand)' : (n.c === 'block' ? 'rgba(187,77,61,.45)' : 'var(--pn-line)');
+            const shape = {
+              'file-text': 'border-radius:4px 20px 4px 4px; background:var(--pn-surface)',
+              'git-pull-request': 'border-radius:99px; text-align:center; background:var(--pn-card)',
+              'bot': 'border-radius:22px; background:var(--pn-active)',
+              'sparkles': 'border-radius:10px; background:var(--pn-card); border-style:dashed',
+            }[n.icon] || 'border-radius:10px; background:var(--pn-card)';
+            return { ...n, status: n.st,
+              click: () => this.setState({ panelOpen: true, gSel: n.id }),
+              enter: () => this.setState({ gHover: n.id }), leave: () => this.setState({ gHover: null }),
+              style: 'position:absolute; z-index:2; left:' + n.x + 'px; top:' + n.y + 'px; width:170px; ' + shape + '; border:1.5px solid ' + border + '; padding:9px 11px; cursor:pointer; box-shadow:var(--pn-sh-sm); transition:opacity .14s; opacity:' + (near(n.id) ? 1 : 0.22),
+              iconStyle: 'color:' + pal[0], pillStyle: pill(pal[0], pal[1]) };
+          }),
+          graphEdges: comp.edges.map(e => ({ ...e,
+            color: e.hard ? '#BB4D3D' : '#A29C8E', dash: (e.hard || e.soft) ? '4 3' : '', marker: e.hard ? 'url(#arrRed)' : 'url(#arr)',
+            op: (!hov || e.f === hov || e.t === hov) ? 1 : 0.12 })),
+        };
+      })(),
+      homeCols: [
+        { label: 'READY TO PULL', count: '2', items: [
+          { id: 'T-106', title: 'Z2 card footer — reactions & points bar', status: 'OPEN', pillStyle: pill('var(--pn-ink-2)', 'var(--pn-active)'), meta: 'type:design · 10 pts', metaColor: 'var(--pn-ink-3)', canPull: true },
+          { id: 'T-108', title: 'Command palette entity actions', status: 'OPEN', pillStyle: pill('var(--pn-ink-2)', 'var(--pn-active)'), meta: 'type:code · unblocked ✓', metaColor: 'var(--pn-ink-3)', canPull: true },
+        ]},
+        { label: 'IN FLIGHT', count: '2', items: [
+          { id: 'T-103', title: 'Connections rail — edges grouped by type', status: '● WORKING', pillStyle: pill('#3E8E5A', 'rgba(62,142,90,.12)'), meta: '🄵 Forge · v3 pinned · v5 → stale', metaColor: '#BD8A2A' },
+          { id: 'T-104', title: 'Hover previews (Z2 popover)', status: 'BLOCKED', pillStyle: pill('#BB4D3D', 'rgba(187,77,61,.1)'), meta: 'waiting on T-101', metaColor: '#BB4D3D' },
+        ]},
+        { label: 'NEEDS ME', count: '1', items: [
+          { id: 'T-105', title: 'Panel stack — stacking & pin-to-split', status: 'IN REVIEW', pillStyle: pill('#3F6C90', 'rgba(63,108,144,.1)'), meta: 'PR #482 · Scout requests review', metaColor: 'var(--pn-ink-3)' },
+        ]},
+      ],
+      presAvs: [['SU', 'Subhang'], ['MI', 'Mira'], ['FG', 'Forge · working'], ['SC', 'Scout · working']].map(([c, name], i) => ({ av: c, name, style: av(c) + '; width:22px; height:22px; font-size:8px; box-shadow:0 0 0 2px var(--pn-surface);' + (i ? 'margin-left:-6px' : '') })),
+      panelViewers: [['MI', 'Mira'], ['FG', 'Forge']].map(([c, name], i) => ({ av: c, name, style: av(c) + '; width:18px; height:18px; font-size:7px; box-shadow:0 0 0 2px var(--pn-surface);' + (i ? 'margin-left:-5px' : '') })),
+      openTask: set({ panelOpen: true }), closePanel: set({ panelOpen: false }), panelOpen: s.panelOpen,
+      panelTabs: ['content', 'discussion', 'connections', 'activity'].map(k => ({ label: k[0].toUpperCase() + k.slice(1), style: tabStyle(s.panelTab === k), go: set({ panelTab: k }) })),
+      showContent: s.panelTab === 'content' || s.panelTab === 'connections',
+      showDiscussion: s.panelTab === 'discussion' || s.panelTab === 'activity',
+      criteria: [
+        { text: 'Edges grouped by type with direction labels', done: true }, { text: 'Per-item hard/soft badge on depends_on', done: false },
+        { text: 'Hover chip → Z2 preview popover', done: false },
+      ].map(c => ({ ...c, icon: c.done ? 'check-square' : 'square', iconStyle: 'color:' + (c.done ? '#3E8E5A' : 'var(--pn-ink-3)'), style: c.done ? 'color:var(--pn-ink-3); text-decoration:line-through' : '' })),
+      edgeGroups: [
+        { label: 'Assigned to', warn: '', warnStyle: '', items: [{ icon: 'bot', name: 'Forge', iconStyle: 'color:#3E8E5A' }, { icon: 'user', name: 'Subhang', iconStyle: 'color:var(--pn-ink-3)' }] },
+        { label: 'Depends on', warn: '⚠ 1 unresolved', warnStyle: 'font-family:JetBrains Mono,monospace; font-size:10.5px; color:#BB4D3D', items: [{ icon: 'list-checks', name: 'T-101 Entity chips', iconStyle: 'color:#3E8E5A' }, { icon: 'list-checks', name: 'T-104 Hover previews', iconStyle: 'color:#BB4D3D' }] },
+        { label: 'Attached', warn: '', warnStyle: '', items: [{ icon: 'file-text', name: 'Entity Graph Design', iconStyle: 'color:var(--pn-ink-3)' }] },
+        { label: 'Tracks', warn: '', warnStyle: '', items: [{ icon: 'git-pull-request', name: 'PR #482', iconStyle: 'color:#3F6C90' }] },
+      ],
+      taskThread: [
+        { author: 'Forge', avText: 'FG', avStyle: av('var(--pn-card)'), time: '10:12', body: 'Progress: edge groups + direction labels done. Rollup badge next.' },
+        { author: 'Mira', avText: 'MI', depth: 1, avStyle: av('var(--pn-active)'), time: '10:15', body: 'Spec bumped to v5 — hard/soft badge moves to per-item.' },
+        { author: 'Forge', avText: 'FG', depth: 2, avStyle: av('var(--pn-card)'), time: '10:16', body: 'Acknowledged — re-pulled at v5, adjusting.' },
+      ].map(m => ({ ...m, avStyle: av(m.avText) + (m.depth ? '; width:24px; height:24px; font-size:8px' : ''), wrapStyle: 'display:flex; gap:9px; margin-bottom:13px;' + (m.depth ? 'margin-left:' + (m.depth * 22) + 'px; padding-left:11px; border-left:2px solid var(--pn-line-2)' : '') })),
+    };
+  }
+}
+</script>
+</body>
+</html>

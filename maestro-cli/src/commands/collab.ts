@@ -10,6 +10,7 @@ import { buildInviteLink, generateInviteId, InviteKind, normalizeInviteId, parse
 import { randomBytes } from 'crypto';
 import { eraseRefreshToken } from '../collab/token-store.js';
 import { CollabError, CollabIdentity } from '../collab/types.js';
+import { registerCollabV2Commands } from './collab-v2.js';
 
 type Global = { json?: boolean; profile?: string; project?: string };
 type ContextOptions = { space?: string; project?: string };
@@ -126,6 +127,8 @@ export function registerCollabCommands(root: Command): void {
   }));
   auth.command('logout').action(guarded(async () => { const { name } = resolveProfile(profileFrom()); eraseRefreshToken(name); result(root, { profile: name, loggedOut: true }); }));
   auth.command('status').action(guarded(async () => { const { name, profile } = resolveProfile(profileFrom()); result(root, { profile: name, ...(await currentIdentity(name, profile)).identity, loggedIn: true }); }));
+
+  registerCollabV2Commands(collab, root, guarded, (value) => result(root, value));
 
   collab.command('context').option('--space <space-id>').option('--project <project-id>').action(guarded(async (options: ContextOptions) => {
     const { name, profile } = resolveProfile(profileFrom());

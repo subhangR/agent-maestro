@@ -60,6 +60,22 @@ Firebase project and bucket:
 firebase deploy --only functions:notifications,storage --project <firebase-project-id>
 ```
 
+Deploy the Realtime Database presence rules in the same release when presence
+or typing is enabled:
+
+```sh
+firebase deploy --only database --project <firebase-project-id>
+```
+
+`spacePresence` and `spaceTyping` reads require Firebase Authentication, and
+writes are confined to `auth.uid`. Realtime Database Rules cannot query live
+Supabase membership, so they cannot prove that an authenticated reader belongs
+to the requested V2 space. Presence contains only ephemeral focus, visibility,
+typing, and timestamp data; do not publish content, email addresses, roles, or
+other durable/private fields there. A stricter per-space read boundary requires
+a server-maintained Firebase membership mirror or custom claims, including
+revocation synchronization, before the rules can safely depend on membership.
+
 `storage.rules` is intentionally default-deny. Signed Cloud Storage requests
 are authorized by their signature after the callable function performs the
 Postgres check; Firebase Storage Rules do not reopen direct client access.

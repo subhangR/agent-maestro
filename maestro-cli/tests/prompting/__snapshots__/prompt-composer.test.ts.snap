@@ -82,6 +82,19 @@ Report progress at important milestones and escalate blockers promptly using mae
   <commands_reference>
     ## Maestro coordinated-worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -199,6 +212,19 @@ Good pattern:
   <commands_reference>
     ## Maestro coordinated-coordinator Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|update|complete|block|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -314,6 +340,19 @@ Good pattern:
   <commands_reference>
     ## Maestro coordinated-coordinator Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|update|complete|block|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -461,6 +500,19 @@ Report progress at important milestones and escalate blockers promptly using mae
   <commands_reference>
     ## Maestro coordinated-worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -594,6 +646,19 @@ Report progress at important milestones and escalate blockers promptly using mae
   <commands_reference>
     ## Maestro coordinated-worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -729,6 +794,19 @@ Report progress at important milestones and escalate blockers promptly using mae
   <commands_reference>
     ## Maestro coordinated-worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -864,6 +942,19 @@ Report progress at important milestones and escalate blockers promptly using mae
   <commands_reference>
     ## Maestro coordinated-worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -977,6 +1068,19 @@ Good pattern:
   <commands_reference>
     ## Maestro coordinator Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|update|complete|block|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -1088,6 +1192,19 @@ Good pattern:
   <commands_reference>
     ## Maestro coordinator Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|update|complete|block|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -1231,6 +1348,19 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
   <commands_reference>
     ## Maestro worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -1360,6 +1490,19 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
   <commands_reference>
     ## Maestro worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -1491,6 +1634,19 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
   <commands_reference>
     ## Maestro worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion
@@ -1622,6 +1778,19 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
   <commands_reference>
     ## Maestro worker Commands
     maestro {announce|whoami|status|commands} - Core utilities
+    maestro collab {auth|context|share|pull} - Firebase Collab Space operations (opt-in)
+    maestro collab space list - List Collab spaces
+    maestro collab space show - Show a Collab space
+    maestro collab channel list - List Collab channels
+    maestro collab message list - List Collab messages
+    maestro collab message send - Send a Collab message
+    maestro collab invite create - Create a private Collab invitation
+    maestro collab v2 space {list|discover|create|join|identity|navigation} - Discover, join, and inspect V2 spaces
+    maestro collab v2 entity {list|get|move} - Read and move V2 entities
+    maestro collab v2 collection --data <json-or-@path> - Query V2 entity collections
+    maestro collab v2 task {create|update|complete} ... --data <json-or-@path> - Create, update, and complete V2 tasks
+    maestro collab v2 message <anchor-id> --data <json-or-@path> - Post a V2 entity message
+    maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>] - Read cursor-paged V2 workspace events
     maestro task {list|get|create|edit|delete|children|tree} - Task management
     maestro task report progress <taskId> "<message>" - Report task progress
     maestro task report complete <taskId> "<summary>" - Report task completion

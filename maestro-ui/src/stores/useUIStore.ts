@@ -77,7 +77,7 @@ function readClampedFromStorage(key: string, min: number, max: number, fallback:
   return fallback;
 }
 
-export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | null;
+export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | 'collabV2' | null;
 
 export type SpaceSection = 'messages' | 'tasks' | 'team' | 'spells' | 'docs' | 'files' | 'members' | 'settings';
 

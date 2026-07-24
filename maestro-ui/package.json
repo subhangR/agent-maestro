@@ -9,7 +9,7 @@
     "preview": "vite preview --port 4568 --strictPort",
     "tauri": "tauri",
     "tauri:dev:clear": "tauri dev -- -- --clear-data",
-    "dev:all": "concurrently \"bunx tauri dev\" \"cd ../maestro-server && PORT=4567 bun run dev\"",
+    "dev:all": "concurrently \"bunx tauri dev\" \"cd ../maestro-server && PORT=4567 node scripts/run-dev.mjs\"",
     "lint": "eslint src/ --ext .ts,.tsx",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "test": "vitest run",

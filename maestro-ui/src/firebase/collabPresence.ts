@@ -16,8 +16,8 @@ interface FocusState {
   visible: boolean;
 }
 
-function connectionId(uid: string): string {
-  const key = `maestro.collabPresence.${uid}`;
+function connectionId(uid: string, scope = 'legacy'): string {
+  const key = `maestro.collabPresence.${scope}.${uid}`;
   try {
     const existing = sessionStorage.getItem(key);
     if (existing) return existing;
@@ -36,6 +36,7 @@ function connectionId(uid: string): string {
  * one tab closing from marking a user offline while another tab remains open.
  */
 export class CollabPresence {
+  constructor(private readonly scope = 'legacy') {}
   private uid: string | null = null;
   private id: string | null = null;
   private focus: FocusState = { spaceId: null, channelId: null, section: 'messages', visible: false };
@@ -47,7 +48,7 @@ export class CollabPresence {
     if (this.uid === uid) return;
     this.stop();
     this.uid = uid;
-    this.id = connectionId(uid);
+    this.id = connectionId(uid, this.scope);
     this.connectionUnsub = onValue(ref(getFirebaseDatabase(), '.info/connected'), (snapshot) => {
       this.connected = snapshot.val() === true;
       if (this.connected) void this.publish();

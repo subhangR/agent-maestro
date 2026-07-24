@@ -35,6 +35,24 @@ DATA_DIR="${DATA_DIR:-$HOME/.maestro/data}"
 SESSION_DIR="${SESSION_DIR:-$HOME/.maestro/sessions}"
 UI_URL="http://localhost:${PORT}"
 
+# Collab V2's browser configuration is public (the database still enforces RLS
+# using the caller's Firebase token). The server façade is a separate Node
+# process, so it must receive the matching public URL/key explicitly. A local
+# UI env file selects the project for both processes; deployed instances keep
+# using their MAESTRO_* environment values when that file is absent.
+if [ -f "maestro-ui/.env.local" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "maestro-ui/.env.local"
+  set +a
+fi
+# In a local web checkout, .env.local belongs to the browser build and is the
+# authoritative project selection. This avoids an old exported MAESTRO_* key
+# from a different Supabase project silently overriding the UI's key. Hosted
+# deployments normally have no .env.local and continue to use MAESTRO_*.
+MAESTRO_SUPABASE_URL="${VITE_SUPABASE_URL:-${MAESTRO_SUPABASE_URL:-}}"
+MAESTRO_SUPABASE_PUBLISHABLE_KEY="${VITE_SUPABASE_PUBLISHABLE_KEY:-${MAESTRO_SUPABASE_PUBLISHABLE_KEY:-}}"
+
 LAN_IP="$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || true)"
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
@@ -124,5 +142,8 @@ exec env \
   SERVER_URL="$UI_URL" \
   DATA_DIR="$DATA_DIR" \
   SESSION_DIR="$SESSION_DIR" \
+  MAESTRO_SUPABASE_URL="$MAESTRO_SUPABASE_URL" \
+  MAESTRO_SUPABASE_PUBLISHABLE_KEY="$MAESTRO_SUPABASE_PUBLISHABLE_KEY" \
+  MAESTRO_COLLAB_V2_INSECURE_UID_BYPASS="${MAESTRO_COLLAB_V2_INSECURE_UID_BYPASS:-false}" \
   NODE_ENV=production \
   node maestro-server/dist/server.js

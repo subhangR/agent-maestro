@@ -79,7 +79,7 @@ export function createSecurityHeaders(allowedOrigins: string[] = []): RequestHan
     contentSecurityPolicy: {
       useDefaults: true,
       directives: {
-        'script-src': ["'self'", 'https://apis.google.com', 'https://www.gstatic.com'],
+        'script-src': ["'self'", 'https://apis.google.com', 'https://www.gstatic.com', 'https://accounts.google.com'],
         // xterm.js and Monaco both inject inline <style> elements/attributes
         // at runtime (cursor blink, decorations, line highlighting, editor
         // themes) with no nonce plumbing — style-src needs 'unsafe-inline'.

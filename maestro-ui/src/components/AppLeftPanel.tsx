@@ -18,6 +18,8 @@ import { useBreakpoint } from "../hooks/useBreakpoint";
 import { useMobilePanelStore } from "../stores/useMobilePanelStore";
 import { useCollabInviteDeepLink } from "../hooks/useCollabInviteDeepLink";
 
+const LazyCollabV2SpaceLauncher = React.lazy(() => import("./collab-workspace").then((module) => ({ default: module.LiveCollabV2SpaceLauncher })));
+
 function sectionToPrimaryTab(section: IconRailSection): PrimaryTab | null {
     switch (section) {
         case "tasks": return "tasks";
@@ -146,7 +148,8 @@ export const AppLeftPanel: React.FC = () => {
     const forcedPrimaryTab = sectionToPrimaryTab(iconRailActiveSection);
     const forcedTeamSubTab = sectionToTeamSubTab(iconRailActiveSection);
     const showFiles = iconRailActiveSection === "files";
-    const showMaestro = isExpanded && !showFiles;
+    const showCollabV2 = iconRailActiveSection === "collabV2";
+    const showMaestro = isExpanded && !showFiles && !showCollabV2;
 
     // Track whether MaestroPanel has ever been opened so we mount it once and keep it alive
     const hasMountedMaestroRef = useRef(false);
@@ -160,14 +163,16 @@ export const AppLeftPanel: React.FC = () => {
 
     return (
         <div
-            className={`appLeftPanel ${isExpanded ? "appLeftPanel--expanded" : ""}`}
+            className={`appLeftPanel ${isExpanded ? "appLeftPanel--expanded" : ""}${showCollabV2 ? " appLeftPanel--collabV2" : ""}`}
             style={{
                 // Width is driven by the CSS var so a resize commit never
                 // re-renders this (heavy) panel — see useAppLayoutResizing.
                 // On mobile the panel fills its container (100%) via CSS.
                 width: isMobile
                     ? "100%"
-                    : isExpanded
+                    : showCollabV2
+                        ? `${DEFAULTS.ICON_RAIL_WIDTH}px`
+                        : isExpanded
                         ? `calc(${DEFAULTS.ICON_RAIL_WIDTH}px + var(--maestro-sidebar-width))`
                         : `${DEFAULTS.ICON_RAIL_WIDTH}px`,
             }}
@@ -184,7 +189,11 @@ export const AppLeftPanel: React.FC = () => {
             <div
                 className="appLeftPanelContent"
                 style={{
-                    width: isMobile ? undefined : 'var(--maestro-sidebar-width)',
+                    width: isMobile
+                        ? undefined
+                        : showCollabV2
+                            ? `calc(100vw - ${DEFAULTS.ICON_RAIL_WIDTH}px)`
+                            : 'var(--maestro-sidebar-width)',
                     display: isExpanded ? undefined : 'none',
                 }}
             >
@@ -216,6 +225,14 @@ export const AppLeftPanel: React.FC = () => {
                             onSelectFile={handleSelectFileAsSpace}
                             onClose={handleClose}
                         />
+                    </ErrorBoundary>
+                )}
+
+                {showCollabV2 && (
+                    <ErrorBoundary name="CollabV2">
+                        <React.Suspense fallback={<div className="collabWorkspace collabWorkspace--state">Loading Collab V2…</div>}>
+                            <LazyCollabV2SpaceLauncher />
+                        </React.Suspense>
                     </ErrorBoundary>
                 )}
             </div>

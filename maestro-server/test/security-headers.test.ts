@@ -24,6 +24,7 @@ describe('browser security headers', () => {
     expect(csp).toContain('https://identitytoolkit.googleapis.com');
     expect(csp).toContain('https://accounts.google.com');
     expect(csp).toContain('https://*.firebaseapp.com');
+    expect(csp).toMatch(/script-src[^;]*https:\/\/accounts\.google\.com/);
   });
 
   it('ships an explicit CSP (never disables it) and covers the web UI needs', async () => {

@@ -20,11 +20,25 @@
     },
     "spacePresence": {
       "$spaceId": {
+        ".read": "auth != null",
         "$uid": {
           "connections": {
             "$connectionId": {
               ".write": "auth != null && auth.uid === $uid",
-              ".validate": "!newData.exists() || (newData.hasChildren(['focus', 'visible', 'lastActive']) && newData.child('focus').isString() && newData.child('visible').isBoolean() && newData.child('lastActive').isNumber())"
+              ".validate": "!newData.exists() || (newData.hasChildren(['focus', 'visible', 'lastActive']) && newData.child('focus').isString() && newData.child('focus').val().length <= 256 && newData.child('visible').isBoolean() && newData.child('lastActive').isNumber() && newData.child('lastActive').val() <= now + 60000)"
+            }
+          }
+        }
+      }
+    },
+    "spaceTyping": {
+      "$spaceId": {
+        ".read": "auth != null",
+        "$anchorId": {
+          "$uid": {
+            "$connectionId": {
+              ".write": "auth != null && auth.uid === $uid",
+              ".validate": "!newData.exists() || (newData.isNumber() && newData.val() <= now + 60000)"
             }
           }
         }

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/maestro-design-system-a8dfb2b3-38e3-4e2e-bce2-41b36c3a18a8/colors_and_type.css">
+  <link rel="stylesheet" href="_ds/maestro-design-system-a8dfb2b3-38e3-4e2e-bce2-41b36c3a18a8/styles.css">
+  <script src="_ds/maestro-design-system-a8dfb2b3-38e3-4e2e-bce2-41b36c3a18a8/_ds_bundle.js"></script>
+  <script src="./icons.js"></script>
+  <style>
+    body{margin:0;background:var(--pn-paper);color:var(--pn-ink);font-family:'Hanken Grotesk',sans-serif}
+    a{color:var(--pn-brand);text-decoration:none} a:hover{color:var(--pn-ink)}
+  </style>
+</helmet>
+<div style="max-width:1200px; margin:0 auto; padding:44px 40px 90px" data-screen-label="Entity Contract Spec">
+  <div class="t-eyebrow">MAESTRO COLLAB V2 · COMPONENT SPEC</div>
+  <h1 style="font-family:'Newsreader',serif; font-size:38px; font-weight:600; margin:10px 0 0; line-height:1.1">The Entity Component Contract</h1>
+  <p style="font-size:15px; line-height:1.6; color:var(--pn-ink-2); max-width:640px; margin:14px 0 0">Every kind renders at four zoom levels from one component system. Design these once, parameterize by kind. If a surface can't be composed from entity components, collection views, and the two axes — it doesn't belong.</p>
+
+  <!-- SECTION 1: zoom ladder -->
+  <div class="t-eyebrow" style="margin-top:48px; padding-top:20px; border-top:1px solid var(--pn-line)">1 · ZOOM LADDER — TASK (DEEP)</div>
+  <div style="display:grid; grid-template-columns:200px 300px 1fr 210px; gap:18px; margin-top:16px; align-items:start">
+    <div>
+      <div class="t-eyebrow" style="color:var(--pn-brand)">Z1 · CHIP</div>
+      <div style="margin-top:10px"><span draggable="true" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12.5px; cursor:grab"><l-i n="list-checks" s="13" style="color:#3E8E5A"></l-i>T-103 Connections rail</span></div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">Kind icon + name + state tint. Hover → Z2 popover · click → Z3 panel · drag → place/link. Used in messages, rails, breadcrumbs, board cells, composers.</p>
+    </div>
+    <div>
+      <div class="t-eyebrow" style="color:var(--pn-brand)">Z2 · CARD</div>
+      <div style="margin-top:10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:11px 13px; box-shadow:var(--pn-sh-sm)">
+        <div style="display:flex; align-items:center; gap:7px"><l-i n="list-checks" s="14" style="color:var(--pn-ink-3)"></l-i><span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--pn-ink-3)">T-103</span><span style="margin-left:auto; width:20px; height:20px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; background:#E3D0B9; border:1px solid var(--pn-line-2); color:#3D3A33">FG</span></div>
+        <div style="font-weight:600; font-size:13px; margin-top:4px">Connections rail — edges grouped by type</div>
+        <div style="display:flex; align-items:center; gap:7px; margin-top:8px"><span style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; letter-spacing:.08em; padding:2px 8px; border-radius:99px; color:#3E8E5A; background:rgba(62,142,90,.12)">● WORKING</span><span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#BD8A2A">v3 → stale</span></div>
+        <div style="display:flex; align-items:center; gap:10px; margin-top:9px; padding-top:8px; border-top:1px solid var(--pn-line); color:var(--pn-ink-3); font-family:'JetBrains Mono',monospace; font-size:10px"><span style="display:flex; align-items:center; gap:3px"><l-i n="thumbs-up" s="11"></l-i>3</span><span style="display:flex; align-items:center; gap:3px"><l-i n="star" s="11"></l-i>1</span><span style="display:flex; align-items:center; gap:3px"><l-i n="award" s="11"></l-i>20</span><span style="display:flex; align-items:center; gap:3px"><l-i n="message-circle" s="11"></l-i>5</span></div>
+      </div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">Chip + 2–4 kind fields + universal footer (reactions, points, msg count). The cell of every collection view, embed, and graph node.</p>
+    </div>
+    <div>
+      <div class="t-eyebrow" style="color:var(--pn-brand)">Z3 · PANEL — UNIFORM ANATOMY</div>
+      <div style="margin-top:10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:14px; overflow:hidden; box-shadow:var(--pn-sh-md)">
+        <div style="padding:10px 36px 10px 14px; border-bottom:1px solid var(--pn-line); position:relative">
+          <span style="position:absolute; right:10px; top:8px; width:18px; height:18px; border-radius:50%; background:var(--pn-brand); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center">1</span>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3)">#collab-v2 › T-100 › <span style="color:var(--pn-ink)">T-103</span></div>
+          <div style="font-weight:700; font-size:13.5px; margin-top:4px">Connections rail — edges grouped by type</div>
+        </div>
+        <div style="padding:8px 36px 8px 14px; border-bottom:1px solid var(--pn-line); display:flex; gap:10px; color:var(--pn-ink-3); position:relative">
+          <span style="position:absolute; right:10px; top:7px; width:18px; height:18px; border-radius:50%; background:var(--pn-brand); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center">2</span>
+          <l-i n="thumbs-up" s="14"></l-i><l-i n="star" s="14"></l-i><l-i n="award" s="14"></l-i><l-i n="link" s="14"></l-i><l-i n="plus" s="14"></l-i><l-i n="download" s="14"></l-i>
+        </div>
+        <div style="padding:0 36px 0 14px; border-bottom:1px solid var(--pn-line); display:flex; gap:2px; position:relative">
+          <span style="position:absolute; right:10px; top:6px; width:18px; height:18px; border-radius:50%; background:var(--pn-brand); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center">3</span>
+          <span style="padding:8px 10px; font-size:12px; border-bottom:2px solid var(--pn-brand); font-weight:600">Content</span>
+          <span style="padding:8px 10px; font-size:12px; color:var(--pn-ink-2)">Discussion</span>
+          <span style="padding:8px 10px; font-size:12px; color:var(--pn-ink-2)">Connections</span>
+          <span style="padding:8px 10px; font-size:12px; color:var(--pn-ink-2)">Activity</span>
+        </div>
+        <div style="padding:9px 36px 9px 14px; display:flex; align-items:center; gap:7px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3); position:relative">
+          <span style="position:absolute; right:10px; top:7px; width:18px; height:18px; border-radius:50%; background:var(--pn-brand); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center">4</span>
+          <l-i n="eye" s="12"></l-i>2 viewing · v5 · active 2m ago
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; font-size:12px; line-height:1.5; color:var(--pn-ink-3); margin-top:10px">
+        <span><b style="color:var(--pn-brand)">1</b> Header — breadcrumb, title (inline edit), status, overflow</span>
+        <span><b style="color:var(--pn-brand)">2</b> Action bar — react · points · Link · Add child · Pull</span>
+        <span><b style="color:var(--pn-brand)">3</b> Body tabs — same set, same order, every kind</span>
+        <span><b style="color:var(--pn-brand)">4</b> Footer — presence, created-by, version + activity</span>
+      </div>
+    </div>
+    <div>
+      <div class="t-eyebrow" style="color:var(--pn-brand)">Z4 · FULL VIEW</div>
+      <div style="margin-top:10px; border:1.5px dashed var(--pn-line-2); border-radius:14px; padding:14px; font-size:12px; line-height:1.6; color:var(--pn-ink-2)">
+        Panel promoted to a URL-addressable route. Breadcrumb chain, serif title, readable content, <b>children grid (click = navigate deeper)</b>, connections, inline discussion. Every panel has expand ⤢; every full view collapses back.
+      </div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">Kind layouts: doc = reader + chapter tree · channel = hub · task = subtree + deps · member/TM = profile.</p>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:30px">
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow">MESSAGE · Z1 + Z2</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:10px; flex-wrap:wrap">
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:12.5px"><l-i n="message-circle" s="13" style="color:var(--pn-ink-3)"></l-i>"Acknowledged. Re-pulled at v5…"</span>
+        <div style="display:flex; gap:8px; flex:1; min-width:220px">
+          <span style="width:24px; height:24px; border-radius:9px; flex:none; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; background:#E3D0B9; border:1px solid var(--pn-line-2); color:#3D3A33">FG</span>
+          <div style="min-width:0"><div style="display:flex; gap:6px; align-items:baseline"><span style="font-weight:700; font-size:12.5px">Forge</span><span style="font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; padding:1px 5px; border-radius:4px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">AGENT</span><span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3)">10:16</span></div>
+          <div style="font-size:12.5px; color:var(--pn-ink-2)">Author + body preview. Replies are child messages — same hierarchy axis, indented with a connector.</div></div>
+        </div>
+      </div>
+    </div>
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow">CHANNEL · Z1 + Z2</div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:10px; flex-wrap:wrap">
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:12.5px"><l-i n="hash" s="13" style="color:var(--pn-ink-3)"></l-i>collab-v2</span>
+        <div style="flex:1; min-width:220px; font-size:12.5px; color:var(--pn-ink-2)">Z2 adds topic, unread count, last activity, "2 working" agent aggregate. Z4 is the hub: shelf + feed + auto-tabs for whatever is linked.</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex; gap:8px; margin-top:18px; flex-wrap:wrap">
+    <span class="t-eyebrow" style="align-self:center">ALL KINDS AT Z1 —</span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12px"><l-i n="file-text" s="13" style="color:var(--pn-ink-3)"></l-i>Entity Graph Design <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--pn-ink-3)">v9</span></span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12px"><l-i n="user" s="13" style="color:var(--pn-ink-3)"></l-i>Subhang</span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12px"><l-i n="bot" s="13" style="color:#3E8E5A"></l-i>Forge <span style="width:6px; height:6px; border-radius:50%; background:#3E8E5A"></span></span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px dashed var(--pn-line-2); border-radius:99px; font-size:12px"><l-i n="sparkles" s="13" style="color:var(--pn-ink-3)"></l-i>git-flow</span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12px"><l-i n="git-pull-request" s="13" style="color:#3F6C90"></l-i>PR #482</span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-card); border:1px solid var(--pn-line); border-radius:99px; font-size:12px"><l-i n="git-commit" s="13" style="color:var(--pn-ink-3)"></l-i>e4a91c2</span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:12px; color:var(--pn-ink-3); text-decoration:line-through">deleted task</span>
+  </div>
+
+  <!-- SECTION 2: subsystems -->
+  <div class="t-eyebrow" style="margin-top:48px; padding-top:20px; border-top:1px solid var(--pn-line)">2 · UNIVERSAL SUBSYSTEMS — DESIGN ONCE, APPEAR EVERYWHERE</div>
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(330px, 1fr)); gap:18px; margin-top:16px; align-items:start">
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow" style="color:var(--pn-brand)">THREAD (DISCUSSION)</div>
+      <div style="margin-top:10px; display:flex; gap:8px"><span style="width:26px; height:26px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; background:#C7D4C0; border:1px solid var(--pn-line-2); color:#3D3A33">MI</span><div><div style="font-weight:700; font-size:12.5px">Mira <span style="font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:400; color:var(--pn-ink-3)">10:15</span></div><div style="font-size:12.5px; color:var(--pn-ink-2)">Spec bumped to v5 — badge moves per-item.</div></div></div>
+      <div style="margin-top:8px; margin-left:26px; padding-left:11px; border-left:2px solid var(--pn-line-2); display:flex; gap:8px"><span style="width:22px; height:22px; border-radius:8px; flex:none; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:8px; font-weight:700; background:#E3D0B9; border:1px solid var(--pn-line-2); color:#3D3A33">FG</span><div><div style="font-weight:700; font-size:12.5px">Forge <span style="font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:600; padding:1px 5px; border-radius:4px; background:var(--pn-active); border:1px solid var(--pn-line-2); color:var(--pn-ink-2)">AGENT</span></div><div style="font-size:12.5px; color:var(--pn-ink-2)">Acknowledged — re-pulled at v5.</div></div></div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">One component for channel feed, task comments, doc review, member wall. Replies = child messages (hierarchy). @members, @agents, #entity chips, drop-to-embed. Agent messages distinct but in-flow — never ghettoized.</p>
+    </div>
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow" style="color:var(--pn-brand)">CONNECTIONS RAIL</div>
+      <div style="margin-top:10px; font-size:12px; font-weight:600; color:var(--pn-ink-2)">Depends on <span style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#BB4D3D">⚠ 1 unresolved</span></div>
+      <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap">
+        <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:11.5px"><l-i n="list-checks" s="12" style="color:#3E8E5A"></l-i>T-101 <span style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#3E8E5A">HARD ✓</span></span>
+        <span style="display:inline-flex; align-items:center; gap:5px; padding:3px 9px; background:var(--pn-surface); border:1px solid rgba(187,77,61,.4); border-radius:99px; font-size:11.5px"><l-i n="list-checks" s="12" style="color:#BB4D3D"></l-i>T-104 <span style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#BB4D3D">HARD ⚠</span></span>
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border:1px dashed var(--pn-line-2); border-radius:99px; font-size:11.5px; color:var(--pn-ink-3)"><l-i n="plus" s="11"></l-i></span>
+      </div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">Two stacked sections: hierarchy (parent up, children down, drag to reparent) and edges grouped by type with direction labels. Hover previews; click hops the panel stack. The graph, made tactile.</p>
+    </div>
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow" style="color:var(--pn-brand)">REACTIONS & POINTS BAR</div>
+      <div style="display:flex; gap:8px; margin-top:10px; align-items:center">
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--pn-active); border:1px solid var(--pn-line-2); border-radius:99px; font-size:11.5px; font-family:'JetBrains Mono',monospace"><l-i n="thumbs-up" s="12" style="color:var(--pn-brand)"></l-i>3</span>
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:11.5px; font-family:'JetBrains Mono',monospace; color:var(--pn-ink-3)"><l-i n="thumbs-down" s="12"></l-i>0</span>
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:11.5px; font-family:'JetBrains Mono',monospace"><l-i n="star" s="12" style="color:#BD8A2A"></l-i>1</span>
+        <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:11.5px; font-family:'JetBrains Mono',monospace"><l-i n="award" s="12" style="color:var(--pn-brand)"></l-i>20 pts</span>
+      </div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">👍/👎 mutually exclusive, one per person. Points: tap +1, hold to choose amount; hover shows pool + top granters. Identical on every entity, messages included. Completion awards the pool to tagged completers.</p>
+    </div>
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow" style="color:var(--pn-brand)">COMMAND PALETTE ⌘K</div>
+      <div style="margin-top:10px; background:var(--pn-surface); border:1px solid var(--pn-line-2); border-radius:9px; padding:8px 12px; display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--pn-ink-3)"><l-i n="command" s="13"></l-i>link T-103 → <span style="color:var(--pn-ink)">#collab-v2</span> as attached_to…</div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">The graph's front door: search by kind/title + actions (create in…, link A→B, go to, pull). Context-aware — opened on a panel, actions apply to it. Keyboard path for every edge/hierarchy operation the mouse can do.</p>
+    </div>
+    <div style="background:var(--pn-card); border:1px solid var(--pn-line); border-radius:10px; padding:14px 16px">
+      <div class="t-eyebrow" style="color:var(--pn-brand)">PRESENCE · STALENESS · BLOCKED</div>
+      <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap">
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 9px; background:var(--pn-surface); border:1px solid var(--pn-line); border-radius:99px; font-size:11.5px"><span style="width:6px; height:6px; border-radius:50%; background:#3E8E5A"></span>Forge · working on T-103 since 09:44</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:6px; color:#BD8A2A; background:rgba(189,138,42,.1); border:1px solid rgba(189,138,42,.3)">v3 pinned · v5 → STALE · RE-PULL</span>
+        <span style="font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:6px; color:#BB4D3D; background:rgba(187,77,61,.08); border:1px solid rgba(187,77,61,.3)">BLOCKED · waiting on T-104</span>
+      </div>
+      <p style="font-size:12px; line-height:1.55; color:var(--pn-ink-3); margin:10px 0 0">Staleness is per-puller (pinned version vs content version) with one-click re-pull. Blocked badges auto-clear with an unblock moment. Status is always color + word — never color alone.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 3: drag grammar -->
+  <div class="t-eyebrow" style="margin-top:48px; padding-top:20px; border-top:1px solid var(--pn-line)">3 · DRAG / DROP GRAMMAR — EVERY DROP MEANS ONE EXPLICIT THING</div>
+  <div style="margin-top:14px; border:1px solid var(--pn-line); border-radius:12px; overflow:hidden">
+    <div style="display:grid; grid-template-columns:1.1fr 1.1fr 1.5fr 1.3fr; gap:0; background:var(--pn-surface); border-bottom:1px solid var(--pn-line)">
+      <span class="t-eyebrow" style="padding:10px 14px">SOURCE</span><span class="t-eyebrow" style="padding:10px 14px">TARGET</span><span class="t-eyebrow" style="padding:10px 14px">MEANING</span><span class="t-eyebrow" style="padding:10px 14px">FEEDBACK</span>
+    </div>
+    <sc-for list="{{ grammar }}" as="g" hint-placeholder-count="6">
+      <div style="display:grid; grid-template-columns:1.1fr 1.1fr 1.5fr 1.3fr; border-bottom:1px solid var(--pn-line); font-size:12.5px; background:var(--pn-card)" style-hover="background:var(--pn-hover)">
+        <span style="padding:10px 14px; font-weight:600">{{ g.src }}</span>
+        <span style="padding:10px 14px">{{ g.tgt }}</span>
+        <span style="padding:10px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-brand)">{{ g.mean }}</span>
+        <span style="padding:10px 14px; color:var(--pn-ink-3)">{{ g.fb }}</span>
+      </div>
+    </sc-for>
+  </div>
+  <p style="font-size:12.5px; color:var(--pn-ink-3); margin:12px 0 0; max-width:640px">Ambiguity resolves via a tiny drop menu (max 3 options). Every drop shows a ghost label before commit, is undoable, and lands in Activity. The Link button + ⌘K palette is the exact keyboard equivalent.</p>
+  <div style="margin-top:40px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--pn-ink-3)">See the living prototype → <a href="Collab Workspace.dc.html">Collab Workspace</a></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      grammar: [
+        { src: 'any chip/card', tgt: 'channel (feed or shelf)', mean: 'attached_to (+ embed msg)', fb: 'ghost: "Attach to #collab-v2"' },
+        { src: 'doc / file / spell', tgt: 'task', mean: 'attached_to', fb: 'ghost: "Attach to T-103"' },
+        { src: 'member / team_member', tgt: 'task', mean: 'assigned_to', fb: 'ghost: "Assign to Forge"' },
+        { src: 'task', tgt: 'task', mean: 'attach | depend | subtask', fb: 'drop menu (3 zones)' },
+        { src: 'task', tgt: 'member / team_member', mean: 'assigned_to', fb: 'ghost: "Assign T-106"' },
+        { src: 'any chip', tgt: 'message composer', mean: 'embed (Z2 card in message)', fb: 'chip docks into composer' },
+        { src: 'same-kind entity', tgt: 'parent zone', mean: 'reparent (hierarchy move)', fb: 'tree slot highlight' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

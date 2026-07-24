@@ -79,6 +79,12 @@ export class BusinessRuleError extends AppError {
   }
 }
 
+export class VersionConflictError extends AppError {
+  constructor(message: string = 'The resource changed since it was loaded.', details?: any) {
+    super(409, 'VERSION_CONFLICT', message, details);
+  }
+}
+
 /**
  * Configuration error (500).
  */

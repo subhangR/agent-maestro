@@ -41,6 +41,12 @@ const COMMAND_DEFINITIONS: Array<Omit<CommandCatalogEntry, 'syntax'>> = [
   { id: 'collab:invite:create', description: 'Create a private Collab invitation', group: 'collab', allowedModes: ALL_MODES },
   { id: 'collab:share', description: 'Share a local entity to Collab', group: 'collab', allowedModes: ALL_MODES },
   { id: 'collab:pull', description: 'Pull a shared entity locally', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:v2:space', description: 'Discover, join, and inspect V2 spaces', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:v2:entity', description: 'Read and move V2 entities', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:v2:collection', description: 'Query V2 entity collections', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:v2:task', description: 'Create, update, and complete V2 tasks', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:v2:message', description: 'Post a V2 entity message', group: 'collab', allowedModes: ALL_MODES },
+  { id: 'collab:v2:events', description: 'Read cursor-paged V2 workspace events', group: 'collab', allowedModes: ALL_MODES },
 
   // Task commands
   { id: 'task:list', description: 'List tasks', group: 'task', allowedModes: ALL_MODES },
@@ -175,6 +181,12 @@ const COMMAND_SYNTAX_MAP: Record<string, string> = {
   'command-log:stats': 'maestro command-log stats [--session <id>]',
   'command-log:sessions': 'maestro command-log sessions',
   'debug-prompt': 'maestro debug-prompt [--manifest <path>] [--session <id>] [--system-only] [--task-only|--initial-only] [--raw]',
+  'collab:v2:space': 'maestro collab v2 space {list|discover|create|join|identity|navigation}',
+  'collab:v2:entity': 'maestro collab v2 entity {list|get|move}',
+  'collab:v2:collection': 'maestro collab v2 collection --data <json-or-@path>',
+  'collab:v2:task': 'maestro collab v2 task {create|update|complete} ... --data <json-or-@path>',
+  'collab:v2:message': 'maestro collab v2 message <anchor-id> --data <json-or-@path>',
+  'collab:v2:events': 'maestro collab v2 events <space-id> [--cursor <cursor>] [--limit <n>]',
 
   // Legacy report aliases
   'report:progress': 'maestro report progress "<message>"',

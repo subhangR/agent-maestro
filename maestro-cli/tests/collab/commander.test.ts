@@ -12,6 +12,13 @@ describe('collab Commander surface', () => {
     const collab = enabled.commands.find((c) => c.name() === 'collab');
     expect(collab).toBeDefined();
     expect(collab?.commands.some((c) => c.name() === 'context')).toBe(true);
+    const v2 = collab?.commands.find((c) => c.name() === 'v2');
+    expect(v2).toBeDefined();
+    expect(v2?.commands.map((c) => c.name())).toEqual(expect.arrayContaining([
+      'space', 'entity', 'collection', 'activity', 'events', 'task', 'edge', 'placement', 'doc', 'file', 'inbox',
+    ]));
+    expect(v2?.commands.some((c) => c.name() === 'search')).toBe(false);
+    expect(v2?.commands.some((c) => c.name() === 'invite')).toBe(false);
   });
 
   it('redacts bearer invite values from tracked output', () => {

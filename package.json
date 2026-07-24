@@ -14,7 +14,7 @@
   "scripts": {
     "postinstall": "chmod +x node_modules/node-pty/prebuilds/*/spawn-helper 2>/dev/null || true",
     "dev:ui": "cd maestro-ui && bun run dev",
-    "dev:server": "cd maestro-server && bun run dev",
+    "dev:server": "cd maestro-server && node scripts/run-dev.mjs",
     "dev:all": "cd maestro-ui && bun run dev:all",
     "build:ui": "cd maestro-ui && bun run build",
     "build:server": "cd maestro-server && bun run build",

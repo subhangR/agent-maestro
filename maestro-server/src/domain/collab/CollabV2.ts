@@ -51,6 +51,8 @@ export interface CollabEntityView {
 
 export interface CollabCredentials {
   firebaseToken: string;
+  /** Test-only identity claim used when the explicit insecure UID bypass is enabled. */
+  firebaseUid?: string;
 }
 
 export interface CreateCollabTaskInput {

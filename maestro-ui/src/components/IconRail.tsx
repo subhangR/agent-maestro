@@ -20,6 +20,7 @@ const railItems: { section: Exclude<IconRailSection, null>; label: string; icon:
     { section: "graphs", label: "Graphs", icon: "graph" },
     { section: "files", label: "Files", icon: "folder" },
     { section: "collab", label: "Collab Space", icon: "globe" },
+    { section: "collabV2", label: "Collab V2", icon: "layers" },
 ];
 function getBadge(section: string, props: IconRailProps): number | null {
     switch (section) {

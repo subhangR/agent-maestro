@@ -32,6 +32,7 @@ import {
 export {
   grantSupabaseAuthenticatedRoleOnCreate,
   grantSupabaseAuthenticatedRoleOnSignIn,
+  persistSupabaseAuthenticatedRoleOnCreate,
 } from './supabaseAuth';
 export {
   createCollabFileDownload,
