@@ -16,6 +16,7 @@ import {
 } from '../app/types/app-state';
 import { TerminalRegistry } from '../SessionTerminal';
 import { coercePtyDataToString } from '../services/terminalService';
+import { initTerminalWriteScheduler, queueTerminalOutput } from '../services/terminalWriteScheduler';
 import { createSession, closeSession, detachSession } from '../services/sessionService';
 import { maestroClient } from '../utils/MaestroClient';
 import { envVarsForProjectId } from '../app/utils/env';
@@ -104,6 +105,29 @@ export function initApp(
 
     // ──── PTY OUTPUT LISTENER ────
     if (IS_TAURI) {
+      initTerminalWriteScheduler({
+        getTerm: (id) => registry.current.get(id)?.term as
+          | { write(data: string): void; element?: HTMLElement }
+          | undefined,
+        isReady: isTerminalRendererReady,
+        bufferPending: (id, text) => {
+          if (
+            !pendingData.current.has(id) &&
+            pendingData.current.size >= DEFAULTS.MAX_PENDING_SESSIONS
+          ) {
+            const oldest = pendingData.current.keys().next().value as string | undefined;
+            if (oldest) pendingData.current.delete(oldest);
+          }
+          const buffer = pendingData.current.get(id) || [];
+          buffer.push(text);
+          if (buffer.length > DEFAULTS.MAX_PENDING_CHUNKS_PER_SESSION) {
+            buffer.splice(0, buffer.length - DEFAULTS.MAX_PENDING_CHUNKS_PER_SESSION);
+          }
+          pendingData.current.delete(id);
+          pendingData.current.set(id, buffer);
+        },
+      });
+
       const unlistenOutput = await listen<PtyOutput>('pty-output', (event) => {
         if (cancelled) return;
         const { id, data } = event.payload as { id: string; data?: unknown };
@@ -114,28 +138,7 @@ export function initApp(
         if (closingSessions.has(id)) return;
 
         sessionStore.markAgentWorkingFromOutput(id, text);
-
-        const entry = registry.current.get(id);
-        if (entry && isTerminalRendererReady(entry.term)) {
-          entry.term.write(text);
-          return;
-        }
-
-        // Buffer the data
-        if (
-          !pendingData.current.has(id) &&
-          pendingData.current.size >= DEFAULTS.MAX_PENDING_SESSIONS
-        ) {
-          const oldest = pendingData.current.keys().next().value as string | undefined;
-          if (oldest) pendingData.current.delete(oldest);
-        }
-        const buffer = pendingData.current.get(id) || [];
-        buffer.push(text);
-        if (buffer.length > DEFAULTS.MAX_PENDING_CHUNKS_PER_SESSION) {
-          buffer.splice(0, buffer.length - DEFAULTS.MAX_PENDING_CHUNKS_PER_SESSION);
-        }
-        pendingData.current.delete(id);
-        pendingData.current.set(id, buffer);
+        queueTerminalOutput(id, text);
       });
       unlisteners.push(unlistenOutput);
     }

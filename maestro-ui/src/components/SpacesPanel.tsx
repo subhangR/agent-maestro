@@ -33,7 +33,7 @@ type SpacesPanelProps = {
     onToggle: () => void;
 };
 
-export const SpacesPanel: React.FC<SpacesPanelProps> = ({
+export const SpacesPanel: React.FC<SpacesPanelProps> = React.memo(({
     agentShortcuts,
     sessions,
     activeSessionId,
@@ -218,4 +218,5 @@ export const SpacesPanel: React.FC<SpacesPanelProps> = ({
             )}
         </aside>
     );
-};
+});
+SpacesPanel.displayName = "SpacesPanel";

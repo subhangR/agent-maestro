@@ -132,16 +132,46 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const sendPromptToActive = useSessionStore((s) => s.sendPromptToActive);
   const sendPromptToSession = useSessionStore((s) => s.sendPromptToSession);
   const active = sessions.find((s) => s.id === activeId) ?? null;
-  const maestroSessions = useMaestroStore((s) => s.sessions);
   const teamViewOpen = useUIStore((s) => s.teamViewRootId) !== null;
   const reportError = useUIStore((s) => s.reportError);
   const inspectedSessionId = useUIStore((s) => s.inspectedSessionId);
-  const inspectedMaestroSession = inspectedSessionId
-    ? maestroSessions[inspectedSessionId] ?? null
-    : null;
-
-  const activeMaestroSession = active?.maestroSessionId ? maestroSessions[active.maestroSessionId] : null;
-  const activeIsCoordinator = isCoordinatorRole(activeMaestroSession?.mode);
+  // Narrow maestro-store subscriptions: the sessions map is replaced on every
+  // WebSocket batch, and subscribing to the whole map re-rendered this entire
+  // workspace (including every mounted terminal wrapper) per tick. Only the
+  // inspected and active maestro sessions are ever read here.
+  const inspectedMaestroSession = useMaestroStore((s) =>
+    inspectedSessionId ? s.sessions[inspectedSessionId] ?? null : null,
+  );
+  const activeMaestroSessionId = active?.maestroSessionId ?? null;
+  // Select primitive fields, not the session object: the active session's
+  // object identity changes on every timeline append while its agent works,
+  // which would re-render this whole workspace per tick. Its full object is
+  // only needed when the PTY has exited and the in-place stats view shows.
+  const activeMaestroExists = useMaestroStore((s) =>
+    Boolean(activeMaestroSessionId && s.sessions[activeMaestroSessionId]),
+  );
+  const activeMaestroMode = useMaestroStore((s) =>
+    activeMaestroSessionId ? s.sessions[activeMaestroSessionId]?.mode : undefined,
+  );
+  const activeMaestroAgentTool = useMaestroStore((s) => {
+    if (!activeMaestroSessionId) return null;
+    const ms = s.sessions[activeMaestroSessionId];
+    if (!ms) return null;
+    const snapshots = ms.teamMemberSnapshots?.length
+      ? ms.teamMemberSnapshots
+      : ms.teamMemberSnapshot
+        ? [ms.teamMemberSnapshot]
+        : [];
+    return snapshots[0]?.agentTool
+      ?? ((ms.metadata as { agentTool?: string } | undefined)?.agentTool ?? null);
+  });
+  const activeExited = Boolean(active?.exited);
+  const statsMaestroSession = useMaestroStore((s) =>
+    activeExited && activeMaestroSessionId
+      ? s.sessions[activeMaestroSessionId] ?? null
+      : null,
+  );
+  const activeIsCoordinator = isCoordinatorRole(activeMaestroMode);
 
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
@@ -170,17 +200,9 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const isActiveSession =
     hasInspectedSession || (!isActiveWhiteboard && !isActiveFile && !isActiveCollab);
 
-  const activeLogAgentTool = (() => {
-    if (!active?.maestroSessionId) return active?.effectId ?? null;
-    const maestroSession = maestroSessions[active.maestroSessionId];
-    const snapshots = maestroSession?.teamMemberSnapshots?.length
-      ? maestroSession.teamMemberSnapshots
-      : maestroSession?.teamMemberSnapshot
-        ? [maestroSession.teamMemberSnapshot]
-        : [];
-    const metadataAgentTool = (maestroSession?.metadata as { agentTool?: string } | undefined)?.agentTool ?? null;
-    return snapshots[0]?.agentTool ?? metadataAgentTool ?? active.effectId ?? null;
-  })();
+  const activeLogAgentTool = active?.maestroSessionId
+    ? activeMaestroAgentTool ?? active.effectId ?? null
+    : active?.effectId ?? null;
 
   // --- Project store ---
   const projects = useProjectStore((s) => s.projects);
@@ -450,8 +472,8 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         {/* Mode chip — shows current session role (coordinator / worker).
             Lives inside the deck so it overlays only the terminal content, not
             the session-log strip above it. */}
-        {activeMaestroSession && (
-          <ModeChip mode={activeMaestroSession.mode} />
+        {activeMaestroExists && (
+          <ModeChip mode={activeMaestroMode} />
         )}
         {/*
           Center-pane decision:
@@ -512,9 +534,9 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
               // avoid flashing stats during the close animation.
               const isInactive =
                 Boolean(s.exited) && Boolean(s.maestroSessionId) && s.id === activeId;
-              const inactiveMaestroSession = isInactive && s.maestroSessionId
-                ? maestroSessions[s.maestroSessionId] ?? null
-                : null;
+              // isInactive implies s.id === activeId && s.exited, so the
+              // maestro session for this row IS statsMaestroSession.
+              const inactiveMaestroSession = isInactive ? statsMaestroSession : null;
               // Hidden (not unmounted) while a stats overlay is showing, so the
               // map stays mounted underneath without painting over the stats view.
               const visible = s.id === activeId && !inspectedMaestroSession;

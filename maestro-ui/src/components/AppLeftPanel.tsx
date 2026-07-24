@@ -39,7 +39,9 @@ function sectionToTeamSubTab(section: IconRailSection): TeamSubTab | undefined {
     }
 }
 
-export const AppLeftPanel: React.FC = () => {
+// Memoized with no props: re-renders only from its own store subscriptions,
+// never because the App shell re-rendered.
+export const AppLeftPanel: React.FC = React.memo(() => {
     const breakpoint = useBreakpoint();
     const isMobile = breakpoint === "mobile";
 
@@ -221,4 +223,5 @@ export const AppLeftPanel: React.FC = () => {
             </div>
         </div>
     );
-};
+});
+AppLeftPanel.displayName = "AppLeftPanel";
