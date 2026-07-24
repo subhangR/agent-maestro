@@ -186,6 +186,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
     showTerminal,
   } = useSessionViewMode();
 
+  // The Activity overlay needs the full maestro session (timeline), but only
+  // while it is showing — gate the subscription so per-tick timeline appends
+  // don't re-render the workspace when the overlay is hidden.
+  const activityMaestroSession = useMaestroStore((s) =>
+    showActivity && activeMaestroSessionId
+      ? s.sessions[activeMaestroSessionId] ?? null
+      : null,
+  );
+
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
   const activeSpace = useMemo(
@@ -495,7 +504,7 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             aria-hidden={!showActivity}
           >
             <SessionActivityPanel
-              session={activeMaestroSession ?? maestroSessions[active.maestroSessionId] ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
+              session={activityMaestroSession ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
               visible={showActivity}
             />
           </div>
