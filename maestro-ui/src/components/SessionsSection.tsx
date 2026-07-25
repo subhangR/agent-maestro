@@ -1590,7 +1590,7 @@ export const SessionsSection = React.memo(function SessionsSection({
                   </span>
                   <span className="sessionEmptyState__hint" style={{ color: 'var(--pn-ink-3)' }}>
                     {sessionSubTab === 'open'
-                      ? 'New and unaddressed sessions appear here. Spawn one to get started.'
+                      ? 'Your running agents show up here. Pick a task and press Run to start.'
                       : sessionSubTab === 'done'
                         ? 'Click the ○ next to an open session to mark it done — it moves here.'
                         : 'Sessions you close with ✕ are dismissed here. Restore them anytime.'}
