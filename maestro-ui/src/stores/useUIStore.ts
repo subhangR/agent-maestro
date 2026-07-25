@@ -205,6 +205,14 @@ interface UIState {
   showBoardRequested: boolean;
   setShowBoardRequested: (requested: boolean) => void;
 
+  // Whether the Multi-Project Board overlay is currently open. Mirrors App's
+  // local showMultiProjectBoard so AppWorkspace can know a terminal-reparenting
+  // view is active and keep ALL terminals mounted (the board pulls terminal DOM
+  // out of the deck via [data-terminal-id]; an unmounted terminal would leave an
+  // empty slot). See AppWorkspace's bounded-mount.
+  multiProjectBoardOpen: boolean;
+  setMultiProjectBoardOpen: (open: boolean) => void;
+
   // Team view overlay — root maestro session id of the re-rootable hierarchy
   teamViewRootId: string | null;
   setTeamViewRootId: (sessionId: string | null) => void;
@@ -443,6 +451,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   // -- Maestro board trigger --
   showBoardRequested: false,
   setShowBoardRequested: (requested) => set({ showBoardRequested: requested }),
+
+  multiProjectBoardOpen: false,
+  setMultiProjectBoardOpen: (open) => set({ multiProjectBoardOpen: open }),
 
   // -- Team view overlay --
   teamViewRootId: null,

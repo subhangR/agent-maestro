@@ -682,23 +682,55 @@ class SoundManager {
       return;
     }
 
+    let audio: HTMLAudioElement | null = null;
     try {
       const original = this.getAudioElement(note, instrument);
-      const audio = original.cloneNode(true) as HTMLAudioElement;
+      audio = original.cloneNode(true) as HTMLAudioElement;
       audio.volume = this.config.volume;
 
       this.activeSounds.add(audio);
 
-      audio.addEventListener('ended', () => {
-        this.activeSounds.delete(audio);
-      }, { once: true });
+      // RELEASE the media resource when the clip finishes / errors / is
+      // interrupted. A played HTMLAudioElement keeps its decoded resource (and
+      // the detached element itself) ALIVE in the browser's media pipeline even
+      // after JS drops the reference — dropping it from activeSounds is NOT
+      // enough. Without pause()+clear-src+load(), every per-event sound (11
+      // streaming agents fire these constantly) leaks a detached <audio> holding
+      // its mp3 buffer, which is the gradual heap climb. Idempotent + one-shot.
+      const el = audio;
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true;
+        this.activeSounds.delete(el);
+        el.removeEventListener('ended', release);
+        el.removeEventListener('error', release);
+        try {
+          el.pause();
+          el.removeAttribute('src');
+          el.load(); // frees the browser-retained media resource
+        } catch {
+          // element already torn down — nothing to release
+        }
+      };
+      audio.addEventListener('ended', release, { once: true });
+      audio.addEventListener('error', release, { once: true });
 
-      audio.addEventListener('error', () => {
-        this.activeSounds.delete(audio);
-      }, { once: true });
-
-      await audio.play();
+      // play() rejects on interruption / autoplay policy — the old empty catch
+      // leaked the element in that path. Release it here too.
+      await audio.play().catch(() => release());
     } catch {
+      // getAudioElement / clone failed; if we made an element, release it.
+      if (audio) {
+        try {
+          this.activeSounds.delete(audio);
+          audio.pause();
+          audio.removeAttribute('src');
+          audio.load();
+        } catch {
+          // best effort
+        }
+      }
     }
   }
 

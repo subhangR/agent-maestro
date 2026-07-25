@@ -304,6 +304,17 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
     if (Object.keys(override).length === 0) pendingLifecycle.delete(sessionId);
   };
 
+  // Cap the per-session history arrays the client RETAINS. The server broadcasts
+  // the FULL session on every timeline event, and its timeline[]/events[] grow
+  // without bound as an agent streams. Stored verbatim for all sessions, that is
+  // the dominant gradual heap growth: with a streaming fleet the retained arrays
+  // climb for minutes until GC pressure makes the whole UI lag (a reload starts
+  // from timeline-less summary DTOs, which is why it feels smooth again). The UI
+  // only ever renders recent timeline in detail views; full history lives on the
+  // server (and in the session log files), so keeping a generous tail is safe.
+  const MAX_TIMELINE_EVENTS = 300;
+  const MAX_SESSION_EVENTS = 300;
+
   const normalizeSession = (session: Partial<MaestroSession>): MaestroSession => {
     if (!session) return session as MaestroSession;
     if (!Array.isArray(session.taskIds)) {
@@ -311,9 +322,13 @@ export const useMaestroStore = create<MaestroState>((set, get) => {
     }
     if (!Array.isArray(session.timeline)) {
       session.timeline = [];
+    } else if (session.timeline.length > MAX_TIMELINE_EVENTS) {
+      session.timeline = session.timeline.slice(-MAX_TIMELINE_EVENTS);
     }
     if (!Array.isArray(session.events)) {
       session.events = [];
+    } else if (session.events.length > MAX_SESSION_EVENTS) {
+      session.events = session.events.slice(-MAX_SESSION_EVENTS);
     }
     if (!session.status) {
       session.status = 'spawning';

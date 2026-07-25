@@ -113,7 +113,7 @@ export class PtyWebSocketServer {
       const text = Array.isArray(data)
         ? Buffer.concat(data).toString('utf8')
         : Buffer.from(data as ArrayBuffer).toString('utf8');
-      this.handleControl(sessionId, text);
+      this.handleControl(sessionId, text, ws);
     });
 
     ws.on('close', () => {
@@ -165,6 +165,15 @@ export class PtyWebSocketServer {
       this.send(ws, JSON.stringify({ type: 'size', cols: size.cols, rows: size.rows }));
     }
 
+    // ORDER IS PROTOCOL, NOT STYLE: the `attached` handshake frame MUST be sent
+    // BEFORE the replay/snapshot bytes. The client resets xterm when it processes
+    // `attached` (on epoch-change / gap), so if the replay arrived first it would
+    // paint into the old buffer and the reset would then WIPE it — a blank
+    // terminal with no error. Do NOT refactor this into a compose-and-return
+    // helper that delivers replay through the sink before returning the metadata
+    // (a "tidy attach(id, sink, offset)" seam is exactly this trap). Keep
+    // handshake-then-replay here and in finishSnapshotAttach.
+    //
     // The attach handshake. `base`/`gap`/`next` are RAW byte offsets: the client
     // snaps its receive counter to `next` (NOT to the replay frame's length,
     // which is sanitized and therefore shorter than the raw span it represents),
@@ -266,7 +275,7 @@ export class PtyWebSocketServer {
     }
   }
 
-  private handleControl(sessionId: string, text: string): void {
+  private handleControl(sessionId: string, text: string, origin: WebSocket): void {
     let msg: any;
     try {
       msg = JSON.parse(text);
@@ -277,7 +286,10 @@ export class PtyWebSocketServer {
       const cols = Number(msg.cols);
       const rows = Number(msg.rows);
       if (Number.isFinite(cols) && Number.isFinite(rows)) {
-        this.ptyHostService.resize(sessionId, cols, rows);
+        // `origin` lets the resize fan out a live size frame to every OTHER
+        // subscriber of this PTY — a viewer that keeps its own geometry after a
+        // peer resize renders the TUI's redraws corrupted (multi-viewer fight).
+        this.ptyHostService.resize(sessionId, cols, rows, origin);
       }
     }
   }

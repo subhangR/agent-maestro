@@ -41,12 +41,16 @@ export interface TerminalTransport {
   /** Web: register a handler for server→client PTY exit events; returns unsubscribe fn. */
   onExit(handler: (id: string, exitCode?: number | null) => void): Promise<Unlisten>;
   /**
-   * Web: register a handler for the server's authoritative PTY size, sent once on
-   * attach (before scrollback replay) so the client can match the width the
-   * buffered output was authored at. Absent in Tauri (the desktop PTY is sized by
-   * the window's own FitAddon, so there is no late-join width mismatch).
+   * Web: register a handler for the server's authoritative PTY size. Sent once
+   * on attach (before scrollback replay) so the client can match the width the
+   * buffered output was authored at, and — with `live: true` — whenever ANOTHER
+   * attached client resizes the shared PTY, so every viewer's grid follows the
+   * geometry the TUI is actually drawing for. Absent in Tauri (the desktop PTY
+   * is sized by the window's own FitAddon; it never has a second viewer).
    */
-  onSize?(handler: (id: string, size: { cols: number; rows: number }) => void): Promise<Unlisten>;
+  onSize?(
+    handler: (id: string, size: { cols: number; rows: number; live?: boolean }) => void,
+  ): Promise<Unlisten>;
   /**
    * Web: register a handler when attach metadata says the current on-screen
    * buffer cannot be continued (stream epoch changed, bytes were evicted, or a
@@ -54,4 +58,31 @@ export interface TerminalTransport {
    * payload is delivered. Absent in Tauri.
    */
   onReattach?(handler: (id: string) => void): Promise<Unlisten>;
+  /**
+   * Web: SUSPEND a background (offscreen) session's live stream — close its WS so
+   * the server stops sending and the client stops parsing its output, WITHOUT
+   * killing the server-side PTY (which keeps running and buffering into its
+   * replay ring) and WITHOUT tearing down the client's resume offset. The visible
+   * cost of N concurrent streams drops to O(on-screen) instead of O(running).
+   * A no-op if the session isn't attached or is already suspended. Absent in
+   * Tauri (native PTY output is a single shared event channel, not per-session
+   * sockets, so there is nothing per-session to suspend).
+   */
+  suspend?(id: string): void;
+  /**
+   * Web: RESUME a suspended session — reopen its WS at the preserved byte offset.
+   * The server replays only the bytes produced while suspended (or a bounded gap
+   * + recent scrollback if it produced more than its ring holds), reusing the
+   * exact attach/replay path a network reconnect uses. A no-op if the session
+   * isn't currently suspended. Absent in Tauri.
+   */
+  resume?(id: string): void;
+  /**
+   * Web: REMOUNT replay — reset the resume offset to 0 and reconnect so the
+   * server replays its FULL retained ring into a FRESH xterm. Used when a
+   * terminal that was fully UNMOUNTED (xterm disposed) is shown again: unlike
+   * resume() (delta from the preserved offset), this repaints recent scrollback
+   * into the new empty buffer. Absent in Tauri.
+   */
+  requestFullReplay?(id: string): void;
 }

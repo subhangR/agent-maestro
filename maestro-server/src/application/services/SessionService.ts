@@ -173,7 +173,7 @@ export class SessionService {
         needsInput: session.needsInput,
       });
     } else {
-      await this.eventBus.emit('session:updated', session);
+      await this.eventBus.emit('session:updated', this.toBroadcast(session));
     }
 
     // Emit notification events for session status transitions (using snapshot)
@@ -337,12 +337,37 @@ export class SessionService {
   }
 
   /**
+   * Bound the arrays a `session:updated` broadcast carries. The full session is
+   * kept on disk (and served via getReplay / GET /sessions/:id?fields=full), but
+   * `timeline[]`/`events[]` grow WITHOUT BOUND as an agent streams, and this
+   * event fires ~2×/sec per session. Broadcasting the whole growing object makes
+   * every client's per-message parse cost climb over the life of a session —
+   * felt as terminal/UI lag that worsens the longer the fleet runs, even after
+   * the client caps what it RETAINS. Send only a recent tail so the message size
+   * (and parse cost) stays constant. Returns the session unchanged when it's
+   * already small, to avoid copying on the hot path.
+   */
+  private toBroadcast(session: Session): Session {
+    const TAIL = 100;
+    const tl = session.timeline;
+    const ev = session.events;
+    const trimTl = Array.isArray(tl) && tl.length > TAIL;
+    const trimEv = Array.isArray(ev) && ev.length > TAIL;
+    if (!trimTl && !trimEv) return session;
+    return {
+      ...session,
+      ...(trimTl ? { timeline: tl.slice(-TAIL) } : {}),
+      ...(trimEv ? { events: ev.slice(-TAIL) } : {}),
+    };
+  }
+
+  /**
    * Add an event to a session.
    */
   async addEventToSession(sessionId: string, event: { type: string; data?: any }): Promise<Session> {
     const session = await this.sessionRepo.addEvent(sessionId, event);
 
-    await this.eventBus.emit('session:updated', session);
+    await this.eventBus.emit('session:updated', this.toBroadcast(session));
 
     return session;
   }
@@ -387,7 +412,7 @@ export class SessionService {
       throw new NotFoundError('Session', sessionId);
     }
 
-    await this.eventBus.emit('session:updated', updatedSession);
+    await this.eventBus.emit('session:updated', this.toBroadcast(updatedSession));
 
     // Emit notification events for specific timeline event types
     if (type === 'progress') {
@@ -452,7 +477,7 @@ export class SessionService {
       throw new NotFoundError('Session', sessionId);
     }
 
-    await this.eventBus.emit('session:updated', updatedSession);
+    await this.eventBus.emit('session:updated', this.toBroadcast(updatedSession));
 
     return updatedSession;
   }

@@ -781,9 +781,37 @@ export const SessionsSection = React.memo(function SessionsSection({
   const sessionsRef = React.useRef(sessions);
   sessionsRef.current = sessions;
 
+  // buildTeamGroups is O(coordinators × sessions) (nested scan) and reads ONLY
+  // structural fields — none of which change on the ~2/sec-per-session
+  // timeline-only `session:updated` broadcasts. Keying the memo directly on
+  // `maestroSessions` (whose map ref is replaced every tick) re-ran the whole
+  // O(N²) grouping ~22×/sec with a large fleet — a main-thread hog that lagged
+  // the entire UI. Key it on a cheap O(N) structural SIGNATURE so the expensive
+  // grouping recomputes only when hierarchy/team/status actually change.
+  const teamStructuralKey = useMemo(() => {
+    const parts: string[] = [];
+    for (const s of sessions) parts.push(s.id + '>' + (s.maestroSessionId ?? ''));
+    for (const id in maestroSessions) {
+      const m = maestroSessions[id] as MaestroSession & { spawnedBy?: string; parentSessionId?: string };
+      parts.push(
+        id + '|' + (m.status ?? '') + '|' + (m.mode ?? '') + '|' + (m.teamSessionId ?? '') +
+        '|' + (m.spawnedBy ?? '') + '|' + (m.parentSessionId ?? '') + '|' + (m.teamMemberId ?? '') +
+        '|' + (m.teamId ?? ''),
+      );
+    }
+    if (teamsMap) {
+      for (const id in teamsMap) {
+        const t = teamsMap[id];
+        parts.push('T' + id + '|' + (t.leaderId ?? '') + '|' + (t.status ?? '') + '|' + (t.name ?? '') + '|' + (t.avatar ?? ''));
+      }
+    }
+    return parts.join(';');
+  }, [sessions, maestroSessions, teamsMap]);
+
   const teamGroupData = useMemo(() => {
     return buildTeamGroups(sessions, maestroSessions, teamsMap);
-  }, [sessions, maestroSessions, teamsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only on the structural signature; grouping ignores per-tick timeline changes
+  }, [teamStructuralKey]);
 
   // Pure-read index: coordinator maestroSessionId → its TeamGroup. Lets the tree
   // wrap each coordinator root in a pn-team box (head: dot/name/count) with no new

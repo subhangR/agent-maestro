@@ -15,7 +15,21 @@
 /** A recognized server→client control frame. */
 export type PtyControlFrame =
   | { type: 'exit'; exitCode: number | null }
-  | { type: 'size'; cols: number; rows: number }
+  | {
+      /**
+       * PTY dimensions. Without `live`, the attach-time snapshot (sent once per
+       * (re)connect so the client can render replayed scrollback at the width it
+       * was authored at) — a client that has already fit locally may ignore it.
+       * With `live: true`, a real-time notification that ANOTHER attached client
+       * just resized the shared PTY — authoritative for every other viewer:
+       * ignoring it leaves this view's grid at a different geometry than the
+       * one the TUI inside the PTY is drawing for, which corrupts the display.
+       */
+      type: 'size';
+      cols: number;
+      rows: number;
+      live?: boolean;
+    }
   | {
       /**
        * Offset-resume ack, sent once at the start of every (re)connect in
@@ -71,7 +85,15 @@ export function parseControlFrame(data: string): PtyControlFrame | null {
 
     case 'size':
       if (Number.isFinite(m.cols) && Number.isFinite(m.rows)) {
-        return { type: 'size', cols: m.cols as number, rows: m.rows as number };
+        const frame: Extract<PtyControlFrame, { type: 'size' }> = {
+          type: 'size',
+          cols: m.cols as number,
+          rows: m.rows as number,
+        };
+        // Only an explicit `true` marks a live peer-resize; anything else keeps
+        // attach-snapshot semantics so old servers behave exactly as before.
+        if (m.live === true) frame.live = true;
+        return frame;
       }
       return null; // non-finite dimensions are not a usable size frame
 

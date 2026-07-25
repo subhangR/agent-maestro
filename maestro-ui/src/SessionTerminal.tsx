@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { platform, IS_TAURI } from "./platform";
+import { platform } from "./platform";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import type { PendingDataBuffer } from "./app/types/app-state";
@@ -219,29 +219,15 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     term.open(container);
     patchXtermRenderServiceDimensions(term);
 
-    // Web (Chromium) only: swap the DOM renderer for WebGL. The DOM renderer
-    // burns an entire core re-laying-out rows while an agent TUI streams; the
-    // WebGL renderer is ~5-10x cheaper. Deliberately NOT loaded under Tauri —
-    // the addon crashes in the WKWebView/StrictMode setup (see project memory
-    // "xterm renderer-addon dead-end"). Any failure falls back to the DOM
-    // renderer: on webglcontextlost we dispose the addon (xterm reverts), and
-    // a load-time throw is swallowed.
-    if (!IS_TAURI) {
-      import("@xterm/addon-webgl")
-        .then(({ WebglAddon }) => {
-          if (termRef.current !== term || !term.element) return; // unmounted meanwhile
-          try {
-            const webgl = new WebglAddon();
-            webgl.onContextLoss(() => {
-              try { webgl.dispose(); } catch { /* already disposed */ }
-            });
-            term.loadAddon(webgl);
-          } catch {
-            // WebGL unavailable (headless GPU, blocked context) — DOM renderer stays.
-          }
-        })
-        .catch(() => { /* chunk load failed — DOM renderer stays */ });
-    }
+    // NOTE: intentionally DOM renderer only — no WebGL/Canvas addon. xterm's
+    // WebGL renderer allocates one GPU context PER terminal; with many session
+    // terminals mounted at once the browser blows past its ~16-WebGL-context
+    // cap and thrashes (constant context loss/recreation), which pegs the GPU
+    // (MetalPerformanceShaders) and stalls the whole tab's compositor — the
+    // entire UI, not just the terminal, goes laggy. The DOM renderer has no
+    // per-terminal GPU context; parse load is bounded instead by only feeding
+    // on-screen terminals (see terminalVisibilityDriver). See project memory
+    // "xterm renderer-addon dead-end".
 
     // Keep the terminal background in sync with the app light/dark toggle.
     // The terminal stays dark in both modes; only the bg flips between two
@@ -662,6 +648,15 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      const rect = container.getBoundingClientRect();
 	      if (rect.width === 0 || rect.height === 0) return;
 
+	      // A computed-hidden terminal (background pane in this window, or any
+	      // mount in a second tab/window viewing the same session) must neither
+	      // refit nor ship a size: the shared PTY belongs to whichever view the
+	      // user is actually looking at, and a hidden stomp garbles every visible
+	      // view of it. While hidden, the grid instead FOLLOWS the PTY via the
+	      // server's size frames (attach snapshot + live peer-resize broadcasts);
+	      // the activation effect refits and reclaims when this view is shown.
+	      if (getComputedStyle(container).visibility === "hidden") return;
+
 	      // Defer the first fit until the webfont has loaded. Fitting against
 	      // fallback-font metrics ships the wrong column count to the server PTY
 	      // and makes the 80-col scrollback ring replay at the wrong width.
@@ -886,10 +881,17 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
 	      }
 	      const { cols, rows } = term;
 	      clientFittedSessions.add(props.id);
+	      // Reclaim the shared PTY on activation (tmux "last active viewer
+	      // wins"): ship not only when OUR last-shipped size changed, but also
+	      // when the PTY itself was last sized by another viewer (serverPtySizes
+	      // tracks PTY truth via live size frames) — the local dedupe alone would
+	      // skip the ship and leave this view rendering a foreign geometry.
+	      const ptyNow = serverPtySizes.get(props.id);
+	      const ptyDiffers = !ptyNow || ptyNow.cols !== cols || ptyNow.rows !== rows;
 	      serverPtySizes.set(props.id, { cols, rows });
 	      setLastFittedSize({ cols, rows });
 	      const last = lastSizeRef.current;
-	      if (!last || last.cols !== cols || last.rows !== rows) {
+	      if (!last || last.cols !== cols || last.rows !== rows || ptyDiffers) {
 	        lastSizeRef.current = { cols, rows };
 	        void platform.terminal.resize(props.id, cols, rows).catch(() => {});
       }
@@ -900,6 +902,21 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
       cancelled = true;
     };
   }, [props.active, props.id]);
+
+  // Only the ACTIVE terminal blinks its cursor. xterm runs a per-terminal blink
+  // timer + periodic cursor refresh whenever cursorBlink is on; across many
+  // mounted session terminals that is N steady repaint loops that scale with the
+  // fleet size and add up to gradual UI lag. A background terminal you're not
+  // looking at doesn't need a blinking cursor, so switch blink off when inactive
+  // and restore the user's setting when it becomes active.
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    const wantBlink = props.active && useTerminalSettingsStore.getState().cursorBlink;
+    if (term.options.cursorBlink !== wantBlink) {
+      term.options.cursorBlink = wantBlink;
+    }
+  }, [props.active]);
 
   useEffect(() => {
     const term = termRef.current;
@@ -943,9 +960,12 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     term.options.lineHeight = termLineHeight;
     term.options.letterSpacing = termLetterSpacing;
 
-    // Cursor options
+    // Cursor options. Blink ONLY the active terminal — otherwise this settings
+    // effect would re-enable a per-terminal blink timer+repaint loop on every
+    // mounted (but hidden) terminal, defeating the active-only-blink effect
+    // above and adding N steady repaint loops that scale with the fleet.
     term.options.cursorStyle = termCursorStyle;
-    term.options.cursorBlink = termCursorBlink;
+    term.options.cursorBlink = props.active && termCursorBlink;
     term.options.cursorInactiveStyle = termCursorInactiveStyle;
 
     // Scrollback
@@ -955,10 +975,17 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     term.options.theme = buildITheme(termColors, currentTerminalBg());
 
     if (needsReflow) {
-      try {
-        fit?.fit();
-      } catch {
-        /* not measurable yet */
+      // Same rule as sendResize: a computed-hidden view neither refits nor
+      // ships — its grid keeps following the shared PTY's size, and the
+      // activation effect refits with the new font metrics when it is shown.
+      const host = containerRef.current;
+      const reflowHidden = host ? getComputedStyle(host).visibility === "hidden" : false;
+      if (!reflowHidden) {
+        try {
+          fit?.fit();
+        } catch {
+          /* not measurable yet */
+        }
       }
       try {
         term.refresh(0, term.rows - 1);
@@ -978,7 +1005,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
       // desync from it (overlapping glyphs) until the next manual resize. Ship
       // the new size to the PTY now and keep the size caches coherent.
       const { cols, rows } = term;
-      if (cols > 0 && rows > 0) {
+      if (!reflowHidden && cols > 0 && rows > 0) {
         const last = lastSizeRef.current;
         if (!last || last.cols !== cols || last.rows !== rows) {
           lastSizeRef.current = { cols, rows };
@@ -1000,6 +1027,7 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     termCursorInactiveStyle,
     termScrollback,
     termColors,
+    props.active,
   ]);
 
   return <div ref={containerRef} style={{ height: "100%", width: "100%" }} />;

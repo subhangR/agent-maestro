@@ -22,6 +22,10 @@ import {
   flushTerminalOutput,
   dropTerminalOutput,
 } from '../services/terminalWriteScheduler';
+import {
+  startTerminalVisibilityDriver,
+  reconcileTerminalVisibility,
+} from '../services/terminalVisibilityDriver';
 import { shortenPathSmart } from '../pathDisplay';
 import * as DEFAULTS from '../app/constants/defaults';
 import type { MutableRefObject } from 'react';
@@ -288,6 +292,19 @@ export function initSessionStoreRefs(
       bufferPending: bufferOutput,
     });
 
+    // Lazy terminal streaming: suspend offscreen terminals so only on-screen ones
+    // receive + parse PTY output (O(visible) instead of O(running streams)).
+    startTerminalVisibilityDriver({
+      listTerminals: () =>
+        Array.from(registryRef?.current.entries() ?? []).map(([id, entry]) => ({
+          id,
+          element: (entry.term as { element?: HTMLElement } | undefined)?.element,
+        })),
+      flush: flushTerminalOutput,
+      suspend: (id) => platform.terminal.suspend?.(id),
+      resume: (id) => platform.terminal.resume?.(id),
+    });
+
     void platform.terminal.onOutput((id, data) => {
       if (closingSessions.has(id)) return;
       useSessionStore.getState().markAgentWorkingFromOutput(id, data);
@@ -331,9 +348,15 @@ export function initSessionStoreRefs(
       if (!size.cols || !size.rows) return;
       // Once the client owns the size (has fit + shipped), the server's stale
       // attach snapshot must not touch the grid — see clientFittedSessions.
-      if (clientFittedSessions.has(id)) return;
+      // A `live` frame is different: ANOTHER attached client just resized the
+      // shared PTY, so the TUI inside it now draws for that geometry — a view
+      // that keeps its own grid renders those cursor-addressed redraws as
+      // garbage. Live frames therefore bypass the latch and this view follows
+      // (tmux model: last resizer wins; activating this view re-fits and
+      // reclaims — see SessionTerminal's active-refit effect).
+      if (!size.live && clientFittedSessions.has(id)) return;
       // Remember it for terminals that haven't mounted yet (applied on mount).
-      serverPtySizes.set(id, size);
+      serverPtySizes.set(id, { cols: size.cols, rows: size.rows });
       // If the terminal already exists, match the PTY width now so the scrollback
       // the server is about to replay renders at the column it was authored at.
       const entry = registryRef?.current.get(id);
@@ -349,6 +372,7 @@ export function initSessionStoreRefs(
     void platform.terminal.onExit((id, exitCode) => {
       useSessionStore.getState().clearAgentIdleTimer(id);
       lastResizeAtRef.delete(id);
+      lastWorkingMarkAtRef.delete(id);
       serverPtySizes.delete(id);
       clientFittedSessions.delete(id);
       pendingReplayHydrations.delete(id);
@@ -674,7 +698,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set((s) => ({
       sessions: typeof sessions === 'function' ? sessions(s.sessions) : sessions,
     })),
-  setActiveId: (id) =>
+  setActiveId: (id) => {
     set((s) => {
       const next = typeof id === 'function' ? id(s.activeId) : id;
       // Activating any terminal/space supersedes an inspected-stats view. This
@@ -686,7 +710,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         useUIStore.getState().setInspectedSessionId(null);
       }
       return { activeId: next };
-    }),
+    });
+    // A just-activated terminal that was suspended (offscreen >grace) must resume
+    // promptly, not wait for the 2s reconcile tick. The `terminalHidden` class
+    // flips only after React commits, so reconcile on the second frame — by then
+    // the newly-visible terminal reads as visible and gets resumed. No-op under
+    // Tauri (driver never started) and safe when nothing changed.
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => requestAnimationFrame(reconcileTerminalVisibility));
+    }
+  },
   setHydrated: (hydrated) =>
     set((s) => ({
       hydrated: typeof hydrated === 'function' ? hydrated(s.hydrated) : hydrated,
@@ -738,6 +771,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   cleanupSessionResources: (id) => {
     get().clearAgentIdleTimer(id);
     lastResizeAtRef.delete(id);
+    lastWorkingMarkAtRef.delete(id);
     if (!closingSessions.has(id)) {
       const timeout = window.setTimeout(() => {
         closingSessions.delete(id);
@@ -916,6 +950,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     const { sessions, clearAgentIdleTimer, setSessions, setActiveId } = get();
     clearAgentIdleTimer(id);
     lastResizeAtRef.delete(id);
+    lastWorkingMarkAtRef.delete(id);
     const session = sessions.find((s) => s.id === id) ?? null;
     const wasPersistent = Boolean(session?.persistent && !session?.exited);
 

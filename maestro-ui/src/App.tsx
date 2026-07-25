@@ -101,6 +101,12 @@ export default function App() {
     }
   });
   const [showMultiProjectBoard, setShowMultiProjectBoard] = useState(false);
+  // Mirror board-open into the UI store so AppWorkspace's bounded terminal mount
+  // knows a reparenting view is active and keeps all terminals mounted.
+  const setMultiProjectBoardOpen = useUIStore((s) => s.setMultiProjectBoardOpen);
+  useEffect(() => {
+    setMultiProjectBoardOpen(showMultiProjectBoard);
+  }, [showMultiProjectBoard, setMultiProjectBoardOpen]);
 
   // Keyboard shortcuts for overlays:
   //   Cmd/Ctrl+Shift+B -> Multi-project board

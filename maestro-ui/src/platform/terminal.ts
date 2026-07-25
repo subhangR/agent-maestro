@@ -83,7 +83,9 @@ const _replayHandlers: Array<
   (id: string, data: string, info: TerminalReplayInfo) => void
 > = [];
 const _exitHandlers: Array<(id: string, exitCode?: number | null) => void> = [];
-const _sizeHandlers: Array<(id: string, size: { cols: number; rows: number }) => void> = [];
+const _sizeHandlers: Array<
+  (id: string, size: { cols: number; rows: number; live?: boolean }) => void
+> = [];
 const _reattachHandlers: Array<(id: string) => void> = [];
 
 // Session ids the app currently wants attached (added in createSession, removed
@@ -91,6 +93,14 @@ const _reattachHandlers: Array<(id: string) => void> = [];
 // a socket that closes for a session we've since detached from must NOT come
 // back to life.
 const _activeSessions = new Set<string>();
+// Session ids intentionally SUSPENDED because their terminal is offscreen (see
+// suspend()/resume()). A suspended id stays in _activeSessions (the app still
+// wants it, and resume() must reopen it) but its socket is deliberately closed:
+// onclose must therefore NOT auto-reconnect it or tear down its resume state
+// while this flag is set. The server-side PTY keeps running and buffering into
+// its replay ring, so resume() reopens at the preserved offset and the server
+// replays only the delta — the same machinery a network reconnect uses.
+const _suspended = new Set<string>();
 // Ids for which a real {type:'exit'} frame has already fired onExit, so the
 // close event that follows it (the server always closes subscriber sockets
 // right after sending that frame — see PtyHostService) does not fire again or
@@ -320,7 +330,11 @@ function _ensureSocket(id: string): WebSocket {
           return;
         }
         if (frame.type === 'size') {
-          for (const h of _sizeHandlers) h(id, { cols: frame.cols, rows: frame.rows });
+          // `live` distinguishes a peer-client resize broadcast (authoritative
+          // for this view) from the attach-time snapshot (ignorable once this
+          // client has fit) — the consumer decides, so forward it verbatim.
+          for (const h of _sizeHandlers)
+            h(id, { cols: frame.cols, rows: frame.rows, live: frame.live });
           return;
         }
         if (frame.type === 'attached') {
@@ -358,6 +372,15 @@ function _ensureSocket(id: string): WebSocket {
 
   ws.onclose = (ev) => {
     if (_sockets.get(id) === ws) _sockets.delete(id);
+    // INTENTIONAL SUSPEND: this close was triggered by suspend() for an offscreen
+    // terminal. Do NOT reconnect and do NOT tear down resume state (_received /
+    // _decoders / _epochs) — resume() reopens at the preserved offset and the
+    // server replays the delta. Bail before any reconnect/teardown logic. The
+    // server-side PTY is untouched and keeps buffering.
+    if (_suspended.has(id)) {
+      _clearReconnectTimer(id);
+      return;
+    }
     // NOTE: the streaming decoder is deliberately NOT dropped here. Under offset
     // resume it must persist across a transport drop so a multi-byte glyph split
     // across the disconnect boundary is completed by the reconnect's replay
@@ -374,6 +397,7 @@ function _ensureSocket(id: string): WebSocket {
     // the session is truly over — tear down all per-session offset state.
     if (ev.code === 1011 || alreadyExited) {
       _activeSessions.delete(id);
+      _suspended.delete(id);
       _reconnectAttempts.delete(id);
       _decoders.delete(id);
       _received.delete(id);
@@ -432,6 +456,9 @@ function _reattachActiveSockets(): void {
   let immediateUsed = false;
   let staggerCount = 0;
   for (const id of _activeSessions) {
+    // Intentionally suspended (offscreen) — a wake must NOT reopen it; resume()
+    // is the only thing that brings a suspended session back.
+    if (_suspended.has(id)) continue;
     const ws = _sockets.get(id);
     // Already connected or mid-connect — nothing to reattach.
     if (ws && ws.readyState !== WebSocket.CLOSED && ws.readyState !== WebSocket.CLOSING) continue;
@@ -545,6 +572,9 @@ export const webTerminal: TerminalTransport = {
     // Track this id as one the app wants to stay attached — drives whether a
     // future socket close auto-reconnects (see _ensureSocket's onclose).
     _activeSessions.add(id);
+    // A fresh session id is never born suspended (a prior use of this id may have
+    // left the flag set if it was suspended at teardown).
+    _suspended.delete(id);
     // Fresh session ⇒ fresh offset accounting: start the resume counter at 0 and
     // clear any stale display-only-replay flag from a prior use of this id.
     _received.delete(id);
@@ -603,6 +633,7 @@ export const webTerminal: TerminalTransport = {
     // synchronously fires onclose in some environments, and that handler must
     // see this id as no-longer-active so it does not schedule a reconnect.
     _activeSessions.delete(id);
+    _suspended.delete(id);
     _clearReconnectTimer(id);
     _reconnectAttempts.delete(id);
     _exitedSessions.delete(id);
@@ -638,7 +669,9 @@ export const webTerminal: TerminalTransport = {
     });
   },
 
-  onSize(handler: (id: string, size: { cols: number; rows: number }) => void): Promise<Unlisten> {
+  onSize(
+    handler: (id: string, size: { cols: number; rows: number; live?: boolean }) => void,
+  ): Promise<Unlisten> {
     _sizeHandlers.push(handler);
     return Promise.resolve(() => {
       const idx = _sizeHandlers.indexOf(handler);
@@ -660,5 +693,70 @@ export const webTerminal: TerminalTransport = {
       const idx = _reattachHandlers.indexOf(handler);
       if (idx >= 0) _reattachHandlers.splice(idx, 1);
     });
+  },
+
+  suspend(id: string): void {
+    // Only attached, not-already-suspended sessions can be suspended. (A session
+    // with no live PTY has nothing to suspend; resume would just reopen it.)
+    if (!_activeSessions.has(id) || _suspended.has(id)) return;
+    _suspended.add(id);
+    // Cancel any in-flight reconnect/backoff so nothing races the close reopening
+    // the socket behind resume()'s back.
+    _clearReconnectTimer(id);
+    _reconnectAttempts.set(id, 0);
+    const ws = _sockets.get(id);
+    if (ws) {
+      // onclose sees _suspended and bails without reconnect/teardown. _received /
+      // _decoders / _epochs are intentionally preserved for the offset resume.
+      ws.close();
+      _sockets.delete(id);
+    }
+    // NOTE: the caller (visibility driver) flushes the client-side write buffer
+    // into xterm BEFORE calling suspend(), so `_received` (which advances as
+    // frames arrive) already matches what xterm has been handed — resume() can
+    // offset-resume with no skipped or duplicated bytes.
+  },
+
+  resume(id: string): void {
+    if (!_suspended.has(id)) return;
+    _suspended.delete(id);
+    // Reopen at the preserved offset; the server replays only the delta produced
+    // while suspended (or a bounded gap + recent scrollback), via the same
+    // attached/replay path a network reconnect uses. Nothing to do if the app has
+    // since detached the session (closeSession clears _suspended, so we won't hit
+    // this) — guard anyway.
+    if (_activeSessions.has(id)) _ensureSocket(id);
+  },
+
+  requestFullReplay(id: string): void {
+    // REMOUNT path: a terminal that was UNMOUNTED (its xterm disposed) is being
+    // shown again with a FRESH, empty xterm. Resuming at the preserved offset
+    // would replay only the delta since it went cold → the fresh xterm would be
+    // nearly blank (the silent hole). Instead reset the offset to 0 so the next
+    // connect replays the server's FULL retained ring (recent scrollback) into
+    // the new xterm — the server's attached{gap,next} + reset-then-hydrate path
+    // handles it exactly like a first attach.
+    if (!_activeSessions.has(id)) return;
+    _clearReconnectTimer(id);
+    _reconnectAttempts.set(id, 0);
+    _received.set(id, 0);      // → full-ring replay on the next attach
+    _decoders.delete(id);      // fresh xterm ⇒ fresh streaming decode
+    _pendingReplay.delete(id);
+    _epochs.delete(id);        // let the new attached ack (re)establish the epoch
+    _suspended.delete(id);
+    const old = _sockets.get(id);
+    if (old) {
+      // Detach BEFORE close for TWO reasons: (1) the async onclose's identity
+      // guard (_sockets.get(id) === ws) is then already false → it won't tear
+      // down state (a spurious backoff reconnect it may schedule no-ops against
+      // the socket we open right below); (2) it stops _ensureSocket from handing
+      // us back the very socket we're replacing — its "return existing unless
+      // CLOSED/CLOSING" guard would otherwise keep a still-CONNECTING old socket
+      // alive on rapid re-mount churn (A→B→A). Deleting the ref forces a fresh
+      // socket every time.
+      _sockets.delete(id);
+      try { old.close(); } catch { /* already closing */ }
+    }
+    _ensureSocket(id);         // reopen at offset 0 → full ring replay
   },
 };

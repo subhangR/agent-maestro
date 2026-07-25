@@ -553,12 +553,23 @@ export class PtyHostService {
     entry.proc.write('\r');
   }
 
-  /** Resize the PTY. */
-  resize(sessionId: string, cols: number, rows: number): void {
+  /**
+   * Resize the PTY. When the size actually changes, every OTHER subscriber is
+   * sent a `{type:'size', live:true}` frame so its grid follows the new
+   * geometry — one shared PTY can be viewed from several windows/tabs, and any
+   * viewer left at the old size renders the TUI's cursor-addressed redraws
+   * corrupted. `origin` (the socket the resize came from) is excluded: its
+   * client already fit to exactly this size.
+   */
+  resize(sessionId: string, cols: number, rows: number, origin?: WebSocket): void {
     const entry = this.sessions.get(sessionId);
     if (!entry || entry.exited) return;
     if (!cols || !rows || cols < 1 || rows < 1) return;
     if (cols > 1000 || rows > 1000) return;
+    // Unchanged size: skip the ioctl AND the fan-out. This is what terminates
+    // any client echo (a follower applying a live frame that then re-ships the
+    // same dimensions) — the second hop dies here instead of ping-ponging.
+    if (entry.cols === cols && entry.rows === rows) return;
     try {
       entry.proc.resize(cols, rows);
       entry.cols = cols;
@@ -569,6 +580,16 @@ export class PtyHostService {
         sessionId,
         error: err instanceof Error ? err.message : String(err),
       });
+      return;
+    }
+    const frame = JSON.stringify({ type: 'size', cols, rows, live: true });
+    for (const ws of entry.subscribers) {
+      if (ws === origin) continue;
+      try {
+        if (ws.readyState === 1 /* OPEN */) ws.send(frame);
+      } catch {
+        // subscriber mid-close — its close handler will detach it
+      }
     }
   }
 

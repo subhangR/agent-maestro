@@ -1,4 +1,4 @@
-import React, { MutableRefObject, Suspense, useCallback, useMemo, useRef, useState } from "react";
+import React, { MutableRefObject, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SessionTerminal, { TerminalRegistry } from "../../SessionTerminal";
 import { PendingDataBuffer } from "../../app/types/app-state";
 import { FileExplorerPanel } from "../FileExplorerPanel";
@@ -15,6 +15,7 @@ import {
   getActiveWorkspaceView,
 } from "../../stores/useWorkspaceStore";
 import { isSshCommandLine, sshTargetFromCommandLine } from "../../app/utils/ssh";
+import { platform } from "../../platform";
 import { invoke } from "@tauri-apps/api/core";
 import { IS_TAURI } from "../../platform";
 import { TerminalStrip } from "../session-log/TerminalStrip";
@@ -133,6 +134,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const sendPromptToSession = useSessionStore((s) => s.sendPromptToSession);
   const active = sessions.find((s) => s.id === activeId) ?? null;
   const teamViewOpen = useUIStore((s) => s.teamViewRootId) !== null;
+  // Terminals stay MOUNTED under their stable key (constructed once in
+  // SessionTerminal's mount effect, never rebuilt on session:updated re-renders).
+  // Parse/socket cost is bounded by the visibility driver, which SUSPENDS
+  // offscreen terminals' sockets (keeping their xterm warm for instant switch).
+  // Only hidden EXITED agent terminals unmount (below) to free their scrollback.
+  // (An earlier "mount only the active terminal, remount+replay on switch"
+  // approach was reverted: rebuilding a fresh xterm on every switch leaked old
+  // terminal instances, and the win was marginal since the driver already bounds
+  // live sockets.)
   const reportError = useUIStore((s) => s.reportError);
   const inspectedSessionId = useUIStore((s) => s.inspectedSessionId);
   // Narrow maestro-store subscriptions: the sessions map is replaced on every
@@ -528,15 +538,14 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
               </div>
             )}
             {sessions.map((s) => {
-              // An exited maestro-backed session never renders its terminal
-              // again — selecting it shows the stats view instead (isInactive
-              // below). Keeping its xterm mounted was pure dead weight: every
-              // finished agent retained up to 5000 lines of scrollback buffer
-              // and DOM forever, so renderer memory grew with each agent run.
-              // Unmounting disposes the xterm (SessionTerminal cleanup). Kept
-              // mounted while Team View is open so its DOM reparenting can
-              // still find `[data-terminal-id]` elements, and when active so
-              // the stats-view container renders.
+              // Terminals stay mounted (stable key ⇒ constructed once, never
+              // rebuilt on re-render). Only unmount a hidden EXITED agent
+              // terminal — it never renders its PTY again (selection shows the
+              // stats view) so its xterm + scrollback are dead weight; freeing
+              // them keeps memory from growing with each finished agent. Kept
+              // mounted while Team View is open so its DOM reparenting can find
+              // `[data-terminal-id]`, and when active so the stats container
+              // renders.
               const isExitedAgent = Boolean(s.exited) && Boolean(s.maestroSessionId);
               if (isExitedAgent && s.id !== activeId && !teamViewOpen) {
                 return null;
