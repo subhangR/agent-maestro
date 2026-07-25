@@ -424,7 +424,7 @@ html.js .cap-card { will-change: opacity, transform; }
 /* Capabilities live constellation field */
 .cap-canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .9; }
 .cap-section > .shell { position: relative; z-index: 1; }
-.cap-section::before { animation: cap-drift 20s ease-in-out infinite alternate; }
+
 @keyframes cap-drift { 0% { transform: translate3d(0,0,0) scale(1); } 100% { transform: translate3d(2.5%, -2%, 0) scale(1.08); } }
 
 /* 3D magnetic tilt targets */
@@ -582,15 +582,10 @@ body:not(.has-cursor-on) .cursor-ring, body:not(.has-cursor-on) .cursor-pill { d
 .feature-storage { background: var(--section-alt); }
 .file-tree { background: var(--panel-dark); }
 
-/* Header text adapts: light over the dark hero, theme colors once scrolled */
-.site-header .brand, .site-header .site-nav a { color: #f2f4f7; }
-.site-header .brand-word small { color: #a9d1ff; }
-.site-header:not(.scrolled) .header-cta { background: #fff; color: #05060a; border-color: #fff; }
-.site-header:not(.scrolled) .theme-toggle { color: #f2f4f7; border-color: rgba(255,255,255,.28); }
-.site-header.scrolled .brand { color: var(--ink); }
-.site-header.scrolled .site-nav a { color: var(--ink-soft); }
-.site-header.scrolled .brand-word small { color: var(--moss); }
-.site-header.scrolled .site-nav a:hover { color: var(--ink); }
+/* Header uses theme colors (hero adapts to theme now) */
+.site-header .brand { color: var(--ink); }
+.site-header .site-nav a { color: var(--ink-soft); }
+.site-header .site-nav a:hover { color: var(--ink); }
 
 /* Theme toggle button */
 .theme-toggle { display: inline-grid; place-items: center; width: 38px; height: 38px; flex: none;
