@@ -78,3 +78,9 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 supabase/.temp/
+
+# Firebase deploy cache
+.firebase/
+
+# Firebase functions per-project / local env overrides (may hold app passwords)
+functions/.env.*

@@ -333,23 +333,6 @@ export function Icon({ name, size = 16, className, sw }: IconProps) {
           <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
         </svg>
       );
-    case "sliders":
-      return (
-        <svg {...common}>
-          <path d="M4 7h11" />
-          <path d="M18 7h2" />
-          <circle cx="16.5" cy="7" r="2.5" />
-          <path d="M4 17h4" />
-          <path d="M11 17h9" />
-          <circle cx="9.5" cy="17" r="2.5" />
-        </svg>
-      );
-    case "check":
-      return (
-        <svg {...common}>
-          <path d="M5 12.5L10 17.5 19.5 6.5" />
-        </svg>
-      );
     default:
       return null;
   }

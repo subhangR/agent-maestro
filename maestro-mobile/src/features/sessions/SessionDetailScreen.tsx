@@ -4,7 +4,7 @@
 // (inbound prompt events), and Docs (session.docs → DocsViewer). View-model lives
 // in useSessionDetail; mutations/cast are Phase 3.
 import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { router as globalRouter, useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native-unistyles';
@@ -16,7 +16,8 @@ import { useTheme } from '@/theme';
 
 import { routes } from '../../../navigation';
 import { encodeUtf8, optimisticEdit } from '../_shared';
-import { DocsViewer } from '../docs';
+import { DocRow } from '../docs';
+import { AgentLogView } from './AgentLogView';
 import {
   useSessionDetail,
   SESSION_DETAIL_TABS,
@@ -230,7 +231,9 @@ export function SessionDetailScreen({ id }: { id: string }): React.JSX.Element {
             <Empty label="No prompts received." />
           ))}
 
-        {tab === 'docs' && <DocsTab docs={docs} />}
+        {tab === 'docs' && <DocsTab docs={docs} sessionId={id} />}
+
+        {tab === 'logs' && <AgentLogView sessionId={id} />}
       </ScrollView>
     </View>
   );
@@ -254,49 +257,17 @@ function TimelineItem({ row }: { row: TimelineRow }): React.JSX.Element {
   );
 }
 
-function DocsTab({ docs }: { docs: DocEntry[] }): React.JSX.Element {
-  const [openId, setOpenId] = useState<string | null>(null);
-  const open = openId ? docs.find((d) => d.id === openId) : undefined;
-
-  if (open) {
-    const content = open.content ?? '';
-    return (
-      <View style={styles.docViewerWrap}>
-        <Pressable onPress={() => setOpenId(null)} accessibilityRole="button" style={styles.docBack}>
-          <Text variant="label" color="brand">
-            ‹ Docs
-          </Text>
-        </Pressable>
-        {content ? (
-          <DocsViewer content={content} title={open.title} serverKind={open.kind} />
-        ) : (
-          <Empty label={`"${open.title}" has no inline content (file: ${open.filePath}).`} />
-        )}
-      </View>
-    );
-  }
-
+function DocsTab({ docs, sessionId }: { docs: DocEntry[]; sessionId: string }): React.JSX.Element {
   if (!docs.length) return <Empty label="No documents attached." />;
 
   return (
     <View style={styles.card}>
       {docs.map((d) => (
-        <Pressable
+        <DocRow
           key={d.id}
-          onPress={() => setOpenId(d.id)}
-          accessibilityRole="button"
-          style={styles.docRow}
-        >
-          <StatusGlyph kind="todo" size={14} />
-          <View style={styles.docCol}>
-            <Text variant="body" color="ink" numberOfLines={1}>
-              {d.title}
-            </Text>
-            <Text variant="secondary" color="ink3" numberOfLines={1}>
-              {d.kind === 'diagram' ? 'Diagram' : 'Markdown'}
-            </Text>
-          </View>
-        </Pressable>
+          doc={d}
+          onPress={() => globalRouter.push(routes.docViewer(d.id, 'session', sessionId))}
+        />
       ))}
     </View>
   );

@@ -638,10 +638,10 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                         <div className="pn-subbar">
                             <button type="button" className="pn-btn pn-btn--primary" style={{ height: 30 }} onClick={() => setShowCreateModal(true)}><Icon name="plus" size={14} /> New task</button>
                             <span className="pn-head-spacer" />
-                            <button type="button" className={`pn-subtab ${taskSubTab === "current" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("current")} title="Current"><Icon name="listChecks" /> {activeRoots.length}</button>
-                            <button type="button" className={`pn-subtab ${taskSubTab === "pinned" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("pinned")} title="Pinned"><Icon name="pin" /> {pinnedRoots.length}</button>
-                            <button type="button" className={`pn-subtab ${taskSubTab === "completed" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("completed")} title="Completed"><Icon name="check" /> {completedRoots.length}</button>
-                            <button type="button" className={`pn-subtab ${taskSubTab === "archived" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("archived")} title="Archived"><Icon name="archive" /> {archivedRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "current" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("current")} title="Active tasks"><Icon name="listChecks" /> {activeRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "pinned" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("pinned")} title="Pinned tasks"><Icon name="pin" /> {pinnedRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "completed" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("completed")} title="Completed tasks"><Icon name="check" /> {completedRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "archived" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("archived")} title="Archived tasks"><Icon name="archive" /> {archivedRoots.length}</button>
                         </div>
                     )}
                     {primaryTab === "lists" && (
@@ -756,17 +756,17 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                                         loading ? (
                                             <div style={{ padding: 24, textAlign: 'center', color: 'var(--pn-ink-3)', fontFamily: 'var(--pn-mono)', fontSize: 12 }}>Loading tasks…</div>
                                         ) : activeRoots.length === 0 ? (
-                                            <TaskTabContent loading={false} emptyMessage="NO TASKS IN QUEUE" emptySubMessage="$ maestro new task" roots={[]} renderTaskNode={renderTaskNode} showNewTaskButton onNewTask={() => setShowCreateModal(true)} />
+                                            <TaskTabContent loading={false} emptyMessage="No tasks yet" emptySubMessage="Create your first task to get started" roots={[]} renderTaskNode={renderTaskNode} showNewTaskButton onNewTask={() => setShowCreateModal(true)} />
                                         ) : (
                                             <SortableTaskList roots={activeRoots} renderTaskNode={renderTaskNode} onReorder={handleTaskReorder} />
                                         )
                                     ) : (
-                                        <TaskTabContent loading={loading} emptyMessage="NO TASKS IN QUEUE" emptySubMessage="$ maestro new task" roots={activeRoots} renderTaskNode={renderTaskNode} showNewTaskButton onNewTask={() => setShowCreateModal(true)} sectionLabel="Current" />
+                                        <TaskTabContent loading={loading} emptyMessage="No tasks yet" emptySubMessage="Create your first task to get started" roots={activeRoots} renderTaskNode={renderTaskNode} showNewTaskButton onNewTask={() => setShowCreateModal(true)} sectionLabel="Current" />
                                     )
                                 )}
-                                {taskSubTab === "pinned" && <TaskTabContent loading={loading} emptyMessage="NO PINNED TASKS" emptySubMessage="Pin tasks you run frequently" roots={pinnedRoots} renderTaskNode={renderTaskNode} sectionLabel="Pinned" />}
-                                {taskSubTab === "completed" && <TaskTabContent loading={loading} emptyMessage="NO COMPLETED TASKS YET" emptySubMessage="Tasks will appear here when" roots={completedRoots} renderTaskNode={renderTaskNode} listClassName="terminalTaskListCompleted" sectionLabel="Completed" />}
-                                {taskSubTab === "archived" && <TaskTabContent loading={loading} emptyMessage="NO ARCHIVED TASKS" emptySubMessage="Archived tasks will appear here" roots={archivedRoots} renderTaskNode={renderTaskNode} listClassName="terminalTaskListArchived" showPermanentDelete sectionLabel="Archived" />}
+                                {taskSubTab === "pinned" && <TaskTabContent loading={loading} emptyMessage="No pinned tasks yet" emptySubMessage="Pin tasks you run often for quick access" roots={pinnedRoots} renderTaskNode={renderTaskNode} sectionLabel="Pinned" />}
+                                {taskSubTab === "completed" && <TaskTabContent loading={loading} emptyMessage="No completed tasks yet" emptySubMessage="Finished tasks show up here" roots={completedRoots} renderTaskNode={renderTaskNode} listClassName="terminalTaskListCompleted" sectionLabel="Completed" />}
+                                {taskSubTab === "archived" && <TaskTabContent loading={loading} emptyMessage="No archived tasks" emptySubMessage="Archived tasks appear here" roots={archivedRoots} renderTaskNode={renderTaskNode} listClassName="terminalTaskListArchived" showPermanentDelete sectionLabel="Archived" />}
                                 {((taskSubTab === "current" && activeRoots.length > 0) ||
                                   (taskSubTab === "pinned" && pinnedRoots.length > 0) ||
                                   (taskSubTab === "completed" && completedRoots.length > 0) ||

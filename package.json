@@ -16,7 +16,7 @@
     "dev:ui": "cd maestro-ui && bun run dev",
     "dev:server": "cd maestro-server && bun run dev",
     "dev:all": "cd maestro-ui && bun run dev:all",
-    "build:ui": "cd maestro-ui && bun run build",
+    "build:ui": "cd maestro-ui && NODE_OPTIONS=--max-old-space-size=4096 bun run build",
     "build:server": "cd maestro-server && bun run build",
     "build:cli": "cd maestro-cli && bun run build",
     "build:gateway": "cd maestro-gateway && bun run build",
@@ -32,7 +32,11 @@
     "web:dev": "bun run staging:prepare && concurrently -k -n server,ui -c blue,magenta \"bun run staging:server\" \"cd maestro-ui && bun run dev:web\"",
     "build:binary:server": "cd maestro-server && bun run build && bun run build:binary:darwin-arm64",
     "build:binary:cli": "cd maestro-cli && bun run build && bun run build:binary:darwin-arm64",
-    "build:web": "cd maestro-ui && bun run build:web && cd ../maestro-server && bun run build && cd ../maestro-cli && bun run build"
+    "build:web": "cd maestro-ui && bun run build:web && cd ../maestro-server && bun run build && cd ../maestro-cli && bun run build",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "check:website": "node scripts/validate-website.mjs",
+    "test:primary": "bun --cwd maestro-pty-protocol test && bun --cwd maestro-ui test && bun --cwd maestro-server test -- --runInBand && bun --cwd maestro-cli test -- --run",
+    "check": "bun run check:architecture && bun run build:all && bun run test:primary"
   },
   "keywords": [
     "maestro",

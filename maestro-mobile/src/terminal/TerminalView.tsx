@@ -65,6 +65,7 @@ export interface TerminalViewProps {
 type InboundMessage =
   | { type: 'ready' }
   | { type: 'fallback' }
+  | { type: 'scroll'; atBottom: boolean }
   | { type: 'data'; data: string }
   | { type: 'resize'; cols: number; rows: number };
 
@@ -83,6 +84,7 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
   const pendingRef = useRef<string[]>([]);
   const [exit, setExit] = useState<ExitState>(undefined);
   const [offline, setOffline] = useState(false);
+  const [scrolledUp, setScrolledUp] = useState(false);
   const [resuming, setResuming] = useState(false);
   const [resumeError, setResumeError] = useState<string | null>(null);
 
@@ -114,6 +116,7 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
     readyRef.current = false;
     pendingRef.current = [];
     setExit(undefined);
+    setScrolledUp(false);
 
     pty.attach(id);
     // Seed the PTY with an estimated size immediately; the WebView's FitAddon
@@ -156,11 +159,21 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
       // Flush any output buffered before xterm initialized.
       const buffered = pendingRef.current;
       pendingRef.current = [];
-      for (const chunk of buffered) writeToTerm(chunk);
+      // A scrollback replay can contain hundreds of chunks while the CDN is
+      // loading. One bridge call avoids overwhelming the WebView JS bridge.
+      if (buffered.length > 0) {
+        webviewRef.current?.injectJavaScript(
+          `window.__term && window.__term.write(${JSON.stringify(buffered.join(''))});true;`,
+        );
+      }
       return;
     }
     if (msg.type === 'fallback') {
       setOffline(true);
+      return;
+    }
+    if (msg.type === 'scroll') {
+      setScrolledUp(!msg.atBottom);
       return;
     }
     if (!connected) return;
@@ -194,6 +207,12 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
     }
   };
 
+  const scrollToBottom = (): void => {
+    webviewRef.current?.injectJavaScript(
+      'window.__term && window.__term.scrollToBottom();true;',
+    );
+  };
+
   // ── Pre-connect guard: no transport wired yet ──────────────────────────────
   if (!connected) {
     return <Placeholder theme={theme} message="Not connected — the terminal will attach once realtime is online." />;
@@ -215,7 +234,21 @@ export function TerminalView({ sessionId, fontSize }: TerminalViewProps): React.
         keyboardDisplayRequiresUserAction={false}
         hideKeyboardAccessoryView
         automaticallyAdjustContentInsets={false}
+        // iOS otherwise lets the native UIScrollView consume vertical drags
+        // before xterm's .xterm-viewport sees them.
+        scrollEnabled={false}
       />
+      {scrolledUp && !offline && exit === undefined && (
+        <View style={styles.jumpToBottom}>
+          <Button
+            label="Jump to bottom"
+            icon="chevronD"
+            variant="secondary"
+            accessibilityHint="Scrolls the terminal to its latest output"
+            onPress={scrollToBottom}
+          />
+        </View>
+      )}
       {offline && (
         <Overlay theme={theme}>
           Terminal unavailable offline — xterm.js could not load. (Production should
@@ -353,9 +386,23 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
       // native momentum, so we own the touch gesture: drag tracks velocity, and
       // on release we animate a decaying fling for that native acceleration feel.
       (function inertialScroll(){
+        // xterm creates its viewport during open(), but renderer timing can
+        // still make it unavailable for this first synchronous lookup.
+        var attempts=0;
+        function attach(){
         var vp = document.querySelector('.xterm-viewport');
-        if(!vp) return;
+        if(!vp){
+          if(attempts++<20) setTimeout(attach, 25);
+          return;
+        }
         var lastY=0, lastT=0, vy=0, raf=null, dragging=false;
+        var wasAtBottom=true;
+        function reportScroll(){
+          var atBottom=vp.scrollTop>=vp.scrollHeight-vp.clientHeight-2;
+          if(atBottom===wasAtBottom) return;
+          wasAtBottom=atBottom;
+          post({type:'scroll', atBottom:atBottom});
+        }
         function stopFling(){ if(raf){ cancelAnimationFrame(raf); raf=null; } }
         vp.addEventListener('touchstart', function(e){
           stopFling(); dragging=true; vy=0;
@@ -369,6 +416,7 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
           var dt=now-lastT || 16;
           vy=dy/dt;                 // px per ms (sampled)
           vp.scrollTop-=dy;         // drag finger down → reveal older output
+          reportScroll();
           lastY=t.clientY; lastT=now;
           e.preventDefault();       // take over from xterm's touch handling
         }, {passive:false});
@@ -381,10 +429,15 @@ function buildTerminalHtml(xterm: XtermTheme, fontSize: number): string {
             if(Math.abs(v)<0.4 || vp.scrollTop===prev){ raf=null; return; }
             prev=vp.scrollTop;
             vp.scrollTop-=v;
+            reportScroll();
             v*=0.95;                // friction
             raf=requestAnimationFrame(fling);
           })();
         }, {passive:true});
+        vp.addEventListener('scroll', reportScroll, {passive:true});
+        reportScroll();
+        }
+        attach();
       })();
 
       function doFit(){
@@ -449,5 +502,10 @@ const styles = StyleSheet.create((theme) => ({
   resumeBtn: {
     alignSelf: 'stretch',
     marginTop: theme.space[1],
+  },
+  jumpToBottom: {
+    position: 'absolute',
+    right: theme.space[4],
+    bottom: theme.space[4],
   },
 }));

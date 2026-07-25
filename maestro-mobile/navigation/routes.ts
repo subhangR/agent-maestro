@@ -29,7 +29,11 @@ export const ROUTE = {
   connect: 'connect',
   terminal: 'terminal',
   whiteboard: 'whiteboard',
+  docs: 'docs',
 } as const;
+
+/** Where a full-screen doc was opened from — tells the viewer which list to hydrate. */
+export type DocSource = 'session' | 'task' | 'project';
 
 /** Typed href builders. Use with `router.push(routes.session(id))`. */
 export const routes = {
@@ -54,6 +58,11 @@ export const routes = {
   // Full-screen modal route (Relay's editable whiteboard); optional doc target.
   whiteboard: (sessionId: string, docId?: string): Href =>
     (docId ? `/whiteboard/${sessionId}?docId=${docId}` : `/whiteboard/${sessionId}`) as Href,
+
+  // Full-screen READ-ONLY doc viewer (pushed). `source`/`sourceId` tell the
+  // screen which /docs list to hydrate content from, then it finds `docId`.
+  docViewer: (docId: string, source: DocSource, sourceId: string): Href =>
+    `/docs/${docId}?source=${source}&sourceId=${encodeURIComponent(sourceId)}` as Href,
 
   // Connect gate + project deep-link (intercepted → set active project → Sessions)
   connect: (): Href => '/connect' as Href,

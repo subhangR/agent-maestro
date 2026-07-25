@@ -40,7 +40,7 @@ export function TeamsPanel({
                 {topLevelTeams.length === 0 ? (
                     <div style={{ padding: '40px 16px', textAlign: 'center' }}>
                         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--pn-ink-2)' }}>NO TEAMS YET</p>
-                        <p style={{ margin: '4px 0 14px', fontSize: 12, color: 'var(--pn-ink-4)', fontFamily: 'var(--pn-mono)' }}>$ create teams to group your team members</p>
+                        <p style={{ margin: '4px 0 14px', fontSize: 12, color: 'var(--pn-ink-4)', fontFamily: 'var(--pn-mono)' }}>Create a team to group your members</p>
                         <button type="button"
                             className="pn-btn pn-btn--primary"
                             style={{ height: 30 }}

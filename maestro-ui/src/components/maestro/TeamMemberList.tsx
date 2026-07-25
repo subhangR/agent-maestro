@@ -428,7 +428,7 @@ export function TeamMemberList({
             {activeMembers.length === 0 && (
                 <div style={{ padding: '40px 16px', textAlign: 'center' }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--pn-ink-2)' }}>NO TEAM MEMBERS</p>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--pn-ink-4)', fontFamily: 'var(--pn-mono)' }}>$ create your first team member</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--pn-ink-4)', fontFamily: 'var(--pn-mono)' }}>Add your first team member to get started</p>
                 </div>
             )}
         </div>

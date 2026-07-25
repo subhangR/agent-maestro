@@ -31,7 +31,7 @@ html[data-redesign] .projectTab {
 html[data-redesign] .projectTabMain {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   min-width: 0;
   padding: 0;
   border: none;
@@ -56,13 +56,15 @@ html[data-redesign] .projectTabMasterIcon {
 html[data-redesign] .projectTabCount {
   font-family: var(--pn-mono);
   font-size: 10px;
-  color: var(--pn-ink-3);
-  background: var(--pn-hover);
+  font-weight: 600;
+  color: var(--pn-ink-4);
+  background: var(--pn-paper);
   border: 1px solid var(--pn-line);
-  padding: 1px 5px;
-  min-width: 16px;
+  padding: 1px 6px;
+  min-width: 20px;
   text-align: center;
-  border-radius: var(--pn-r-xs);
+  border-radius: 20px;
+  line-height: 1.6;
 }
 
 html[data-redesign] .projectTabWorking {
@@ -71,17 +73,23 @@ html[data-redesign] .projectTabWorking {
   gap: 4px;
   font-family: var(--pn-mono);
   font-size: 10px;
+  font-weight: 600;
   color: var(--pn-run);
   background: var(--pn-run-soft);
   border: 1px solid transparent;
-  padding: 1px 5px;
-  border-radius: var(--pn-r-xs);
+  padding: 1px 7px 1px 5px;
+  border-radius: 20px;
 }
 html[data-redesign] .projectTabWorkingDot {
   width: 5px;
   height: 5px;
   border-radius: 999px;
   background: var(--pn-run);
+  animation: projectTabWorkingPulse 1.4s ease-in-out infinite;
+}
+@keyframes projectTabWorkingPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 /* active-tab settings gear (kept; .projectTabSettingsBtn is also the
@@ -89,19 +97,21 @@ html[data-redesign] .projectTabWorkingDot {
 html[data-redesign] .projectTabSettingsBtn {
   display: inline-grid;
   place-items: center;
-  width: 20px;
-  height: 20px;
-  margin-left: 2px;
+  width: 22px;
+  height: 22px;
+  margin-left: 1px;
   border: none;
   background: transparent;
-  color: var(--pn-ink-3);
+  color: var(--pn-ink-4);
   border-radius: var(--pn-r-xs);
   cursor: pointer;
-  transition: background 140ms, color 140ms;
+  opacity: 0.65;
+  transition: background 140ms, color 140ms, opacity 140ms;
 }
 html[data-redesign] .projectTabSettingsBtn:hover {
   background: var(--pn-hover);
   color: var(--pn-ink);
+  opacity: 1;
 }
 
 /* needs-input attention pulse */

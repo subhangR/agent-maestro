@@ -36,6 +36,8 @@ import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 import { useEnsembleStore } from "../../stores/useEnsembleStore";
 import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
+import { useSessionViewMode } from "../../hooks/useSessionViewMode";
+import { SessionViewSelector } from "../maestro/SessionViewSelector";
 
 /**
  * Wraps a .terminalContainer so it can render concentric spell rings for the
@@ -529,11 +531,11 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                 <div className="terminalEmptyPrompt">
                   <span className="terminalEmptyCaretLine">
                     <span className="terminalEmptyCaret">{">"}</span>{" "}
-                    <span className="terminalEmptyTyping">ready for instructions_</span>
+                    <span className="terminalEmptyTyping">ready when you are_</span>
                   </span>
                 </div>
                 <div className="terminalEmptyHint">
-                  Launch a session from the sidebar to begin
+                  Pick a task on the left and press Run to start
                 </div>
               </div>
             )}
