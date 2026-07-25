@@ -286,7 +286,7 @@ function SignedInView({
         </div>
 
         <div className="collabSpaceRepo">
-          <span className="collabSpaceRepoLabel">Repo</span>
+          <span className="collabSpaceRepoLabel">GitHub repo</span>
           {!editingRemote ? (
             <>
               <span className="collabSpaceRepoValue">
@@ -294,7 +294,7 @@ function SignedInView({
                   ? "detecting…"
                   : detectedRemote
                   ? detectedRemote.canonical
-                  : "no remote detected"}
+                  : "No GitHub repo linked yet"}
               </span>
               <button
                 type="button"
@@ -305,7 +305,7 @@ function SignedInView({
                   setEditingRemote(true);
                 }}
               >
-                {detectedRemote ? "change" : "set manually"}
+                {detectedRemote ? "Change" : "Link a GitHub repo"}
               </button>
             </>
           ) : (
