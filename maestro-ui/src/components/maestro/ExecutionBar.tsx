@@ -314,11 +314,11 @@ export function ExecutionBar({
     if (!isActive) {
         return (
             <div className="executionBar executionBar--inactive">
-                <RunCoordButton kind="run" onClick={onActivate} sub="single worker" title="Run with a single worker">
-                    run
+                <RunCoordButton kind="run" onClick={onActivate} sub="one agent" title="Run this task with one AI agent">
+                    Run
                 </RunCoordButton>
-                <RunCoordButton kind="coord" onClick={onActivateOrchestrate} sub="spawn a team" title="Coordinate a team">
-                    coordinate
+                <RunCoordButton kind="coord" onClick={onActivateOrchestrate} sub="a team of agents" title="Run this task with a coordinated team of AI agents">
+                    Run as team
                 </RunCoordButton>
             </div>
         );
