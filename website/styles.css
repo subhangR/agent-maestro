@@ -45,32 +45,90 @@ img, svg { display: block; max-width: 100%; }
 .brand-word { display: inline-flex; align-items: baseline; }
 .brand-word small { color: var(--moss); font: 500 .7em var(--mono); letter-spacing: -.04em; }
 
-.brand-intro { position: fixed; z-index: 1000; inset: 0; display: grid; place-content: center; justify-items: center; color: #f6f7f8; background: radial-gradient(circle at 50% 48%, #073043 0, #0a1622 26%, #070b12 62%, #05070c 100%); opacity: 0; visibility: hidden; transition: opacity .28s ease, visibility 0s linear .28s; }
-.brand-intro.is-active { opacity: 1; visibility: visible; transition: opacity .28s ease; }
-.brand-intro .loopmark { position: relative; z-index: 1; width: min(184px, 42vw); aspect-ratio: 1; transform: scale(.88); opacity: 0; filter: drop-shadow(0 0 26px rgba(0,229,255,.22)); }
-.brand-intro.is-active .loopmark { animation: brand-arrival 9.7s cubic-bezier(.2,.7,.2,1) forwards; }
-.brand-intro-glow { position: absolute; width: min(620px, 82vw); aspect-ratio: 1.6; border-radius: 50%; background: rgba(0,229,255,.1); filter: blur(80px); opacity: 0; }
-.brand-intro.is-active .brand-intro-glow { animation: brand-glow 9.8s ease-out forwards; }
-.identity-sequence { z-index: 2; width: min(720px, 88vw); height: 34px; position: relative; margin-top: 40px; text-align: center; }
-.identity-sequence p { position: absolute; inset: 0; margin: 0; color: rgba(244,248,250,.86); font: 500 clamp(.62rem, 1.7vw, .82rem)/1.4 var(--mono); letter-spacing: .22em; text-transform: uppercase; opacity: 0; transform: translateY(9px); }
-.brand-intro.is-active .identity-sequence p { animation: identity-word 1s ease-in-out both; }
-.brand-intro.is-active .identity-sequence p:nth-child(1) { animation-delay: .55s; }
-.brand-intro.is-active .identity-sequence p:nth-child(2) { animation-delay: 1.4s; }
-.brand-intro.is-active .identity-sequence p:nth-child(3) { animation-delay: 2.25s; }
-.brand-intro.is-active .identity-sequence p:nth-child(4) { animation-delay: 3.1s; }
-.brand-intro.is-active .identity-sequence p:nth-child(5) { animation-delay: 3.95s; }
-.brand-intro.is-active .identity-sequence p:nth-child(6) { animation-delay: 4.8s; }
-.brand-intro.is-active .identity-sequence p:nth-child(7) { animation-delay: 5.65s; }
-.brand-intro.is-active .identity-sequence p:nth-child(8) { animation-delay: 6.5s; }
-.brand-intro.is-active .identity-sequence p:nth-child(9) { animation-delay: 7.35s; }
-.brand-intro.is-active .identity-sequence p:nth-child(10) { animation-delay: 8.2s; color: var(--signal-cyan); }
-.intro-signoff { z-index: 2; margin-top: 18px; color: rgba(244,248,250,.46); font: 500 .6rem var(--mono); letter-spacing: .32em; text-transform: uppercase; opacity: 0; }
-.brand-intro.is-active .intro-signoff { animation: intro-signoff 1s 9s ease both; }
+/* ===== Cinematic 3D logo intro (light, no random words) ===== */
+.brand-intro { position: fixed; z-index: 1000; inset: 0; display: grid; place-content: center; justify-items: center; color: var(--ink);
+  background:
+    radial-gradient(120% 90% at 50% 40%, #fbf9f4 0%, #f4f1ea 45%, #ece8dd 100%);
+  opacity: 0; visibility: hidden; transition: opacity .5s ease, visibility 0s linear .5s; }
+.brand-intro::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(70% 55% at 50% 44%, rgba(224,96,32,.05), transparent 60%);
+  opacity: 0; }
+.brand-intro.is-active { opacity: 1; visibility: visible; transition: opacity .45s ease; }
+.brand-intro.is-active::after { animation: intro-warm 3.2s ease-out .3s both; }
+.brand-intro.is-dismissing { opacity: 0; visibility: hidden; transition: opacity .55s ease, visibility 0s linear .55s; }
+
+.intro-scene { position: relative; display: grid; justify-items: center; perspective: 1150px; }
+.intro-stage { position: relative; width: min(210px, 46vw); aspect-ratio: 1; display: grid; place-items: center; transform-style: preserve-3d; }
+
+/* Concentric depth rings that pulse outward behind the mark */
+.intro-rings { position: absolute; inset: 0; display: grid; place-items: center; }
+.intro-rings i { position: absolute; width: 100%; height: 100%; border: 1px solid rgba(23,25,20,.16); border-radius: 50%; opacity: 0; transform: scale(.5); }
+.brand-intro.is-active .intro-rings i { animation: intro-ripple 2.6s cubic-bezier(.2,.7,.2,1) both; }
+.brand-intro.is-active .intro-rings i:nth-child(1) { animation-delay: 1.35s; }
+.brand-intro.is-active .intro-rings i:nth-child(2) { animation-delay: 1.6s; }
+.brand-intro.is-active .intro-rings i:nth-child(3) { animation-delay: 1.85s; }
+
+/* Ground shadow for 3D grounding */
+.intro-shadow { position: absolute; bottom: -13%; width: 62%; height: 20px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(23,25,20,.24), transparent); opacity: 0; filter: blur(3px); }
+.brand-intro.is-active .intro-shadow { animation: intro-shadow 1.5s cubic-bezier(.2,.8,.2,1) .15s both; }
+
+/* The mark itself — flies in and assembles in 3D space */
+.brand-intro .intro-mark { position: relative; z-index: 2; width: 100%; height: 100%; opacity: 0;
+  transform-style: preserve-3d; will-change: transform, opacity, filter;
+  filter: drop-shadow(0 14px 22px rgba(23,25,20,.14)); }
+.brand-intro.is-active .intro-mark { animation: intro-fly 1.6s cubic-bezier(.22,1.02,.32,1) .15s both; }
+
+/* Ring: no ambient spin here; one triumphant rotation once it lands */
+.brand-intro .intro-mark .lm-ring { animation: none; }
+.brand-intro.is-active .intro-mark .lm-ring { animation: intro-spin 1.15s cubic-bezier(.5,0,.2,1) 1.35s both; }
+
+/* Eight: drops into the center with a small bounce after the ring lands */
+.brand-intro .intro-mark .lm-eight { opacity: 0; transform: translateY(-8%) scale(.82); transform-origin: 50% 50%; }
+.brand-intro.is-active .intro-mark .lm-eight { animation: intro-eight 1s cubic-bezier(.26,1.4,.4,1) .85s both; }
+
+/* Spark burst at the moment the mark locks in */
+.intro-sparks { position: absolute; inset: 0; display: grid; place-items: center; z-index: 3; pointer-events: none; }
+.intro-sparks i { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: var(--rust); opacity: 0; box-shadow: 0 0 10px rgba(224,96,32,.6); }
+.brand-intro.is-active .intro-sparks i { animation: intro-spark 900ms cubic-bezier(.15,.8,.25,1) 1.35s both; }
+.intro-sparks i:nth-child(1) { --a: 0deg; } .intro-sparks i:nth-child(2) { --a: 30deg; }
+.intro-sparks i:nth-child(3) { --a: 60deg; } .intro-sparks i:nth-child(4) { --a: 90deg; }
+.intro-sparks i:nth-child(5) { --a: 120deg; } .intro-sparks i:nth-child(6) { --a: 150deg; }
+.intro-sparks i:nth-child(7) { --a: 180deg; } .intro-sparks i:nth-child(8) { --a: 210deg; }
+.intro-sparks i:nth-child(9) { --a: 240deg; } .intro-sparks i:nth-child(10) { --a: 270deg; }
+.intro-sparks i:nth-child(11) { --a: 300deg; } .intro-sparks i:nth-child(12) { --a: 330deg; }
+
+/* Wordmark + tagline resolve below */
+.intro-word { margin-top: 34px; display: inline-flex; align-items: baseline; gap: 1px; font-size: clamp(1.7rem, 5vw, 2.5rem); font-weight: 700; letter-spacing: -.03em; color: var(--ink); opacity: 0; }
+.intro-word small { color: var(--moss); font: 500 .42em var(--mono); letter-spacing: -.02em; }
+.brand-intro.is-active .intro-word { animation: intro-rise 900ms cubic-bezier(.2,.9,.2,1) 1.95s both; }
+.intro-tag { margin-top: 12px; color: var(--muted); font: 500 clamp(.62rem, 1.6vw, .74rem)/1 var(--mono); letter-spacing: .3em; text-transform: uppercase; opacity: 0; }
+.brand-intro.is-active .intro-tag { animation: intro-rise 900ms cubic-bezier(.2,.9,.2,1) 2.25s both; }
+
 body.intro-active { overflow: hidden; }
-@keyframes brand-arrival { 0% { opacity: 0; transform: scale(.88); } 8%, 90% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.025); } }
-@keyframes brand-glow { 0% { opacity: 0; transform: scale(.6); } 12%, 76% { opacity: .9; } 100% { opacity: 0; transform: scale(1.18); } }
-@keyframes identity-word { 0%, 100% { opacity: 0; transform: translateY(9px); } 20%, 72% { opacity: 1; transform: translateY(0); } }
-@keyframes intro-signoff { 0% { opacity: 0; transform: translateY(6px); } 35%, 72% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+@keyframes intro-fly {
+  0%   { opacity: 0; transform: translateZ(-380px) translateY(-6%) rotateX(34deg) rotateY(-150deg) scale(.62); filter: blur(7px) drop-shadow(0 14px 22px rgba(23,25,20,0)); }
+  38%  { opacity: 1; filter: blur(0) drop-shadow(0 16px 26px rgba(23,25,20,.16)); }
+  62%  { transform: translateZ(40px) translateY(0) rotateX(-7deg) rotateY(12deg) scale(1.05); }
+  100% { opacity: 1; transform: translateZ(0) translateY(0) rotateX(0) rotateY(0) scale(1); filter: blur(0) drop-shadow(0 14px 22px rgba(23,25,20,.14)); }
+}
+@keyframes intro-spin { 0% { transform: rotate(0); } 100% { transform: rotate(360deg); } }
+@keyframes intro-eight {
+  0% { opacity: 0; transform: translateY(-14%) scale(.7); }
+  60% { opacity: 1; transform: translateY(3%) scale(1.08); }
+  80% { transform: translateY(-1%) scale(.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes intro-spark {
+  0% { opacity: 0; transform: rotate(var(--a)) translateX(30px) scale(.3); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateX(132px) scale(.6); }
+}
+@keyframes intro-ripple { 0% { opacity: 0; transform: scale(.55); } 22% { opacity: .5; } 100% { opacity: 0; transform: scale(1.7); } }
+@keyframes intro-shadow { 0% { opacity: 0; transform: scale(.5); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes intro-rise { 0% { opacity: 0; transform: translateY(14px); } 100% { opacity: 1; transform: none; } }
+@keyframes intro-warm { 0% { opacity: 0; } 45% { opacity: 1; } 100% { opacity: .6; } }
 .site-nav { display: flex; align-items: center; gap: 28px; margin-left: auto; }
 .site-nav a { color: var(--ink-soft); font-size: .86rem; font-weight: 600; }
 .site-nav a:hover { color: var(--ink); }
