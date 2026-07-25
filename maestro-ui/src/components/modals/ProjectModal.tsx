@@ -73,6 +73,7 @@ export function ProjectModal({
 }: ProjectModalProps) {
   const [browserExpanded, setBrowserExpanded] = useState(false);
   const [soundExpanded, setSoundExpanded] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
   if (!isOpen) return null;
 
@@ -81,7 +82,7 @@ export function ProjectModal({
       <div className="themedModal themedModal--wide" onClick={(e) => e.stopPropagation()}>
         <div className="themedModalHeader">
           <span className="themedModalTitle">
-            [ {mode === "new" ? "NEW PROJECT" : "PROJECT SETTINGS"} ]
+            [ {mode === "new" ? "New project" : "Project settings"} ]
           </span>
           <button type="button" className="themedModalClose" onClick={onClose}>×</button>
         </div>
@@ -98,7 +99,7 @@ export function ProjectModal({
               />
             </div>
             <div className="themedFormRow">
-              <div className="themedFormLabel">Base path</div>
+              <div className="themedFormLabel">Project folder</div>
               <input
                 className="themedFormInput"
                 value={basePath}
@@ -143,6 +144,18 @@ export function ProjectModal({
                   : "Absolute path on the server (e.g. /home/ubuntu/agent-maestro). New sessions in this project start here."}
               </div>
             </div>
+            <button
+              type="button"
+              className="themedBrowseToggle"
+              onClick={() => setAdvancedExpanded((v) => !v)}
+            >
+              <span className={`themedBrowseToggleArrow${advancedExpanded ? " themedBrowseToggleArrow--open" : ""}`}>
+                &#9654;
+              </span>
+              Advanced options
+            </button>
+            {advancedExpanded && (
+              <>
             <div className="themedFormRow">
               <div className="themedFormLabel">Environment (.env)</div>
               <div className="themedPathRow">
@@ -201,6 +214,8 @@ export function ProjectModal({
               )}
               <div className="themedFormHint">Per-project instrument and sound category overrides.</div>
             </div>
+              </>
+            )}
           </div>
           <div className="themedFormActions">
             <button type="button" className="themedBtn" onClick={onClose}>
