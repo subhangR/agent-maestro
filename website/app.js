@@ -3,6 +3,37 @@
 
   document.documentElement.classList.add("js");
 
+  // ---- Light / dark theme toggle ----
+  (function initTheme() {
+    var root = document.documentElement;
+    var media = window.matchMedia("(prefers-color-scheme: dark)");
+    function isDark() {
+      var t = root.getAttribute("data-theme");
+      if (t === "dark") return true;
+      if (t === "light") return false;
+      return media.matches;
+    }
+    function applyShots() {
+      var suffix = isDark() ? "-dark" : "";
+      document.querySelectorAll("[data-shot]").forEach(function (img) {
+        img.setAttribute("src", "assets/shots/" + img.getAttribute("data-shot") + suffix + ".jpg");
+      });
+    }
+    applyShots();
+    var toggle = document.querySelector("[data-theme-toggle]");
+    if (toggle) {
+      toggle.addEventListener("click", function () {
+        var next = isDark() ? "light" : "dark";
+        root.setAttribute("data-theme", next);
+        try { localStorage.setItem("maestro-theme", next); } catch (e) {}
+        applyShots();
+      });
+    }
+    var onSystem = function () { if (!root.getAttribute("data-theme")) applyShots(); };
+    if (media.addEventListener) media.addEventListener("change", onSystem);
+    else if (media.addListener) media.addListener(onSystem);
+  })();
+
   var header = document.querySelector("[data-header]");
   var menuButton = document.querySelector("[data-menu-button]");
   var menu = document.querySelector("[data-menu]");
