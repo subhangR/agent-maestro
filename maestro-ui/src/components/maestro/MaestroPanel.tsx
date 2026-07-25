@@ -638,10 +638,10 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                         <div className="pn-subbar">
                             <button type="button" className="pn-btn pn-btn--primary" style={{ height: 30 }} onClick={() => setShowCreateModal(true)}><Icon name="plus" size={14} /> New task</button>
                             <span className="pn-head-spacer" />
-                            <button type="button" className={`pn-subtab ${taskSubTab === "current" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("current")} title="Current"><Icon name="listChecks" /> {activeRoots.length}</button>
-                            <button type="button" className={`pn-subtab ${taskSubTab === "pinned" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("pinned")} title="Pinned"><Icon name="pin" /> {pinnedRoots.length}</button>
-                            <button type="button" className={`pn-subtab ${taskSubTab === "completed" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("completed")} title="Completed"><Icon name="check" /> {completedRoots.length}</button>
-                            <button type="button" className={`pn-subtab ${taskSubTab === "archived" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("archived")} title="Archived"><Icon name="archive" /> {archivedRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "current" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("current")} title="Active tasks"><Icon name="listChecks" /> {activeRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "pinned" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("pinned")} title="Pinned tasks"><Icon name="pin" /> {pinnedRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "completed" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("completed")} title="Completed tasks"><Icon name="check" /> {completedRoots.length}</button>
+                            <button type="button" className={`pn-subtab ${taskSubTab === "archived" ? "pn-subtab--active" : ""}`} onClick={() => setTaskSubTab("archived")} title="Archived tasks"><Icon name="archive" /> {archivedRoots.length}</button>
                         </div>
                     )}
                     {primaryTab === "lists" && (
