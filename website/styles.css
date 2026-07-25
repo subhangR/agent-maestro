@@ -47,11 +47,11 @@ img, svg { display: block; max-width: 100%; }
 
 .brand-intro { position: fixed; z-index: 1000; inset: 0; display: grid; place-content: center; justify-items: center; color: #f6f7f8; background: radial-gradient(circle at 50% 48%, #073043 0, #0a1622 26%, #070b12 62%, #05070c 100%); opacity: 0; visibility: hidden; transition: opacity .28s ease, visibility 0s linear .28s; }
 .brand-intro.is-active { opacity: 1; visibility: visible; transition: opacity .28s ease; }
-.brand-intro .loopmark { position: relative; z-index: 1; width: min(340px, 60vw); aspect-ratio: 1; transform: scale(.88); opacity: 0; filter: drop-shadow(0 0 26px rgba(0,229,255,.22)); }
+.brand-intro .loopmark { position: relative; z-index: 1; width: min(184px, 42vw); aspect-ratio: 1; transform: scale(.88); opacity: 0; filter: drop-shadow(0 0 26px rgba(0,229,255,.22)); }
 .brand-intro.is-active .loopmark { animation: brand-arrival 9.7s cubic-bezier(.2,.7,.2,1) forwards; }
 .brand-intro-glow { position: absolute; width: min(620px, 82vw); aspect-ratio: 1.6; border-radius: 50%; background: rgba(0,229,255,.1); filter: blur(80px); opacity: 0; }
 .brand-intro.is-active .brand-intro-glow { animation: brand-glow 9.8s ease-out forwards; }
-.identity-sequence { z-index: 2; width: min(720px, 88vw); height: 34px; position: relative; margin-top: -34px; text-align: center; }
+.identity-sequence { z-index: 2; width: min(720px, 88vw); height: 34px; position: relative; margin-top: 40px; text-align: center; }
 .identity-sequence p { position: absolute; inset: 0; margin: 0; color: rgba(244,248,250,.86); font: 500 clamp(.62rem, 1.7vw, .82rem)/1.4 var(--mono); letter-spacing: .22em; text-transform: uppercase; opacity: 0; transform: translateY(9px); }
 .brand-intro.is-active .identity-sequence p { animation: identity-word 1s ease-in-out both; }
 .brand-intro.is-active .identity-sequence p:nth-child(1) { animation-delay: .55s; }
@@ -268,3 +268,41 @@ body.intro-active { overflow: hidden; }
 .cap-card code { font: .82em var(--mono); color: #f0b48f; background: rgba(224,96,32,.1); padding: 1px 5px; border-radius: 5px; }
 .form-status-link { color: var(--rust); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
 .form-status-link:hover { color: var(--ink); }
+
+/* ============================================================
+   Premium scroll experience: smoother reveals, staggered
+   sections, scroll progress, refined micro-interactions.
+   ============================================================ */
+
+/* Scroll progress indicator */
+.scroll-progress { position: fixed; z-index: 300; top: 0; left: 0; height: 2px; width: 100%; transform: scaleX(0); transform-origin: 0 50%; background: linear-gradient(90deg, var(--moss) 0%, var(--signal-cyan) 100%); pointer-events: none; opacity: .9; }
+
+/* Smoother, longer reveal with premium easing (overrides the base rule above) */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity .9s cubic-bezier(.16, 1, .3, 1), transform .9s cubic-bezier(.16, 1, .3, 1); will-change: opacity, transform; }
+.reveal.is-visible { opacity: 1; transform: none; }
+.reveal[data-delay="1"] { transition-delay: .1s; }
+.reveal[data-delay="2"] { transition-delay: .2s; }
+
+/* Staggered groups — children animate in sequence when the group enters.
+   Gated on html.js so content is never hidden without JavaScript. */
+html.js [data-stagger] > .reveal { transition-duration: .78s; }
+
+/* Hero product frame: gentle scroll parallax + arrival lift */
+.product-frame { transition: transform .9s cubic-bezier(.16,1,.3,1), box-shadow .5s ease; will-change: transform; }
+.product-frame:hover { box-shadow: 0 46px 90px -46px rgba(20,23,18,.55); }
+
+/* Capability cards: crisper hover already defined; add a subtle rise on reveal */
+html.js .cap-card { will-change: opacity, transform; }
+
+/* Tour tab press feedback */
+.tour-tab { transition: border-color .18s, color .18s, background .18s, transform .18s ease; }
+.tour-tab:active { transform: translateY(1px); }
+
+/* Tour screenshot cross-fade when switching tabs */
+.tour-shot img { transition: opacity .45s ease; }
+
+/* Respect reduced motion for all of the above */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-progress { display: none; }
+  .product-frame { transform: none !important; }
+}
