@@ -75,6 +75,9 @@ export function TaskModalFooter({
     const selectedTeam = selectedTeamId ? teams.find(t => t.id === selectedTeamId) : undefined;
 
     const [pickerOpen, setPickerOpen] = useState(false);
+    // Simple mode: hide the technical run options (Safe / Isolated copy / Model)
+    // behind a toggle so non-developers just describe a task and start it.
+    const [showOptions, setShowOptions] = useState(false);
     const pickerWrapRef = useRef<HTMLDivElement>(null);
     const pickerBtnRef = useRef<HTMLButtonElement>(null);
     const pickerPanelRef = useRef<HTMLDivElement>(null);
@@ -204,26 +207,38 @@ export function TaskModalFooter({
                 </div>
                 <button
                     type="button"
-                    className={`pn-toggle ${dangerousMode ? 'pn-toggle--on-danger' : ''}`}
-                    onClick={() => onDangerousModeChange(!dangerousMode)}
-                    title={dangerousMode ? 'Unrestricted: the agent skips permission prompts — click to make it ask first' : 'Safe: the agent asks before risky actions — click to let it run unrestricted'}
+                    className={`pn-toggle ${showOptions ? 'pn-mchip--ref' : ''}`}
+                    onClick={() => setShowOptions(o => !o)}
+                    title="Run options — permissions, isolation, and model. Sensible defaults are used if you leave these alone."
                 >
-                    <Icon name="shield" size={13} /> {dangerousMode ? 'Unrestricted' : 'Safe'}
+                    <Icon name="settings" size={13} /> {showOptions ? 'Hide options' : 'Options'}
                 </button>
-                <button
-                    type="button"
-                    className={`pn-toggle ${useWorktree ? 'pn-toggle--on-wt' : ''}`}
-                    onClick={() => onUseWorktreeChange(!useWorktree)}
-                    title={useWorktree ? 'Isolated copy: the agent works in a separate copy of your code — click to work in your folder directly' : 'In place: the agent edits your folder directly — click to isolate changes in a separate copy'}
-                >
-                    <Icon name="gitBranch" size={13} /> {useWorktree ? 'Isolated copy' : 'In place'}
-                </button>
-                <ModelPickerChip
-                    value={taskLaunchConfig}
-                    onChange={onTaskLaunchConfigChange}
-                    fallbackMember={soleMember}
-                />
-                {gearBtn}
+                {showOptions && (
+                    <>
+                        <button
+                            type="button"
+                            className={`pn-toggle ${dangerousMode ? 'pn-toggle--on-danger' : ''}`}
+                            onClick={() => onDangerousModeChange(!dangerousMode)}
+                            title={dangerousMode ? 'Unrestricted: the agent skips permission prompts — click to make it ask first' : 'Safe: the agent asks before risky actions — click to let it run unrestricted'}
+                        >
+                            <Icon name="shield" size={13} /> {dangerousMode ? 'Unrestricted' : 'Safe'}
+                        </button>
+                        <button
+                            type="button"
+                            className={`pn-toggle ${useWorktree ? 'pn-toggle--on-wt' : ''}`}
+                            onClick={() => onUseWorktreeChange(!useWorktree)}
+                            title={useWorktree ? 'Isolated copy: the agent works in a separate copy of your code — click to work in your folder directly' : 'In place: the agent edits your folder directly — click to isolate changes in a separate copy'}
+                        >
+                            <Icon name="gitBranch" size={13} /> {useWorktree ? 'Isolated copy' : 'In place'}
+                        </button>
+                        <ModelPickerChip
+                            value={taskLaunchConfig}
+                            onChange={onTaskLaunchConfigChange}
+                            fallbackMember={soleMember}
+                        />
+                        {gearBtn}
+                    </>
+                )}
                 {((isEditMode && autoSaveStatus) || (!isEditMode && isDraft && autoSaveStatus)) && (
                     <AutoSaveIndicator status={autoSaveStatus} />
                 )}
