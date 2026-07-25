@@ -124,30 +124,62 @@
       status.className = "form-status";
       status.textContent = "Sending your enquiry securely.";
 
+      function mailtoHref() {
+        var lines = [
+          "Name: " + (payload.name || ""),
+          "Email: " + (payload.email || ""),
+          payload.phone ? "Phone: " + payload.phone : "",
+          payload.company ? "Company: " + payload.company : "",
+          "Reach-out type: " + (payload.type || "general"),
+          "",
+          payload.message || ""
+        ].filter(function (line) { return line !== ""; });
+        return "mailto:manzilshaik95@gmail.com?subject=" +
+          encodeURIComponent("Maestro enquiry — " + (payload.type || "general") + " — " + (payload.name || "")) +
+          "&body=" + encodeURIComponent(lines.join("\n"));
+      }
+
+      // When the API endpoint is not reachable, fall back to a fully prefilled
+      // email draft so the form is never a dead end.
+      function offerEmailFallback() {
+        contactForm.reset();
+        status.className = "form-status";
+        status.textContent = "Ready to send — we'll open a prefilled email for you.";
+        var send = document.createElement("a");
+        send.className = "form-status-link";
+        send.href = mailtoHref();
+        send.textContent = "Open email to send →";
+        status.appendChild(document.createTextNode(" "));
+        status.appendChild(send);
+        try { window.location.href = send.href; } catch (e) {}
+      }
+
       fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(payload)
       }).then(function (response) {
         return response.json().catch(function () { return {}; }).then(function (body) {
-          if (!response.ok) throw new Error(body.error || "We could not send your enquiry.");
+          // 400/429 are genuine validation/rate-limit answers from a live endpoint.
+          if (response.status === 400 || response.status === 429) {
+            var validationError = new Error(body.error || "Please review your enquiry and try again.");
+            validationError.handled = true;
+            throw validationError;
+          }
+          if (!response.ok) throw new Error(body.error || "endpoint-unavailable");
           return body;
         });
       }).then(function (body) {
         contactForm.reset();
         status.className = "form-status success";
-        status.textContent = "Message received. Reference " + body.reference + ".";
+        status.textContent = "Message received. Reference " + (body && body.reference ? body.reference : "sent") + ".";
       }).catch(function (error) {
-        status.className = "form-status error";
-        status.textContent = (error && error.message) ? error.message : "We could not send your enquiry right now.";
-        var fallback = document.createElement("a");
-        fallback.className = "form-status-link";
-        fallback.href = "mailto:manzilshaik95@gmail.com?subject=" +
-          encodeURIComponent("Maestro enquiry — " + (payload.type || "general")) +
-          "&body=" + encodeURIComponent(payload.message || "");
-        fallback.textContent = "Email us directly →";
-        status.appendChild(document.createTextNode(" "));
-        status.appendChild(fallback);
+        if (error && error.handled) {
+          status.className = "form-status error";
+          status.textContent = error.message;
+        } else {
+          offerEmailFallback();
+        }
       }).finally(function () {
         contactForm.classList.remove("is-sending");
         submitButton.disabled = false;
