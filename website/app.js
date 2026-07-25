@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  document.documentElement.classList.add("js");
+
   var header = document.querySelector("[data-header]");
   var menuButton = document.querySelector("[data-menu-button]");
   var menu = document.querySelector("[data-menu]");
@@ -217,7 +219,16 @@
     element.textContent = String(new Date().getFullYear());
   });
 
-  var revealItems = document.querySelectorAll(".reveal");
+  // --- Scroll reveals, with staggered groups ---
+  var revealItems = Array.prototype.slice.call(document.querySelectorAll(".reveal"));
+  var staggerGroups = Array.prototype.slice.call(document.querySelectorAll("[data-stagger]"));
+  var staggerChildren = [];
+  staggerGroups.forEach(function (group) {
+    Array.prototype.forEach.call(group.querySelectorAll(".reveal"), function (child) {
+      staggerChildren.push(child);
+    });
+  });
+
   if (reduceMotion || !("IntersectionObserver" in window)) {
     revealItems.forEach(function (item) { item.classList.add("is-visible"); });
   } else {
@@ -229,6 +240,109 @@
         }
       });
     }, { rootMargin: "0px 0px -8%", threshold: 0.08 });
-    revealItems.forEach(function (item) { observer.observe(item); });
+
+    var groupObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var kids = entry.target.querySelectorAll(".reveal");
+        Array.prototype.forEach.call(kids, function (child, i) {
+          child.style.transitionDelay = (i * 0.07).toFixed(2) + "s";
+          child.classList.add("is-visible");
+        });
+        groupObserver.unobserve(entry.target);
+      });
+    }, { rootMargin: "0px 0px -8%", threshold: 0.06 });
+
+    // Individually observe reveals that are not inside a stagger group.
+    revealItems.forEach(function (item) {
+      if (staggerChildren.indexOf(item) === -1) observer.observe(item);
+    });
+    staggerGroups.forEach(function (group) { groupObserver.observe(group); });
+  }
+
+  // --- Scroll progress bar ---
+  var progress = document.querySelector("[data-scroll-progress]");
+  function updateProgress() {
+    if (!progress) return;
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var ratio = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+    progress.style.transform = "scaleX(" + ratio.toFixed(4) + ")";
+  }
+
+  // --- Subtle hero parallax ---
+  var heroFrame = document.querySelector(".hero .product-frame");
+  function updateParallax() {
+    if (!heroFrame || reduceMotion) return;
+    var offset = Math.min(window.scrollY, 620);
+    heroFrame.style.transform = "translateY(" + (offset * -0.05).toFixed(1) + "px)";
+  }
+
+  var scrollRaf = 0;
+  function onScrollFx() {
+    if (scrollRaf) return;
+    scrollRaf = window.requestAnimationFrame(function () {
+      scrollRaf = 0;
+      updateProgress();
+      updateParallax();
+    });
+  }
+  window.addEventListener("scroll", onScrollFx, { passive: true });
+  window.addEventListener("resize", onScrollFx, { passive: true });
+  updateProgress();
+
+  // --- Momentum smooth scrolling (fine pointer, motion allowed) ---
+  var finePointer = window.matchMedia("(pointer: fine)").matches;
+  if (!reduceMotion && finePointer && "requestAnimationFrame" in window) {
+    var targetY = window.scrollY;
+    var currentY = window.scrollY;
+    var ticking = false;
+
+    function maxScroll() {
+      return document.documentElement.scrollHeight - window.innerHeight;
+    }
+    function scrollsInternally(node) {
+      while (node && node !== document.body && node.nodeType === 1) {
+        if (node.scrollHeight > node.clientHeight + 2) {
+          var oy = window.getComputedStyle(node).overflowY;
+          if (oy === "auto" || oy === "scroll") return true;
+        }
+        node = node.parentNode;
+      }
+      return false;
+    }
+    var root = document.documentElement;
+    function loop() {
+      currentY += (targetY - currentY) * 0.16;
+      if (Math.abs(targetY - currentY) < 0.4) {
+        currentY = targetY;
+        window.scrollTo(0, Math.round(currentY));
+        root.style.scrollBehavior = "";
+        ticking = false;
+        return;
+      }
+      window.scrollTo(0, Math.round(currentY));
+      window.requestAnimationFrame(loop);
+    }
+    window.addEventListener("wheel", function (event) {
+      if (event.ctrlKey || event.defaultPrevented) return;
+      if (document.body.classList.contains("intro-active")) return;
+      if (scrollsInternally(event.target)) return;
+      var delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+      targetY = Math.max(0, Math.min(maxScroll(), targetY + delta));
+      event.preventDefault();
+      if (!ticking) {
+        ticking = true;
+        // Bypass CSS smooth scrolling for our own per-frame updates.
+        root.style.scrollBehavior = "auto";
+        window.requestAnimationFrame(loop);
+      }
+    }, { passive: false });
+    // Keep the target in sync with keyboard, anchor, and scrollbar scrolling.
+    window.addEventListener("scroll", function () {
+      if (!ticking) { targetY = window.scrollY; currentY = window.scrollY; }
+    }, { passive: true });
+    window.addEventListener("resize", function () {
+      targetY = Math.min(targetY, maxScroll());
+    }, { passive: true });
   }
 })();
