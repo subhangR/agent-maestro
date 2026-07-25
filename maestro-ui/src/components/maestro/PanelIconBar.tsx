@@ -75,7 +75,7 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                 {/* Tasks — checkbox with tick: unmistakably "things to do" */}
                 <button type="button"
                     className={`maestroPanelPrimaryTab ${primaryTab === "tasks" ? "maestroPanelPrimaryTabActive" : ""}`}
-                    onClick={() => onPrimaryTabChange("tasks")}
+                    title="Tasks — your to-do list" onClick={() => onPrimaryTabChange("tasks")}
                 >
                     <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <rect x="3" y="4" width="7" height="7" rx="1.5" />
@@ -89,7 +89,7 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                 {/* Team — silhouette of two people side by side */}
                 <button type="button"
                     className={`maestroPanelPrimaryTab ${primaryTab === "team" ? "maestroPanelPrimaryTabActive" : ""}`}
-                    onClick={() => onPrimaryTabChange("team")}
+                    title="Team — members & agents" onClick={() => onPrimaryTabChange("team")}
                 >
                     <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <circle cx="8" cy="6.5" r="2.8" />
@@ -103,7 +103,7 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                 {/* Skills — lightning bolt: capability / power */}
                 <button type="button"
                     className={`maestroPanelPrimaryTab ${primaryTab === "skills" ? "maestroPanelPrimaryTabActive" : ""}`}
-                    onClick={() => onPrimaryTabChange("skills")}
+                    title="Skills — reusable capabilities" onClick={() => onPrimaryTabChange("skills")}
                 >
                     <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <path d="M12 2L5 11h6.5L8 18l9-11h-6.5L12 2z" strokeLinejoin="round" strokeLinecap="round" />
@@ -113,7 +113,7 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                 {/* Lists — numbered ordered list (1·2·3): clearly "ordered collection" */}
                 <button type="button"
                     className={`maestroPanelPrimaryTab ${primaryTab === "lists" ? "maestroPanelPrimaryTabActive" : ""}`}
-                    onClick={() => onPrimaryTabChange("lists")}
+                    title="Lists — ordered task collections" onClick={() => onPrimaryTabChange("lists")}
                 >
                     <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <path d="M8 5h9M8 10h9M8 15h9" strokeLinecap="round" />
@@ -127,7 +127,7 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                 {/* Graphs — knowledge graph: nodes + edges in a triangle */}
                 <button type="button"
                     className={`maestroPanelPrimaryTab ${primaryTab === "graphs" ? "maestroPanelPrimaryTabActive" : ""}`}
-                    onClick={() => onPrimaryTabChange("graphs")}
+                    title="Graphs — knowledge graphs" onClick={() => onPrimaryTabChange("graphs")}
                 >
                     <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <circle cx="10" cy="4" r="2.2" />
@@ -142,7 +142,7 @@ export const PanelIconBar: React.FC<PanelIconBarProps> = ({
                 {/* Profiles — CPU/chip: model profile metaphor */}
                 <button type="button"
                     className={`maestroPanelPrimaryTab ${primaryTab === "profiles" ? "maestroPanelPrimaryTabActive" : ""}`}
-                    onClick={() => onPrimaryTabChange("profiles")}
+                    title="Profiles — model profiles" onClick={() => onPrimaryTabChange("profiles")}
                 >
                     <svg className="maestroPanelTabIcon" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5">
                         <rect x="5.5" y="5.5" width="9" height="9" rx="1.5" />

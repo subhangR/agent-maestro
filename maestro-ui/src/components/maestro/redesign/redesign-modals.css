@@ -219,3 +219,10 @@ html[data-redesign] .pn-range::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 50%;
   background: var(--pn-brand); border: 2px solid var(--pn-card); box-shadow: var(--pn-sh-sm);
 }
+
+/* Fix: on narrow modals the footer's left chip group overflowed and overlapped
+   the right action group ("More"/"Cancel" collision). Let the groups wrap
+   instead of overlapping; on wide modals this is a no-op (single row). */
+html[data-redesign] .pn-mdl__foot { flex-wrap: wrap; row-gap: 8px; }
+html[data-redesign] .pn-mdl__footL { flex-wrap: wrap; row-gap: 8px; }
+html[data-redesign] .pn-mdl__footR { flex: 0 0 auto; margin-left: auto; }
