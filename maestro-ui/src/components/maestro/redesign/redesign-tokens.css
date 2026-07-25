@@ -50,7 +50,10 @@ html[data-redesign] {
   /* type ------------------------------------------------------------------ */
   --pn-serif: 'Newsreader', Georgia, 'Times New Roman', serif;
   --pn-ui:    'Hanken Grotesk', system-ui, -apple-system, sans-serif;
-  --pn-mono:  'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  /* Labels use the clean UI sans (industry-standard look) rather than a
+     terminal mono; also renders glyphs like ⌘ correctly. Genuine code/terminal
+     output uses xterm's own font, so this only affects decorative labels. */
+  --pn-mono:  'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* radii / shadow -------------------------------------------------------- */
   --pn-r-xs: 5px;
