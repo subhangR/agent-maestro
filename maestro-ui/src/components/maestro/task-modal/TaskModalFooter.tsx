@@ -206,17 +206,17 @@ export function TaskModalFooter({
                     type="button"
                     className={`pn-toggle ${dangerousMode ? 'pn-toggle--on-danger' : ''}`}
                     onClick={() => onDangerousModeChange(!dangerousMode)}
-                    title={dangerousMode ? 'Dangerous mode ON (bypass permissions) — click to disable' : 'Enable dangerous mode (bypass permissions)'}
+                    title={dangerousMode ? 'Unrestricted: the agent skips permission prompts — click to make it ask first' : 'Safe: the agent asks before risky actions — click to let it run unrestricted'}
                 >
-                    <Icon name="shield" size={13} /> {dangerousMode ? 'YOLO' : 'Safe'}
+                    <Icon name="shield" size={13} /> {dangerousMode ? 'Unrestricted' : 'Safe'}
                 </button>
                 <button
                     type="button"
                     className={`pn-toggle ${useWorktree ? 'pn-toggle--on-wt' : ''}`}
                     onClick={() => onUseWorktreeChange(!useWorktree)}
-                    title={useWorktree ? 'Git worktree isolation ON — click to disable' : 'Enable git worktree isolation'}
+                    title={useWorktree ? 'Isolated copy: the agent works in a separate copy of your code — click to work in your folder directly' : 'In place: the agent edits your folder directly — click to isolate changes in a separate copy'}
                 >
-                    <Icon name="gitBranch" size={13} /> {useWorktree ? 'worktree' : 'in-place'}
+                    <Icon name="gitBranch" size={13} /> {useWorktree ? 'Isolated copy' : 'In place'}
                 </button>
                 <ModelPickerChip
                     value={taskLaunchConfig}
