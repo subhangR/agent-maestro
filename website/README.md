@@ -4,9 +4,11 @@ This directory is the static marketing site published by Firebase Hosting.
 
 ## Structure
 
-- `index.html` — semantic page structure, content, metadata, and product preview markup
+- `index.html` — semantic page structure, content, metadata, real product screenshots, and the animated brand mark
 - `styles.css` — design tokens, responsive layouts, components, and reduced-motion behavior
-- `app.js` — navigation, reveal behavior, copy control, and footer year
+- `app.js` — navigation, reveal behavior, copy control, footer year, product-tour tab switching, and contact-form submission
+- `assets/brand/` — brand marks (animated loop layers, favicons, social card)
+- `assets/shots/` — optimized product screenshots used in the hero and tour
 
 No build step is required. Preview locally from the repository root:
 
@@ -30,9 +32,11 @@ Run the repeatable package check with `bun run check:website`.
 
 ## Production boundary
 
-The marketing website is intentionally independent from `maestro-server`, `maestro-ui`, and notification Functions. Its only runtime request is the same-origin `content/site.json` public configuration. The HTML contains a complete fallback, so a content request failure does not blank or break the page.
+The marketing website is independent from `maestro-server` and `maestro-ui`. It makes two runtime requests, both same-origin: `content/site.json` (public configuration; the HTML is a complete fallback if it fails) and, on contact-form submission, `POST /api/contact`.
 
-The website collects and stores no personal data. Do not add forms, analytics, tracking, authentication, or browser storage without an explicit data classification, consent model, retention policy, deletion path, abuse protection, and backend ownership decision.
+`/api/contact` is rewritten in `firebase.json` to the `submitWebsiteInquiry` Cloud Function (`functions/src/websiteInquiry.ts`), which validates and rate-limits the enquiry, stores it in Firestore, and emails a notification (gated on the `CONTACT_MAIL_PASS` env param). If that endpoint is not deployed, `app.js` degrades gracefully to a prefilled `mailto:` draft, so the form is never a dead end.
+
+Contact form data classification: name, email, and message are user-submitted for the sole purpose of responding to the enquiry, gated behind an explicit consent checkbox and a honeypot, and stored privately in Firestore. Do not add analytics, tracking, third-party embeds, authentication, or additional browser storage without an explicit data classification, consent model, retention policy, deletion path, and backend ownership decision.
 
 ## Deployment
 
