@@ -251,7 +251,7 @@ export function SessionDetailsSection({
           {/* Mode & Spawn Info */}
           {(session.mode || session.spawnSource || session.spawnedBy) && (
             <div className="sessionDetailsGroup">
-              <div className="sessionDetailsGroupTitle">Spawn Information</div>
+              <div className="sessionDetailsGroupTitle">Session origin</div>
               <div className="sessionDetailsGrid">
                 {session.mode && (
                   <div className="sessionDetailsRow">
@@ -263,7 +263,7 @@ export function SessionDetailsSection({
                 )}
                 {session.spawnSource && (
                   <div className="sessionDetailsRow">
-                    <span className="sessionDetailsLabel">Spawn Source:</span>
+                    <span className="sessionDetailsLabel">Started from:</span>
                     <span className="sessionDetailsValue">
                       {session.spawnSource}
                     </span>
@@ -271,7 +271,7 @@ export function SessionDetailsSection({
                 )}
                 {session.spawnedBy && (
                   <div className="sessionDetailsRow">
-                    <span className="sessionDetailsLabel">Spawned By:</span>
+                    <span className="sessionDetailsLabel">Started by:</span>
                     <span className="sessionDetailsValue sessionDetailsValue--mono">
                       {session.spawnedBy}
                     </span>

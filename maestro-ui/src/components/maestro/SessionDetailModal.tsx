@@ -224,13 +224,13 @@ export function SessionDetailModal({ sessionId, isOpen, onClose }: SessionDetail
                   </div>
                   {session.spawnSource && (
                     <div className="pn-fld" style={{ gap: 3 }}>
-                      <span className="pn-flabel">Spawn Source</span>
+                      <span className="pn-flabel">Started from</span>
                       <span style={{ fontSize: "12.5px", color: "var(--pn-ink-2)" }}>{session.spawnSource}</span>
                     </div>
                   )}
                   {session.spawnedBy && (
                     <div className="pn-fld" style={{ gap: 3 }}>
-                      <span className="pn-flabel">Spawned By</span>
+                      <span className="pn-flabel">Started by</span>
                       <span style={{ fontSize: "12.5px", color: "var(--pn-ink-2)" }}>{session.spawnedBy}</span>
                     </div>
                   )}
