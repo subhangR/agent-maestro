@@ -14,17 +14,24 @@
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var introTimer;
 
+  function endBrandIntro() {
+    if (!brandIntro) return;
+    window.clearTimeout(introTimer);
+    brandIntro.classList.remove("is-active");
+    brandIntro.classList.add("is-dismissing");
+    document.body.classList.remove("intro-active");
+    window.setTimeout(function () { brandIntro.classList.remove("is-dismissing"); }, 650);
+  }
+
   function playBrandIntro() {
     if (!brandIntro || reduceMotion) return;
     window.clearTimeout(introTimer);
+    brandIntro.classList.remove("is-dismissing");
     brandIntro.classList.remove("is-active");
     void brandIntro.offsetWidth;
     brandIntro.classList.add("is-active");
     document.body.classList.add("intro-active");
-    introTimer = window.setTimeout(function () {
-      brandIntro.classList.remove("is-active");
-      document.body.classList.remove("intro-active");
-    }, 10000);
+    introTimer = window.setTimeout(endBrandIntro, 3900);
   }
 
   if (!reduceMotion && !window.sessionStorage.getItem("maestroBrandSeen")) {
@@ -35,6 +42,17 @@
   brandTriggers.forEach(function (trigger) {
     trigger.addEventListener("click", function () { playBrandIntro(); });
   });
+
+  // Click anywhere on the intro (or press a key) to skip it.
+  if (brandIntro) {
+    brandIntro.addEventListener("click", endBrandIntro);
+    window.addEventListener("keydown", function (event) {
+      if (brandIntro.classList.contains("is-active") &&
+          (event.key === "Escape" || event.key === "Enter" || event.key === " ")) {
+        endBrandIntro();
+      }
+    });
+  }
 
   function isString(value) {
     return typeof value === "string" && value.trim().length > 0;
