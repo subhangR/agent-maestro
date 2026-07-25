@@ -555,4 +555,69 @@
       el.addEventListener("mouseleave", function () { el.style.transition = "transform .55s cubic-bezier(.16,1,.3,1)"; el.style.transform = ""; rect = null; });
     });
   })();
+
+  // Hero reveals: split the headline into words and the wordmark into letters.
+  (function initHeroReveals() {
+    if (reduceMotion) return;
+    var wordEl = document.querySelector("[data-reveal-words]");
+    if (wordEl) {
+      var parts = wordEl.innerHTML.split(/(\s+|<br\s*\/?>)/i);
+      wordEl.innerHTML = "";
+      var wi = 0;
+      parts.forEach(function (part) {
+        if (/^<br/i.test(part)) { wordEl.appendChild(document.createElement("br")); return; }
+        if (part.trim() === "") { wordEl.appendChild(document.createTextNode(" ")); return; }
+        var wrap = document.createElement("span"); wrap.className = "reveal-word-wrap";
+        var inner = document.createElement("span"); inner.className = "reveal-word";
+        inner.textContent = part; inner.style.animationDelay = (wi * 0.1).toFixed(2) + "s"; wi++;
+        wrap.appendChild(inner); wordEl.appendChild(wrap);
+      });
+    }
+    var letterEl = document.querySelector("[data-reveal-letters]");
+    if (letterEl) {
+      var text = letterEl.textContent.trim();
+      letterEl.innerHTML = "";
+      Array.prototype.forEach.call(text, function (ch, i) {
+        var wrap = document.createElement("span"); wrap.className = "reveal-letter-wrap";
+        var inner = document.createElement("span"); inner.className = "reveal-letter";
+        inner.textContent = ch === " " ? " " : ch;
+        inner.style.animationDelay = (0.6 + i * 0.09).toFixed(2) + "s";
+        wrap.appendChild(inner); letterEl.appendChild(wrap);
+      });
+    }
+  })();
+
+  // Custom double cursor: instant ring + lagging glass pill.
+  (function initCursor() {
+    var ring = document.querySelector("[data-cursor-ring]");
+    var pill = document.querySelector("[data-cursor-pill]");
+    if (!ring || !pill || reduceMotion || !window.matchMedia("(pointer: fine)").matches) return;
+    document.documentElement.classList.add("has-cursor");
+    document.body.classList.add("has-cursor-on");
+    var mx = window.innerWidth / 2, my = window.innerHeight / 2;
+    var px = mx, py = my, first = true, scale = 0, target = 0, onEl = false;
+
+    document.addEventListener("mousemove", function (e) {
+      mx = e.clientX; my = e.clientY;
+      if (first) { px = mx; py = my; first = false; ring.classList.add("active"); pill.classList.add("active"); }
+      if (!onEl) target = 1;
+    });
+    document.addEventListener("mouseleave", function () { target = 0; });
+    document.addEventListener("mouseenter", function () { if (!onEl) target = 1; });
+
+    document.querySelectorAll("a, button, input, textarea, select, [data-tilt], .tour-tab").forEach(function (el) {
+      el.addEventListener("mouseenter", function () { onEl = true; target = 0; ring.classList.add("expanded"); });
+      el.addEventListener("mouseleave", function () { onEl = false; target = 1; ring.classList.remove("expanded"); });
+    });
+
+    function loop() {
+      px += (mx - px) * 0.12; py += (my - py) * 0.12;
+      scale += (target - scale) * 0.15;
+      var ringScale = ring.classList.contains("expanded") ? 1.7 * scale : scale;
+      ring.style.transform = "translate3d(" + mx + "px," + my + "px,0) translate(-50%,-50%) scale(" + ringScale.toFixed(3) + ")";
+      pill.style.transform = "translate3d(" + px + "px," + py + "px,0) translate(-50%,-50%) scale(" + scale.toFixed(3) + ")";
+      window.requestAnimationFrame(loop);
+    }
+    window.requestAnimationFrame(loop);
+  })();
 })();
