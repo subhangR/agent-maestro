@@ -13,7 +13,6 @@ import {
   DEFAULT_TERMINAL_FONT_ID,
   DEFAULT_TERMINAL_FONT_SIZE,
   DEFAULT_CURSOR_STYLE,
-  DEFAULT_CURSOR_BLINK,
   DEFAULT_CURSOR_INACTIVE_STYLE,
   DEFAULT_FONT_WEIGHT,
   DEFAULT_FONT_WEIGHT_BOLD,
@@ -242,7 +241,6 @@ export function TerminalSettings() {
   const lineHeight = useTerminalSettingsStore((s) => s.lineHeight);
   const letterSpacing = useTerminalSettingsStore((s) => s.letterSpacing);
   const cursorStyle = useTerminalSettingsStore((s) => s.cursorStyle);
-  const cursorBlink = useTerminalSettingsStore((s) => s.cursorBlink);
   const cursorInactiveStyle = useTerminalSettingsStore((s) => s.cursorInactiveStyle);
   const scrollback = useTerminalSettingsStore((s) => s.scrollback);
   const colorPresetId = useTerminalSettingsStore((s) => s.colorPresetId);
@@ -255,7 +253,6 @@ export function TerminalSettings() {
   const setLineHeight = useTerminalSettingsStore((s) => s.setLineHeight);
   const setLetterSpacing = useTerminalSettingsStore((s) => s.setLetterSpacing);
   const setCursorStyle = useTerminalSettingsStore((s) => s.setCursorStyle);
-  const setCursorBlink = useTerminalSettingsStore((s) => s.setCursorBlink);
   const setCursorInactiveStyle = useTerminalSettingsStore((s) => s.setCursorInactiveStyle);
   const setScrollback = useTerminalSettingsStore((s) => s.setScrollback);
   const applyColorPreset = useTerminalSettingsStore((s) => s.applyColorPreset);
@@ -270,7 +267,6 @@ export function TerminalSettings() {
     lineHeight === DEFAULT_LINE_HEIGHT &&
     letterSpacing === DEFAULT_LETTER_SPACING &&
     cursorStyle === DEFAULT_CURSOR_STYLE &&
-    cursorBlink === DEFAULT_CURSOR_BLINK &&
     cursorInactiveStyle === DEFAULT_CURSOR_INACTIVE_STYLE &&
     scrollback === DEFAULT_SCROLLBACK &&
     colorPresetId === DEFAULT_COLOR_PRESET_ID;
@@ -473,29 +469,6 @@ export function TerminalSettings() {
                 {opt.label}
               </button>
             ))}
-          </div>
-        </div>
-
-        <div className="pn-fld">
-          <div className="pn-caps">
-            <div className="pn-cap">
-              <input
-                type="checkbox"
-                id="term-cursor-blink"
-                className="sr-only"
-                checked={cursorBlink}
-                onChange={(e) => setCursorBlink(e.target.checked)}
-              />
-              <div className="pn-cap__body">
-                <span className="pn-cap__name">Cursor Blink</span>
-                <span className="pn-cap__desc">Animate the cursor when focused</span>
-              </div>
-              <label
-                htmlFor="term-cursor-blink"
-                className={`pn-switch${cursorBlink ? ' pn-switch--on' : ''}`}
-                aria-label="Cursor blink"
-              />
-            </div>
           </div>
         </div>
 

@@ -201,7 +201,10 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     const termSettings = useTerminalSettingsStore.getState();
     const term = new Terminal({
       allowProposedApi: true,
-      cursorBlink: termSettings.cursorBlink,
+      // Blink is hard-disabled everywhere: each blinking cursor is a steady
+      // xterm timer + repaint loop, and with a fleet of mounted terminals they
+      // add up to constant background render work for zero information.
+      cursorBlink: false,
       cursorStyle: termSettings.cursorStyle,
       cursorInactiveStyle: termSettings.cursorInactiveStyle,
       disableStdin: props.readOnly,
@@ -903,21 +906,6 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     };
   }, [props.active, props.id]);
 
-  // Only the ACTIVE terminal blinks its cursor. xterm runs a per-terminal blink
-  // timer + periodic cursor refresh whenever cursorBlink is on; across many
-  // mounted session terminals that is N steady repaint loops that scale with the
-  // fleet size and add up to gradual UI lag. A background terminal you're not
-  // looking at doesn't need a blinking cursor, so switch blink off when inactive
-  // and restore the user's setting when it becomes active.
-  useEffect(() => {
-    const term = termRef.current;
-    if (!term) return;
-    const wantBlink = props.active && useTerminalSettingsStore.getState().cursorBlink;
-    if (term.options.cursorBlink !== wantBlink) {
-      term.options.cursorBlink = wantBlink;
-    }
-  }, [props.active]);
-
   useEffect(() => {
     const term = termRef.current;
     if (!term) return;
@@ -934,7 +922,6 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
   const termLineHeight = useTerminalSettingsStore((s) => s.lineHeight);
   const termLetterSpacing = useTerminalSettingsStore((s) => s.letterSpacing);
   const termCursorStyle = useTerminalSettingsStore((s) => s.cursorStyle);
-  const termCursorBlink = useTerminalSettingsStore((s) => s.cursorBlink);
   const termCursorInactiveStyle = useTerminalSettingsStore((s) => s.cursorInactiveStyle);
   const termScrollback = useTerminalSettingsStore((s) => s.scrollback);
   const termColors = useTerminalSettingsStore((s) => s.colors);
@@ -960,12 +947,9 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     term.options.lineHeight = termLineHeight;
     term.options.letterSpacing = termLetterSpacing;
 
-    // Cursor options. Blink ONLY the active terminal — otherwise this settings
-    // effect would re-enable a per-terminal blink timer+repaint loop on every
-    // mounted (but hidden) terminal, defeating the active-only-blink effect
-    // above and adding N steady repaint loops that scale with the fleet.
+    // Cursor options. Blink stays hard-off (see the Terminal constructor):
+    // every blinking cursor is a persistent timer + repaint loop.
     term.options.cursorStyle = termCursorStyle;
-    term.options.cursorBlink = props.active && termCursorBlink;
     term.options.cursorInactiveStyle = termCursorInactiveStyle;
 
     // Scrollback
@@ -1023,7 +1007,6 @@ const SessionTerminal = React.memo(function SessionTerminal(props: SessionTermin
     termLineHeight,
     termLetterSpacing,
     termCursorStyle,
-    termCursorBlink,
     termCursorInactiveStyle,
     termScrollback,
     termColors,
