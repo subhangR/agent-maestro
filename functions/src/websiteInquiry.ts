@@ -1,9 +1,18 @@
 import { createHash } from 'node:crypto';
 import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
+import { defineString } from 'firebase-functions/params';
 import { onRequest } from 'firebase-functions/v2/https';
+import { createTransport } from 'nodemailer';
 
 const REGION = 'asia-southeast1';
+
+// Email notification config. CONTACT_MAIL_PASS is a Gmail App Password supplied via
+// an env param (kept in the git-ignored functions/.env.maestro-5f3fc). While it is
+// the "PENDING" placeholder, email is skipped and enquiries are still stored.
+const MAIL_USER = defineString('CONTACT_MAIL_USER', { default: 'manzilshaik95@gmail.com' });
+const MAIL_TO = defineString('CONTACT_MAIL_TO', { default: 'manzilshaik95@gmail.com' });
+const MAIL_PASS = defineString('CONTACT_MAIL_PASS', { default: 'PENDING' });
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_LIMIT = 4;
 const TYPES = new Set(['general', 'demo', 'partnership', 'contributor', 'support']);
@@ -60,6 +69,45 @@ function originAllowed(origin: string | undefined): boolean {
   }
 }
 
+function applyCors(response: { set(key: string, value: string): unknown }, origin: string | undefined): void {
+  if (!originAllowed(origin) || !origin) return;
+  response.set('Access-Control-Allow-Origin', origin);
+  response.set('Vary', 'Origin');
+  response.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  response.set('Access-Control-Max-Age', '3600');
+}
+
+async function sendInquiryEmail(inquiry: Inquiry, referenceId: string): Promise<void> {
+  const pass = MAIL_PASS.value();
+  const user = MAIL_USER.value();
+  // Skip quietly until a real Gmail App Password replaces the placeholder.
+  if (!user || !pass || pass === 'PENDING') return;
+  const transporter = createTransport({ service: 'gmail', auth: { user, pass } });
+  const to = MAIL_TO.value() || user;
+  const reference = referenceId.slice(0, 8).toUpperCase();
+  const lines = [
+    `New enquiry from the Maestro website`,
+    ``,
+    `Reference: ${reference}`,
+    `Type:      ${inquiry.type}`,
+    `Name:      ${inquiry.name}`,
+    `Email:     ${inquiry.email}`,
+    inquiry.phone ? `Phone:     ${inquiry.phone}` : '',
+    inquiry.company ? `Company:   ${inquiry.company}` : '',
+    ``,
+    `Message:`,
+    inquiry.message,
+  ].filter((line) => line !== '');
+  await transporter.sendMail({
+    from: `Maestro Website <${user}>`,
+    to,
+    replyTo: inquiry.email,
+    subject: `Maestro enquiry · ${inquiry.type} · ${inquiry.name} [${reference}]`,
+    text: lines.join('\n'),
+  });
+}
+
 function clientFingerprint(request: { ip?: string; headers: Record<string, unknown> }): string {
   const forwarded = request.headers['x-forwarded-for'];
   const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : request.ip ?? 'unknown';
@@ -91,11 +139,17 @@ export const submitWebsiteInquiry = onRequest(
   async (request, response) => {
     response.set('Cache-Control', 'no-store');
     response.set('X-Content-Type-Options', 'nosniff');
-    if (request.method !== 'POST') {
-      response.set('Allow', 'POST').status(405).json({ ok: false, error: 'Method not allowed.' });
+    const origin = request.get('origin');
+    applyCors(response, origin);
+    if (request.method === 'OPTIONS') {
+      response.status(204).send('');
       return;
     }
-    if (!originAllowed(request.get('origin'))) {
+    if (request.method !== 'POST') {
+      response.set('Allow', 'POST, OPTIONS').status(405).json({ ok: false, error: 'Method not allowed.' });
+      return;
+    }
+    if (!originAllowed(origin)) {
       response.status(403).json({ ok: false, error: 'Request origin is not allowed.' });
       return;
     }
@@ -119,6 +173,12 @@ export const submitWebsiteInquiry = onRequest(
         createdAt: FieldValue.serverTimestamp(),
       });
       logger.info('Website enquiry received.', { inquiryId: reference.id, type: parsed.inquiry.type });
+      try {
+        await sendInquiryEmail(parsed.inquiry, reference.id);
+      } catch (mailError) {
+        // The enquiry is already durably stored; a mail failure must not fail the request.
+        logger.error('Website enquiry email notification failed.', mailError);
+      }
       response.status(201).json({ ok: true, reference: reference.id.slice(0, 8).toUpperCase() });
     } catch (error) {
       logger.error('Website enquiry submission failed.', error);

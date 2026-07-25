@@ -80,3 +80,6 @@ ds-bundle/
 
 # Firebase deploy cache
 .firebase/
+
+# Firebase functions per-project / local env overrides (may hold app passwords)
+functions/.env.*

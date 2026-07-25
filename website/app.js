@@ -139,11 +139,44 @@
         status.textContent = "Message received. Reference " + body.reference + ".";
       }).catch(function (error) {
         status.className = "form-status error";
-        status.textContent = error.message || "We could not send your enquiry. Please try again.";
+        status.textContent = (error && error.message) ? error.message : "We could not send your enquiry right now.";
+        var fallback = document.createElement("a");
+        fallback.className = "form-status-link";
+        fallback.href = "mailto:manzilshaik95@gmail.com?subject=" +
+          encodeURIComponent("Maestro enquiry — " + (payload.type || "general")) +
+          "&body=" + encodeURIComponent(payload.message || "");
+        fallback.textContent = "Email us directly →";
+        status.appendChild(document.createTextNode(" "));
+        status.appendChild(fallback);
       }).finally(function () {
         contactForm.classList.remove("is-sending");
         submitButton.disabled = false;
         submitButton.textContent = "Send enquiry";
+      });
+    });
+  }
+
+  var tourTabs = document.querySelectorAll("[data-shot-tab]");
+  var tourShots = document.querySelectorAll("[data-shot]");
+  var tourCaption = document.querySelector("[data-tour-caption]");
+  if (tourTabs.length && tourShots.length) {
+    tourTabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        var key = tab.getAttribute("data-shot-tab");
+        tourTabs.forEach(function (other) {
+          other.setAttribute("aria-selected", String(other === tab));
+        });
+        tourShots.forEach(function (img) {
+          img.hidden = img.getAttribute("data-shot") !== key;
+        });
+        if (tourCaption) {
+          var num = tourCaption.querySelector("[data-tour-num]");
+          var title = tourCaption.querySelector("[data-tour-title]");
+          var textEl = tourCaption.querySelector("[data-tour-text]");
+          if (num) num.textContent = tab.getAttribute("data-num") || "";
+          if (title) title.textContent = tab.getAttribute("data-title") || "";
+          if (textEl) textEl.textContent = tab.getAttribute("data-caption") || "";
+        }
       });
     });
   }

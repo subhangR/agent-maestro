@@ -47,8 +47,8 @@ img, svg { display: block; max-width: 100%; }
 
 .brand-intro { position: fixed; z-index: 1000; inset: 0; display: grid; place-content: center; justify-items: center; color: #f6f7f8; background: radial-gradient(circle at 50% 48%, #073043 0, #0a1622 26%, #070b12 62%, #05070c 100%); opacity: 0; visibility: hidden; transition: opacity .28s ease, visibility 0s linear .28s; }
 .brand-intro.is-active { opacity: 1; visibility: visible; transition: opacity .28s ease; }
-.brand-intro img { position: relative; z-index: 1; width: min(620px, 82vw); height: auto; transform: scale(.88); opacity: 0; filter: drop-shadow(0 0 20px rgba(0,229,255,.18)); }
-.brand-intro.is-active img { animation: brand-arrival 9.7s cubic-bezier(.2,.7,.2,1) forwards; }
+.brand-intro .loopmark { position: relative; z-index: 1; width: min(340px, 60vw); aspect-ratio: 1; transform: scale(.88); opacity: 0; filter: drop-shadow(0 0 26px rgba(0,229,255,.22)); }
+.brand-intro.is-active .loopmark { animation: brand-arrival 9.7s cubic-bezier(.2,.7,.2,1) forwards; }
 .brand-intro-glow { position: absolute; width: min(620px, 82vw); aspect-ratio: 1.6; border-radius: 50%; background: rgba(0,229,255,.1); filter: blur(80px); opacity: 0; }
 .brand-intro.is-active .brand-intro-glow { animation: brand-glow 9.8s ease-out forwards; }
 .identity-sequence { z-index: 2; width: min(720px, 88vw); height: 34px; position: relative; margin-top: -34px; text-align: center; }
@@ -184,3 +184,87 @@ body.intro-active { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }.reveal { opacity: 1; transform: none; transition: none; }.button, .site-header { transition: none; }.brand-intro { display: none; }
 }
+
+/* ============================================================
+   Premium additions: animated loop mark, screenshot frames,
+   product tour gallery, capability infographic.
+   ============================================================ */
+
+/* --- Animated loop mark (orange 8 static, loop arrow rotating) --- */
+.loopmark { position: relative; display: grid; place-items: center; line-height: 0; }
+.loopmark img { grid-area: 1 / 1; width: 100%; height: 100%; object-fit: contain; display: block; }
+.loopmark .lm-ring { animation: lm-spin 11s linear infinite; transform-origin: 50% 50%; will-change: transform; }
+@keyframes lm-spin { to { transform: rotate(360deg); } }
+.brand-logo .loopmark { width: 30px; height: 30px; }
+.footer-brand .brand-logo .loopmark { width: 30px; height: 30px; }
+
+/* --- Screenshot / browser frame --- */
+.frame-shot { width: 100%; height: auto; display: block; }
+.product-frame .frame-shot { border-top: 1px solid var(--line); }
+.shot-frame { border: 1px solid #c9cabf; border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow); }
+.shot-frame .window-bar { grid-template-columns: auto 1fr auto; }
+.shot-frame .window-controls { display: inline-flex; gap: 6px; }
+.shot-frame .window-controls i { width: 10px; height: 10px; border-radius: 50%; background: #d6d4ca; }
+.shot-frame .window-controls i:nth-child(1) { background: #e0a08f; }
+.shot-frame .window-controls i:nth-child(2) { background: #e6cfa0; }
+.shot-frame .window-controls i:nth-child(3) { background: #b9cdb1; }
+
+/* --- Product tour --- */
+.tour-section { padding: 120px 0; border-top: 1px solid var(--line); background: linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0)); }
+.tour-head { display: grid; grid-template-columns: 170px 1fr .72fr; gap: 36px; align-items: end; margin-bottom: 44px; }
+.tour-head .section-number { align-self: start; margin-top: 10px; }
+.tour-head h2 { margin: 0; font-size: clamp(2.65rem, 4.4vw, 4.7rem); line-height: .98; letter-spacing: -.06em; font-weight: 600; }
+.tour-head p { margin: 0; color: var(--ink-soft); font-size: .95rem; line-height: 1.8; }
+.tour-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+.tour-tab { display: inline-flex; align-items: center; gap: 9px; padding: 10px 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-raised); color: var(--ink-soft); font: 600 .82rem var(--sans); cursor: pointer; transition: border-color .18s, color .18s, background .18s; }
+.tour-tab:hover { border-color: var(--moss); color: var(--ink); }
+.tour-tab[aria-selected="true"] { background: var(--ink); color: #f6f5ef; border-color: var(--ink); }
+.tour-tab .tour-tab-glyph { width: 16px; height: 16px; color: currentColor; }
+.tour-stage { position: relative; }
+.tour-figure { margin: 0; }
+.tour-shot { position: relative; }
+.tour-shot img { width: 100%; height: auto; display: block; }
+.tour-shot img[hidden] { display: none; }
+.tour-caption { display: flex; align-items: baseline; gap: 12px; margin-top: 18px; color: var(--muted); font-size: .86rem; }
+.tour-caption b { color: var(--ink); font-weight: 650; }
+.tour-caption .tour-num { font: .62rem var(--mono); color: var(--moss); letter-spacing: .06em; }
+
+/* --- Capability infographic --- */
+.cap-section { padding: 130px 0; color: #f1efe7; background: var(--obsidian); position: relative; overflow: hidden; }
+.cap-section::before { content: ""; position: absolute; inset: 0; background: radial-gradient(680px 420px at 82% -6%, rgba(0,229,255,.09), transparent 62%), radial-gradient(560px 380px at 6% 108%, rgba(224,96,32,.10), transparent 60%); pointer-events: none; }
+.cap-head { position: relative; max-width: 720px; margin-bottom: 58px; }
+.cap-head .section-number { color: var(--moss-bright); }
+.cap-head h2 { margin: 14px 0 18px; font-size: clamp(2.5rem, 4.2vw, 4.3rem); line-height: 1; letter-spacing: -.055em; font-weight: 600; }
+.cap-head p { margin: 0; color: #a9b0aa; font-size: 1rem; line-height: 1.75; }
+.cap-grid { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.cap-card { padding: 26px 24px 28px; border: 1px solid rgba(255,255,255,.09); border-radius: var(--radius); background: rgba(255,255,255,.022); transition: border-color .2s, background .2s, transform .2s; }
+.cap-card:hover { border-color: rgba(0,229,255,.32); background: rgba(255,255,255,.045); transform: translateY(-3px); }
+.cap-ic { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 12px; background: rgba(0,229,255,.08); border: 1px solid rgba(0,229,255,.16); margin-bottom: 20px; }
+.cap-ic svg { width: 24px; height: 24px; stroke: #cfeaf0; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.cap-ic .accent { stroke: var(--rust); }
+.cap-card:nth-child(3n-1) .cap-ic { background: rgba(224,96,32,.09); border-color: rgba(224,96,32,.2); }
+.cap-card:nth-child(3n-1) .cap-ic svg { stroke: #f0c3ac; }
+.cap-card:nth-child(3n) .cap-ic { background: rgba(140,192,157,.09); border-color: rgba(140,192,157,.2); }
+.cap-card:nth-child(3n) .cap-ic svg { stroke: #bfe0c8; }
+.cap-card h3 { margin: 0 0 9px; font-size: 1.12rem; letter-spacing: -.02em; font-weight: 650; color: #f4f2ea; }
+.cap-card p { margin: 0; color: #9ba299; font-size: .86rem; line-height: 1.62; }
+
+@media (max-width: 900px) {
+  .cap-grid { grid-template-columns: repeat(2, 1fr); }
+  .tour-head { grid-template-columns: 120px 1fr; }
+  .tour-head p { grid-column: 2; }
+}
+@media (max-width: 680px) {
+  .tour-section, .cap-section { padding: 84px 0; }
+  .tour-head { display: block; }
+  .tour-head .section-number { margin-bottom: 22px; }
+  .tour-head p { margin-top: 20px; }
+  .cap-grid { grid-template-columns: 1fr; }
+  .cap-head { margin-bottom: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loopmark .lm-ring { animation: none !important; }
+}
+.cap-card code { font: .82em var(--mono); color: #f0b48f; background: rgba(224,96,32,.1); padding: 1px 5px; border-radius: 5px; }
+.form-status-link { color: var(--rust); font-weight: 650; text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.form-status-link:hover { color: var(--ink); }
