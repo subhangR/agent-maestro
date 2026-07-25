@@ -1,0 +1,352 @@
+<title>Maestro — Social Content Kit</title>
+<style>
+  :root {
+    --bg: #eceff3; --panel: #f7f8fa; --panel-2: #ffffff;
+    --ink: #14181f; --ink-soft: #4a505b; --muted: #767d89;
+    --line: #d6dae1; --line-soft: #e4e7ec;
+    --orange: #d95a17; --orange-ink: #b8480d;
+    --cyan: #0e8ba6; --cyan-soft: #e2f1f4;
+    --radius: 14px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0e17; --panel: #10151f; --panel-2: #141a26;
+      --ink: #e6e9ef; --ink-soft: #a8b0bd; --muted: #6f7887;
+      --line: #222a38; --line-soft: #1a2130;
+      --orange: #f0813f; --orange-ink: #f0813f;
+      --cyan: #35c9e6; --cyan-soft: #10222a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eceff3; --panel: #f7f8fa; --panel-2: #ffffff;
+    --ink: #14181f; --ink-soft: #4a505b; --muted: #767d89;
+    --line: #d6dae1; --line-soft: #e4e7ec;
+    --orange: #d95a17; --orange-ink: #b8480d;
+    --cyan: #0e8ba6; --cyan-soft: #e2f1f4;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0e17; --panel: #10151f; --panel-2: #141a26;
+    --ink: #e6e9ef; --ink-soft: #a8b0bd; --muted: #6f7887;
+    --line: #222a38; --line-soft: #1a2130;
+    --orange: #f0813f; --orange-ink: #f0813f;
+    --cyan: #35c9e6; --cyan-soft: #10222a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+    line-height: 1.62; -webkit-font-smoothing: antialiased; }
+  .wrap { width: min(830px, calc(100% - 40px)); margin-inline: auto; }
+  code { font-family: var(--mono); font-size: .86em; }
+
+  /* top bar */
+  header.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .top-inner { display: flex; align-items: center; gap: 13px; padding: 13px 0; }
+  .mark { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+  .top-title { font-weight: 700; letter-spacing: -.01em; }
+  .top-title small { display: block; font: 500 11px/1.3 var(--mono); letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted); margin-top: 1px; }
+  .chips { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips a { font: 500 12px/1 var(--mono); color: var(--ink-soft); text-decoration: none;
+    padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; transition: .15s; }
+  .chips a:hover { color: var(--orange); border-color: var(--orange); }
+  @media (max-width: 640px) { .chips { display: none; } }
+
+  /* hero */
+  .hero { padding: 54px 0 20px; border-bottom: 1px solid var(--line-soft); }
+  .hero .eyebrow { color: var(--cyan); }
+  .hero h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.05; letter-spacing: -.025em;
+    margin: 12px 0 14px; text-wrap: balance; font-weight: 800; }
+  .hero p { font-size: 18px; color: var(--ink-soft); max-width: 60ch; margin: 0; }
+  .hero .links { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+  .hero .links a { font: 600 14px/1 var(--sans); text-decoration: none; padding: 11px 16px;
+    border-radius: 10px; }
+  .btn-primary { background: var(--orange); color: #fff; }
+  .btn-ghost { border: 1px solid var(--line); color: var(--ink); }
+  .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  .eyebrow { font: 600 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase;
+    color: var(--muted); }
+
+  /* voice strip */
+  .voice { margin: 30px 0; padding: 22px 24px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); }
+  .voice h3 { margin: 0 0 12px; font-size: 15px; letter-spacing: -.01em; }
+  .voice ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 9px; }
+  .voice li { font-size: 14.5px; color: var(--ink-soft); padding-left: 16px; position: relative; }
+  .voice li::before { content: ""; position: absolute; left: 0; top: .62em; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--orange); }
+  .voice b { color: var(--ink); font-weight: 650; }
+
+  /* channels */
+  .channel { padding: 40px 0; border-top: 1px solid var(--line-soft); scroll-margin-top: 72px; }
+  .ch-head { margin-bottom: 18px; }
+  .ch-head h2 { font-size: 26px; letter-spacing: -.02em; margin: 8px 0 4px; font-weight: 750; }
+  .ch-tag { margin: 0; color: var(--muted); font: 500 13.5px/1.4 var(--mono); }
+
+  /* copy block */
+  .block { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius);
+    margin-top: 14px; overflow: hidden; }
+  .block-head { display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 14px;
+    background: var(--panel); border-bottom: 1px solid var(--line-soft); }
+  .block-label { font: 600 11.5px/1 var(--mono); letter-spacing: .07em; text-transform: uppercase;
+    color: var(--ink-soft); }
+  .copy { margin-left: auto; font: 600 12px/1 var(--sans); color: var(--ink-soft);
+    background: transparent; border: 1px solid var(--line); border-radius: 7px; padding: 6px 11px;
+    cursor: pointer; transition: .14s; }
+  .copy:hover { color: var(--orange); border-color: var(--orange); }
+  .copy.done { color: #fff; background: var(--cyan); border-color: var(--cyan); }
+  .copy:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  pre { margin: 0; padding: 16px 18px; white-space: pre-wrap; word-wrap: break-word;
+    font: 400 14px/1.6 var(--mono); color: var(--ink); max-height: none; }
+
+  .note { margin: 14px 2px 0; font-size: 13.5px; color: var(--ink-soft); line-height: 1.55; }
+  .note-key { font: 600 10.5px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase;
+    color: var(--cyan); border: 1px solid var(--cyan); border-radius: 5px; padding: 3px 6px;
+    margin-right: 9px; }
+  .note b { color: var(--ink); }
+
+  /* assets table */
+  .assets { padding: 40px 0; border-top: 1px solid var(--line-soft); }
+  .assets h2 { font-size: 22px; letter-spacing: -.02em; margin: 8px 0 16px; }
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 460px; }
+  th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--line-soft); }
+  th { font: 600 11px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); background: var(--panel); }
+  tr:last-child td { border-bottom: none; }
+  td code { color: var(--orange-ink); }
+
+  footer { padding: 34px 0 60px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line-soft); }
+  footer a { color: var(--cyan); }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .channel, .hero, .voice, .assets { animation: rise .5s both; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  }
+</style>
+
+<header class="top">
+  <div class="wrap top-inner">
+    <img class="mark" src="data:image/png;base64,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" alt="Maestro">
+    <div class="top-title">Maestro<small>Social Content Kit</small></div>
+    <nav class="chips"><a href="#x">X</a><a href="#li">LinkedIn</a><a href="#rd">Reddit</a><a href="#ig">Instagram</a><a href="#fb">Facebook</a><a href="#sc">Snapchat</a></nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <span class="eyebrow">// ready to post</span>
+    <h1>Launch copy that sounds like a person wrote it.</h1>
+    <p>Six channels, real options, per-channel image guidance. Every block copies with one tap.
+       Written to lead with the actual annoyance — a wall of terminals — not a feature list.</p>
+    <div class="links">
+      <a class="btn-primary" href="https://maestro-web-fleet.web.app" target="_blank" rel="noreferrer">View the site ↗</a>
+      <a class="btn-ghost" href="https://github.com/subhangR/agent-maestro" target="_blank" rel="noreferrer">GitHub repo ↗</a>
+    </div>
+
+    <div class="voice">
+      <h3>Four rules that keep it human</h3>
+      <ul><li><b>Lead with the annoyance.</b> People feel “15 terminal tabs” before they feel “orchestration layer.”</li><li><b>Be specific.</b> “Claude plans, Codex builds, Gemini reviews” beats “leverage multiple AI models.”</li><li><b>Say what it doesn’t do.</b> It’s early, it’s not hosted, it’s not magic. Honesty reads as human.</li><li><b>Go easy on hashtags.</b> A couple at the end where the platform expects them. Never a wall.</li></ul>
+    </div>
+  </section>
+
+  <section id="x" class="channel">
+      <div class="ch-head">
+        <span class="eyebrow">// channel</span>
+        <h2>X · Twitter</h2>
+        <p class="ch-tag">short + punchy; the thread is for reach</p>
+      </div>
+      <div class="block">
+      <div class="block-head"><span class="block-label">Main tweet</span>
+        <button class="copy" type="button" aria-label="Copy Main tweet">Copy</button></div>
+      <pre>I kept ending up with 6 terminal tabs open, each running a different coding agent, and no idea which one broke the build.
+
+So I built Maestro. One window. Claude plans, Codex builds, Gemini reviews — and I can actually read what each one is doing.
+
+Local-first, open source: github.com/subhangR/agent-maestro</pre>
+    </div><div class="block">
+      <div class="block-head"><span class="block-label">Thread (6 tweets)</span>
+        <button class="copy" type="button" aria-label="Copy Thread (6 tweets)">Copy</button></div>
+      <pre>1/ Everyone&#x27;s excited about running multiple coding agents in parallel. Nobody talks about what it&#x27;s actually like: a wall of terminals and you playing air traffic control at 1am.
+
+2/ I wanted the parallelism without the chaos. So Maestro turns those sessions into one readable view — who&#x27;s doing what, what changed, what&#x27;s blocked, what&#x27;s waiting on you.
+
+3/ You give agents roles. A coordinator breaks the work down. Workers pick it up. Permissions are explicit. Handoffs are visible. The raw terminal is one click away when you actually need it.
+
+4/ Best part for me: cross-model handoffs. Let Claude plan, Codex build, Gemini review. Maestro carries the context between them so you&#x27;re not re-explaining the task three times.
+
+5/ It&#x27;s local-first. Your projects, tasks and session logs are just JSON files in ~/.maestro on your own machine. No hosted control plane required.
+
+6/ Open source and under active development. Clone it, read it, run it: github.com/subhangR/agent-maestro</pre>
+    </div>
+      <p class="note"><span class="note-key">note</span>Image: the <b>social card</b> for the single tweet. For the thread, a 10–20s screen recording of the activity feed beats any static image.</p>
+    </section><section id="li" class="channel">
+      <div class="ch-head">
+        <span class="eyebrow">// channel</span>
+        <h2>LinkedIn</h2>
+        <p class="ch-tag">first-person, story-led</p>
+      </div>
+      <div class="block">
+      <div class="block-head"><span class="block-label">Post</span>
+        <button class="copy" type="button" aria-label="Copy Post">Copy</button></div>
+      <pre>A small confession: for weeks my &quot;multi-agent workflow&quot; was just a lot of terminal tabs and a lot of hope.
+
+I&#x27;d have one agent planning, one writing code, one reviewing — and I was the glue between them, copy-pasting context back and forth and losing track of which session did what.
+
+So I built Maestro to be the layer I was missing.
+
+It runs your coding agents (Claude Code, Codex, Gemini and others) in one place and translates their work into something a person can actually supervise: decisions, file changes, handoffs and blockers, in plain language. When you want the raw terminal, it&#x27;s right there. When you don&#x27;t, you don&#x27;t have to look at it.
+
+Three things I care about in how it&#x27;s built:
+• Local-first — it runs on your machine, and your projects and history stay as plain files you own.
+• Provider-neutral — orchestration shouldn&#x27;t be locked to one AI vendor. Use the right model per task.
+• Human-legible — you should always be able to answer &quot;what happened, and why?&quot;
+
+It&#x27;s open source and still early. If you&#x27;re wrangling more than one coding agent and feeling the same friction, I&#x27;d genuinely like your take.
+
+https://github.com/subhangR/agent-maestro</pre>
+    </div>
+      <p class="note"><span class="note-key">note</span>Hashtags at the very end, 3–5 max: #softwaredevelopment #AI #opensource #developertools. Attach the social card or a clean feed screenshot.</p>
+    </section><section id="rd" class="channel">
+      <div class="ch-head">
+        <span class="eyebrow">// channel</span>
+        <h2>Reddit</h2>
+        <p class="ch-tag">disclose it’s yours, drop the marketing voice</p>
+      </div>
+      <div class="block">
+      <div class="block-head"><span class="block-label">Title options</span>
+        <button class="copy" type="button" aria-label="Copy Title options">Copy</button></div>
+      <pre>I got tired of running 5 coding agents in 5 terminals, so I built a local-first &quot;command center&quot; for them
+
+Built an open-source orchestrator so Claude/Codex/Gemini can work on the same project without me being the glue
+
+Show r/SideProject: Maestro — run multiple coding agents in one readable view, all local</pre>
+    </div><div class="block">
+      <div class="block-head"><span class="block-label">Body</span>
+        <button class="copy" type="button" aria-label="Copy Body">Copy</button></div>
+      <pre>Full disclosure: I built this, so I&#x27;m biased.
+
+Like a lot of people here I started running more than one coding agent at a time — one to plan, one to write code, one to review. In theory that&#x27;s a dream team. In practice I had a wall of terminals and I was the human copy-pasting context between them and forgetting which session touched which file.
+
+Maestro is my attempt to fix the coordination part, not replace the agents.
+
+What it does:
+- Runs your agents (Claude Code, Codex, Gemini CLI, others) side by side and shows their work as a plain-language feed — decisions, diffs, handoffs, what&#x27;s blocked. The real terminal is one click away when you need it.
+- Lets you set up a team: a coordinator that breaks work into tasks, workers that execute, explicit permissions.
+- Passes context across models on handoff, so Claude -&gt; Codex -&gt; Gemini doesn&#x27;t mean re-explaining the task three times.
+- Keeps everything local. Your projects/tasks/sessions are just JSON files under ~/.maestro. No hosted backend required.
+
+What it&#x27;s not: it&#x27;s not a hosted product, it&#x27;s not magic, and it&#x27;s still early and rough in places. Desktop app is Tauri, you build from source right now (bun install, bun run dev:all).
+
+Repo&#x27;s here if you want to poke at it or tell me what&#x27;s dumb about it: github.com/subhangR/agent-maestro
+
+Genuinely after feedback — especially from anyone already juggling multiple agents. What&#x27;s your current setup?</pre>
+    </div>
+      <p class="note"><span class="note-key">note</span>Post to r/LocalLLaMA, r/ChatGPTCoding, r/SideProject. Use a <b>real screenshot</b>, never a designed card. Reply to comments like a person.</p>
+    </section><section id="ig" class="channel">
+      <div class="ch-head">
+        <span class="eyebrow">// channel</span>
+        <h2>Instagram</h2>
+        <p class="ch-tag">visual-first; the image does the work</p>
+      </div>
+      <div class="block">
+      <div class="block-head"><span class="block-label">Caption</span>
+        <button class="copy" type="button" aria-label="Copy Caption">Copy</button></div>
+      <pre>The dream: five AI coding agents building your app in parallel.
+The reality (until now): five terminal windows and a headache.
+
+Maestro puts them all in one place — plan the work, hand it to the right model, and actually see what&#x27;s happening. Runs on your own machine.
+
+Link in bio 👉 open source, early, and built in public.
+.
+.
+#coding #ai #developer #buildinpublic #opensource #devtools #softwareengineering</pre>
+    </div><div class="block">
+      <div class="block-head"><span class="block-label">Carousel plan (5 slides)</span>
+        <button class="copy" type="button" aria-label="Copy Carousel plan (5 slides)">Copy</button></div>
+      <pre>1. &quot;Ever had 6 terminals open just to run your AI agents?&quot;  (logo card, dark)
+2. &quot;One window instead of six.&quot;  (screenshot of the activity feed)
+3. &quot;Claude plans. Codex builds. Gemini reviews.&quot;  (cross-model handoff visual)
+4. &quot;Everything stays on your machine.&quot;  (the ~/.maestro file tree)
+5. &quot;Open source. Try it.&quot;  (logo + repo handle)</pre>
+    </div>
+      <p class="note"><span class="note-key">note</span>Slide 1 = the social card; slides 2–5 = app screenshots. Bright, high contrast, minimal text per slide.</p>
+    </section><section id="fb" class="channel">
+      <div class="ch-head">
+        <span class="eyebrow">// channel</span>
+        <h2>Facebook</h2>
+        <p class="ch-tag">explain-it-to-a-friend</p>
+      </div>
+      <div class="block">
+      <div class="block-head"><span class="block-label">Post</span>
+        <button class="copy" type="button" aria-label="Copy Post">Copy</button></div>
+      <pre>If you&#x27;ve been playing with AI coding tools, you&#x27;ve probably hit this: running one is fine, but the moment you run a few at once you&#x27;re drowning in terminal windows trying to remember which one is doing what.
+
+I built a thing for that. It&#x27;s called Maestro.
+
+It&#x27;s basically a control room for your coding agents. You give them a plan, assign who does what, and watch the whole thing as a simple activity feed instead of a mess of black terminal screens. Claude can plan, Codex can build, Gemini can review — and it keeps track of the handoffs so you don&#x27;t have to.
+
+It runs entirely on your own computer, and it&#x27;s free and open source. Still early, still improving, and I&#x27;d love for people to try it and tell me what&#x27;s missing.
+
+Take a look 👇
+https://maestro-web-fleet.web.app</pre>
+    </div>
+      <p class="note"><span class="note-key">note</span>Facebook auto-pulls the link preview, but attaching the social card directly usually looks cleaner. 1–2 hashtags or none.</p>
+    </section><section id="sc" class="channel">
+      <div class="ch-head">
+        <span class="eyebrow">// channel</span>
+        <h2>Snapchat</h2>
+        <p class="ch-tag">fast, casual, before/after</p>
+      </div>
+      <div class="block">
+      <div class="block-head"><span class="block-label">Three-snap story</span>
+        <button class="copy" type="button" aria-label="Copy Three-snap story">Copy</button></div>
+      <pre>Snap 1 (photo of terminal chaos):  &quot;me running 5 AI coding agents at once 💀&quot;
+
+Snap 2 (screenshot of the Maestro feed):  &quot;…or just use the thing I built. one window. way calmer.&quot;
+
+Snap 3 (logo card):  &quot;Maestro — it&#x27;s free + open source. swipe up 👆&quot;  (attach link)</pre>
+    </div>
+      <p class="note"><span class="note-key">note</span>Vertical 9:16, big text, no paragraphs. The whole story should watch in under 10 seconds.</p>
+    </section>
+
+  <section class="assets">
+    <span class="eyebrow">// brand assets</span>
+    <h2>Which image goes where</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Asset</th><th>File (in <code>website/assets/brand/</code>)</th><th>Best for</th></tr></thead>
+        <tbody><tr><td>Social / OG card — 1200×630</td><td><code>maestro-social.jpg</code></td><td>X, LinkedIn, Facebook, IG slide 1</td></tr><tr><td>Loop mark, dark bg</td><td><code>maestro-loop-mark.png</code></td><td>Avatars / watermarks on dark</td></tr><tr><td>Loop mark, light bg</td><td><code>maestro-loop-mark-light.png</code></td><td>Watermarks on light images</td></tr><tr><td>App-icon tile (square)</td><td><code>maestro-favicon.png</code></td><td>Profile pictures</td></tr></tbody>
+      </table>
+    </div>
+    <p class="note"><span class="note-key">tip</span>The best-performing post is almost always a
+      10–20s screen recording of the activity feed — the <b>“one window instead of six”</b> moment.
+      Designed cards are for links and avatars; motion is what stops the scroll.</p>
+  </section>
+
+  <footer class="wrap">
+    Maestro · <a href="https://maestro-web-fleet.web.app">maestro-web-fleet.web.app</a> ·
+    Source copy lives in <code>docs/marketing/social-content.md</code>. Swap the repo handle if you post from a fork.
+  </footer>
+</main>
+
+<script>
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var pre = btn.closest(".block").querySelector("pre");
+      var text = pre.innerText;
+      var done = function () { btn.textContent = "Copied"; btn.classList.add("done");
+        setTimeout(function () { btn.textContent = "Copy"; btn.classList.remove("done"); }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { fallback(text); done(); });
+      } else { fallback(text); done(); }
+    });
+  });
+  function fallback(text) {
+    var ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed";
+    ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {} document.body.removeChild(ta);
+  }
+</script>
