@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f3f0e8">
+  <meta name="theme-color" content="#05060a">
   <meta name="description" content="Maestro is a local-first command center for coordinating Claude, Codex, Gemini, and other coding agents across real projects.">
   <meta property="og:title" content="Maestro — Conduct your coding agents">
   <meta property="og:description" content="Plan work, delegate to multiple coding agents, and understand what changed from one focused command center.">
@@ -24,6 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=Italiana&amp;family=Manrope:wght@400;500;600;700&amp;family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&amp;family=Outfit:wght@300;400;500;600&amp;family=Playfair+Display:ital,wght@0,400..700;1,500&amp;display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="theme-init.js"></script>
   <title>Maestro — Conduct your coding agents</title>
 </head>
 <body>
@@ -53,6 +54,10 @@
         <a href="https://github.com/subhangR/agent-maestro/tree/staging/docs" target="_blank" rel="noreferrer">Docs</a>
       </nav>
 
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle light and dark theme" title="Toggle theme">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.4M12 19.6V22M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2 12h2.4M19.6 12H22M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"/></svg>
+      </button>
       <a class="button button-small button-dark header-cta" href="https://github.com/subhangR/agent-maestro" target="_blank" rel="noreferrer">
         View on GitHub <span aria-hidden="true">↗</span>
       </a>
