@@ -5,6 +5,19 @@
   root.classList.add("js");
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // ---- Logo reveal: end it after a beat, or on click ----
+  (function initIntro() {
+    var intro = document.querySelector("[data-intro]");
+    if (!intro || !root.classList.contains("intro-play")) return;
+    var done = false;
+    function end() {
+      if (done) return; done = true;
+      root.classList.remove("intro-play"); // reverts to base rule -> fades out
+    }
+    var timer = window.setTimeout(end, 2050);
+    intro.addEventListener("click", function () { window.clearTimeout(timer); end(); });
+  })();
+
   // ---- Light / dark theme ----
   (function initTheme() {
     var media = window.matchMedia("(prefers-color-scheme: dark)");
