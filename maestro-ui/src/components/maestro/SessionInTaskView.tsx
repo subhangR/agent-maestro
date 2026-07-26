@@ -26,14 +26,7 @@ const SESSION_STATUS_SYMBOLS: Record<MaestroSessionStatus, string> = {
   stopped: "⊘",
 };
 
-const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
-  spawning: "Spawning",
-  idle: "Idle",
-  working: "Working",
-  completed: "Completed",
-  failed: "Failed",
-  stopped: "Stopped",
-};
+import { ACTIVITY_STATUS_LABELS as SESSION_STATUS_LABELS } from "../../app/constants/labels";
 
 function formatTimeAgo(timestamp: number): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);

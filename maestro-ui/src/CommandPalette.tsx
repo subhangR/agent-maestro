@@ -87,6 +87,7 @@ function formatTimeAgo(timestamp: number): string {
 export function CommandPalette() {
   // --- UI store ---
   const isOpen = useUIStore((s) => s.commandPaletteOpen);
+  const advancedMode = useUIStore((s) => s.advancedMode);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const setSlidePanelOpen = useUIStore((s) => s.setSlidePanelOpen);
   const setSlidePanelTab = useUIStore((s) => s.setSlidePanelTab);
@@ -212,7 +213,7 @@ export function CommandPalette() {
         id: `quickstart-${preset.id}`,
         type: "quickstart",
         title: `New ${preset.title}`,
-        subtitle: preset.command ? `Runs: ${preset.command}` : "Runs: $SHELL",
+        subtitle: preset.command ? `Runs: ${preset.command}` : "Opens a terminal",
         icon: preset.iconSrc ? "active" : "plus",
         iconSrc: preset.iconSrc ?? undefined,
         iconAlt: preset.title,
@@ -229,12 +230,15 @@ export function CommandPalette() {
       shortcut: "T",
     });
 
-    items.push({
-      id: "action-ssh-connect",
-      type: "action",
-      title: "SSH Connect",
-      icon: "ssh",
-    });
+    // SSH is a developer / remote-machine feature — Advanced only.
+    if (advancedMode) {
+      items.push({
+        id: "action-ssh-connect",
+        type: "action",
+        title: "Connect to a remote machine (SSH)",
+        icon: "ssh",
+      });
+    }
 
     items.push({
       id: "action-new-prompt",
@@ -282,7 +286,7 @@ export function CommandPalette() {
     });
 
     return items;
-  }, [prompts, recordings, sessions, activeSessionId, isRecording, quickStarts]);
+  }, [prompts, recordings, sessions, activeSessionId, isRecording, quickStarts, advancedMode]);
 
   // Filter and sort by query
   const filteredItems = useMemo(() => {
@@ -521,7 +525,7 @@ export function CommandPalette() {
                     </div>
                     {item.shortcut && (
                       <span className="commandPaletteItemShortcut">
-                        {item.shortcut.includes("Shift") ? `\u2318${item.shortcut}` : `\u2318${item.shortcut}`}
+                        {`\u2318${item.shortcut}`}
                       </span>
                     )}
                   </div>
@@ -532,8 +536,8 @@ export function CommandPalette() {
         </div>
         <div className="commandPaletteFooter">
           <span className="commandPaletteHint">
-            <kbd>\u2191</kbd><kbd>\u2193</kbd> navigate
-            <kbd>\u21B5</kbd> select
+            <kbd>↑</kbd><kbd>↓</kbd> navigate
+            <kbd>↵</kbd> select
             <kbd>esc</kbd> close
           </span>
         </div>

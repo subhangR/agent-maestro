@@ -15,14 +15,7 @@ import { maestroClient } from "../../utils/MaestroClient";
 import { Icon, Glyph, type IconName } from "./redesign/kit";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
 
-const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
-  spawning: "Spawning",
-  idle: "Idle",
-  working: "Working",
-  completed: "Completed",
-  failed: "Failed",
-  stopped: "Stopped",
-};
+import { ACTIVITY_STATUS_LABELS as SESSION_STATUS_LABELS } from "../../app/constants/labels";
 
 type Tab = "info" | "subsessions" | "tasks" | "docs";
 

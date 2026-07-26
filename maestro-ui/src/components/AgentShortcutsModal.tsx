@@ -133,7 +133,7 @@ export function AgentShortcutsModal({
 
         <div className="modalActions">
           <button type="button" className="btnSmall" onClick={onResetDefaults}>
-            Reset defaults
+            Reset to defaults
           </button>
           <button type="button" className="btn" onClick={onClose}>
             Done

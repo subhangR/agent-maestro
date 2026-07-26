@@ -14,6 +14,7 @@ import {
     toggleCommandOverride,
 } from "../../utils/commandPermissions";
 import { useAutoSave, AutoSaveStatus } from "../../hooks/useAutoSave";
+import { useAdvancedMode } from "../../hooks/useAdvancedMode";
 import {
     DEFAULT_MODEL_BY_AGENT_TOOL,
     MODELS_BY_AGENT_TOOL,
@@ -326,6 +327,7 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
     const [mode, setMode] = useState<AgentMode>("worker");
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const advancedMode = useAdvancedMode();
     const [activeTab, setActiveTab] = useState<string | null>(null);
     const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
     const [capabilities, setCapabilities] = useState<Record<string, boolean>>(() => getDefaultCapabilities('worker'));
@@ -1038,7 +1040,9 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                                     )}
                                 </div>
 
-                                {/* Command Permissions */}
+                                {/* Command Permissions — raw CLI command IDs; redundant with the
+                                    plain capability switches above for most users. Advanced-only. */}
+                                {advancedMode && (
                                 <div className="pn-fld" style={{ marginTop: 16 }}>
                                     <span className="pn-flabel">Command Permissions</span>
                                     <div className="pn-fhint">
@@ -1089,6 +1093,7 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                                         );
                                     })}
                                 </div>
+                                )}
                             </>
                         )}
 
@@ -1127,6 +1132,9 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                 {/* ── Footer ────────────────────────────────────────── */}
                 <div className="pn-mdl__foot">
                     <div className="pn-mdl__footL">
+                        {/* Model-profile presets are a power-user concept; the launch button
+                            below lets everyone pick a model directly. Advanced-only. */}
+                        {advancedMode && (
                         <select
                             className="pn-select"
                             style={{ maxWidth: 200 }}
@@ -1142,6 +1150,7 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                                 </option>
                             ))}
                         </select>
+                        )}
                         {modelProfileId ? (
                             <span className="pn-savehint">resolves at spawn</span>
                         ) : (

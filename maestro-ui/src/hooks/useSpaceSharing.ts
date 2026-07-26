@@ -13,6 +13,7 @@ import { SpaceTeamMembersClient } from '../firebase/SpaceTeamMembersClient';
 import { SpaceSpellsClient } from '../firebase/SpaceSpellsClient';
 import { SpaceDocsClient } from '../firebase/SpaceDocsClient';
 import type { DocEntry, MaestroTask, Spell, TaskStatus } from '../app/types/maestro';
+import { TASK_STATUS_LABELS } from '../app/constants/labels';
 import type {
   SharedTaskInput,
   SharedTeamMemberInput,
@@ -351,14 +352,15 @@ export function useDebouncedValue<T>(value: T, ms = 120): T {
   return debounced;
 }
 
-/** Stable helper so status labels stay consistent between filter + pill. */
+/** Stable helper so status labels stay consistent between filter + pill.
+ *  Sourced from the canonical task-status vocabulary (see app/constants/labels). */
 export const SPACE_STATUS_LABELS: Record<SpaceTaskStatus, string> = {
-  todo: 'todo',
-  in_progress: 'in progress',
-  in_review: 'in review',
-  blocked: 'blocked',
-  completed: 'completed',
-  cancelled: 'cancelled',
+  todo: TASK_STATUS_LABELS.todo,
+  in_progress: TASK_STATUS_LABELS.in_progress,
+  in_review: TASK_STATUS_LABELS.in_review,
+  blocked: TASK_STATUS_LABELS.blocked,
+  completed: TASK_STATUS_LABELS.completed,
+  cancelled: TASK_STATUS_LABELS.cancelled,
 };
 
 export function useMemoizedIds(ids: string[] | undefined): Set<string> {

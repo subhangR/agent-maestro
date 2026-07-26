@@ -25,6 +25,7 @@ import {
   type CursorStyle,
   type CursorInactiveStyle,
 } from '../stores/useTerminalSettingsStore';
+import { useAdvancedMode } from '../hooks/useAdvancedMode';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -233,6 +234,7 @@ function TerminalPreview({ fontStack, fontSize, fontWeight, lineHeight, letterSp
 // ---------------------------------------------------------------------------
 
 export function TerminalSettings() {
+  const advancedMode = useAdvancedMode();
   const fontId = useTerminalSettingsStore((s) => s.fontId);
   const fontStack = useTerminalSettingsStore((s) => s.fontStack);
   const fontSize = useTerminalSettingsStore((s) => s.fontSize);
@@ -419,6 +421,7 @@ export function TerminalSettings() {
           </div>
         </div>
 
+        {advancedMode && (
         <div className="pn-fld">
           <div className="pn-flabel">Letter Spacing — {letterSpacing}px</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -452,6 +455,7 @@ export function TerminalSettings() {
             </button>
           </div>
         </div>
+        )}
       </Section>
 
       {/* ---- Cursor ---- */}
@@ -489,7 +493,8 @@ export function TerminalSettings() {
         </div>
       </Section>
 
-      {/* ---- Behavior ---- */}
+      {/* ---- Behavior (Advanced) ---- */}
+      {advancedMode && (
       <Section title="Behavior">
         <div className="pn-fld">
           <div className="pn-flabel">Scrollback Lines</div>
@@ -524,6 +529,7 @@ export function TerminalSettings() {
           </div>
         </div>
       </Section>
+      )}
 
       {/* ---- Colors ---- */}
       <Section title="Colors">
@@ -546,6 +552,7 @@ export function TerminalSettings() {
           </div>
         </div>
 
+        {advancedMode && (<>
         <div className="pn-fld">
           <div className="pn-flabel" style={{ marginBottom: 8 }}>Core Colors</div>
           <div className="pn-card-s" style={{ padding: '8px 10px' }}>
@@ -581,13 +588,14 @@ export function TerminalSettings() {
             })}
           </div>
         </div>
+        </>)}
       </Section>
 
       {/* ---- Reset ---- */}
       {!isDefault && (
         <div className="pn-fld">
           <button type="button" className="pn-btn" onClick={reset}>
-            Reset Terminal to Defaults
+            Reset to defaults
           </button>
         </div>
       )}

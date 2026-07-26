@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { SERVER_URL } from '../utils/serverConfig';
+import { useUIStore } from '../stores/useUIStore';
 
 type DeploymentHealth = {
   commit?: string;
@@ -18,6 +19,7 @@ function shortCommit(commit: string): string {
 /** A small, non-intrusive indicator of the backend revision serving this UI. */
 export function DeploymentVersion() {
   const [deployment, setDeployment] = useState<DeploymentVersionState>(null);
+  const advancedMode = useUIStore((s) => s.advancedMode);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -51,9 +53,11 @@ export function DeploymentVersion() {
 
   if (!deployment) return null;
 
+  // Raw commit hash is developer telemetry — show it only in Advanced mode.
+  // The full commit always stays in the tooltip for support.
   return (
     <output className="deploymentVersion" title={`${deployment.service} commit ${deployment.commit}`}>
-      {deployment.service} · {shortCommit(deployment.commit)}
+      {deployment.service}{advancedMode ? ` · ${shortCommit(deployment.commit)}` : ''}
     </output>
   );
 }
