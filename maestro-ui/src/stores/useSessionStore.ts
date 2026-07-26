@@ -1625,7 +1625,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
             .join('; ');
           const envPrefix = envExports ? `${envExports}; ` : '';
-          command = `${envPrefix}${sessionInfo.command}; exec $SHELL`;
+          // Keep a shell after the agent exits (so a finished session stays
+          // interactive), BUT if the agent exited non-zero, print a visible
+          // reason first — otherwise a crash (e.g. OOM on a low-memory machine)
+          // just drops into a bare shell and looks like "nothing spawned".
+          command = `${envPrefix}${sessionInfo.command}; __mc=$?; [ "$__mc" -ne 0 ] && echo "" && echo "[maestro] Agent exited (code $__mc). On a low-memory machine this usually means it ran out of memory."; exec $SHELL`;
         }
       }
 
