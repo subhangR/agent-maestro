@@ -212,7 +212,7 @@ export function CommandPalette() {
         id: `quickstart-${preset.id}`,
         type: "quickstart",
         title: `New ${preset.title}`,
-        subtitle: preset.command ? `Runs: ${preset.command}` : "Runs: $SHELL",
+        subtitle: preset.command ? `Runs: ${preset.command}` : "Opens a terminal",
         icon: preset.iconSrc ? "active" : "plus",
         iconSrc: preset.iconSrc ?? undefined,
         iconAlt: preset.title,
@@ -521,7 +521,7 @@ export function CommandPalette() {
                     </div>
                     {item.shortcut && (
                       <span className="commandPaletteItemShortcut">
-                        {item.shortcut.includes("Shift") ? `\u2318${item.shortcut}` : `\u2318${item.shortcut}`}
+                        {`\u2318${item.shortcut}`}
                       </span>
                     )}
                   </div>
@@ -532,8 +532,8 @@ export function CommandPalette() {
         </div>
         <div className="commandPaletteFooter">
           <span className="commandPaletteHint">
-            <kbd>\u2191</kbd><kbd>\u2193</kbd> navigate
-            <kbd>\u21B5</kbd> select
+            <kbd>↑</kbd><kbd>↓</kbd> navigate
+            <kbd>↵</kbd> select
             <kbd>esc</kbd> close
           </span>
         </div>

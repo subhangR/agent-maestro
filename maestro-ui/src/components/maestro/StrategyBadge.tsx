@@ -144,11 +144,7 @@ const PRIORITY_SYMBOLS: Record<TaskPriority, string> = {
   high: "●",
 };
 
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-  low: "LOW",
-  medium: "MED",
-  high: "HIGH",
-};
+import { TASK_PRIORITY_LABELS as PRIORITY_LABELS } from "../../app/constants/labels";
 
 export function PriorityBadge({ priority, compact = false }: PriorityBadgeProps) {
   return (

@@ -755,17 +755,9 @@ export function ProjectTabBar({
             type="button"
             className="pn-ib"
             onClick={() => setCommandPaletteOpen(true)}
-            title="Search"
+            title="Search (Cmd/Ctrl+K)"
           >
             <PnIcon name="search" size={16} />
-          </button>
-          <button
-            type="button"
-            className="pn-ib"
-            onClick={() => setCommandPaletteOpen(true)}
-            title="Command palette (Cmd/Ctrl+K)"
-          >
-            <span className="pn-kbd">⌘K</span>
           </button>
         </div>
       </div>

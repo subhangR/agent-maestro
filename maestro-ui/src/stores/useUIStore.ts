@@ -166,6 +166,11 @@ interface UIState {
   sessionShowElapsed: boolean;
   toggleSessionShowElapsed: () => void;
 
+  // Advanced (developer) mode — reveals power features hidden from non-devs.
+  advancedMode: boolean;
+  setAdvancedMode: (value: boolean) => void;
+  toggleAdvancedMode: () => void;
+
   // Spaces panel (right) — null = collapsed, 'sessions' = expanded
   spacesRailActiveSection: 'sessions' | null;
   setSpacesRailActiveSection: (section: 'sessions' | null) => void;
@@ -366,6 +371,26 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sessionShowElapsed: next });
     try {
       localStorage.setItem(DEFAULTS.STORAGE_SESSION_SHOW_ELAPSED_KEY, next ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+
+  // -- Advanced (developer) mode --
+  advancedMode: readBoolFromStorage(DEFAULTS.STORAGE_ADVANCED_MODE_KEY, false),
+  setAdvancedMode: (value) => {
+    set({ advancedMode: value });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_ADVANCED_MODE_KEY, value ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+  toggleAdvancedMode: () => {
+    const next = !get().advancedMode;
+    set({ advancedMode: next });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_ADVANCED_MODE_KEY, next ? '1' : '0');
     } catch {
       // best-effort
     }

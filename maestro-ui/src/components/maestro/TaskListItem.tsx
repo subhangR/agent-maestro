@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useCallback, useLayoutEffect, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { MaestroTask, TaskStatus, TaskPriority, MaestroSessionStatus, DocEntry, WorkerStrategy, OrchestratorStrategy, AgentTool, LaunchConfig } from "../../app/types/maestro";
+import { MaestroTask, TaskStatus, TaskPriority, DocEntry, WorkerStrategy, OrchestratorStrategy, AgentTool, LaunchConfig } from "../../app/types/maestro";
 import { formatLaunchConfigLabel, getAgentToolForLaunchConfig, pickTopMember } from "../../app/constants/agentTools";
 import { useTaskSessions } from "../../hooks/useTaskSessions";
 import { useMaestroStore } from "../../stores/useMaestroStore";
@@ -13,6 +13,13 @@ import { isDiagramDoc } from "../../utils/docHelpers";
 import { LaunchConfigDropdown } from "./LaunchConfigDropdown";
 import { Icon, Glyph, Avatar, Avatars } from "./redesign/kit";
 import { ShareToSpaceModal } from "../share/ShareToSpaceModal";
+import {
+    TASK_STATUS_LABELS as STATUS_LABELS,
+    TASK_PRIORITY_LABELS as PRIORITY_LABELS,
+    ACTIVITY_STATUS_LABELS as SESSION_STATUS_LABELS,
+    PERMISSION_CHIP_LABELS,
+    ISOLATION_CHIP_LABELS,
+} from "../../app/constants/labels";
 
 type TaskListItemProps = {
     task: MaestroTask;
@@ -35,32 +42,6 @@ type TaskListItemProps = {
     onToggleSelect?: () => void;
     showPermanentDelete?: boolean;
     isSessionTask?: boolean;
-};
-
-const STATUS_LABELS: Record<TaskStatus, string> = {
-    todo: "Todo",
-    in_progress: "In Progress",
-    in_review: "In Review",
-    completed: "Completed",
-    cancelled: "Cancelled",
-    blocked: "Blocked",
-    archived: "Archived",
-};
-
-const PRIORITY_LABELS: Record<TaskPriority, string> = {
-    low: "LOW",
-    medium: "MED",
-    high: "HIGH",
-};
-
-// Session status labels and symbols
-const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
-    spawning: "Spawning",
-    idle: "Idle",
-    working: "Working",
-    completed: "Done",
-    failed: "Failed",
-    stopped: "Stopped",
 };
 
 function formatTimeAgo(timestamp: number): string {
@@ -736,30 +717,30 @@ export const TaskListItem = React.memo(function TaskListItem({
                         </div>
                     </div>
 
-                    {/* Row 2: dangerous + worktree toggles + time */}
+                    {/* Row 2: permission + isolation toggles + time */}
                     <div className="pn-tt__metarow">
                         <button
                             type="button"
                             className={`pn-toggle ${task.dangerousMode ? 'pn-toggle--on-danger' : ''}`}
-                            title={task.dangerousMode ? 'Dangerous mode ON — click to disable' : 'Enable dangerous mode (bypass permissions)'}
+                            title={task.dangerousMode ? 'Auto-approves every command — click to require approval' : 'Asks before running commands — click to auto-approve everything'}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 updateTask(task.id, { dangerousMode: !task.dangerousMode });
                             }}
                         >
-                            <Icon name="shield" size={13} /> {task.dangerousMode ? 'YOLO' : 'Safe'}
+                            <Icon name="shield" size={13} /> {task.dangerousMode ? PERMISSION_CHIP_LABELS.unrestricted : PERMISSION_CHIP_LABELS.safe}
                         </button>
 
                         <button
                             type="button"
                             className={`pn-toggle ${task.useWorktree ? 'pn-toggle--on-wt' : ''}`}
-                            title={task.useWorktree ? 'Git worktree ON — click to disable' : 'Enable git worktree isolation'}
+                            title={task.useWorktree ? 'Works on a separate copy of your files — click to work in place' : 'Works directly on your files — click to use a separate copy'}
                             onClick={(e) => {
                                 e.stopPropagation();
                                 updateTask(task.id, { useWorktree: !task.useWorktree });
                             }}
                         >
-                            <Icon name="gitBranch" size={13} /> {task.useWorktree ? 'worktree' : 'in-place'}
+                            <Icon name="gitBranch" size={13} /> {task.useWorktree ? ISOLATION_CHIP_LABELS.isolated : ISOLATION_CHIP_LABELS.inPlace}
                         </button>
 
                         <button

@@ -53,4 +53,6 @@ export const STORAGE_SESSION_SHOW_TASK_DETAILS_KEY = 'agents-ui-session-show-tas
 export const STORAGE_SESSION_SHOW_COMPLETED_SUBSESSIONS_KEY = 'agents-ui-session-show-completed-subsessions-v1';
 export const STORAGE_SESSION_SHOW_BADGES_KEY = 'agents-ui-session-show-badges-v1';
 export const STORAGE_SESSION_SHOW_ELAPSED_KEY = 'agents-ui-session-show-elapsed-v1';
+// Advanced (developer) mode — hides power features behind one toggle. Default off.
+export const STORAGE_ADVANCED_MODE_KEY = 'agents-ui-advanced-mode-v1';
 export const SPACES_RAIL_WIDTH = 48;

@@ -24,13 +24,7 @@ const TASK_STATUS_SYMBOLS: Record<string, string> = {
   blocked: "✗",
 };
 
-const TASK_STATUS_LABELS: Record<string, string> = {
-  todo: "TODO",
-  in_progress: "RUN",
-  completed: "DONE",
-  cancelled: "CANCEL",
-  blocked: "BLOCK",
-};
+import { TASK_STATUS_LABELS } from "../../app/constants/labels";
 
 interface TaskTreeNode {
   task: MaestroTask;
