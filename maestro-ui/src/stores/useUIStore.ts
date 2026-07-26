@@ -77,7 +77,7 @@ function readClampedFromStorage(key: string, min: number, max: number, fallback:
   return fallback;
 }
 
-export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | null;
+export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | 'profiles' | null;
 
 export type SpaceSection = 'messages' | 'tasks' | 'team' | 'spells' | 'docs' | 'files' | 'members' | 'settings';
 
@@ -99,7 +99,7 @@ function readSpaceSection(spaceId: string | null): SpaceSection {
 function readIconRailSection(): IconRailSection {
   try {
     const raw = localStorage.getItem(DEFAULTS.STORAGE_ICON_RAIL_SECTION_KEY);
-    if (raw && ['tasks', 'members', 'teams', 'skills', 'lists', 'graphs', 'files', 'collab'].includes(raw)) {
+    if (raw && ['tasks', 'members', 'teams', 'skills', 'lists', 'graphs', 'files', 'collab', 'profiles'].includes(raw)) {
       return raw as IconRailSection;
     }
   } catch {
