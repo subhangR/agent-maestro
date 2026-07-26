@@ -192,8 +192,27 @@ export class WorkerInitCommand {
 
       // Wait for process to exit
       const pid = spawnResult.process.pid;
-      spawnResult.process.on('exit', async (code) => {
-        // Silent exit
+      const spawnedAt = Date.now();
+
+      // Spawn-level failure (e.g. ENOMEM on a low-memory machine, ENOENT if the
+      // agent binary is missing). Previously there was no error handler at all,
+      // so these died completely silently — the reported "no log" symptom.
+      spawnResult.process.on('error', (err: Error) => {
+        const lowMem = /ENOMEM|EAGAIN/i.test(err.message);
+        console.error(`[worker-init] Agent failed to start: ${err.message}${lowMem ? ' (the machine is low on memory)' : ''}`);
+        void api.patch(`/api/sessions/${sessionId}`, { status: 'failed' }).catch(() => {});
+      });
+
+      spawnResult.process.on('exit', async (code, signal) => {
+        const crashed = code !== 0 || signal != null;
+        if (!crashed) return; // normal completion
+        // An early kill on a low-memory machine is almost always an OOM.
+        const likelyOom = signal === 'SIGKILL' && Date.now() - spawnedAt < 15000;
+        const detail = likelyOom
+          ? 'Agent was killed shortly after starting — likely out of memory.'
+          : `Agent exited unexpectedly (code ${code ?? 'null'}${signal ? `, signal ${signal}` : ''}).`;
+        console.error(`[worker-init] ${detail}`);
+        await api.patch(`/api/sessions/${sessionId}`, { status: 'failed' }).catch(() => {});
       });
 
     } catch (error: any) {

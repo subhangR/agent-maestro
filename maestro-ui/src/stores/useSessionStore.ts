@@ -60,6 +60,44 @@ export const lastResizeAtRef = new Map<string, number>();
 export const commandLifecycleSessionsRef = new Set<string>();
 export const spawningSessionsRef = new Set<string>();
 
+// -------------------------------------------------------------------------
+// Spawn serialization (low-memory guard)
+// -------------------------------------------------------------------------
+// "Together mode" makes the coordinator fan out to N workers, each triggering a
+// session:spawn event → a PTY fork → a heavyweight `claude` process. Firing all
+// N at once OOMs low-RAM machines (the fork fails with ENOMEM and the terminal
+// comes up empty). Serialize the actual terminal creation to at most
+// MAX_CONCURRENT_SPAWNS at a time, with a short stagger, so agents start one
+// after another instead of all at once.
+const MAX_CONCURRENT_SPAWNS = 1;
+const SPAWN_STAGGER_MS = 500;
+let activeSpawnCount = 0;
+const spawnWaitQueue: Array<() => void> = [];
+
+function acquireSpawnSlot(): Promise<void> {
+  return new Promise((resolve) => {
+    if (activeSpawnCount < MAX_CONCURRENT_SPAWNS) {
+      activeSpawnCount++;
+      resolve();
+    } else {
+      spawnWaitQueue.push(() => {
+        activeSpawnCount++;
+        resolve();
+      });
+    }
+  });
+}
+
+function releaseSpawnSlot(): void {
+  activeSpawnCount = Math.max(0, activeSpawnCount - 1);
+  const next = spawnWaitQueue.shift();
+  if (next) {
+    // Stagger the next fork so the previous agent has a moment to initialize
+    // before another heavyweight process is created.
+    setTimeout(next, SPAWN_STAGGER_MS);
+  }
+}
+
 type MaestroPromptDelivery = {
   content: string;
   mode: 'paste' | 'send' | undefined;
@@ -1558,6 +1596,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     spawningSessionsRef.add(dedupKey);
 
+    // Low-memory guard: wait for a spawn slot so a coordinator fanning out to
+    // many workers starts them one at a time instead of forking all at once.
+    await acquireSpawnSlot();
+
     try {
       // Build export prefix to inline env vars into the command string.
       // portable-pty's CommandBuilder::env() does not reliably pass env vars
@@ -1583,7 +1625,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
             .map(([k, v]) => `export ${k}=${JSON.stringify(v)}`)
             .join('; ');
           const envPrefix = envExports ? `${envExports}; ` : '';
-          command = `${envPrefix}${sessionInfo.command}; exec $SHELL`;
+          // Keep a shell after the agent exits (so a finished session stays
+          // interactive), BUT if the agent exited non-zero, print a visible
+          // reason first — otherwise a crash (e.g. OOM on a low-memory machine)
+          // just drops into a bare shell and looks like "nothing spawned".
+          command = `${envPrefix}${sessionInfo.command}; __mc=$?; [ "$__mc" -ne 0 ] && echo "" && echo "[maestro] Agent exited (code $__mc). On a low-memory machine this usually means it ran out of memory."; exec $SHELL`;
         }
       }
 
@@ -1629,6 +1675,9 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       spawningSessionsRef.delete(dedupKey);
       pendingMaestroPrompts.delete(dedupKey);
       useUIStore.getState().reportError('Failed to spawn terminal session', err);
+    } finally {
+      // Release the spawn slot so the next queued agent can start.
+      releaseSpawnSlot();
     }
   },
 

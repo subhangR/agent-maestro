@@ -70,6 +70,7 @@ import { TaskDetailOverlay } from "./components/maestro/TaskDetailOverlay";
 import { SessionDetailOverlay } from "./components/maestro/SessionDetailOverlay";
 import { DocViewer } from "./components/maestro/DocViewer";
 import { DeploymentVersion } from "./components/DeploymentVersion";
+import { GlobalNotice } from "./components/GlobalNotice";
 import { STORAGE_SETUP_COMPLETE_KEY } from "./app/constants/defaults";
 
 // ---------------------------------------------------------------------------
@@ -781,6 +782,7 @@ export default function App() {
         }}
       />
       <DeploymentVersion />
+      <GlobalNotice />
     </div>
   );
 }
