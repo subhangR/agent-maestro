@@ -614,7 +614,7 @@ export function TerminalSettings() {
       {!isDefault && (
         <div className="pn-fld">
           <button type="button" className="pn-btn" onClick={reset}>
-            Reset Terminal to Defaults
+            Reset to defaults
           </button>
         </div>
       )}

@@ -136,7 +136,7 @@ export function GitSettings() {
 
       {!isDefault && (
         <button type="button" className="pn-btn" onClick={reset}>
-          Reset to Default
+          Reset to defaults
         </button>
       )}
     </div>

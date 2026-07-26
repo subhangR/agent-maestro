@@ -78,7 +78,7 @@ export function DisplaySettings() {
           className="pn-btn"
           onClick={() => setZoomLevel('normal')}
         >
-          Reset UI Scale to Default
+          Reset to defaults
         </button>
       )}
 

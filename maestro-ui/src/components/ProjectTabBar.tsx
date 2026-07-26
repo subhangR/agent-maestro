@@ -9,7 +9,6 @@ import { DisplaySettings } from "./DisplaySettings";
 import { GitSettings } from "./GitSettings";
 import { SoundSettingsContent } from "./modals/SoundSettingsModal";
 import { ProjectSoundSettings } from "./modals/ProjectSoundSettings";
-import { TerminalSettings } from "./TerminalSettings";
 import { soundManager } from "../services/soundManager";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useUIStore } from "../stores/useUIStore";
@@ -47,7 +46,7 @@ type SettingsDialogProps = {
 };
 
 type SettingsTab = 'theme' | 'display' | 'sounds' | 'git' | 'shortcuts';
-type ProjectSettingsTab = 'info' | 'sounds' | 'terminal';
+type ProjectSettingsTab = 'info' | 'sounds';
 
 type ShortcutRow = {
   action: string;
@@ -185,8 +184,7 @@ function ProjectSettingsDialog({ project, sessionCount, onClose, onDelete, onClo
 
   const TABS: { id: ProjectSettingsTab; label: string }[] = [
     { id: 'info', label: 'Info' },
-    { id: 'sounds', label: 'Sounds' },
-    { id: 'terminal', label: 'Terminal' },
+    { id: 'sounds', label: 'Project sounds' },
   ];
 
   const isMaster = project.isMaster ?? false;
@@ -194,8 +192,8 @@ function ProjectSettingsDialog({ project, sessionCount, onClose, onDelete, onClo
   return (
     <div className="projectSettingsBackdrop" onClick={onClose}>
       <div
-        className={`pn-mdl appSettingsDialog${activeTab === 'terminal' ? ' appSettingsDialog--wide' : ''}`}
-        style={{ width: activeTab === 'terminal' ? 820 : 640, maxWidth: '94vw' }}
+        className="pn-mdl appSettingsDialog"
+        style={{ width: 640, maxWidth: '94vw' }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label="Project settings"
@@ -309,12 +307,6 @@ function ProjectSettingsDialog({ project, sessionCount, onClose, onDelete, onClo
               config={project.soundConfig}
               onChange={handleSoundConfigChange}
             />
-          )}
-
-          {activeTab === 'terminal' && (
-            <div className="appSettingsContent appSettingsContent--terminal">
-              <TerminalSettings />
-            </div>
           )}
         </div>
       </div>
