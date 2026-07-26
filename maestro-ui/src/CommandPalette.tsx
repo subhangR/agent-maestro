@@ -87,6 +87,7 @@ function formatTimeAgo(timestamp: number): string {
 export function CommandPalette() {
   // --- UI store ---
   const isOpen = useUIStore((s) => s.commandPaletteOpen);
+  const advancedMode = useUIStore((s) => s.advancedMode);
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const setSlidePanelOpen = useUIStore((s) => s.setSlidePanelOpen);
   const setSlidePanelTab = useUIStore((s) => s.setSlidePanelTab);
@@ -229,12 +230,15 @@ export function CommandPalette() {
       shortcut: "T",
     });
 
-    items.push({
-      id: "action-ssh-connect",
-      type: "action",
-      title: "SSH Connect",
-      icon: "ssh",
-    });
+    // SSH is a developer / remote-machine feature — Advanced only.
+    if (advancedMode) {
+      items.push({
+        id: "action-ssh-connect",
+        type: "action",
+        title: "Connect to a remote machine (SSH)",
+        icon: "ssh",
+      });
+    }
 
     items.push({
       id: "action-new-prompt",
@@ -282,7 +286,7 @@ export function CommandPalette() {
     });
 
     return items;
-  }, [prompts, recordings, sessions, activeSessionId, isRecording, quickStarts]);
+  }, [prompts, recordings, sessions, activeSessionId, isRecording, quickStarts, advancedMode]);
 
   // Filter and sort by query
   const filteredItems = useMemo(() => {
