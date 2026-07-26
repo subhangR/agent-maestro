@@ -194,7 +194,12 @@ jobs:
       #    fails: "resource path ../../maestro-cli/dist/bundle.cjs doesn't exist". --
       - name: Build CLI bundle (Tauri resource)
         working-directory: maestro-cli
-        run: bun run bundle
+        # bundle (esbuild) reads dist/index.js, so tsc must run first — matches
+        # the build-binaries "Build CLI" step. In a clean CI checkout dist/ is
+        # empty, so `bun run bundle` alone fails: Could not resolve "dist/index.js".
+        run: |
+          bun run build
+          bun run bundle
 
       # -- Build the Tauri app --
       - name: Build Tauri app
@@ -202,6 +207,9 @@ jobs:
         env:
           VITE_API_URL: http://localhost:2357/api
           VITE_WS_URL: ws://localhost:2357
+          # The frontend (beforeBuildCommand → vite build) is large (Monaco,
+          # xterm, excalidraw); raise the Node heap so vite build doesn't OOM.
+          NODE_OPTIONS: --max-old-space-size=4096
         run: bunx tauri build --features custom-protocol --config src-tauri/tauri.conf.prod.json --bundles ${{ matrix.bundles }}
 
       # -- Package desktop artifact (macOS) --
