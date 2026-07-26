@@ -189,7 +189,11 @@ export const DEFAULT_FONT_WEIGHT: number = 400;
 export const DEFAULT_FONT_WEIGHT_BOLD: number = 700;
 export const DEFAULT_LINE_HEIGHT = 1.2;
 export const DEFAULT_LETTER_SPACING = 0;
-export const DEFAULT_SCROLLBACK = 5000;
+// Every open terminal keeps its own scrollback ring in memory, and inactive
+// terminals stay mounted — so this is multiplied by the number of live
+// sessions. 1500 lines is plenty for chat/agent output and much lighter on
+// low-memory machines. (Adjustable in Advanced → Terminal.)
+export const DEFAULT_SCROLLBACK = 1500;
 export const DEFAULT_COLOR_PRESET_ID = 'warm-atelier';
 
 export const LINE_HEIGHT_MIN = 1.0;
