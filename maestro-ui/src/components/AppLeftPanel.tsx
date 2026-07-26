@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { IconRail } from "./IconRail";
 import { MaestroPanel } from "./maestro/MaestroPanel";
 import { FileExplorerPanel } from "./FileExplorerPanel";
-import { PrimaryTab, TeamSubTab } from "./maestro/PanelIconBar";
+import { PrimaryTab, TeamSubTab } from "./maestro/panelTabs";
 import { useUIStore, IconRailSection } from "../stores/useUIStore";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useSessionStore } from "../stores/useSessionStore";

@@ -50,20 +50,18 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [~] Raw model IDs / task UUID leak — deferred to Phase 4 (they live inside the config surfaces being reworked there)
 - [x] Delete duplicate top-bar search button (kept magnifier w/ ⌘K in tooltip)
 
-## Phase 2 — Navigation consolidation (in progress)
+## Phase 2 — Navigation consolidation ✅ DONE (typecheck clean)
 - [x] Merge "Members" + "Teams" rail entries → one "Team" entry with an in-panel
-      Members/Teams switcher (required un-forcing the team sub-tab so the
-      switcher works — verified `setTeamSubTab` is a no-op under a forced sub-tab)
+      Members/Teams switcher (had to un-force the team sub-tab so the switcher works)
 - [x] Remove dead whiteboard button from `IconRail` (prop never passed; whiteboard
       stays reachable via the Spaces "New" menu)
-- [~] Delete dead `PanelIconBar` — VERIFIED never user-visible (MaestroPanel always
-      gets a forcedPrimaryTab except `files`, where it's display:none). Deferred:
-      deletion means relocating PrimaryTab/TeamSubTab types it exports; zero
-      user-facing benefit, so schedule as isolated dead-code cleanup.
-- [ ] Fix orphaned "Model Profiles" (give a door or fold into Team/Agent settings)
-- [~] Add text labels to the icon-only rail — DEFER for review: changes rail width /
-      left-panel layout; wants a visual look before imposing.
+- [x] Add text labels to the icon rail (icon + text rows; rail 56→156px)
+- [x] Fix orphaned "Model Profiles" — Advanced-gated rail entry (its own door)
+- [x] Delete dead `PanelIconBar` (325 lines) + its dead CSS; types moved to
+      `panelTabs.ts`; MaestroPanel nav simplified to the single forced sub-bar path
 - [ ] Retire "Collab Space" rail label — handled in Phase 6 (Collab/Share naming)
+- Note: one dead CSS selector `.maestroPanelIconBar` left in shared
+  `styles-maestro-panel-tabs.css` (harmless; remove in a later CSS sweep)
 
 ## Phase 3 — Settings consolidation
 - [ ] Merge 3 settings surfaces into one dialog (App / Project split)

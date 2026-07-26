@@ -7,7 +7,7 @@ import { ListEndFooter } from "./ListEndFooter";
 import { CreateTaskModal } from "./CreateTaskModal";
 import { ExecutionBar } from "./ExecutionBar";
 import { AddSubtaskInput } from "./AddSubtaskInput";
-import { PanelIconBar, PrimaryTab, TaskSubTab, SkillSubTab, TeamSubTab } from "./PanelIconBar";
+import { PrimaryTab, TaskSubTab, SkillSubTab, TeamSubTab } from "./panelTabs";
 import { TaskTabContent } from "./TaskTabContent";
 import { PanelErrorState, NoProjectState } from "./PanelErrorState";
 import { maestroClient } from "../../utils/MaestroClient";
@@ -631,8 +631,9 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                         <button type="button" className="pn-ib" title="Team standup" onClick={handleTeamStandup}><Icon name="more" /></button>
                     </div>
 
-                    {/* nav: pn-subbar in rail-driven (forced) context; PanelIconBar standalone (right-panel) context. Exactly one renders. */}
-                    {forcedPrimaryTab ? (
+                    {/* Rail-driven nav sub-bar. The left panel always drives the
+                        primary tab from the icon rail, so this is the only nav. */}
+                    {forcedPrimaryTab && (
                     <>
                     {primaryTab === "tasks" && (
                         <div className="pn-subbar">
@@ -679,35 +680,6 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                         </div>
                     )}
                     </>
-                    ) : (
-                        <PanelIconBar
-                            primaryTab={primaryTab}
-                            onPrimaryTabChange={setPrimaryTab}
-                            taskSubTab={taskSubTab}
-                            onTaskSubTabChange={setTaskSubTab}
-                            skillSubTab={skillSubTab}
-                            onSkillSubTabChange={setSkillSubTab}
-                            teamSubTab={teamSubTab}
-                            onTeamSubTabChange={setTeamSubTab}
-                            activeCount={activeRoots.length}
-                            pinnedCount={pinnedRoots.length}
-                            completedCount={completedRoots.length}
-                            archivedCount={archivedRoots.length}
-                            teamMembers={teamMembers}
-                            loading={loading}
-                            projectId={projectId}
-                            onNewTask={() => setShowCreateModal(true)}
-                            onNewTaskList={() => setTaskListCreateSignal(prev => prev + 1)}
-                            onNewTeamMember={() => setTeamMemberCreateSignal(prev => prev + 1)}
-                            onNewTeam={() => {}}
-                            onNewGraph={() => { setPrimaryTab("graphs"); setGraphCreateSignal(prev => prev + 1); }}
-                            onNewModelProfile={() => { setPrimaryTab("profiles"); setModelProfileCreateSignal(prev => prev + 1); }}
-                            onTeamStandup={handleTeamStandup}
-                            teamCount={activeTeams.length}
-                            taskListCount={taskListArray.length}
-                            graphCount={graphCount}
-                            modelProfileCount={modelProfileCount}
-                        />
                     )}
 
                     {primaryTab === "tasks" && (
