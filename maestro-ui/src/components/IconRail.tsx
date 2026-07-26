@@ -52,6 +52,7 @@ export const IconRail: React.FC<IconRailProps> = (props) => {
                         title={label}
                     >
                         <Icon name={icon} sw={1.55} />
+                        <span className="pn-rail-label">{label}</span>
                         {badge != null && badge > 0 && (
                             <span className="pn-rail-badge">{badge > 99 ? "99+" : badge}</span>
                         )}
