@@ -19,12 +19,14 @@ const railItems: { section: Exclude<IconRailSection, null>; label: string; icon:
     { section: "skills", label: "Skills", icon: "sparkles" },
     { section: "lists", label: "Lists", icon: "inbox" },
     { section: "graphs", label: "Graphs", icon: "graph" },
-    { section: "files", label: "Files", icon: "folder" },
     { section: "collab", label: "Collab Space", icon: "globe" },
 ];
 
 // Advanced-only destinations, appended when Developer features are on.
+// Files (a full file browser + code editor) and Model profiles are power-user
+// surfaces, hidden from the default non-developer view.
 const advancedRailItems: { section: Exclude<IconRailSection, null>; label: string; icon: IconName }[] = [
+    { section: "files", label: "Files", icon: "folder" },
     { section: "profiles", label: "Model profiles", icon: "sliders" },
 ];
 function getBadge(section: string, props: IconRailProps): number | null {

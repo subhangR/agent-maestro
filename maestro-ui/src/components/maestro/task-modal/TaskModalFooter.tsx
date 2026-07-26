@@ -5,6 +5,7 @@ import { AutoSaveStatus } from "../../../hooks/useAutoSave";
 import { TeamTaskPicker } from "./TeamTaskPicker";
 import { ModelPickerChip } from "./ModelPickerChip";
 import { Icon } from "../redesign/kit";
+import { useAdvancedMode } from "../../../hooks/useAdvancedMode";
 
 type TaskModalFooterProps = {
     isEditMode: boolean;
@@ -66,6 +67,7 @@ export function TaskModalFooter({
     autoSaveStatus,
     isDraft,
 }: TaskModalFooterProps) {
+    const advancedMode = useAdvancedMode();
     const hasMembers = selectedTeamMemberIds.length > 0;
 
     const soleMember = selectedTeamMemberIds.length === 1
@@ -146,7 +148,10 @@ export function TaskModalFooter({
             ? (soleMember ? `${soleMember.avatar} ${soleMember.name}` : `${selectedTeamMemberIds.length} members`)
             : "Assign…";
 
-    const gearBtn = hasMembers ? (
+    // Per-member launch config is a power-user surface; the inline Options
+    // (Safe / Isolated copy / Model) already covers the common cases, so only
+    // expose this deeper gear in Advanced mode.
+    const gearBtn = (hasMembers && advancedMode) ? (
         <button
             type="button"
             className={`pn-mchip ${showLaunchConfig ? 'pn-mchip--ref' : ''}`}
@@ -209,7 +214,7 @@ export function TaskModalFooter({
                     type="button"
                     className={`pn-toggle ${showOptions ? 'pn-mchip--ref' : ''}`}
                     onClick={() => setShowOptions(o => !o)}
-                    title="Run options — permissions, isolation, and model. Sensible defaults are used if you leave these alone."
+                    title="Advanced run settings — safe defaults are used unless you change these."
                 >
                     <Icon name="settings" size={13} /> {showOptions ? 'Hide options' : 'Options'}
                 </button>
@@ -281,11 +286,12 @@ export function TaskModalFooter({
                         </button>
                         <button
                             type="button"
-                            className="pn-btn"
+                            className="pn-btn pn-btn--ghost"
                             onClick={() => onSubmit(false)}
                             disabled={!isValid}
+                            title="Save this task without starting it"
                         >
-                            Create
+                            Save for later
                         </button>
                         <button
                             type="button"
@@ -293,7 +299,7 @@ export function TaskModalFooter({
                             onClick={() => onSubmit(true)}
                             disabled={!isValid}
                         >
-                            <Icon name="play" size={13} /> Create &amp; start
+                            <Icon name="play" size={13} /> Start
                         </button>
                     </>
                 )}

@@ -708,15 +708,6 @@ export function CreateTaskModal({
                                         onPriorityChange={form.setPriority}
                                         dueDate={form.dueDate}
                                         onDueDateChange={form.setDueDate}
-                                        useWorktree={form.useWorktree}
-                                        onUseWorktreeChange={form.setUseWorktree}
-                                        dangerousMode={form.dangerousMode}
-                                        onDangerousModeChange={form.setDangerousMode}
-                                        taskLaunchConfig={form.taskLaunchConfig}
-                                        onTaskLaunchConfigChange={form.setTaskLaunchConfig}
-                                        soleMember={form.selectedTeamMemberIds.length === 1
-                                            ? teamMembers.find(m => m.id === form.selectedTeamMemberIds[0])
-                                            : undefined}
                                         isEditMode={effectiveEditMode}
                                         task={effectiveTask || undefined}
                                     />
