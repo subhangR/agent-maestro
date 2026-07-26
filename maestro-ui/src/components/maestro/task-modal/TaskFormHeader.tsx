@@ -2,15 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { MaestroTask } from "../../../app/types/maestro";
 import { useTaskBreadcrumb } from "../../../hooks/useTaskBreadcrumb";
 import { Icon } from "../redesign/kit";
-
-const STATUS_LABELS: Record<string, string> = {
-    todo: "Todo",
-    in_progress: "In Progress",
-    in_review: "In Review",
-    completed: "Completed",
-    cancelled: "Cancelled",
-    blocked: "Blocked",
-};
+import { TASK_STATUS_LABELS as STATUS_LABELS } from "../../../app/constants/labels";
 
 type TaskFormHeaderProps = {
     title: string;

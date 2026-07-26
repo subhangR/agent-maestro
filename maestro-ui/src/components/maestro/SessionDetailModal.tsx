@@ -17,14 +17,7 @@ interface SessionDetailModalProps {
   onClose: () => void;
 }
 
-const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
-  spawning: "Spawning",
-  idle: "Idle",
-  working: "Working",
-  completed: "Completed",
-  failed: "Failed",
-  stopped: "Stopped",
-};
+import { ACTIVITY_STATUS_LABELS as SESSION_STATUS_LABELS } from "../../app/constants/labels";
 
 const TASK_STATUS_SYMBOLS: Record<string, string> = {
   todo: "○",

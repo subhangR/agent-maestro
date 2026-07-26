@@ -20,15 +20,7 @@ const STATUS_SYMBOLS: Record<TaskStatus, string> = {
   archived: "▫",
 };
 
-const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: "Todo",
-  in_progress: "In Progress",
-  in_review: "In Review",
-  completed: "Completed",
-  cancelled: "Cancelled",
-  blocked: "Blocked",
-  archived: "Archived",
-};
+import { TASK_STATUS_LABELS as STATUS_LABELS } from "../../app/constants/labels";
 
 const SESSION_STATUS_LABELS: Record<TaskSessionStatus, string> = {
   queued: "Queued",

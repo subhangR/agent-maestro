@@ -10,7 +10,7 @@ const PRIO_DOT: Record<string, string> = {
     low: "var(--pn-idle)",
 };
 const PRIO_TAG: Record<string, string> = { high: "high", medium: "med", low: "low" };
-const PRIO_LABEL: Record<string, string> = { high: "HIGH", medium: "MED", low: "LOW" };
+import { TASK_PRIORITY_LABELS as PRIO_LABEL } from "../../app/constants/labels";
 
 type TaskCardProps = {
     task: MaestroTask;

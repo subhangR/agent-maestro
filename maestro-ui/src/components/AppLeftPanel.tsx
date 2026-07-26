@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { IconRail } from "./IconRail";
 import { MaestroPanel } from "./maestro/MaestroPanel";
 import { FileExplorerPanel } from "./FileExplorerPanel";
-import { PrimaryTab, TeamSubTab } from "./maestro/PanelIconBar";
+import { PrimaryTab, TeamSubTab } from "./maestro/panelTabs";
 import { useUIStore, IconRailSection } from "../stores/useUIStore";
 import { useProjectStore } from "../stores/useProjectStore";
 import { useSessionStore } from "../stores/useSessionStore";
@@ -27,16 +27,16 @@ function sectionToPrimaryTab(section: IconRailSection): PrimaryTab | null {
         case "lists": return "lists";
         case "graphs": return "graphs";
         case "collab": return "collab";
+        case "profiles": return "profiles";
         default: return null;
     }
 }
 
-function sectionToTeamSubTab(section: IconRailSection): TeamSubTab | undefined {
-    switch (section) {
-        case "members": return "members";
-        case "teams": return "teams";
-        default: return undefined;
-    }
+function sectionToTeamSubTab(_section: IconRailSection): TeamSubTab | undefined {
+    // The Members/Teams choice now lives in the panel's own sub-tab switcher.
+    // Returning undefined means the rail forces only the "Team" primary tab and
+    // leaves the sub-tab switchable in-panel (forcing it would disable that).
+    return undefined;
 }
 
 export const AppLeftPanel: React.FC = () => {

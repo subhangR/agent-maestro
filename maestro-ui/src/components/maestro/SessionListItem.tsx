@@ -25,21 +25,10 @@ import { useSpellCastPulse } from "../../utils/useSpellCastPulse";
 import { useActiveSpellsForSession } from "../../stores/useActiveSpellsStore";
 import { useSpellbookStore } from "../../stores/useSpellbookStore";
 
-const SESSION_STATUS_LABELS: Record<MaestroSessionStatus, string> = {
-  spawning: "Spawning",
-  idle: "Idle",
-  working: "Working",
-  completed: "Done",
-  failed: "Failed",
-  stopped: "Stopped",
-};
-
-const MODE_LABELS: Record<AgentMode, string> = {
-  worker: "Worker",
-  coordinator: "Coordinator",
-  "coordinated-worker": "Co-Worker",
-  "coordinated-coordinator": "Co-Coordinator",
-};
+import {
+  ACTIVITY_STATUS_LABELS as SESSION_STATUS_LABELS,
+  AGENT_ROLE_LABELS as MODE_LABELS,
+} from "../../app/constants/labels";
 
 const MODE_OPTIONS: AgentMode[] = [
   "worker",

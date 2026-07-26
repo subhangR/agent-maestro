@@ -77,7 +77,7 @@ function readClampedFromStorage(key: string, min: number, max: number, fallback:
   return fallback;
 }
 
-export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | null;
+export type IconRailSection = 'tasks' | 'members' | 'teams' | 'skills' | 'lists' | 'graphs' | 'files' | 'collab' | 'profiles' | null;
 
 export type SpaceSection = 'messages' | 'tasks' | 'team' | 'spells' | 'docs' | 'files' | 'members' | 'settings';
 
@@ -99,7 +99,7 @@ function readSpaceSection(spaceId: string | null): SpaceSection {
 function readIconRailSection(): IconRailSection {
   try {
     const raw = localStorage.getItem(DEFAULTS.STORAGE_ICON_RAIL_SECTION_KEY);
-    if (raw && ['tasks', 'members', 'teams', 'skills', 'lists', 'graphs', 'files', 'collab'].includes(raw)) {
+    if (raw && ['tasks', 'members', 'teams', 'skills', 'lists', 'graphs', 'files', 'collab', 'profiles'].includes(raw)) {
       return raw as IconRailSection;
     }
   } catch {
@@ -165,6 +165,11 @@ interface UIState {
   toggleSessionShowBadges: () => void;
   sessionShowElapsed: boolean;
   toggleSessionShowElapsed: () => void;
+
+  // Advanced (developer) mode — reveals power features hidden from non-devs.
+  advancedMode: boolean;
+  setAdvancedMode: (value: boolean) => void;
+  toggleAdvancedMode: () => void;
 
   // Spaces panel (right) — null = collapsed, 'sessions' = expanded
   spacesRailActiveSection: 'sessions' | null;
@@ -366,6 +371,26 @@ export const useUIStore = create<UIState>((set, get) => ({
     set({ sessionShowElapsed: next });
     try {
       localStorage.setItem(DEFAULTS.STORAGE_SESSION_SHOW_ELAPSED_KEY, next ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+
+  // -- Advanced (developer) mode --
+  advancedMode: readBoolFromStorage(DEFAULTS.STORAGE_ADVANCED_MODE_KEY, false),
+  setAdvancedMode: (value) => {
+    set({ advancedMode: value });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_ADVANCED_MODE_KEY, value ? '1' : '0');
+    } catch {
+      // best-effort
+    }
+  },
+  toggleAdvancedMode: () => {
+    const next = !get().advancedMode;
+    set({ advancedMode: next });
+    try {
+      localStorage.setItem(DEFAULTS.STORAGE_ADVANCED_MODE_KEY, next ? '1' : '0');
     } catch {
       // best-effort
     }

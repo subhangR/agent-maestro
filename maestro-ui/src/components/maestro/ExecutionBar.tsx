@@ -414,17 +414,17 @@ export function ExecutionBar({
                         <div className="executionBarActions">
                             <button type="button"
                                 className={`terminalDangerousToggle terminalDangerousToggle--bar ${coordinatorDangerous ? 'terminalDangerousToggle--on' : ''}`}
-                                title={coordinatorDangerous ? 'Coordinator: dangerous mode ON' : 'Coordinator: enable dangerous mode'}
+                                title={coordinatorDangerous ? 'Manager auto-approves every command \u2014 click to require approval' : 'Manager asks before running commands \u2014 click to auto-approve everything'}
                                 onClick={() => setCoordinatorDangerous(v => !v)}
                             >
-                                {coordinatorDangerous ? '\u26A0 COORD' : '\uD83D\uDEE1\uFE0F COORD'}
+                                {coordinatorDangerous ? 'Manager: auto-approve' : 'Manager: ask first'}
                             </button>
                             <button type="button"
                                 className={`terminalDangerousToggle terminalDangerousToggle--bar ${workersDangerous ? 'terminalDangerousToggle--on' : ''}`}
-                                title={workersDangerous ? 'Workers: dangerous mode ON' : 'Workers: enable dangerous mode'}
+                                title={workersDangerous ? 'Team auto-approves every command \u2014 click to require approval' : 'Team asks before running commands \u2014 click to auto-approve everything'}
                                 onClick={() => setWorkersDangerous(v => !v)}
                             >
-                                {workersDangerous ? '\u26A0 WORKERS' : '\uD83D\uDEE1\uFE0F WORKERS'}
+                                {workersDangerous ? 'Team: auto-approve' : 'Team: ask first'}
                             </button>
                             <button type="button"
                                 className="executionBarConfigBtn executionBarConfigBtn--orchestrate"

@@ -11,8 +11,6 @@ import { useRecordingStore } from "../stores/useRecordingStore";
 import { useAssetStore } from "../stores/useAssetStore";
 import { useSessionStore } from "../stores/useSessionStore";
 import { useProjectStore } from "../stores/useProjectStore";
-import { ThemeSwitcher } from "./ThemeSwitcher";
-import { ZoomSetting } from "./ZoomSetting";
 
 export function AppSlidePanel() {
     // --- UI store ---
@@ -417,15 +415,6 @@ export function AppSlidePanel() {
                         <button type="button" className="panelFooterBtn" onClick={() => openAssetEditor()}>
                             + New Asset
                         </button>
-                    </div>
-                </>
-            ) : slidePanelTab === "settings" ? (
-                <>
-                    {/* Theme Settings */}
-                    <div className="panelSection">
-                        <div className="panelSectionTitle">Appearance</div>
-                        <ThemeSwitcher />
-                        <ZoomSetting />
                     </div>
                 </>
             ) : null}

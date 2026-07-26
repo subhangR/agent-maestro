@@ -42,8 +42,9 @@ export const MIN_WORKSPACE_TERMINAL_WIDTH = 160;
 export const MIN_WORKSPACE_EDITOR_WIDTH = 260;
 export const MIN_WORKSPACE_FILE_TREE_WIDTH = 200;
 
-// Icon rail + Maestro sidebar (left panel)
-export const ICON_RAIL_WIDTH = 56;
+// Icon rail + Maestro sidebar (left panel). The rail shows icon + text labels,
+// so it is wider than an icon-only strip (must match .pn-rail width in CSS).
+export const ICON_RAIL_WIDTH = 156;
 export const DEFAULT_MAESTRO_SIDEBAR_WIDTH = 280;
 export const MIN_MAESTRO_SIDEBAR_WIDTH = 200;
 export const MAX_MAESTRO_SIDEBAR_WIDTH = 600;
@@ -53,4 +54,6 @@ export const STORAGE_SESSION_SHOW_TASK_DETAILS_KEY = 'agents-ui-session-show-tas
 export const STORAGE_SESSION_SHOW_COMPLETED_SUBSESSIONS_KEY = 'agents-ui-session-show-completed-subsessions-v1';
 export const STORAGE_SESSION_SHOW_BADGES_KEY = 'agents-ui-session-show-badges-v1';
 export const STORAGE_SESSION_SHOW_ELAPSED_KEY = 'agents-ui-session-show-elapsed-v1';
+// Advanced (developer) mode — hides power features behind one toggle. Default off.
+export const STORAGE_ADVANCED_MODE_KEY = 'agents-ui-advanced-mode-v1';
 export const SPACES_RAIL_WIDTH = 48;

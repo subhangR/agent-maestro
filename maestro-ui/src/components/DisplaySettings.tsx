@@ -1,13 +1,41 @@
 import React from 'react';
 import { useZoomStore, ZOOM_LEVELS, ZOOM_CONFIG } from '../stores/useZoomStore';
 import { TerminalSettings } from './TerminalSettings';
+import { useUIStore } from '../stores/useUIStore';
 
 export function DisplaySettings() {
   const zoomLevel = useZoomStore((s) => s.zoomLevel);
   const setZoomLevel = useZoomStore((s) => s.setZoomLevel);
+  const advancedMode = useUIStore((s) => s.advancedMode);
+  const setAdvancedMode = useUIStore((s) => s.setAdvancedMode);
 
   return (
     <div className="pn-fld">
+      {/* ---------------- Developer features ---------------- */}
+      <div className="pn-fld">
+        <div className="pn-flabel">Developer features</div>
+        <div className="pn-fhint">
+          Show advanced tools — git, the code editor and file browser, terminal color editing,
+          automation rules, and server details. Off by default to keep things simple.
+        </div>
+        <div className="pn-seg">
+          <button
+            type="button"
+            className={`pn-seg-i${!advancedMode ? ' pn-seg-i--active' : ''}`}
+            onClick={() => setAdvancedMode(false)}
+          >
+            Off
+          </button>
+          <button
+            type="button"
+            className={`pn-seg-i${advancedMode ? ' pn-seg-i--active' : ''}`}
+            onClick={() => setAdvancedMode(true)}
+          >
+            On
+          </button>
+        </div>
+      </div>
+
       {/* ---------------- UI Scale ---------------- */}
       <div className="pn-fld">
         <div className="pn-flabel">UI Scale</div>
@@ -50,7 +78,7 @@ export function DisplaySettings() {
           className="pn-btn"
           onClick={() => setZoomLevel('normal')}
         >
-          Reset UI Scale to Default
+          Reset to defaults
         </button>
       )}
 

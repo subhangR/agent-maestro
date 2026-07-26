@@ -50,7 +50,7 @@ function renderPanel() {
 
 /** Opens the manual-remote editor, types `raw`, and submits the form. */
 async function saveManualRemote(raw: string) {
-  fireEvent.click(screen.getByRole("button", { name: /set manually|change/i }));
+  fireEvent.click(screen.getByRole("button", { name: /link a github repo|change/i }));
   const input = screen.getByPlaceholderText(/github\.com\/owner\/repo/i);
   fireEvent.change(input, { target: { value: raw } });
   const form = input.closest("form");
