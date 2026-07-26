@@ -63,11 +63,15 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - Note: one dead CSS selector `.maestroPanelIconBar` left in shared
   `styles-maestro-panel-tabs.css` (harmless; remove in a later CSS sweep)
 
-## Phase 3 — Settings consolidation
-- [ ] Merge 3 settings surfaces into one dialog (App / Project split)
-- [ ] Remove duplicated Theme/Zoom/Terminal/Sounds controls; delete `ZoomSetting.tsx`
-- [ ] Standardize the 4 "Reset…" phrasings
-- [ ] Keep top-bar theme/mute as the only quick toggles
+## Phase 3 — Settings consolidation ✅ DONE (typecheck clean)
+- [x] Removed the duplicate slide-panel "Settings"/Appearance tab (theme+zoom
+      already in App Settings); deleted `ZoomSetting.tsx`
+- [x] Removed the global "Terminal" tab from Project Settings (global store —
+      belongs in App Settings → Display). Project Settings = Info + Project sounds.
+- [x] Relabeled project "Sounds" → "Project sounds" (scope clarity vs global Sounds)
+- [x] Standardized 4 reset phrasings → "Reset to defaults"
+- [x] Top-bar theme/mute kept as quick accelerators; App Settings is the single
+      full-settings home
 
 ## Phase 4 — Config simplification + Advanced gating
 - [ ] Task footer: one primary verb, remove 2nd gear, inline captions
