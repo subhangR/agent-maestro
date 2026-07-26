@@ -334,6 +334,8 @@ export const ProjectTabBar = React.memo(function ProjectTabBar({
 }: ProjectTabBarProps) {
   const { isDark, toggle: toggleTheme } = useRedesignTheme({ ensureRedesign: false });
   const setCommandPaletteOpen = useUIStore((s) => s.setCommandPaletteOpen);
+  const spacesRailActiveSection = useUIStore((s) => s.spacesRailActiveSection);
+  const toggleSpacesPanel = useUIStore((s) => s.toggleSpacesPanel);
   const [settingsProjectId, setSettingsProjectId] = useState<string | null>(null);
   const [appSettingsOpen, setAppSettingsOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(soundManager.isEnabled());
@@ -742,6 +744,15 @@ export const ProjectTabBar = React.memo(function ProjectTabBar({
             title="Search (Cmd/Ctrl+K)"
           >
             <PnIcon name="search" size={16} />
+          </button>
+          <button
+            type="button"
+            className={`pn-ib${spacesRailActiveSection !== null ? ' pn-ib--active' : ''}`}
+            onClick={toggleSpacesPanel}
+            title={spacesRailActiveSection !== null ? "Hide sessions panel" : "Show sessions panel"}
+            aria-pressed={spacesRailActiveSection !== null}
+          >
+            <PnIcon name="terminal" size={16} />
           </button>
         </div>
       </div>
