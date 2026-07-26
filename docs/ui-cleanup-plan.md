@@ -83,13 +83,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
       direct model pick stay). Full minimal-form redesign not done — see below.
 - [x] Gate GitSettings tab / GatewayDashboard infra tiles / Files rail entry
       (file browser + Monaco) behind Advanced
-- [ ] TerminalSettings ANSI studio (16 swatches, scrollback, letter-spacing) →
-      Advanced; keep presets + font size — NOT DONE
-- [ ] SSH manager entry points → Advanced — NOT DONE
+- [x] TerminalSettings: ANSI 16 swatches, Core Colors, Letter Spacing, Scrollback
+      → Advanced; presets + font + cursor stay for everyone
+- [x] SSH → Advanced (command palette was the only live entry; renamed to
+      "Connect to a remote machine (SSH)")
 - [ ] Team Member modal full minimal create form (Name/Role/Identity/Agent +
-      collapse Sound, permission-mode, workflow) — partial (only knob-gating done)
-- [ ] Session lifecycle: collapse Live/Done/Archived/mark-done to one path — NOT
-      DONE (higher risk; touches session state model)
+      collapse Sound, permission-mode, workflow) — DEFERRED (knob-gating done)
+- [ ] Session lifecycle: collapse Live/Done/Archived/mark-done to one path —
+      DEFERRED (higher risk; touches session state model — do with app verification)
 
 ## Phase 5 — Spells → "Shortcuts" rename + de-scope
 - [ ] Rename feature; kill dialect (ensemble/cast/spellbook/seed/ring/disband)
