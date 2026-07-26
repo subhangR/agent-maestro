@@ -50,13 +50,20 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [~] Raw model IDs / task UUID leak — deferred to Phase 4 (they live inside the config surfaces being reworked there)
 - [x] Delete duplicate top-bar search button (kept magnifier w/ ⌘K in tooltip)
 
-## Phase 2 — Navigation consolidation
-- [ ] Delete dead `PanelIconBar` (or promote its labeled tabs, drop icon rail)
-- [ ] Merge "Members" + "Teams" rail entries → one "Agents"
-- [ ] Fix orphaned "Model Profiles" (give a door or fold into Agent settings)
-- [ ] Whiteboard: wire visible entry or remove dead buttons
-- [ ] De-collide reused glyphs (layers/grid/pen); add text labels to rail
-- [ ] Retire "Spaces" as a user-facing noun for the right panel
+## Phase 2 — Navigation consolidation (in progress)
+- [x] Merge "Members" + "Teams" rail entries → one "Team" entry with an in-panel
+      Members/Teams switcher (required un-forcing the team sub-tab so the
+      switcher works — verified `setTeamSubTab` is a no-op under a forced sub-tab)
+- [x] Remove dead whiteboard button from `IconRail` (prop never passed; whiteboard
+      stays reachable via the Spaces "New" menu)
+- [~] Delete dead `PanelIconBar` — VERIFIED never user-visible (MaestroPanel always
+      gets a forcedPrimaryTab except `files`, where it's display:none). Deferred:
+      deletion means relocating PrimaryTab/TeamSubTab types it exports; zero
+      user-facing benefit, so schedule as isolated dead-code cleanup.
+- [ ] Fix orphaned "Model Profiles" (give a door or fold into Team/Agent settings)
+- [~] Add text labels to the icon-only rail — DEFER for review: changes rail width /
+      left-panel layout; wants a visual look before imposing.
+- [ ] Retire "Collab Space" rail label — handled in Phase 6 (Collab/Share naming)
 
 ## Phase 3 — Settings consolidation
 - [ ] Merge 3 settings surfaces into one dialog (App / Project split)

@@ -8,13 +8,13 @@ type IconRailProps = {
     taskCount?: number;
     memberCount?: number;
     teamCount?: number;
-    onOpenWhiteboard?: () => void;
 };
 
 const railItems: { section: Exclude<IconRailSection, null>; label: string; icon: IconName }[] = [
     { section: "tasks", label: "Tasks", icon: "listChecks" },
-    { section: "members", label: "Members", icon: "users" },
-    { section: "teams", label: "Teams", icon: "team" },
+    // Members and Teams were two separate rail entries that opened the same
+    // panel; they're now one "Team" entry with a Members/Teams switcher inside.
+    { section: "members", label: "Team", icon: "team" },
     { section: "skills", label: "Skills", icon: "sparkles" },
     { section: "lists", label: "Lists", icon: "inbox" },
     { section: "graphs", label: "Graphs", icon: "graph" },
@@ -26,16 +26,15 @@ function getBadge(section: string, props: IconRailProps): number | null {
         case "tasks":
             return props.taskCount ?? null;
         case "members":
+            // "Team" entry — count members (its default sub-view).
             return props.memberCount ?? null;
-        case "teams":
-            return props.teamCount ?? null;
         default:
             return null;
     }
 }
 
 export const IconRail: React.FC<IconRailProps> = (props) => {
-    const { activeSection, onSectionChange, onOpenWhiteboard } = props;
+    const { activeSection, onSectionChange } = props;
 
     return (
         <div className="pn-rail">
@@ -61,18 +60,6 @@ export const IconRail: React.FC<IconRailProps> = (props) => {
             })}
 
             <span className="pn-rail-spacer" />
-
-            {/* Whiteboard shortcut */}
-            {onOpenWhiteboard && (
-                <button
-                    className="pn-rail-btn"
-                    onClick={onOpenWhiteboard}
-                    title="Whiteboard"
-                    type="button"
-                >
-                    <Icon name="pen" sw={1.55} />
-                </button>
-            )}
         </div>
     );
 };

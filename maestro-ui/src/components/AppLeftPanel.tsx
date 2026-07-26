@@ -31,12 +31,11 @@ function sectionToPrimaryTab(section: IconRailSection): PrimaryTab | null {
     }
 }
 
-function sectionToTeamSubTab(section: IconRailSection): TeamSubTab | undefined {
-    switch (section) {
-        case "members": return "members";
-        case "teams": return "teams";
-        default: return undefined;
-    }
+function sectionToTeamSubTab(_section: IconRailSection): TeamSubTab | undefined {
+    // The Members/Teams choice now lives in the panel's own sub-tab switcher.
+    // Returning undefined means the rail forces only the "Team" primary tab and
+    // leaves the sub-tab switchable in-panel (forcing it would disable that).
+    return undefined;
 }
 
 export const AppLeftPanel: React.FC = () => {

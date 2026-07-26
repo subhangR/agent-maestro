@@ -651,18 +651,17 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                             <span className="pn-meta">Lists · {taskListArray.length}</span>
                         </div>
                     )}
-                    {primaryTab === "team" && teamSubTab === "members" && (
+                    {primaryTab === "team" && (
                         <div className="pn-subbar">
-                            <button type="button" className="pn-btn pn-btn--primary" style={{ height: 30 }} onClick={() => setTeamMemberCreateSignal(prev => prev + 1)}><Icon name="plus" size={14} /> New member</button>
-                            <button type="button" className="pn-btn" style={{ height: 30 }} onClick={handleTeamStandup} title="Run a team standup to audit and optimize the roster">Standup</button>
+                            {teamSubTab === "members" && (
+                                <>
+                                    <button type="button" className="pn-btn pn-btn--primary" style={{ height: 30 }} onClick={() => setTeamMemberCreateSignal(prev => prev + 1)}><Icon name="plus" size={14} /> New member</button>
+                                    <button type="button" className="pn-btn" style={{ height: 30 }} onClick={handleTeamStandup} title="Run a team standup to audit and optimize the roster">Standup</button>
+                                </>
+                            )}
                             <span className="pn-head-spacer" />
-                            <span className="pn-meta">Members · {teamMembers.filter(t => t.status !== 'archived').length}</span>
-                        </div>
-                    )}
-                    {primaryTab === "team" && teamSubTab === "teams" && (
-                        <div className="pn-subbar">
-                            <span className="pn-head-spacer" />
-                            <span className="pn-meta">Teams · {activeTeams.length}</span>
+                            <button type="button" className={`pn-subtab ${teamSubTab === "members" ? "pn-subtab--active" : ""}`} onClick={() => setTeamSubTab("members")} title="Members"><Icon name="users" /> {teamMembers.filter(t => t.status !== 'archived').length}</button>
+                            <button type="button" className={`pn-subtab ${teamSubTab === "teams" ? "pn-subtab--active" : ""}`} onClick={() => setTeamSubTab("teams")} title="Teams"><Icon name="team" /> {activeTeams.length}</button>
                         </div>
                     )}
                     {primaryTab === "profiles" && (
