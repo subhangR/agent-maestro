@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 
-export type SlidePanelTab = "prompts" | "recordings" | "assets" | "settings";
+export type SlidePanelTab = "prompts" | "recordings" | "assets";
 
 type SlidePanelProps = {
   isOpen: boolean;
@@ -84,12 +84,6 @@ export function SlidePanel({
             onClick={() => onTabChange("assets")}
           >
             Assets
-          </button>
-          <button type="button"
-            className={`slidePanelTab ${activeTab === "settings" ? "slidePanelTabActive" : ""}`}
-            onClick={() => onTabChange("settings")}
-          >
-            Settings
           </button>
         </div>
         <button type="button" className="slidePanelClose" onClick={onClose} title="Close panel">
