@@ -14,6 +14,9 @@ interface TerminalStripProps {
   agentTool?: string | null;
   onAttach: () => void;
   onDraw: () => void;
+  /** When set, drives the expanded (chat/conversation) state from the parent's
+   *  session view mode (chat/split expand it; terminal collapses it). */
+  forceExpanded?: boolean;
 }
 
 const POLL_INTERVAL = 2000;
@@ -206,7 +209,7 @@ function ContextGauge({ tokens }: { tokens: number }) {
   );
 }
 
-export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDraw }: TerminalStripProps) {
+export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDraw, forceExpanded }: TerminalStripProps) {
   const provider = resolveLogProvider(agentTool);
   const openLauncher = useSpellLauncherStore((s) => s.openLauncher);
   const [resolvedProvider, setResolvedProvider] = useState<LogProvider>(provider);
@@ -229,7 +232,12 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
   }, []);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(forceExpanded ?? false);
+  // Sync the session log's expanded state with the parent's view mode
+  // (Chat / Together expand the conversation; Terminal collapses it).
+  useEffect(() => {
+    if (forceExpanded !== undefined) setExpanded(forceExpanded);
+  }, [forceExpanded]);
   // Fully hide the strip from the layout. When hidden the strip renders no
   // content and leaves no footprint (the terminal deck reclaims the row); only
   // the compact floating restore control below remains, so the user can bring

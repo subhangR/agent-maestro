@@ -711,6 +711,26 @@ html[data-redesign] .pn-rail-badge {
 html[data-redesign] .pn-rail-spacer { flex: 1; }
 html[data-redesign] .pn-rail-div { width: 22px; height: 1px; background: var(--pn-line-2); margin: 6px 0; }
 
+/* Session view selector (Chat / Together / Terminal) — a compact segmented
+   toggle above the terminal for a running session. */
+.pn-viewseg {
+  display: inline-flex; gap: 2px; padding: 2px;
+  border-radius: 8px; background: var(--pn-hover, rgba(128,128,128,0.12));
+  border: 1px solid var(--pn-line, rgba(128,128,128,0.25));
+}
+.pn-viewseg__btn {
+  padding: 3px 12px; border: none; background: transparent;
+  color: var(--pn-ink-3, #8a8a8a); font-size: 12px; line-height: 1.4;
+  border-radius: 6px; cursor: pointer;
+  font-family: var(--style-font-ui, system-ui, sans-serif);
+  transition: background 120ms, color 120ms;
+}
+.pn-viewseg__btn:hover { color: var(--pn-ink, #f0f4f8); }
+.pn-viewseg__btn--on {
+  background: var(--pn-paper, #1c1f26); color: var(--pn-ink, #f0f4f8);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.18);
+}
+
 /* far-right spaces rail */
 html[data-redesign] .pn-srail {
   width: 52px; flex: 0 0 auto;

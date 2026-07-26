@@ -135,6 +135,11 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const sendPromptToActive = useSessionStore((s) => s.sendPromptToActive);
   const sendPromptToSession = useSessionStore((s) => s.sendPromptToSession);
   const active = sessions.find((s) => s.id === activeId) ?? null;
+  // Session view mode (Chat / Together / Terminal). Drives whether the parsed
+  // conversation ("chat") view, the raw terminal, or both are shown for a
+  // running session. Previously imported but never wired — so only the raw
+  // terminal ever showed. Default is "split" (both) / "chat" on narrow screens.
+  const { mode: sessionViewMode, selectMode: selectSessionViewMode, showActivity, showTerminal } = useSessionViewMode();
   const teamViewOpen = useUIStore((s) => s.teamViewRootId) !== null;
   // Terminals stay MOUNTED under their stable key (constructed once in
   // SessionTerminal's mount effect, never rebuilt on session:updated re-renders).
@@ -471,16 +476,22 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             horizontal row in normal flow ABOVE the terminal deck (never an
             overlay pinned to the terminal's edge). */}
         {active?.maestroSessionId && active?.cwd && (
-          <TerminalStrip
-            key={active.id}
-            cwd={active.cwd}
-            maestroSessionId={active.maestroSessionId}
-            agentTool={activeLogAgentTool}
-            onAttach={handleAttach}
-            onDraw={handleDraw}
-          />
+          <>
+            <div className="sessionViewSelectorRow" style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 10px 0' }}>
+              <SessionViewSelector mode={sessionViewMode} onChange={selectSessionViewMode} />
+            </div>
+            <TerminalStrip
+              key={active.id}
+              cwd={active.cwd}
+              maestroSessionId={active.maestroSessionId}
+              agentTool={activeLogAgentTool}
+              onAttach={handleAttach}
+              onDraw={handleDraw}
+              forceExpanded={showActivity}
+            />
+          </>
         )}
-        <div className="terminalDeck">
+        <div className="terminalDeck" style={(!showTerminal && active?.maestroSessionId) ? { display: 'none' } : undefined}>
         {/* Mode chip — shows current session role (coordinator / worker).
             Lives inside the deck so it overlays only the terminal content, not
             the session-log strip above it. */}
