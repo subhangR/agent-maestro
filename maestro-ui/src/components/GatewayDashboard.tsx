@@ -3,6 +3,7 @@ import { useFirebaseAuthStore } from '../stores/useFirebaseAuthStore';
 import { getGatewayAuthToken } from '../utils/gatewayAuth';
 import { GatewayPresence, useGatewayPresenceFeed } from '../firebase/gatewayPresence';
 import { Icon, Mark } from './maestro/redesign/kit';
+import { useAdvancedMode } from '../hooks/useAdvancedMode';
 
 interface GatewayMember {
   email: string;
@@ -45,6 +46,7 @@ function formatBytes(bytes: number): string {
 /** Gateway-owned team control centre. Its data never comes from a member instance. */
 export function GatewayDashboard() {
   const currentUser = useFirebaseAuthStore((state) => state.user);
+  const advancedMode = useAdvancedMode();
   const presence = useGatewayPresenceFeed();
   const [overview, setOverview] = useState<GatewayOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,9 +108,14 @@ export function GatewayDashboard() {
         <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{liveAgentCount}</span><span>agents working</span></div>
         <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{members.length}</span><span>team members</span></div>
         <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server?.runningSessionCount ?? '—'}</span><span>running sessions</span></div>
-        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server?.cpuUsagePercent == null ? '—' : `${server.cpuUsagePercent}%`}</span><span>CPU · {server?.cpuCores ?? '—'} cores</span></div>
-        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server ? formatBytes(server.memoryUsedBytes) : '—'}</span><span>{server ? `${server.memoryUsedPercent}% of ${formatBytes(server.memoryTotalBytes)}` : 'memory used'}</span></div>
-        <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server ? `${server.runningInstances}/${server.totalInstances}` : '—'}</span><span>Maestro servers live</span></div>
+        {/* Infrastructure telemetry — Advanced only (sysadmin view). */}
+        {advancedMode && (
+          <>
+            <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server?.cpuUsagePercent == null ? '—' : `${server.cpuUsagePercent}%`}</span><span>CPU · {server?.cpuCores ?? '—'} cores</span></div>
+            <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server ? formatBytes(server.memoryUsedBytes) : '—'}</span><span>{server ? `${server.memoryUsedPercent}% of ${formatBytes(server.memoryTotalBytes)}` : 'memory used'}</span></div>
+            <div className="gatewayDashboard__metric"><span className="gatewayDashboard__metricValue">{server ? `${server.runningInstances}/${server.totalInstances}` : '—'}</span><span>Maestro servers live</span></div>
+          </>
+        )}
       </section>
 
       <section className="gatewayDashboard__members" aria-labelledby="gateway-members-title">

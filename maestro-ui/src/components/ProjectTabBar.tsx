@@ -71,12 +71,14 @@ const SHORTCUT_ROWS: ShortcutRow[] = [
 
 function AppSettingsDialog({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('theme');
+  const advancedMode = useUIStore((s) => s.advancedMode);
 
+  // Git settings expose raw git / GitHub-CLI internals — Advanced-only.
   const TABS: { id: SettingsTab; label: string }[] = [
     { id: 'theme', label: 'Theme' },
     { id: 'display', label: 'Display' },
     { id: 'sounds', label: 'Sounds' },
-    { id: 'git', label: 'Git' },
+    ...(advancedMode ? [{ id: 'git' as SettingsTab, label: 'Git' }] : []),
     { id: 'shortcuts', label: 'Shortcuts' },
   ];
 
@@ -127,7 +129,7 @@ function AppSettingsDialog({ onClose }: { onClose: () => void }) {
               </div>
             )}
             {activeTab === 'sounds' && <SoundSettingsContent />}
-            {activeTab === 'git' && <GitSettings />}
+            {activeTab === 'git' && advancedMode && <GitSettings />}
             {activeTab === 'shortcuts' && (
               <div className="pn-fld">
                 <div className="pn-flabel">Available keyboard shortcuts</div>
