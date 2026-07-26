@@ -73,12 +73,23 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] Top-bar theme/mute kept as quick accelerators; App Settings is the single
       full-settings home
 
-## Phase 4 — Config simplification + Advanced gating
-- [ ] Task footer: one primary verb, remove 2nd gear, inline captions
-- [ ] Delete duplicate config surface in `DetailsTab.tsx`
-- [ ] Team Member modal: minimal create form; rest under "Advanced settings"
-- [ ] Gate GitSettings / TerminalSettings ANSI / GatewayDashboard / FileExplorer+Monaco / SSH behind Advanced
-- [ ] Session lifecycle: collapse Live/Done/Archived/mark-done to one path
+## Phase 4 — Config simplification + Advanced gating (in progress)
+- [x] Task footer: "Create"+"Create & start" → "Save for later" (secondary) +
+      "Start" (primary); deeper launch-config gear Advanced-only; tooltip de-jargoned
+- [x] DetailsTab: removed Model / isolation / permissions (dup of footer Options);
+      kept Priority + Due date; raw status/id debug row now Advanced-only
+- [x] Team Member modal: gated the ~30 raw command-permission toggles + the
+      model-profile preset select behind Advanced (plain capability switches +
+      direct model pick stay). Full minimal-form redesign not done — see below.
+- [x] Gate GitSettings tab / GatewayDashboard infra tiles / Files rail entry
+      (file browser + Monaco) behind Advanced
+- [ ] TerminalSettings ANSI studio (16 swatches, scrollback, letter-spacing) →
+      Advanced; keep presets + font size — NOT DONE
+- [ ] SSH manager entry points → Advanced — NOT DONE
+- [ ] Team Member modal full minimal create form (Name/Role/Identity/Agent +
+      collapse Sound, permission-mode, workflow) — partial (only knob-gating done)
+- [ ] Session lifecycle: collapse Live/Done/Archived/mark-done to one path — NOT
+      DONE (higher risk; touches session state model)
 
 ## Phase 5 — Spells → "Shortcuts" rename + de-scope
 - [ ] Rename feature; kill dialect (ensemble/cast/spellbook/seed/ring/disband)
