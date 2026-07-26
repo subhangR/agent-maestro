@@ -189,6 +189,13 @@ jobs:
             maestro-ui/src-tauri/binaries/maestro-server.exe `
             maestro-ui/src-tauri/binaries/${{ matrix.sidecar-name }}
 
+      # -- Build the CLI bundle that tauri.conf.prod.json bundles as a resource
+      #    (../../maestro-cli/dist/bundle.cjs). Without this the Tauri build
+      #    fails: "resource path ../../maestro-cli/dist/bundle.cjs doesn't exist". --
+      - name: Build CLI bundle (Tauri resource)
+        working-directory: maestro-cli
+        run: bun run bundle
+
       # -- Build the Tauri app --
       - name: Build Tauri app
         working-directory: maestro-ui
