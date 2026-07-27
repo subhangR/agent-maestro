@@ -29,4 +29,39 @@ describe('TerminalStateMirror', () => {
     expect((await mirror.snapshot()).toString('utf8')).toContain('before after');
     mirror.dispose();
   });
+
+  it('reports bracketed-paste mode once the stream enables it', async () => {
+    const mirror = new TerminalStateMirror(80, 24);
+    expect(mirror.bracketedPaste).toBe(false);
+
+    mirror.append(Buffer.from('[?2004h', 'latin1'));
+    // Flush the queued write (readCursorRegion chains on the same tail promise).
+    await mirror.readCursorRegion();
+    expect(mirror.bracketedPaste).toBe(true);
+
+    mirror.append(Buffer.from('[?2004l', 'latin1'));
+    await mirror.readCursorRegion();
+    expect(mirror.bracketedPaste).toBe(false);
+
+    mirror.dispose();
+  });
+
+  it('reads the visible text band around the cursor', async () => {
+    const mirror = new TerminalStateMirror(80, 24);
+    mirror.append(Buffer.from('prompt text at cursor', 'utf8'));
+
+    const region = await mirror.readCursorRegion();
+    expect(region).toContain('prompt text at cursor');
+
+    mirror.dispose();
+  });
+
+  it('is disposed-safe: bracketedPaste is false and readCursorRegion resolves empty', async () => {
+    const mirror = new TerminalStateMirror(80, 24);
+    mirror.append(Buffer.from('something', 'utf8'));
+    mirror.dispose();
+
+    expect(mirror.bracketedPaste).toBe(false);
+    await expect(mirror.readCursorRegion()).resolves.toBe('');
+  });
 });

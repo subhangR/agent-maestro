@@ -367,17 +367,23 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
   });
 
   it('paste strips trailing newlines and does not press Enter', async () => {
+    jest.useFakeTimers();
     const { svc } = makeService();
     svc.spawn({ sessionId: 'paste-target', ...baseParams });
 
     await expect(
       svc.deliverPrompt('paste-target', 'paste marker\r\n', 'paste'),
     ).resolves.toBe(true);
+    // The closed-loop readiness gate defers the write behind a timer; drive it.
+    // The mirror never saw ESC[?2004h (mock proc emits no output) so the body is
+    // written raw, not bracketed-paste framed.
+    await jest.runAllTimersAsync();
 
     expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['paste marker']]);
   });
 
   it('queues prompt-before-PTY and flushes it when spawn completes', async () => {
+    jest.useFakeTimers();
     const { svc } = makeService();
 
     await expect(
@@ -386,11 +392,12 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
     expect(mockSpawnedProcs).toHaveLength(0);
 
     svc.spawn({ sessionId: 'late-target', ...baseParams });
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await jest.runAllTimersAsync();
     expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['attach marker']]);
   });
 
   it('pauses an existing PTY during handoff and flushes on spawnIfAbsent reuse', async () => {
+    jest.useFakeTimers();
     const { svc } = makeService();
     svc.spawn({ sessionId: 'reuse-target', ...baseParams });
 
@@ -398,16 +405,18 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
     await expect(
       svc.deliverPrompt('reuse-target', 'reuse marker', 'paste'),
     ).resolves.toBe(true);
+    // Handoff pauses draining, so even after timers there is no write yet.
+    await jest.runAllTimersAsync();
     expect(mockSpawnedProcs[0].write).not.toHaveBeenCalled();
 
     expect(
       svc.spawnIfAbsent({ sessionId: 'reuse-target', ...baseParams }),
     ).toEqual({ reused: true });
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await jest.runAllTimersAsync();
     expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['reuse marker']]);
   });
 
-  it('send writes the stripped body, waits, then presses Enter exactly once', async () => {
+  it('send frames the body, then presses Enter once when verification finds the text gone', async () => {
     jest.useFakeTimers();
     const { svc } = makeService();
     svc.spawn({ sessionId: 'send-target', ...baseParams });
@@ -417,10 +426,13 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
       'send marker\n',
       'send',
     );
-    expect(mockSpawnedProcs[0].write.mock.calls).toEqual([['send marker']]);
-
-    await jest.advanceTimersByTimeAsync(200);
+    // Old open-loop wrote the body synchronously; the closed loop now writes it
+    // only after the output-idle readiness gate, so drive the loop to completion.
+    await jest.runAllTimersAsync();
     await expect(delivery).resolves.toBe(true);
+
+    // The mock proc emits no output, so the mirror's cursor band is empty →
+    // verification finds our text absent → Enter is pressed exactly once (no retry).
     expect(mockSpawnedProcs[0].write.mock.calls).toEqual([
       ['send marker'],
       ['\r'],
@@ -446,6 +458,7 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
   });
 
   it('bounds prompt-before-PTY queues and preserves the accepted FIFO prefix', async () => {
+    jest.useFakeTimers();
     const { svc, logger } = makeService();
     const accepted: boolean[] = [];
     for (let index = 0; index < 40; index += 1) {
@@ -467,7 +480,7 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
     ).toHaveLength(1);
 
     svc.spawn({ sessionId: 'bounded-target', ...baseParams });
-    await new Promise<void>((resolve) => setImmediate(resolve));
+    await jest.runAllTimersAsync();
     expect(
       mockSpawnedProcs[0].write.mock.calls.map(([content]: [string]) => content),
     ).toEqual(Array.from({ length: 32 }, (_, index) => `prompt-${index}`));
@@ -484,7 +497,7 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
     expect(mockSpawnedProcs[0].write).not.toHaveBeenCalled();
   });
 
-  it('never spills send-mode Enter into a replacement PTY', async () => {
+  it('never spills a send-mode body or Enter into a replacement PTY', async () => {
     jest.useFakeTimers();
     const { svc } = makeService();
     svc.spawn({ sessionId: 'resume-target', ...baseParams });
@@ -495,13 +508,180 @@ describe('PtyHostService.deliverPrompt — server-owned prompt semantics', () =>
       'old process marker',
       'send',
     );
+    // Replace the PTY while the delivery is still inside its readiness gate.
     svc.spawn({ sessionId: 'resume-target', ...baseParams });
     const replacementProc = mockSpawnedProcs[1];
 
-    await jest.advanceTimersByTimeAsync(200);
+    await jest.runAllTimersAsync();
     await expect(delivery).resolves.toBe(true);
-    expect(oldProc.write.mock.calls).toEqual([['old process marker']]);
+    // The liveness re-check after the gate aborts the delivery before it writes
+    // anything, so neither the body nor the Enter reaches the replacement PTY.
     expect(replacementProc.write).not.toHaveBeenCalled();
+  });
+
+  // --- Closed-loop prompt-injection behavior (PTY prompt-submission race) -----
+
+  it('cold readiness gate proceeds after its timeout when output never falls idle', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'busy', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+
+    const delivery = svc.deliverPrompt('busy', 'body', 'send');
+    // A chatty agent that never falls quiet for PROMPT_COLD_IDLE_MS: emit every
+    // 1000ms (idle tops out at ~1s, below the 1500ms cold threshold) past the
+    // 45s cold cap. The gate must give up and proceed rather than wedge forever.
+    for (let elapsed = 0; elapsed <= 46000; elapsed += 1000) {
+      proc._onData(Buffer.from('.', 'utf8'));
+      await jest.advanceTimersByTimeAsync(1000);
+    }
+    await jest.runAllTimersAsync();
+    await delivery;
+
+    // Body was still written despite the stream never going quiet.
+    expect(proc.write.mock.calls.some(([c]: [string]) => c === 'body')).toBe(true);
+  });
+
+  it('frames the body in bracketed paste when the agent enabled that mode', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'bp', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+    proc._onData(Buffer.from('\x1b[?2004h', 'latin1')); // agent enables bracketed paste
+
+    const delivery = svc.deliverPrompt('bp', 'hello', 'paste');
+    await jest.runAllTimersAsync();
+    await delivery;
+
+    expect(proc.write).toHaveBeenCalledWith('\x1b[200~hello\x1b[201~');
+  });
+
+  it('strips an embedded paste-end marker so the payload cannot escape its paste block', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'san', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+    proc._onData(Buffer.from('\x1b[?2004h', 'latin1'));
+
+    const delivery = svc.deliverPrompt('san', 'a\x1b[201~b', 'paste');
+    await jest.runAllTimersAsync();
+    await delivery;
+
+    // The embedded ESC[201~ is removed; the only 201~ written is our closing frame.
+    expect(proc.write).toHaveBeenCalledWith('\x1b[200~ab\x1b[201~');
+  });
+
+  it('retries Enter (bounded) and logs a failure when the text stays parked at the cursor', async () => {
+    jest.useFakeTimers();
+    const { svc, logger } = makeService();
+    svc.spawn({ sessionId: 'stuck', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+    // The composer echoes the prompt and it never clears — a swallowed Enter,
+    // reproduced by leaving the body text sitting at the cursor in the mirror.
+    proc._onData(Buffer.from('please do the thing', 'utf8'));
+
+    const delivery = svc.deliverPrompt('stuck', 'please do the thing', 'send');
+    await jest.runAllTimersAsync();
+    await delivery;
+
+    const enterPresses = proc.write.mock.calls.filter(
+      ([c]: [string]) => c === '\r',
+    ).length;
+    // Initial press + retries, bounded by PROMPT_SUBMIT_ATTEMPTS. The window is
+    // deliberately long (10) so it outlives a slow composer — a 3-press window
+    // expired ~2s before Claude Code became submit-capable and stranded the
+    // prompt — but it MUST still terminate rather than machine-gun Enter forever.
+    expect(enterPresses).toBe(10);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('not submitted after retries'),
+      expect.any(Error),
+      expect.objectContaining({ sessionId: 'stuck', reason: 'submit_unverified' }),
+    );
+  });
+
+  it('does not retry Enter when the injected text is no longer at the cursor', async () => {
+    jest.useFakeTimers();
+    const { svc, logger } = makeService();
+    svc.spawn({ sessionId: 'ok', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+    // After a real submit the composer shows a fresh empty prompt — our token gone.
+    proc._onData(Buffer.from('> ', 'utf8'));
+
+    const delivery = svc.deliverPrompt('ok', 'run the build', 'send');
+    await jest.runAllTimersAsync();
+    await delivery;
+
+    const enterPresses = proc.write.mock.calls.filter(
+      ([c]: [string]) => c === '\r',
+    ).length;
+    expect(enterPresses).toBe(1); // single Enter, verified submitted → no retry
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Regression guard for the cold gate's 45s cap.
+   *
+   * A booting agent must be waited out, but an agent that is ALREADY WORKING
+   * streams output continuously and therefore never falls quiet. If such a prompt
+   * took the cold path it would sit behind the full 45s ceiling — a severe
+   * regression on a path that works today (the agent simply queues the message).
+   * The bootSettled latch is what prevents that, so pin it here.
+   */
+  it('does not stall a prompt behind the cold cap once the agent has settled', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'busy', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+
+    // Let the PTY fall quiet once: the agent has finished booting, latching
+    // bootSettled so later prompts use the short warm gate.
+    const warmUp = svc.deliverPrompt('busy', 'warm up', 'send');
+    await jest.runAllTimersAsync();
+    await warmUp;
+    proc.write.mockClear();
+
+    // The agent is now WORKING — output never goes idle.
+    const pump = setInterval(() => proc._onData(Buffer.from('.', 'utf8')), 100);
+
+    const delivery = svc.deliverPrompt('busy', 'message while busy', 'send');
+    // Advance only a little past the WARM cap (1s), nowhere near the 45s cold cap.
+    await jest.advanceTimersByTimeAsync(1500);
+    const wroteBody = proc.write.mock.calls.some(
+      ([c]: [unknown]) => typeof c === 'string' && c.includes('message while busy'),
+    );
+    clearInterval(pump); // must stop before runAllTimersAsync — a live interval never drains
+    expect(wroteBody).toBe(true); // false ⇒ the cold 45s cap was applied to a warm PTY
+
+    await jest.runAllTimersAsync();
+    await delivery;
+  });
+
+  it('cold gate waits for genuine quiescence and does not release on boot chatter', async () => {
+    jest.useFakeTimers();
+    const { svc } = makeService();
+    svc.spawn({ sessionId: 'cold', ...baseParams });
+    const proc = mockSpawnedProcs[0];
+
+    const delivery = svc.deliverPrompt('cold', 'payload', 'send');
+    // Boot chatter: sub-PROMPT_COLD_IDLE_MS quiet stretches must NOT be mistaken
+    // for a drawn composer, so nothing is written while the agent still emits.
+    for (let elapsed = 0; elapsed < 3000; elapsed += 500) {
+      proc._onData(Buffer.from('boot', 'utf8'));
+      await jest.advanceTimersByTimeAsync(500);
+    }
+    expect(
+      proc.write.mock.calls.some(([c]: [unknown]) => c === 'payload'),
+    ).toBe(false);
+
+    // The agent finally goes quiet: after a full PROMPT_COLD_IDLE_MS of silence the
+    // cold gate releases and the body is written.
+    await jest.advanceTimersByTimeAsync(1600);
+    expect(
+      proc.write.mock.calls.some(([c]: [unknown]) => c === 'payload'),
+    ).toBe(true);
+
+    await jest.runAllTimersAsync();
+    await delivery;
   });
 });
 

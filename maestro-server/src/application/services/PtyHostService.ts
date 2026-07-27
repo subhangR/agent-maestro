@@ -80,6 +80,17 @@ interface PtyEntry {
   sendBuf: Buffer[];
   sendBytes: number;
   sendTimer: NodeJS.Timeout | null;
+  /** Wall-clock ms of the LAST byte this PTY produced (updated in onData). The
+   *  prompt-injection readiness gate watches this to wait for output quiescence
+   *  before writing/submitting — an agent's TUI drains buffered input the instant
+   *  the PTY exists, deep inside its 11–15s composer-boot window, so "the stream
+   *  went quiet" is our best process-agnostic proxy for "the composer settled". */
+  lastOutputAt: number;
+  /** Whether this PTY has EVER been observed quiet for {@link PROMPT_COLD_IDLE_MS}.
+   *  False means the agent is still booting, so the first prompt waits for real
+   *  quiescence; once true the agent is up and later prompts use the short warm
+   *  gate so messaging a busy agent is never stalled. Latches true, never back. */
+  bootSettled: boolean;
 }
 
 /** Coalescing window for live output fan-out. Well under perceptible echo latency. */
@@ -108,6 +119,67 @@ const MAX_PENDING_SNAPSHOT_BYTES = 4 * 1024 * 1024;
 const MAX_PENDING_PROMPT_SESSIONS = 64;
 const MAX_PENDING_PROMPTS_PER_SESSION = 32;
 const MAX_PENDING_PROMPT_BYTES_PER_SESSION = 256 * 1024;
+
+// --- Prompt-injection closed-loop tunables --------------------------------
+// A server-owned prompt lands in the agent's composer but the trailing Enter can
+// be swallowed: the agent's TUI drains queued input the instant the PTY exists,
+// 11–15s before the composer can accept a submit, so an open-loop "write then
+// press Enter after 200ms" often deposits the text and drops the newline. These
+// constants drive a closed loop — gate on output quiescence, submit, verify the
+// text left the cursor, and retry Enter (never the body) a bounded number of
+// times — instead of that fixed blind delay.
+
+// Measured against real agents (2026-07-27), injecting at spawn time exactly as
+// drainPendingPrompts does. Claude Code's composer is not submit-capable until
+// 11–15s after spawn; codex DISCARDS input written before it is ready. A gate of
+// (300ms idle, 5s cap) released mid-boot and submitted 0/4 — indistinguishable
+// from no fix at all. Waiting for genuine quiescence submitted 3/3 on claude-code
+// and 2/2 on codex. Do not "tidy" these numbers without re-running that test.
+
+/** Treat the stream as "settled" once it has been idle at least this long. */
+const PROMPT_IDLE_MS = 300;
+/** COLD gate: a PTY that has never been observed quiet is still booting its agent.
+ *  1500ms of silence distinguishes "the composer settled" from the sub-second
+ *  lulls a booting TUI has between redraws (300ms fires during boot). */
+const PROMPT_COLD_IDLE_MS = 1500;
+/** COLD cap, generous enough to cover the slowest measured agent boot. Only a
+ *  never-yet-settled PTY can wait this long, so a stuck agent delays its own first
+ *  prompt and nothing else. */
+const PROMPT_COLD_READY_TIMEOUT_MS = 45000;
+/** WARM cap. Once a PTY has been observed quiet its agent is up, so later prompts
+ *  use the old short gate. This is what keeps "message an agent that is actively
+ *  working" responsive: its output never falls quiet, so the gate must give up
+ *  fast and let the agent queue the prompt itself, exactly as it did before. */
+const PROMPT_WARM_READY_TIMEOUT_MS = 1000;
+/** Cap on the shorter output-idle wait taken between writing the body and
+ *  pressing Enter (let the composer echo the paste before we commit it). */
+const PROMPT_PRE_SUBMIT_IDLE_TIMEOUT_MS = 1000;
+/** Delay after the FIRST Enter before the first submit verification. Also the
+ *  first entry of {@link PROMPT_SUBMIT_BACKOFF_MS}. */
+const PROMPT_VERIFY_MS = 750;
+/** Total number of Enter presses (initial + retries) before giving up. Sized so
+ *  the retry window outlives a slow composer even when the readiness gate hit its
+ *  cap and released early — a 3-press window expired ~2s before Claude Code became
+ *  submit-capable, which is precisely how the first cut of this fix failed. */
+const PROMPT_SUBMIT_ATTEMPTS = 10;
+/** Wait before each verification, indexed by attempt. Backoff grows because a
+ *  genuinely slow composer may simply need more time, and we must not machine-gun
+ *  Enter; it then plateaus so the tail of the window stays long without the delay
+ *  running away. */
+const PROMPT_SUBMIT_BACKOFF_MS = [
+  PROMPT_VERIFY_MS, 1200, 2000, 3000, 4000, 5000, 5000, 5000, 5000, 5000,
+];
+/** Longest run of trailing visible characters used as the "did our text leave the
+ *  cursor?" anchor. Short enough to survive composer wrapping, long enough to be
+ *  distinctive. */
+const PROMPT_TAIL_TOKEN_MAX = 24;
+
+/** Bracketed-paste framing the agent asked for when {@link TerminalStateMirror.bracketedPaste}. */
+const BRACKETED_PASTE_START = '\x1b[200~';
+const BRACKETED_PASTE_END = '\x1b[201~';
+/** A pasted-content placeholder still sitting on screen (`[Pasted text #1 …]`,
+ *  `[Pasted Content …]`) is POSITIVE evidence the prompt was not submitted. */
+const PASTE_PLACEHOLDER_RE = /\[Pasted (text|Content)/i;
 
 const ESC = 0x1b;
 const CSI_INTRO = 0x5b; // '['
@@ -291,6 +363,8 @@ export class PtyHostService {
       sendBuf: [],
       sendBytes: 0,
       sendTimer: null,
+      lastOutputAt: Date.now(),
+      bootSettled: false,
     };
     this.sessions.set(sessionId, entry);
 
@@ -301,6 +375,9 @@ export class PtyHostService {
       // socket fan-out below is coalesced.
       entry.output.append(chunk);
       entry.state.append(chunk);
+      // Timestamp the stream so the prompt readiness gate can wait for it to fall
+      // quiet before injecting a prompt/Enter.
+      entry.lastOutputAt = Date.now();
       entry.sendBuf.push(chunk);
       entry.sendBytes += chunk.length;
       if (entry.sendBytes >= SEND_COALESCE_MAX_BYTES) {
@@ -531,26 +608,199 @@ export class PtyHostService {
     })();
   }
 
+  /**
+   * Deliver one prompt into a live PTY as a CLOSED LOOP.
+   *
+   * The old implementation was open-loop: write the body, wait a fixed 200ms,
+   * press Enter once, done. That drops the newline whenever the agent's TUI is
+   * still booting (it enables bracketed paste and drains queued input in its first
+   * few hundred bytes, but cannot accept a submit until its composer is drawn
+   * 11–15s later) — the text lands, the Enter is eaten, the prompt is silently
+   * stranded in the input box. The loop below closes that gap:
+   *   1. gate on output quiescence so we write into a settled composer,
+   *   2. frame the body (bracketed paste when the agent asked for it) safely,
+   *   3. for send mode, submit and then VERIFY the text left the cursor, retrying
+   *      Enter — and ONLY Enter — a bounded number of times on positive evidence.
+   *
+   * Every `await` is followed by a liveness re-check (`this.sessions.get(...) ===
+   * entry && !entry.exited`) so a resume/replace mid-delivery can never spill a
+   * body or an Enter into a freshly-installed PTY, exactly as the old code guarded
+   * its single pre-Enter check.
+   */
   private async writePromptToEntry(
     sessionId: string,
     entry: PtyEntry,
     delivery: PendingPromptDelivery,
   ): Promise<void> {
-    const text = delivery.content.replace(/[\r\n]+$/, '');
-    if (delivery.mode === 'paste') {
-      entry.proc.write(text);
-      return;
-    }
+    // Strip a trailing newline the caller may have appended: the submit Enter
+    // below is what commits a `send`, and a stray newline inside a bracketed-paste
+    // block would break the framing. Then neutralize any embedded paste-END so the
+    // payload can never terminate its own bracketed-paste block and hand the rest
+    // of the bytes to the shell as keystrokes (lossless for real prompt text).
+    const body = delivery.content
+      .replace(/[\r\n]+$/, '')
+      .split(BRACKETED_PASTE_END)
+      .join('');
 
-    if (text) {
-      entry.proc.write(text);
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-
-    // Resume/replace can happen during the send delay. Keep the complete prompt
-    // targeted to one process rather than pressing Enter in a fresh PTY.
+    // 1) Readiness gate. A PTY whose agent has never been seen quiet is still
+    //    booting: wait for GENUINE quiescence, because writing early is what both
+    //    strands the prompt (claude-code accepts the text but ignores the Enter)
+    //    and loses it outright (codex discards pre-ready input). Once the agent has
+    //    settled once, fall back to the short gate so a prompt sent to an actively
+    //    working agent is not held behind the long cap.
+    const cold = !entry.bootSettled;
+    await this.waitForOutputIdle(
+      entry,
+      cold ? PROMPT_COLD_IDLE_MS : PROMPT_IDLE_MS,
+      cold ? PROMPT_COLD_READY_TIMEOUT_MS : PROMPT_WARM_READY_TIMEOUT_MS,
+    );
     if (this.sessions.get(sessionId) !== entry || entry.exited) return;
+
+    // 2) Content framing. Wrap in bracketed paste iff the agent turned it on.
+    const framed = this.frameBody(entry, body);
+    if (framed) entry.proc.write(framed);
+
+    // Paste mode never submits — the human presses Enter — so we are done.
+    if (delivery.mode === 'paste') return;
+
+    // 3) Submit + verify + bounded Enter-only retry (send mode).
+    await this.submitWithVerify(sessionId, entry, body);
+  }
+
+  /** Wrap `body` in bracketed-paste markers when the mirrored agent enabled that
+   *  mode, otherwise write it raw. Empty bodies frame to nothing so a send with an
+   *  empty body still falls through to a bare Enter (old behavior). */
+  private frameBody(entry: PtyEntry, body: string): string {
+    if (!body) return '';
+    if (entry.state.bracketedPaste) {
+      return BRACKETED_PASTE_START + body + BRACKETED_PASTE_END;
+    }
+    return body;
+  }
+
+  /**
+   * Resolve once the PTY has produced no output for at least `idleMs`, or once
+   * `timeoutMs` has elapsed since the call — whichever comes first. Returns early
+   * if the process exits. Polls rather than hooking onData: this runs off the hot
+   * output path, the windows are coarse (hundreds of ms), and polling keeps the
+   * check trivially exit-safe. Never wedges — the timeout is a hard ceiling.
+   */
+  private async waitForOutputIdle(
+    entry: PtyEntry,
+    idleMs: number,
+    timeoutMs: number,
+  ): Promise<void> {
+    const start = Date.now();
+    for (;;) {
+      if (entry.exited) return;
+      const idle = Date.now() - entry.lastOutputAt;
+      // Latch boot completion on any genuinely long quiet stretch, whichever gate
+      // observed it: a PTY this quiet has finished starting its agent.
+      if (idle >= PROMPT_COLD_IDLE_MS) entry.bootSettled = true;
+      if (idle >= idleMs) return;
+      const remaining = timeoutMs - (Date.now() - start);
+      if (remaining <= 0) return;
+      // Sleep just long enough to reach idleMs for the current quiet stretch, but
+      // never past the overall ceiling. New output resets lastOutputAt and the
+      // next iteration recomputes a fresh (larger) wait.
+      const wait = Math.max(1, Math.min(idleMs - idle, remaining));
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+
+  /**
+   * Press Enter, then confirm the prompt actually left the composer, retrying
+   * Enter — and ONLY Enter, never the body — up to {@link PROMPT_SUBMIT_ATTEMPTS}
+   * times on POSITIVE evidence the text is still parked at the cursor.
+   *
+   * SAFETY: a stray Enter into an agent that has already accepted the prompt can
+   * confirm a highlighted permission-dialog option. So we retry ONLY when the
+   * cursor band still contains our own text (or a live paste placeholder). If the
+   * band is empty, unreadable, or simply no longer holds our token, we treat the
+   * submit as done and STOP — inconclusive is never a reason to press Enter again.
+   */
+  private async submitWithVerify(
+    sessionId: string,
+    entry: PtyEntry,
+    body: string,
+  ): Promise<void> {
+    const isLive = (): boolean =>
+      this.sessions.get(sessionId) === entry && !entry.exited;
+
+    // The anchor we look for at the cursor: the last run of visible characters of
+    // the body, ANSI/control-stripped and whitespace-collapsed. An empty token
+    // (e.g. a body of pure control chars) means we cannot verify — we then submit
+    // exactly once and never guess with a second blind Enter.
+    const tailToken = this.computeTailToken(body);
+
+    // Let the composer echo the paste before we commit it (short, best-effort).
+    await this.waitForOutputIdle(entry, PROMPT_IDLE_MS, PROMPT_PRE_SUBMIT_IDLE_TIMEOUT_MS);
+    if (!isLive()) return;
+
     entry.proc.write('\r');
+    if (!tailToken) return;
+
+    for (let attempt = 1; attempt <= PROMPT_SUBMIT_ATTEMPTS; attempt += 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, PROMPT_SUBMIT_BACKOFF_MS[attempt - 1] ?? PROMPT_VERIFY_MS),
+      );
+      if (!isLive()) return;
+
+      const stillPresent = await this.promptStillAtCursor(entry, tailToken);
+      if (!isLive()) return;
+      // Verified gone (or inconclusive/unreadable): stop — do NOT press again.
+      if (!stillPresent) return;
+
+      // Still parked at the cursor: resend Enter, unless this was the last attempt.
+      if (attempt < PROMPT_SUBMIT_ATTEMPTS) entry.proc.write('\r');
+    }
+
+    // Exhausted every attempt and our text is STILL sitting unsubmitted. Surface it
+    // loudly instead of letting a swallowed prompt vanish — but do NOT resend the
+    // body (a duplicated agent message is worse than a reported miss). PtyHostService
+    // has no event bus (constructed with only sessionService + logger), so this is a
+    // structured logger.error rather than a domain event.
+    this.logger.error(
+      'PtyHostService: prompt not submitted after retries (text still at cursor)',
+      new Error('prompt_delivery_failed'),
+      { sessionId, reason: 'submit_unverified', attempts: PROMPT_SUBMIT_ATTEMPTS },
+    );
+  }
+
+  /** Last up-to-{@link PROMPT_TAIL_TOKEN_MAX} visible chars of the body, with ANSI
+   *  escapes removed, other control chars flattened to spaces, and whitespace
+   *  collapsed. '' when nothing printable remains. */
+  private computeTailToken(body: string): string {
+    const cleaned = body
+      // eslint-disable-next-line no-control-regex
+      .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '') // strip CSI escape sequences
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\x00-\x1f\x7f]/g, ' ') // flatten remaining control chars
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned ? cleaned.slice(-PROMPT_TAIL_TOKEN_MAX) : '';
+  }
+
+  /**
+   * Whether our just-injected text is still parked at the cursor — i.e. NOT
+   * submitted. True ONLY on positive evidence: the cursor band still contains the
+   * tail token, or shows a live paste placeholder. Any inconclusive case (band
+   * empty, unreadable, or no longer holding the token) returns false so the caller
+   * never blind-retries an Enter.
+   */
+  private async promptStillAtCursor(entry: PtyEntry, tailToken: string): Promise<boolean> {
+    let region: string;
+    try {
+      region = await entry.state.readCursorRegion();
+    } catch {
+      return false; // unreadable ⇒ inconclusive ⇒ do not retry
+    }
+    const normalized = region.replace(/\s+/g, ' ').trim();
+    if (!normalized) return false;
+    if (PASTE_PLACEHOLDER_RE.test(normalized)) return true;
+    const token = tailToken.replace(/\s+/g, ' ').trim();
+    if (!token) return false;
+    return normalized.includes(token);
   }
 
   /**
