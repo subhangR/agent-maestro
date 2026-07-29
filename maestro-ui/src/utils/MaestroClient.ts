@@ -59,6 +59,8 @@ import type {
     SessionPrompt,
     SessionCommandUsage,
     Huddle,
+    GlobalTokenSummary,
+    TaskTokenSummary,
 } from '../app/types/maestro';
 
 import { API_BASE_URL } from './serverConfig';
@@ -741,6 +743,19 @@ class MaestroClient {
         await this.fetch<{ success: boolean }>(`/model-profiles/${id}`, {
             method: 'DELETE',
         });
+    }
+
+    // ==================== TOKEN ANALYTICS ====================
+
+    /** Global token usage summary for the given time window (default 24 h) */
+    async getGlobalTokenSummary(windowMs?: number): Promise<GlobalTokenSummary> {
+        const qs = windowMs != null ? `?windowMs=${windowMs}` : '';
+        return this.fetch<GlobalTokenSummary>(`/analytics/tokens/global${qs}`);
+    }
+
+    /** Per-task token summary — aggregated from all sessions tied to the task */
+    async getTaskTokenSummary(taskId: string): Promise<TaskTokenSummary> {
+        return this.fetch<TaskTokenSummary>(`/analytics/tokens/tasks/${taskId}`);
     }
 
     // ==================== TEAMS ====================

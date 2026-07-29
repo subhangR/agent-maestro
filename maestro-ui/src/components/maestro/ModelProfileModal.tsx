@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import type { AgentTool, LaunchConfig, ModelProfile } from "../../app/types/maestro";
+import type { AgentTool, LaunchConfig, ModelProfile, ModelProfileQuotas } from "../../app/types/maestro";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import {
     createLaunchConfig,
@@ -29,6 +29,9 @@ export function ModelProfileModal({ isOpen, onClose, profile }: ModelProfileModa
     const [description, setDescription] = useState("");
     const [launchConfig, setLaunchConfig] = useState<LaunchConfig | null>(DEFAULT_CONFIG);
     const [activeTool, setActiveTool] = useState<AgentTool | null>("claude-code");
+    const [quotaTokensPerSession, setQuotaTokensPerSession] = useState("");
+    const [quotaTokensPerDay, setQuotaTokensPerDay] = useState("");
+    const [quotaConcurrentSessions, setQuotaConcurrentSessions] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -39,11 +42,17 @@ export function ModelProfileModal({ isOpen, onClose, profile }: ModelProfileModa
             setDescription(profile.description || "");
             setLaunchConfig(profile.launchConfig);
             setActiveTool(getAgentToolForLaunchConfig(profile.launchConfig) || "claude-code");
+            setQuotaTokensPerSession(profile.quotas?.maxTokensPerSession?.toString() ?? "");
+            setQuotaTokensPerDay(profile.quotas?.maxTokensPerDay?.toString() ?? "");
+            setQuotaConcurrentSessions(profile.quotas?.maxConcurrentSessions?.toString() ?? "");
         } else {
             setName("");
             setDescription("");
             setLaunchConfig(DEFAULT_CONFIG);
             setActiveTool("claude-code");
+            setQuotaTokensPerSession("");
+            setQuotaTokensPerDay("");
+            setQuotaConcurrentSessions("");
         }
         setError(null);
     }, [isOpen, profile]);
@@ -51,6 +60,17 @@ export function ModelProfileModal({ isOpen, onClose, profile }: ModelProfileModa
     const handleClose = () => {
         if (isSaving) return;
         onClose();
+    };
+
+    const buildQuotas = (): ModelProfileQuotas | undefined => {
+        const tps = parseInt(quotaTokensPerSession, 10);
+        const tpd = parseInt(quotaTokensPerDay, 10);
+        const mcs = parseInt(quotaConcurrentSessions, 10);
+        const q: ModelProfileQuotas = {};
+        if (!isNaN(tps) && tps > 0) q.maxTokensPerSession = tps;
+        if (!isNaN(tpd) && tpd > 0) q.maxTokensPerDay = tpd;
+        if (!isNaN(mcs) && mcs > 0) q.maxConcurrentSessions = mcs;
+        return Object.keys(q).length > 0 ? q : undefined;
     };
 
     const handleSubmit = async () => {
@@ -61,17 +81,20 @@ export function ModelProfileModal({ isOpen, onClose, profile }: ModelProfileModa
         setIsSaving(true);
         setError(null);
         try {
+            const quotas = buildQuotas();
             if (isEditMode && profile) {
                 await updateModelProfile(profile.id, {
                     name: name.trim(),
                     description: description.trim() || undefined,
                     launchConfig: sanitized,
+                    quotas,
                 });
             } else {
                 await createModelProfile({
                     name: name.trim(),
                     description: description.trim() || undefined,
                     launchConfig: sanitized,
+                    quotas,
                 });
             }
             onClose();
@@ -138,6 +161,51 @@ export function ModelProfileModal({ isOpen, onClose, profile }: ModelProfileModa
                                 onLaunchConfigChange={setLaunchConfig}
                                 showAdvancedOptions
                             />
+                        </div>
+                    </div>
+
+                    <div className="pn-fld" style={{ marginTop: 4 }}>
+                        <span className="pn-flabel">Quotas <span style={{ opacity: 0.6, fontWeight: 500, textTransform: "none", letterSpacing: 0 }}>— optional advisory limits</span></span>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <label style={{ fontSize: 11, opacity: 0.7, minWidth: 160 }}>Max tokens / session</label>
+                                <input
+                                    type="number"
+                                    className="pn-input"
+                                    style={{ flex: 1 }}
+                                    placeholder="e.g. 500000"
+                                    value={quotaTokensPerSession}
+                                    onChange={(e) => setQuotaTokensPerSession(e.target.value)}
+                                    disabled={isSaving}
+                                    min={0}
+                                />
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <label style={{ fontSize: 11, opacity: 0.7, minWidth: 160 }}>Max tokens / day</label>
+                                <input
+                                    type="number"
+                                    className="pn-input"
+                                    style={{ flex: 1 }}
+                                    placeholder="e.g. 2000000"
+                                    value={quotaTokensPerDay}
+                                    onChange={(e) => setQuotaTokensPerDay(e.target.value)}
+                                    disabled={isSaving}
+                                    min={0}
+                                />
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <label style={{ fontSize: 11, opacity: 0.7, minWidth: 160 }}>Max concurrent sessions</label>
+                                <input
+                                    type="number"
+                                    className="pn-input"
+                                    style={{ flex: 1 }}
+                                    placeholder="e.g. 3"
+                                    value={quotaConcurrentSessions}
+                                    onChange={(e) => setQuotaConcurrentSessions(e.target.value)}
+                                    disabled={isSaving}
+                                    min={0}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>

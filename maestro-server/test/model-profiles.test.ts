@@ -35,14 +35,15 @@ describe('Model profiles', () => {
     await testDataDir.cleanup();
   });
 
-  it('seeds the five default tiers on first init', async () => {
+  it('seeds the six default tiers on first init', async () => {
     const { repo } = buildStack(testDataDir.getPath());
     await repo.initialize();
     const profiles = await repo.findAll();
     const byId = new Map(profiles.map((p) => [p.id, p]));
 
-    expect(profiles.length).toBe(5);
+    expect(profiles.length).toBe(6);
     expect(byId.get('mp_ultra')?.launchConfig.model).toBe('claude-fable-5');
+    expect(byId.get('mp_opus5')?.launchConfig.model).toBe('claude-opus-5');
     expect(byId.get('mp_heavy')?.launchConfig.model).toBe('claude-opus-4-8');
     expect(byId.get('mp_sonnet5')?.launchConfig.model).toBe('claude-sonnet-5');
     expect(byId.get('mp_balanced')?.launchConfig.model).toBe('claude-sonnet-4-6');
@@ -55,6 +56,7 @@ describe('Model profiles', () => {
     const first = buildStack(dataDir);
     await first.repo.initialize();
     await first.service.deleteModelProfile('mp_ultra');
+    await first.service.deleteModelProfile('mp_opus5');
     await first.service.deleteModelProfile('mp_heavy');
     await first.service.deleteModelProfile('mp_sonnet5');
     await first.service.deleteModelProfile('mp_balanced');
@@ -97,7 +99,7 @@ describe('Model profiles', () => {
 
     const list = await supertest(app).get('/api/model-profiles');
     expect(list.status).toBe(200);
-    expect(list.body.length).toBe(5);
+    expect(list.body.length).toBe(6);
 
     const create = await supertest(app)
       .post('/api/model-profiles')

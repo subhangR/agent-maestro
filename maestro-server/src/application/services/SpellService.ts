@@ -1137,11 +1137,16 @@ export class SpellService {
       throw new ValidationError('targetSessionIds must not be empty');
     }
 
+    // H2: Serialize per-session writes the same way activateSpell/toggleSpell/resetLoop
+    // do — otherwise a concurrent activate/toggle racing this read-filter-write could
+    // overwrite a newly-activated spell entry, silently dropping it from activeSpells.
     for (const sessionId of targetSessionIds) {
-      const session = await this.sessionRepo.findById(sessionId);
-      if (!session) throw new NotFoundError('Session', sessionId);
-      const nextActive = (session.activeSpells ?? []).filter(a => a.spellId !== spellId);
-      await this.sessionRepo.update(sessionId, { activeSpells: nextActive });
+      await this.withSessionLock(sessionId, async () => {
+        const session = await this.sessionRepo.findById(sessionId);
+        if (!session) throw new NotFoundError('Session', sessionId);
+        const nextActive = (session.activeSpells ?? []).filter(a => a.spellId !== spellId);
+        await this.sessionRepo.update(sessionId, { activeSpells: nextActive });
+      });
     }
 
     const now = Date.now();
@@ -1167,22 +1172,25 @@ export class SpellService {
   }> {
     const spell = await this.getSpell(spellId);
 
-    const session = await this.sessionRepo.findById(sessionId);
-    if (!session) throw new NotFoundError('Session', sessionId);
+    const updatedActive = await this.withSessionLock(sessionId, async () => {
+      const session = await this.sessionRepo.findById(sessionId);
+      if (!session) throw new NotFoundError('Session', sessionId);
 
-    const actives: ActiveSpell[] = session.activeSpells ?? [];
-    const current = actives.find(a => a.spellId === spellId);
-    if (!current) {
-      throw new NotFoundError('ActiveSpell', `${spellId} on ${sessionId}`);
-    }
+      const actives: ActiveSpell[] = session.activeSpells ?? [];
+      const current = actives.find(a => a.spellId === spellId);
+      if (!current) {
+        throw new NotFoundError('ActiveSpell', `${spellId} on ${sessionId}`);
+      }
 
-    const nextIterations: Record<string, number> = ruleId
-      ? { ...current.ruleIterations, [ruleId]: 0 }
-      : {};
-    const updatedActive: ActiveSpell = { ...current, ruleIterations: nextIterations };
-    const nextActives = actives.map(a => (a.spellId === spellId ? updatedActive : a));
+      const nextIterations: Record<string, number> = ruleId
+        ? { ...current.ruleIterations, [ruleId]: 0 }
+        : {};
+      const nextActive: ActiveSpell = { ...current, ruleIterations: nextIterations };
+      const nextActives = actives.map(a => (a.spellId === spellId ? nextActive : a));
 
-    await this.sessionRepo.update(sessionId, { activeSpells: nextActives });
+      await this.sessionRepo.update(sessionId, { activeSpells: nextActives });
+      return nextActive;
+    });
 
     await this.eventBus.emit('spell:loop_reset', {
       spellId,

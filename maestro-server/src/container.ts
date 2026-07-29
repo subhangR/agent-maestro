@@ -39,6 +39,7 @@ import { FileSystemSessionCommandUsageRepository } from './infrastructure/reposi
 import { SpellService } from './application/services/SpellService';
 import { EnsembleService } from './application/services/EnsembleService';
 import { HookDispatcherService } from './application/services/HookDispatcherService';
+import { TokenAnalyticsService } from './application/services/TokenAnalyticsService';
 import { PtyHostService } from './application/services/PtyHostService';
 import { SessionPromptDeliveryService } from './application/services/SessionPromptDeliveryService';
 import { AnnouncementService } from './application/services/AnnouncementService';
@@ -235,6 +236,7 @@ export interface Container {
   spellService: SpellService;
   ensembleService: EnsembleService;
   hookDispatcherService: HookDispatcherService;
+  tokenAnalyticsService: TokenAnalyticsService;
   ptyHostService: PtyHostService;
   sessionPromptDeliveryService: SessionPromptDeliveryService;
   announcementService: AnnouncementService;
@@ -290,6 +292,8 @@ export async function createContainer(): Promise<Container> {
   const taskGraphService = new TaskGraphService(taskGraphRepo, projectRepo, taskRepo, eventBus);
   const sessionService = new SessionService(sessionRepo, taskRepo, projectRepo, eventBus, idGenerator);
   const logDigestService = new LogDigestService(sessionService, projectRepo);
+  sessionService.setLogDigestService(logDigestService);
+  const tokenAnalyticsService = new TokenAnalyticsService(sessionRepo, taskRepo);
   const orderingService = new OrderingService(orderingRepo);
   const teamMemberService = new TeamMemberService(teamMemberRepo, eventBus, idGenerator);
   const teamService = new TeamService(teamRepo, teamMemberRepo, eventBus, idGenerator);
@@ -411,6 +415,7 @@ export async function createContainer(): Promise<Container> {
     spellService,
     ensembleService,
     hookDispatcherService,
+    tokenAnalyticsService,
     ptyHostService,
     sessionPromptDeliveryService,
     announcementService,

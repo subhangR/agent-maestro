@@ -559,6 +559,9 @@ export class FileSystemSessionRepository implements ISessionRepository {
     if (updates.activeSpells !== undefined) {
       session.activeSpells = updates.activeSpells;
     }
+    if (updates.tokenUsage !== undefined) {
+      session.tokenUsage = updates.tokenUsage;
+    }
 
     session.lastActivity = Date.now();
 

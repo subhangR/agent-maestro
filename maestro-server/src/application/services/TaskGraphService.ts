@@ -12,6 +12,13 @@ export interface GraphValidationResult {
   parallelLayers?: string[][];
 }
 
+export interface ReadyNodesResult {
+  /** Nodes whose every upstream dependency has completed. */
+  ready: string[];
+  /** Nodes permanently blocked because at least one upstream dependency failed. */
+  blocked: string[];
+}
+
 /**
  * Application service for task graph operations.
  * Handles CRUD, DAG validation, topological sorting, and execution orchestration.
@@ -196,63 +203,69 @@ export class TaskGraphService {
   }
 
   /**
-   * Get nodes that are ready to execute (all upstream dependencies completed).
+   * Get nodes that are ready to execute or permanently blocked by a failed upstream.
+   *
+   * @param graph - the task graph
+   * @param completedTaskIds - tasks that finished successfully
+   * @param failedTaskIds - tasks that failed (permanently); defaults to empty set
    */
-  getReadyNodes(graph: TaskGraph, completedTaskIds: Set<string>): string[] {
-    const nodeTaskIds = new Set(graph.nodes.map(n => n.taskId));
+  getReadyNodes(
+    graph: TaskGraph,
+    completedTaskIds: Set<string>,
+    failedTaskIds: Set<string> = new Set(),
+  ): ReadyNodesResult {
     const ready: string[] = [];
+    const blocked: string[] = [];
 
-    for (const taskId of nodeTaskIds) {
-      if (completedTaskIds.has(taskId)) continue;
+    for (const { taskId } of graph.nodes) {
+      if (completedTaskIds.has(taskId) || failedTaskIds.has(taskId)) continue;
 
-      // Check if all upstream dependencies are completed
       const upstreamIds = graph.edges
         .filter(e => e.targetTaskId === taskId)
         .map(e => e.sourceTaskId);
 
-      const allUpstreamCompleted = upstreamIds.every(id => completedTaskIds.has(id));
-      if (allUpstreamCompleted) {
+      if (upstreamIds.some(id => failedTaskIds.has(id))) {
+        blocked.push(taskId);
+      } else if (upstreamIds.every(id => completedTaskIds.has(id))) {
         ready.push(taskId);
       }
+      // else: still waiting on pending upstream(s) — not emitted
     }
 
-    return ready;
+    return { ready, blocked };
   }
 
   // --- Topology algorithms ---
 
   /**
    * Topological sort using Kahn's algorithm.
+   * Zero-in-degree nodes are drained in lexicographic id order for determinism.
    * Returns null if the graph has a cycle.
    */
   topologicalSort(nodeIds: string[], edges: TaskGraphEdge[]): string[] | null {
-    const inDegree = new Map<string, number>();
-    const adjacency = new Map<string, string[]>();
-
-    for (const id of nodeIds) {
-      inDegree.set(id, 0);
-      adjacency.set(id, []);
-    }
-
-    for (const edge of edges) {
-      if (!inDegree.has(edge.sourceTaskId) || !inDegree.has(edge.targetTaskId)) continue;
-      inDegree.set(edge.targetTaskId, (inDegree.get(edge.targetTaskId) || 0) + 1);
-      adjacency.get(edge.sourceTaskId)!.push(edge.targetTaskId);
-    }
+    const { inDegree, adjacency } = this.buildGraph(nodeIds, edges);
 
     const queue: string[] = [];
     for (const [id, degree] of inDegree) {
       if (degree === 0) queue.push(id);
     }
+    queue.sort();
 
     const sorted: string[] = [];
     while (queue.length > 0) {
       const node = queue.shift()!;
       sorted.push(node);
+      const newReady: string[] = [];
       for (const neighbor of adjacency.get(node) || []) {
         const newDegree = (inDegree.get(neighbor) || 1) - 1;
         inDegree.set(neighbor, newDegree);
-        if (newDegree === 0) queue.push(neighbor);
+        if (newDegree === 0) newReady.push(neighbor);
+      }
+      // Merge new ready nodes in sorted order to keep queue deterministic
+      if (newReady.length > 0) {
+        newReady.sort();
+        queue.push(...newReady);
+        queue.sort();
       }
     }
 
@@ -275,40 +288,47 @@ export class TaskGraphService {
       }
     }
 
+    // Iterative DFS with explicit stack to avoid call-stack overflow on deep chains.
+    // Each stack frame tracks the node and an iterator over its remaining neighbors.
     const WHITE = 0, GRAY = 1, BLACK = 2;
     const color = new Map<string, number>();
-    const parent = new Map<string, string | null>();
     for (const id of nodeIds) color.set(id, WHITE);
+
+    const path: string[] = [];
 
     for (const startId of nodeIds) {
       if (color.get(startId) !== WHITE) continue;
 
-      const stack: string[] = [startId];
-      while (stack.length > 0) {
-        const node = stack[stack.length - 1];
+      // Stack entries: [node, neighborIteratorIndex]
+      const stack: Array<[string, number]> = [[startId, 0]];
+      color.set(startId, GRAY);
+      path.push(startId);
 
-        if (color.get(node) === WHITE) {
-          color.set(node, GRAY);
-          for (const neighbor of adjacency.get(node) || []) {
-            if (color.get(neighbor) === GRAY) {
-              // Found cycle — reconstruct
-              const cycle = [neighbor, node];
-              let current = node;
-              while (current !== neighbor) {
-                current = parent.get(current) || '';
-                if (current && current !== neighbor) cycle.push(current);
-              }
-              cycle.push(neighbor);
-              return cycle.reverse();
-            }
-            if (color.get(neighbor) === WHITE) {
-              parent.set(neighbor, node);
-              stack.push(neighbor);
-            }
-          }
-        } else {
+      while (stack.length > 0) {
+        const frame = stack[stack.length - 1];
+        const [node, idx] = frame;
+        const neighbors = adjacency.get(node) || [];
+
+        if (idx >= neighbors.length) {
+          // All neighbors processed — backtrack
           color.set(node, BLACK);
+          path.pop();
           stack.pop();
+          continue;
+        }
+
+        // Advance the neighbor iterator
+        frame[1]++;
+        const neighbor = neighbors[idx];
+
+        if (color.get(neighbor) === GRAY) {
+          const cycleStart = path.lastIndexOf(neighbor);
+          return [...path.slice(cycleStart), neighbor];
+        }
+        if (color.get(neighbor) === WHITE) {
+          color.set(neighbor, GRAY);
+          path.push(neighbor);
+          stack.push([neighbor, 0]);
         }
       }
     }
@@ -319,23 +339,13 @@ export class TaskGraphService {
   /**
    * Compute parallel execution layers.
    * Each layer contains tasks that can run in parallel (all dependencies in prior layers).
+   * Nodes within each layer are sorted by id for determinism.
    */
   computeParallelLayers(nodeIds: string[], edges: TaskGraphEdge[]): string[][] {
-    const inDegree = new Map<string, number>();
-    const adjacency = new Map<string, string[]>();
-
-    for (const id of nodeIds) {
-      inDegree.set(id, 0);
-      adjacency.set(id, []);
-    }
-    for (const edge of edges) {
-      if (!inDegree.has(edge.sourceTaskId) || !inDegree.has(edge.targetTaskId)) continue;
-      inDegree.set(edge.targetTaskId, (inDegree.get(edge.targetTaskId) || 0) + 1);
-      adjacency.get(edge.sourceTaskId)!.push(edge.targetTaskId);
-    }
+    const { inDegree, adjacency } = this.buildGraph(nodeIds, edges);
 
     const layers: string[][] = [];
-    let currentLayer = nodeIds.filter(id => inDegree.get(id) === 0);
+    let currentLayer = nodeIds.filter(id => inDegree.get(id) === 0).sort();
 
     while (currentLayer.length > 0) {
       layers.push([...currentLayer]);
@@ -349,13 +359,32 @@ export class TaskGraphService {
         }
       }
 
-      currentLayer = nextLayer;
+      currentLayer = nextLayer.sort();
     }
 
     return layers;
   }
 
   // --- Private helpers ---
+
+  /** Build in-degree and adjacency maps shared by topologicalSort and computeParallelLayers. */
+  private buildGraph(nodeIds: string[], edges: TaskGraphEdge[]): {
+    inDegree: Map<string, number>;
+    adjacency: Map<string, string[]>;
+  } {
+    const inDegree = new Map<string, number>();
+    const adjacency = new Map<string, string[]>();
+    for (const id of nodeIds) {
+      inDegree.set(id, 0);
+      adjacency.set(id, []);
+    }
+    for (const edge of edges) {
+      if (!inDegree.has(edge.sourceTaskId) || !inDegree.has(edge.targetTaskId)) continue;
+      inDegree.set(edge.targetTaskId, (inDegree.get(edge.targetTaskId) || 0) + 1);
+      adjacency.get(edge.sourceTaskId)!.push(edge.targetTaskId);
+    }
+    return { inDegree, adjacency };
+  }
 
   private async validateNodeTaskIds(projectId: string, taskIds: string[]): Promise<void> {
     const seen = new Set<string>();

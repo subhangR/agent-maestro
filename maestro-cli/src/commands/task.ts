@@ -536,7 +536,7 @@ export function registerTaskCommands(program: Command) {
         });
 
     taskReport.command('complete <taskId> <summary>')
-        .description('Report task completion (does NOT complete session)')
+        .description('Record this session\'s contribution to a task (does NOT complete the task or session — use `task complete <taskId>` to close the task)')
         .action(async (taskId: string, summary: string) => {
             await guardCommand('task:report:complete');
             const globalOpts = program.opts();

@@ -28,6 +28,7 @@ const railItems: { section: Exclude<IconRailSection, null>; label: string; icon:
 const advancedRailItems: { section: Exclude<IconRailSection, null>; label: string; icon: IconName }[] = [
     { section: "files", label: "Files", icon: "folder" },
     { section: "profiles", label: "Model profiles", icon: "sliders" },
+    { section: "analytics", label: "Token analytics", icon: "hash" },
 ];
 function getBadge(section: string, props: IconRailProps): number | null {
     switch (section) {

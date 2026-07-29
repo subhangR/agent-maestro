@@ -268,6 +268,45 @@ export interface UpdateTeamMemberPayload {
   soundInstrument?: InstrumentType;
 }
 
+// Token usage snapshot — matches maestro-server/src/types.ts TokenUsageSnapshot.
+export interface TokenUsageSnapshot {
+  input: number;
+  output: number;
+  cacheCreate: number;
+  cacheRead: number;
+  total: number;
+  provider: string | null;
+  model: string | null;
+  capturedAt: number;
+}
+
+// Token analytics response shapes — mirror TokenAnalyticsService.
+export interface GlobalTokenSummary {
+  totals: TokenUsageSnapshot;
+  byProvider: Partial<Record<string, TokenUsageSnapshot>>;
+  byModel: Record<string, TokenUsageSnapshot>;
+  sessionCount: number;
+  windowMs: number;
+}
+
+export interface SessionTokenEntry {
+  sessionId: string;
+  tokenUsage: TokenUsageSnapshot | null;
+}
+
+export interface TaskTokenSummary {
+  taskId: string;
+  sessions: SessionTokenEntry[];
+  totals: TokenUsageSnapshot;
+}
+
+// Quota limits on a model profile.
+export interface ModelProfileQuotas {
+  maxTokensPerSession?: number;
+  maxTokensPerDay?: number;
+  maxConcurrentSessions?: number;
+}
+
 // Model profile types — a named, workspace-global launch config that team members
 // reference by id. Mirrors maestro-server/src/types.ts ModelProfile.
 export interface ModelProfile {
@@ -275,6 +314,7 @@ export interface ModelProfile {
   name: string;
   description?: string;
   launchConfig: LaunchConfig;
+  quotas?: ModelProfileQuotas;
   isDefault?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -284,12 +324,14 @@ export interface CreateModelProfilePayload {
   name: string;
   description?: string;
   launchConfig: LaunchConfig;
+  quotas?: ModelProfileQuotas;
 }
 
 export interface UpdateModelProfilePayload {
   name?: string;
   description?: string;
   launchConfig?: LaunchConfig;
+  quotas?: ModelProfileQuotas;
 }
 
 // Session timeline event types

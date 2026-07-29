@@ -37,6 +37,7 @@ import { useTeamActions } from "../../hooks/useTeamActions";
 import { TeamMembersPanel } from "./panels/TeamMembersPanel";
 import { TeamsPanel } from "./panels/TeamsPanel";
 import { ModelProfilesPanel } from "./panels/ModelProfilesPanel";
+import { TokenAnalyticsPanel } from "./panels/TokenAnalyticsPanel";
 
 // Phase 6: Module-scope noop callback
 const NOOP = () => {};
@@ -796,6 +797,11 @@ export const MaestroPanel = React.memo(function MaestroPanel({
                             projectName={project.name}
                             savedGithubUrl={project.githubUrl}
                         />
+                    )}
+
+                    {/* Token Analytics Tab */}
+                    {primaryTab === "analytics" && (
+                        <TokenAnalyticsPanel />
                     )}
                 </div>
 
