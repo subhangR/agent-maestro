@@ -12,6 +12,7 @@ import { SessionPromptService } from '../application/services/SessionPromptServi
 import { HuddleService } from '../application/services/HuddleService';
 import { CommandUsageService } from '../application/services/CommandUsageService';
 import { GitService } from '../application/services/GitService';
+import { WorkspaceFsService } from '../application/services/WorkspaceFsService';
 import { LogDigestService } from '../application/services/LogDigestService';
 import { TeamService } from '../application/services/TeamService';
 import { IProjectRepository } from '../domain/repositories/IProjectRepository';
@@ -291,6 +292,10 @@ function agentToolForProvider(provider: LaunchConfig['provider']): AgentTool {
       return 'hermes';
     case 'gemini':
       return 'gemini';
+    case 'kimi':
+      return 'kimi';
+    case 'glm':
+      return 'glm';
   }
 }
 
@@ -317,6 +322,10 @@ function providerForAgentTool(agentTool?: AgentTool): LaunchConfig['provider'] {
       return 'hermes';
     case 'gemini':
       return 'gemini';
+    case 'kimi':
+      return 'kimi';
+    case 'glm':
+      return 'glm';
     case 'claude-code':
     default:
       return 'claude';
@@ -341,6 +350,12 @@ function providerForModel(model?: string): LaunchConfig['provider'] | undefined 
   }
   if (m.startsWith('hermes')) {
     return 'hermes';
+  }
+  if (m.startsWith('kimi') || m.startsWith('moonshot')) {
+    return 'kimi';
+  }
+  if (m.startsWith('glm') || m.startsWith('chatglm')) {
+    return 'glm';
   }
   return undefined;
 }
@@ -387,6 +402,10 @@ function defaultModelForAgentTool(agentTool: AgentTool): string {
       return 'hermes-default';
     case 'gemini':
       return 'gemini-2.5-pro';
+    case 'kimi':
+      return 'kimi-k2-0711-preview';
+    case 'glm':
+      return 'glm-4';
     case 'claude-code':
     default:
       return 'claude-opus-4-8';
@@ -395,7 +414,7 @@ function defaultModelForAgentTool(agentTool: AgentTool): string {
 
 function sanitizeLaunchConfig(config?: LaunchConfig | null): LaunchConfig | undefined {
   if (!config?.provider || !config.model) return undefined;
-  const validProviders: LaunchConfig['provider'][] = ['claude', 'openai', 'hermes', 'gemini'];
+  const validProviders: LaunchConfig['provider'][] = ['claude', 'openai', 'hermes', 'gemini', 'kimi', 'glm'];
   if (!validProviders.includes(config.provider)) return undefined;
 
   const validReasoning = getValidReasoningEfforts(config.provider, config.model);
@@ -1116,6 +1135,35 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         });
       }
 
+      // Write the file to disk when content is provided
+      let resolvedPath: string | undefined;
+      if (content !== undefined && content !== null) {
+        const sessionForFs = await sessionService.getSession(sessionId);
+        const project = await projectRepo.findById(sessionForFs.projectId);
+        if (project) {
+          const baseDir = (sessionForFs.metadata?.worktreePath as string | undefined) || project.workingDir;
+          try {
+            const wfs = new WorkspaceFsService();
+            resolvedPath = await wfs.createOrOverwriteTextFile(baseDir, filePath, content);
+          } catch (fsErr) {
+            return res.status(400).json({
+              error: true,
+              message: fsErr instanceof Error ? fsErr.message : String(fsErr),
+              code: 'FS_ERROR'
+            });
+          }
+          // Stage the written file (non-fatal — keeps git up-to-date for PR flow)
+          try {
+            const isGit = await gitService.isGitRepo(baseDir);
+            if (isGit) {
+              await gitService.stageFile(baseDir, resolvedPath!);
+            }
+          } catch (gitErr) {
+            console.warn('[docs] git stage failed (non-fatal):', gitErr);
+          }
+        }
+      }
+
       const session = await sessionService.addDoc(
         sessionId,
         title,
@@ -1124,7 +1172,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         taskId,
         kind,
       );
-      res.json(session);
+      res.json({ ...session, resolvedPath });
     } catch (err: unknown) {
       handleRouteError(err, res);
     }
@@ -2208,6 +2256,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'GOOGLE_GENAI_USE_GCA',
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
+        'KIMI_API_KEY',
+        'KIMI_BASE_URL',
+        'GLM_API_KEY',
+        'GLM_BASE_URL',
       ];
       const authEnvVars: Record<string, string> = {};
       for (const key of authEnvKeys) {
@@ -2493,6 +2545,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'GOOGLE_GENAI_USE_GCA',
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
+        'KIMI_API_KEY',
+        'KIMI_BASE_URL',
+        'GLM_API_KEY',
+        'GLM_BASE_URL',
       ];
       const authEnvVars: Record<string, string> = {};
       for (const key of authEnvKeys) {

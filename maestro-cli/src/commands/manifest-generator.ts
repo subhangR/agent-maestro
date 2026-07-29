@@ -132,6 +132,10 @@ function agentToolForProvider(provider: LaunchConfig['provider']): AgentTool {
       return 'hermes';
     case 'gemini':
       return 'gemini';
+    case 'kimi':
+      return 'kimi';
+    case 'glm':
+      return 'glm';
   }
 }
 

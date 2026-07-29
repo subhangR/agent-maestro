@@ -238,6 +238,11 @@ export class GitService {
     }
   }
 
+  /** Stage a file (git add) within a repo directory. */
+  async stageFile(repoDir: string, filePath: string): Promise<void> {
+    await execFileAsync('git', ['add', filePath], { cwd: repoDir });
+  }
+
   // ── diff ─────────────────────────────────────────────────────────────────────
 
   async diffSummary(worktreePath: string, baseCommit: string): Promise<GitDiffSummary> {

@@ -3,6 +3,8 @@ import { User } from 'firebase/auth';
 import { QueryDocumentSnapshot, Unsubscribe } from 'firebase/firestore';
 import { MessagingClient } from '../firebase/MessagingClient';
 import { SpaceFilesClient } from '../firebase/SpaceFilesClient';
+import { maestroClient } from '../utils/MaestroClient';
+import { useProjectStore } from './useProjectStore';
 import {
   Channel,
   Message,
@@ -14,28 +16,47 @@ import {
 } from '../firebase/messagingTypes';
 
 /**
- * INTEGRATION POINT — @agent mention → invoke.
- *
- * When a delivered message tags one or more agents (shared team members),
- * this is where the messaging layer would hand off to the session-spawn layer
- * to actually wake a Maestro session for each mentioned agent. That wiring is
- * cross-cutting (owned by the session/spawn vertical), so it is intentionally
- * left as a no-op hook here: messaging is responsible only for tagging the
- * message; a coordinator will connect this to real invocation.
+ * Tracks message IDs for which we've already spawned agent sessions, so a
+ * retry or re-render of the send path can't spawn duplicates.
+ */
+const _agentMentionSpawned = new Set<string>();
+
+/**
+ * When a delivered message @-mentions Maestro agents (shared team members),
+ * spawn a coordinated-worker session for each one in the active project.
  */
 function notifyAgentMentions(
-  _spaceId: string,
-  _channelId: string,
-  _messageId: string | null,
+  spaceId: string,
+  channelId: string,
+  messageId: string | null,
   mentions: MessageMention[],
 ): void {
   const agents = mentions.filter((m) => m.kind === 'agent');
   if (agents.length === 0) return;
-  // eslint-disable-next-line no-console
-  console.info(
-    '[messaging] @agent mention(s) tagged (invoke integration point, not yet wired):',
-    agents.map((a) => a.displayName),
-  );
+
+  const dedupeKey = messageId ?? `${spaceId}/${channelId}/${Date.now()}`;
+  if (_agentMentionSpawned.has(dedupeKey)) return;
+  _agentMentionSpawned.add(dedupeKey);
+
+  const projectId = useProjectStore.getState().activeProjectId;
+  if (!projectId) {
+    // eslint-disable-next-line no-console
+    console.warn('[messaging] @agent mention: no active project — skipping spawn');
+    return;
+  }
+
+  for (const agent of agents) {
+    maestroClient.spawnSession({
+      projectId,
+      taskIds: [],
+      teamMemberId: agent.id,
+      spawnSource: 'ui',
+      context: { source: 'collab-mention', spaceId, channelId, messageId },
+    }).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[messaging] failed to spawn session for @${agent.displayName}:`, err);
+    });
+  }
 }
 
 type SpaceId = string;
@@ -64,6 +85,12 @@ interface MessagingState {
   creatingChannel: boolean;
   channelActionError: string | null;
 
+  // Thread state
+  threadMessagesByParent: Record<string, Message[]>;
+  threadLoading: Record<string, boolean>;
+  threadError: Record<string, string | null>;
+  threadSubs: Record<string, Unsubscribe>;
+
   // Actions
   subscribeToChannels: (spaceId: SpaceId) => void;
   unsubscribeFromChannels: (spaceId: SpaceId) => void;
@@ -90,6 +117,18 @@ interface MessagingState {
 
   createChannel: (user: User, spaceId: SpaceId, input: CreateChannelInput) => Promise<Channel>;
   clearChannelActionError: () => void;
+
+  // Thread actions
+  subscribeToThread: (spaceId: SpaceId, channelId: ChannelId, parentMessageId: string) => void;
+  unsubscribeFromThread: (parentMessageId: string) => void;
+  sendReply: (
+    user: User,
+    spaceId: SpaceId,
+    channelId: ChannelId,
+    parentMessageId: string,
+    content: string,
+    mentions?: MessageMention[],
+  ) => Promise<void>;
 
   /** Tears down every live subscription and resets state (sign-out path). */
   unsubscribeAll: () => void;
@@ -122,6 +161,11 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   sending: {},
   creatingChannel: false,
   channelActionError: null,
+
+  threadMessagesByParent: {},
+  threadLoading: {},
+  threadError: {},
+  threadSubs: {},
 
   // ─── Channels ────────────────────────────────────────────────────
 
@@ -464,10 +508,61 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
 
   clearChannelActionError: () => set({ channelActionError: null }),
 
+  // ─── Threads ─────────────────────────────────────────────────────
+
+  subscribeToThread: (spaceId, channelId, parentMessageId) => {
+    if (get().threadSubs[parentMessageId]) return;
+    set((s) => ({
+      threadLoading: { ...s.threadLoading, [parentMessageId]: true },
+      threadError: { ...s.threadError, [parentMessageId]: null },
+    }));
+    const unsub = MessagingClient.subscribeToThread(
+      spaceId,
+      channelId,
+      parentMessageId,
+      (messages) => {
+        set((s) => ({
+          threadMessagesByParent: { ...s.threadMessagesByParent, [parentMessageId]: messages },
+          threadLoading: { ...s.threadLoading, [parentMessageId]: false },
+          threadError: { ...s.threadError, [parentMessageId]: null },
+        }));
+      },
+      {
+        onError: (err) => {
+          set((s) => ({
+            threadLoading: { ...s.threadLoading, [parentMessageId]: false },
+            threadError: {
+              ...s.threadError,
+              [parentMessageId]: err?.message ?? 'Failed to load thread.',
+            },
+          }));
+        },
+      },
+    );
+    set((s) => ({ threadSubs: { ...s.threadSubs, [parentMessageId]: unsub } }));
+  },
+
+  unsubscribeFromThread: (parentMessageId) => {
+    const unsub = get().threadSubs[parentMessageId];
+    if (unsub) unsub();
+    set((s) => {
+      const nextSubs = { ...s.threadSubs };
+      delete nextSubs[parentMessageId];
+      return { threadSubs: nextSubs };
+    });
+  },
+
+  sendReply: async (user, spaceId, channelId, parentMessageId, content, mentions = []) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    await MessagingClient.sendReply(user, spaceId, channelId, parentMessageId, trimmed, mentions);
+  },
+
   unsubscribeAll: () => {
-    const { channelSubs, messageSubs } = get();
+    const { channelSubs, messageSubs, threadSubs } = get();
     Object.values(channelSubs).forEach((unsub) => unsub());
     Object.values(messageSubs).forEach((unsub) => unsub());
+    Object.values(threadSubs).forEach((unsub) => unsub());
     set({
       channelsBySpace: {},
       channelsLoading: {},
@@ -485,6 +580,10 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
       sending: {},
       creatingChannel: false,
       channelActionError: null,
+      threadMessagesByParent: {},
+      threadLoading: {},
+      threadError: {},
+      threadSubs: {},
     });
   },
 }));
