@@ -48,11 +48,32 @@ function HermesLogo({ size = 12 }: LogoProps) {
   );
 }
 
+function KimiLogo({ size = 12 }: LogoProps) {
+  // Moonshot crescent.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M15.5 3a9 9 0 1 0 0 18 7.2 7.2 0 0 1 0-18Z" />
+    </svg>
+  );
+}
+
+function GlmLogo({ size = 12 }: LogoProps) {
+  // Half-filled ring.
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 3.5a8.5 8.5 0 0 1 0 17Z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 const AGENT_LOGOS: Record<AgentTool, (props: LogoProps) => JSX.Element> = {
   "claude-code": ClaudeLogo,
   codex: CodexLogo,
   hermes: HermesLogo,
   gemini: GeminiLogo,
+  kimi: KimiLogo,
+  glm: GlmLogo,
 };
 
 const AGENT_CHIP_NAMES: Record<AgentTool, string> = {
@@ -60,6 +81,8 @@ const AGENT_CHIP_NAMES: Record<AgentTool, string> = {
   codex: "Codex",
   hermes: "Hermes",
   gemini: "Gemini",
+  kimi: "Kimi",
+  glm: "GLM",
 };
 
 export function AgentLogo({ agentTool, size = 12, className }: { agentTool?: AgentTool | null; size?: number; className?: string }) {

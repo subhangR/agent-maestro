@@ -31,6 +31,7 @@ import "./components/maestro/redesign/redesign-boards.css";
 import "./components/maestro/redesign/redesign-views.css";
 import "./components/maestro/redesign/redesign-modals.css";
 import "./components/maestro/redesign/redesign-buttons.css";
+import "./styles-maestro-redesign.css";
 import "./styles-spell-colors.css";
 import "./styles-spell-ring.css";
 import "./styles-spells.css";

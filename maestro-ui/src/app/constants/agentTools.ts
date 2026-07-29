@@ -44,6 +44,13 @@ export const MODELS_BY_AGENT_TOOL: Record<AgentTool, { value: ModelType; label: 
   gemini: [
     { value: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview" },
   ],
+  kimi: [
+    { value: "kimi-k2-0711-preview", label: "Kimi K2" },
+  ],
+  glm: [
+    { value: "glm-4", label: "GLM-4" },
+    { value: "glm-4-plus", label: "GLM-4 Plus" },
+  ],
 };
 
 export const DEFAULT_MODEL_BY_AGENT_TOOL: Record<AgentTool, ModelType> = {
@@ -51,6 +58,8 @@ export const DEFAULT_MODEL_BY_AGENT_TOOL: Record<AgentTool, ModelType> = {
   codex: "gpt-5.6-sol",
   hermes: "hermes-default",
   gemini: "gemini-3-pro-preview",
+  kimi: "kimi-k2-0711-preview",
+  glm: "glm-4",
 };
 
 // Retired model IDs mapped to active replacements. Currently empty — Claude
@@ -118,6 +127,8 @@ export const AGENT_TOOL_LABELS: Record<AgentTool, string> = {
   codex: "OpenAI",
   hermes: "Hermes",
   gemini: "Gemini",
+  kimi: "Kimi",
+  glm: "GLM",
 };
 
 export const AGENT_TOOL_SHORT_LABELS: Record<AgentTool, string> = {
@@ -125,6 +136,8 @@ export const AGENT_TOOL_SHORT_LABELS: Record<AgentTool, string> = {
   codex: "OpenAI",
   hermes: "Hermes",
   gemini: "Gemini",
+  kimi: "Kimi",
+  glm: "GLM",
 };
 
 export const AGENT_PROVIDER_LABELS: Record<AgentTool, string> = {
@@ -132,6 +145,8 @@ export const AGENT_PROVIDER_LABELS: Record<AgentTool, string> = {
   codex: "OpenAI",
   hermes: "Hermes",
   gemini: "Gemini",
+  kimi: "Moonshot",
+  glm: "Zhipu",
 };
 
 export const AGENT_TOOL_SYMBOLS: Record<AgentTool, string> = {
@@ -139,9 +154,11 @@ export const AGENT_TOOL_SYMBOLS: Record<AgentTool, string> = {
   codex: "◇",
   hermes: "✶",
   gemini: "◆",
+  kimi: "☾",
+  glm: "◑",
 };
 
-export const AGENT_TOOLS: AgentTool[] = ["claude-code", "codex", "hermes", "gemini"];
+export const AGENT_TOOLS: AgentTool[] = ["claude-code", "codex", "hermes", "gemini", "kimi", "glm"];
 
 /**
  * Agent tools whose sessions can be resumed. Resume replays the provider's
@@ -169,6 +186,8 @@ export const AGENT_TOOL_TO_PROVIDER: Record<AgentTool, LaunchProvider> = {
   codex: "openai",
   hermes: "hermes",
   gemini: "gemini",
+  kimi: "kimi",
+  glm: "glm",
 };
 
 export const PROVIDER_TO_AGENT_TOOL: Record<LaunchProvider, AgentTool> = {
@@ -176,6 +195,8 @@ export const PROVIDER_TO_AGENT_TOOL: Record<LaunchProvider, AgentTool> = {
   openai: "codex",
   hermes: "hermes",
   gemini: "gemini",
+  kimi: "kimi",
+  glm: "glm",
 };
 
 export const AGENT_TOOL_OPTIONS: AgentToolOption[] = AGENT_TOOLS.map((id) => ({
@@ -261,7 +282,7 @@ export function accessModeFromPermissionMode(permissionMode?: string): LaunchCon
 
 export function sanitizeLaunchConfig(config?: Partial<LaunchConfig> | null): LaunchConfig | undefined {
   if (!config?.provider || !config.model) return undefined;
-  if (!["claude", "openai", "hermes", "gemini"].includes(config.provider)) return undefined;
+  if (!["claude", "openai", "hermes", "gemini", "kimi", "glm"].includes(config.provider)) return undefined;
 
   const provider = config.provider as LaunchProvider;
   const model = normalizeModelId(config.model)!;

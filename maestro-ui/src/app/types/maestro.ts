@@ -70,10 +70,14 @@ export type HermesModel =
   | 'gpt-5.3-codex'
   | 'gpt-5.3-codex-spark'
   | 'gpt-5.2';
+// Kimi (Moonshot AI) and GLM (Zhipu AI) models — CLI-based providers. Model ids
+// mirror the CLI/server conventions (kimi-*/moonshot-*, glm-*/chatglm-*).
+export type KimiModel = 'kimi-k2-0711-preview' | (string & {});
+export type GlmModel = 'glm-4' | 'glm-4-plus' | (string & {});
 // Union of all supported models
-export type ModelType = ClaudeModel | CodexModel | GeminiModel | HermesModel;
-export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini';
-export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini';
+export type ModelType = ClaudeModel | CodexModel | GeminiModel | HermesModel | KimiModel | GlmModel;
+export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini' | 'kimi' | 'glm';
+export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini' | 'kimi' | 'glm';
 export type LaunchReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type LaunchSpeed = 'standard' | 'fast';
 export type LaunchAccessMode = 'safe' | 'acceptEdits' | 'plan' | 'fullAccess';
