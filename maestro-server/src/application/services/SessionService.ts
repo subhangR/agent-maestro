@@ -332,7 +332,7 @@ export class SessionService {
     // Add timeline event to session
     const event: SessionTimelineEvent = {
       id: this.idGenerator.generate('evt'),
-      type: 'task_completed',  // Or could be task_skipped depending on context
+      type: 'task_skipped',
       timestamp: Date.now(),
       taskId,
       message: `Removed task from session`,

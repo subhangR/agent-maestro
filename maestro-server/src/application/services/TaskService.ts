@@ -110,10 +110,10 @@ export class TaskService {
     if (updates.updateSource === 'session') {
       const sessionAllowedUpdates: UpdateTaskPayload = {};
 
-      // Map sessionStatus + sessionId -> taskSessionStatuses[sessionId] (backward compat)
+      // Map sessionStatus + sessionId -> taskSessionStatuses[sessionId] (backward compat).
+      // Reuse the already-fetched oldTask snapshot to avoid a second findById round-trip.
       if (updates.sessionStatus !== undefined && updates.sessionId) {
-        const existingTask = await this.taskRepo.findById(id);
-        const existing = existingTask?.taskSessionStatuses || {};
+        const existing = oldTask?.taskSessionStatuses || {};
         sessionAllowedUpdates.taskSessionStatuses = {
           ...existing,
           [updates.sessionId]: updates.sessionStatus,

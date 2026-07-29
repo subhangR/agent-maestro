@@ -39,11 +39,23 @@ export class WriteBatcher {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
+    if (this.dirtyEntities.size === 0) return;
     const entries = Array.from(this.dirtyEntities.entries());
     this.dirtyEntities.clear();
-    await Promise.allSettled(
-      entries.map(([_, { filePath, data }]) => atomicWriteFile(filePath, data))
+    const results = await Promise.allSettled(
+      entries.map(([, { filePath, data }]) => atomicWriteFile(filePath, data))
     );
+    // Re-queue entries whose writes failed, unless they've since been re-dirtied
+    // with newer data (in which case the newer write will supersede this one).
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].status === 'rejected') {
+        const [id, entry] = entries[i];
+        if (!this.dirtyEntities.has(id)) {
+          this.dirtyEntities.set(id, entry);
+          this.scheduleFlush();
+        }
+      }
+    }
   }
 
   async destroy(): Promise<void> {

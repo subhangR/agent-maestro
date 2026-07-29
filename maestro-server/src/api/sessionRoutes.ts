@@ -1346,19 +1346,22 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const { content, mode, senderSessionId } = req.body as { content: string; mode: 'send' | 'paste'; senderSessionId: string };
 
       const sessionId = req.params.id as string;
-      const [session, senderSession] = await Promise.all([
-        sessionService.getSession(sessionId),
-        sessionService.getSession(senderSessionId),
-      ]);
-
-      if (!senderSession) {
+      // getSession() throws NotFoundError on miss — catch each independently so
+      // the caller gets a specific error code instead of the generic 404 message.
+      let session: Awaited<ReturnType<typeof sessionService.getSession>>;
+      let senderSession: Awaited<ReturnType<typeof sessionService.getSession>>;
+      try {
+        senderSession = await sessionService.getSession(senderSessionId);
+      } catch {
         return res.status(404).json({
           error: true,
           code: 'sender_not_found',
           message: `Sender session ${senderSessionId} not found.`,
         });
       }
-      if (!session) {
+      try {
+        session = await sessionService.getSession(sessionId);
+      } catch {
         return res.status(404).json({
           error: true,
           code: 'target_not_found',
