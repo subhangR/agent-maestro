@@ -2,9 +2,10 @@ import React from 'react';
 import type { PipelineStage, PipelineStageName } from '../../app/types/maestro';
 
 /* ---------------------------------------------------------------------------
-   PipelineVisualization — horizontal strip showing the 7 canonical pipeline
-   stages (ideate → design → build → test → host → db → realtime-db) with
-   per-stage status: pending / active / done / failed.
+   PipelineVisualization — horizontal strip showing the product-build pipeline
+   stages (empathize → define → ideate → design → build → secure → test →
+   review → ship → analyze) with per-stage status: pending / active / done /
+   failed. Leading stages a simpler task skips are trimmed (see below).
 
    Rendered at the top of the SessionActivityPanel chat feed when at least one
    stage is non-pending (i.e., when the session has real pipeline activity).
@@ -12,13 +13,16 @@ import type { PipelineStage, PipelineStageName } from '../../app/types/maestro';
 --------------------------------------------------------------------------- */
 
 const STAGE_LABELS: Record<PipelineStageName, string> = {
-  'ideate':      'Ideate',
-  'design':      'Design',
-  'build':       'Build',
-  'test':        'Test',
-  'host':        'Host',
-  'db':          'DB',
-  'realtime-db': 'Realtime',
+  'empathize': 'Empathize',
+  'define':    'Define',
+  'ideate':    'Ideate',
+  'design':    'Design',
+  'build':     'Build',
+  'secure':    'Secure',
+  'test':      'Test',
+  'review':    'Review',
+  'ship':      'Ship',
+  'analyze':   'Analyze',
 };
 
 const IconDone = () => (
@@ -45,13 +49,19 @@ interface Props {
 
 export function PipelineVisualization({ stages }: Props) {
   // Only render when there is real pipeline activity.
-  const hasActivity = stages.some((s) => s.status !== 'pending');
-  if (!hasActivity) return null;
+  const firstReached = stages.findIndex((s) => s.status !== 'pending');
+  if (firstReached === -1) return null;
+
+  // Skip the leading stages a (simpler) task never reached: a task that begins
+  // at Build or Test shows the flow starting there rather than a row of empty
+  // Empathize/Define/Ideate/Design stages. Trailing pending stages remain as the
+  // roadmap of what's still ahead.
+  const visibleStages = stages.slice(firstReached);
 
   return (
     <div className="pn-pipeline" role="list" aria-label="Pipeline stages">
-      {stages.map((stage, i) => {
-        const isLast = i === stages.length - 1;
+      {visibleStages.map((stage, i) => {
+        const isLast = i === visibleStages.length - 1;
         return (
           <React.Fragment key={stage.name}>
             <div

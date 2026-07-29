@@ -311,7 +311,9 @@ export type SessionTimelineEventType =
 // The 7 canonical stages reflect the standard software delivery lifecycle.
 // Timeline events may carry metadata.stage (PipelineStageName) for explicit
 // attribution; absent that, derivePipeline.ts uses keyword heuristics.
-export type PipelineStageName = 'ideate' | 'design' | 'build' | 'test' | 'host' | 'db' | 'realtime-db';
+export type PipelineStageName =
+  | 'empathize' | 'define' | 'ideate' | 'design' | 'build'
+  | 'secure' | 'test' | 'review' | 'ship' | 'analyze';
 export type PipelineStageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
 
 export interface PipelineStage {

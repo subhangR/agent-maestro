@@ -3,28 +3,37 @@ import type { PipelineStage, PipelineStageName, PipelineStageStatus } from '../a
 // ---------------------------------------------------------------------------
 // Canonical stage order for the pipeline visualization.
 // ---------------------------------------------------------------------------
+// Design-thinking product build flow. Used for larger builds; simpler tasks
+// naturally only reach a subset (e.g. build → test → review), and the
+// visualization trims the earlier stages they skip.
 export const PIPELINE_STAGE_ORDER: PipelineStageName[] = [
-  'ideate', 'design', 'build', 'test', 'host', 'db', 'realtime-db',
+  'empathize', 'define', 'ideate', 'design', 'build',
+  'secure', 'test', 'review', 'ship', 'analyze',
 ];
 
 // ---------------------------------------------------------------------------
 // Keyword → stage mapping used when events lack an explicit metadata.stage tag.
 // Rules:
-//   • More-specific stages (realtime-db, db, host) are listed before broader
-//     ones (build, design, ideate) so that a message about "realtime websocket
-//     database" resolves to 'realtime-db' rather than 'db' or 'build'.
+//   • Later / more-specific stages (analyze, ship, review) are listed before
+//     broader earlier ones (build, design, empathize) so a message resolves to
+//     the most precise stage rather than an earlier catch-all.
 //   • A single event message may match multiple stages; all matched stages
 //     receive the attributed status — the pipeline accumulates evidence.
 //   • Add new keywords here to extend coverage without touching any other file.
 // ---------------------------------------------------------------------------
 const STAGE_KEYWORDS: [PipelineStageName, RegExp][] = [
-  ['realtime-db', /realtime|websocket|socket\.io|\bsocket\b|live.?update|firebase|supabase|real.time.db|streaming.db/i],
-  ['db',          /\bdatabase\b|\bdb\b|\bsql\b|mongo|postgres|redis|migrat|data.store|\borm\b|prisma|drizzle|sqlite/i],
-  ['host',        /\bdeploy|\bhosting\b|server.?setup|production|release\b|publish|launch.?app|infra|cloud|docker|kubernetes|nginx/i],
-  ['test',        /\btest|\bspec\b|verif|validat|debug|quality.?assur|jest|vitest|cypress|pytest|coverage|lint/i],
-  ['build',       /\bbuilding\b|\bimplement|\bcoding\b|\bdevelop|\bwriting code|scaffold|refactor|creat.+(component|feature|module|class|function)/i],
-  ['design',      /\bdesign\b|architect|blueprint|\bschema\b|\bdata model\b|interface.?design|api.?design|wireframe|mockup|structure/i],
-  ['ideate',      /ideate|brainstorm|ideation|requirement|\bscop(e|ing)\b|\bresearch\b|explor|analyz|investigat|planning|initial.?(thought|idea)/i],
+  // Order: more-specific / later stages first so a message resolves to the most
+  // precise stage. Each stage is a single word in the visualization.
+  ['analyze',   /analyz|analytics|\bmonitor|\bmetric|measur|observ|retrospect|\binsight|post.?(launch|deploy)|telemetry|dashboard/i],
+  ['ship',      /\bship|\bdeploy|\brelease\b|\bpublish|\bproduction\b|go.?live|launch.?(app|prod|release)|rollout|\bhosting\b|\bhost\b|infra|\bcloud\b|docker|kubernetes|nginx|\baws\b|\bfirebase\b/i],
+  ['review',    /\breview|code.?review|\baudit|critiqu|\bapprov|inspect|walkthrough|sign.?off|pull.?request|\bpr\b/i],
+  ['test',      /\btest|\bspec\b|verif|validat|\bdebug|quality.?assur|\bqa\b|jest|vitest|cypress|playwright|pytest|coverage|\blint\b/i],
+  ['secure',    /\bsecur|\bauth|vulnerab|encrypt|sanitiz|\bpermission|\bcsrf|\bxss|\bsecret|credential|\brbac\b|hardening|threat/i],
+  ['build',     /\bbuild|\bimplement|\bcoding\b|\bcode\b|\bdevelop|writing code|scaffold|refactor|frontend|backend|full.?stack|\bschema\b|\bdatabase\b|\bdb\b|\bsql\b|\borm\b|migrat|\bapi\b|endpoint|creat.+(component|feature|module|class|function)/i],
+  ['design',    /\bdesign\b|\bui\b|\bux\b|wireframe|mockup|prototype|\blayout\b|architect|blueprint|\bdata model\b|interface|user.?flow/i],
+  ['ideate',    /ideate|brainstorm|ideation|\bexplor|\bresearch\b|investigat|concept|\boption|approach|feasib|prototype.?idea/i],
+  ['define',    /\bdefine\b|problem.?statement|\bscop(e|ing)\b|requirement|\bspec\b|objective|success.?criteri|acceptance|constraint|planning/i],
+  ['empathize', /empathi[sz]e|user.?(need|research|pain|goal)|persona|stakeholder|\baudience\b|interview|understand.?(the )?(user|problem)|\bfeedback\b/i],
 ];
 
 // ---------------------------------------------------------------------------
@@ -87,9 +96,11 @@ export function derivePipeline(events: RawEvent[]): PipelineStage[] {
       ? [explicitStage]
       : STAGE_KEYWORDS.filter(([, re]) => re.test(msg)).map(([name]) => name);
 
-    // session_started with no keyword match seeds the first stage (ideate).
+    // session_started with no keyword match seeds 'build' — simpler tasks skip
+    // the discovery/design stages and begin at build (or test), so build is the
+    // safe default rather than the first stage of the full flow.
     if (matchedStages.length === 0 && event.type === 'session_started') {
-      matchedStages.push('ideate');
+      matchedStages.push('build');
     }
 
     for (const stage of matchedStages) {

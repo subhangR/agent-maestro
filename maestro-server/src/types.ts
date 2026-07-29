@@ -573,7 +573,9 @@ export interface SessionTimelineEvent {
 
 // Pipeline stage model for multi-agent workflow visualization.
 // Timeline events may carry metadata.stage for explicit stage attribution.
-export type PipelineStageName = 'ideate' | 'design' | 'build' | 'test' | 'host' | 'db' | 'realtime-db';
+export type PipelineStageName =
+  | 'empathize' | 'define' | 'ideate' | 'design' | 'build'
+  | 'secure' | 'test' | 'review' | 'ship' | 'analyze';
 export type PipelineStageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
 
 export interface PipelineStage {
