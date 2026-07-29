@@ -30,6 +30,7 @@ import { LaunchConfigPanel } from "./task-modal/LaunchConfigPanel";
 // Tab content components
 import { SubtasksTab } from "./task-modal/SubtasksTab";
 import { SessionsTab } from "./task-modal/SessionsTab";
+import { TaskTokenTab } from "./task-modal/TaskTokenTab";
 import { GeneratedDocsTab } from "./task-modal/GeneratedDocsTab";
 import { TimelineTab } from "./task-modal/TimelineTab";
 import { DetailsTab } from "./task-modal/DetailsTab";
@@ -689,6 +690,9 @@ export function CreateTaskModal({
                                         tasks={tasks}
                                         onJumpToSession={onJumpToSession}
                                     />
+                                )}
+                                {form.activeTab === 'tokens' && effectiveEditMode && effectiveTask && (
+                                    <TaskTokenTab taskId={effectiveTask.id} />
                                 )}
                                 {form.activeTab === 'ref-docs' && (
                                     <RefDocsTab

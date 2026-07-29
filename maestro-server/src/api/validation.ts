@@ -92,7 +92,7 @@ export const masterToggleSchema = z.object({
 // --- Shared schemas ---
 
 const permissionModeSchema = z.enum(['acceptEdits', 'interactive', 'readOnly', 'bypassPermissions']);
-const launchProviderSchema = z.enum(['claude', 'openai', 'hermes', 'gemini']);
+const launchProviderSchema = z.enum(['claude', 'openai', 'hermes', 'gemini', 'kimi', 'glm']);
 const launchReasoningEffortSchema = z.enum(['minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
 const launchSpeedSchema = z.enum(['standard', 'fast']);
 const launchAccessModeSchema = z.enum(['safe', 'acceptEdits', 'plan', 'fullAccess']);
@@ -129,16 +129,24 @@ const memberLaunchOverrideSchema = z.object({
 
 // --- Model profile schemas ---
 
+export const modelProfileQuotasSchema = z.object({
+  maxTokensPerSession: z.number().int().nonnegative().optional(),
+  maxTokensPerDay: z.number().int().nonnegative().optional(),
+  maxConcurrentSessions: z.number().int().nonnegative().optional(),
+}).optional();
+
 export const createModelProfileSchema = z.object({
   name: shortString.max(100),
   description: z.string().max(500).optional(),
   launchConfig: launchConfigSchema,
+  quotas: modelProfileQuotasSchema,
 }).strict();
 
 export const updateModelProfileSchema = z.object({
   name: shortString.max(100).optional(),
   description: z.string().max(500).optional(),
   launchConfig: launchConfigSchema.optional(),
+  quotas: modelProfileQuotasSchema,
 }).strict();
 
 // --- Session prompt schemas ---

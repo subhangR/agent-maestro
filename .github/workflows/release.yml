@@ -13,9 +13,54 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Job 0: Server test gate — must pass before any build job runs.
+  #
+  # Coverage: 67 tests across 8 suites, measured at ~3s wall clock.
+  #   harness-* / loop-*      H1 task auto-advance, H2 deactivateSpell locking,
+  #                           H3 exit reaping, H4 reconciliation, loop counters
+  #   token-analytics         TokenAnalyticsService + /api/analytics/tokens/*
+  #   quota-enforcement       provider quota policy and spawn-time enforcement
+  #   task-graph-service      cycle detection, getReadyNodes, topo determinism
+  #   model-profiles          profile CRUD + quota persistence
+  #
+  # These are the suites covering everything added in the token-analytics,
+  # quota, and loop/graph/harness work. They are pure application-layer tests
+  # over tmp-dir file repos, so they are cheap enough to gate every release on.
+  #
+  # NOT covered by this gate: the full Jest suite (25+ min), UI/Vitest tests
+  # (687 tests, ~70s — worth adding as a parallel job), or CLI/integration
+  # tests. Those must be run locally or in a dedicated slow-test workflow.
+  # ---------------------------------------------------------------------------
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Typecheck server
+        working-directory: maestro-server
+        run: bunx tsc --noEmit
+
+      - name: Run server test gate
+        working-directory: maestro-server
+        run: |
+          bun run jest --testPathPattern="harness-|loop-|token-analytics|quota-enforcement|task-graph-service|model-profiles" --forceExit
+        # --forceExit prevents Jest from hanging after tests complete
+        # (open async handles from file-based repos in tmp dirs)
+
+  # ---------------------------------------------------------------------------
   # Job 1: Build server + CLI binaries for all 4 platforms
   # ---------------------------------------------------------------------------
   build-binaries:
+    needs: test
     strategy:
       fail-fast: false
       matrix:

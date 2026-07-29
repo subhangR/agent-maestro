@@ -1815,6 +1815,44 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         effectiveTeamMemberIds = [coordinatorSelf.id];
       }
 
+      // Advisory concurrent-session quota check (Phase 1: accept race at this threshold).
+      // For each effective team member bound to a profile with maxConcurrentSessions set,
+      // count active sessions using that profile and return 429 if at capacity.
+      {
+        const profileIdsToCheck = new Set<string>();
+        for (const tmId of effectiveTeamMemberIds) {
+          const tm = teamMemberMap.get(tmId);
+          if (tm?.modelProfileId) profileIdsToCheck.add(tm.modelProfileId);
+        }
+
+        if (profileIdsToCheck.size > 0) {
+          const profilesToEnforce = [...profileIdsToCheck]
+            .map((pid) => modelProfileMap.get(pid))
+            .filter((p) => p?.quotas?.maxConcurrentSessions && p.quotas.maxConcurrentSessions > 0);
+
+          if (profilesToEnforce.length > 0) {
+            const allSessions = await sessionService.listSessions();
+            const ACTIVE_STATUSES = new Set(['spawning', 'idle', 'working']);
+            const activeSessions = allSessions.filter((s) => ACTIVE_STATUSES.has(s.status));
+
+            for (const profile of profilesToEnforce) {
+              const activeCount = activeSessions.filter((s) => {
+                const snaps = s.teamMemberSnapshots ?? (s.teamMemberSnapshot ? [s.teamMemberSnapshot] : []);
+                return snaps.some((snap) => snap.modelProfileId === profile!.id);
+              }).length;
+
+              if (activeCount >= profile!.quotas!.maxConcurrentSessions!) {
+                return res.status(429).json({
+                  error: true,
+                  code: 'QUOTA_EXCEEDED',
+                  message: `Profile "${profile!.name}" concurrent session limit (${profile!.quotas!.maxConcurrentSessions}) reached`,
+                });
+              }
+            }
+          }
+        }
+      }
+
       // Fetch team member defaults from the effective members (after task-level fallback)
       const MODEL_POWER: Record<string, number> = {
         'claude-fable-5[1m]': 6.1,
@@ -1904,6 +1942,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
                 avatar: teamMember.avatar,
                 role: teamMember.role,
                 model: effectiveModel,
+                modelProfileId: teamMember.modelProfileId,
+                launchConfig: effectiveLaunchConfig,
                 agentTool: effectiveAgentTool,
                 permissionMode: effectivePermissionMode,
               });

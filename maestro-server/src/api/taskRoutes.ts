@@ -324,6 +324,22 @@ export function createTaskRoutes(taskService: TaskService, sessionService?: Sess
     }
   });
 
+  // Reconcile stuck in_progress tasks (H4 maintenance operation)
+  // POST /api/tasks/reconcile-stuck?dryRun=true  (dry-run by default)
+  router.post('/tasks/reconcile-stuck', async (req: Request, res: Response) => {
+    try {
+      if (!sessionService) {
+        return res.status(503).json({ error: 'SessionService not available' });
+      }
+      // Default to dry-run unless the caller explicitly sets dryRun=false
+      const dryRun = req.query.dryRun !== 'false' && req.body?.dryRun !== false;
+      const result = await sessionService.reconcileStuckTasks({ dryRun });
+      res.json(result);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
   // Delete task
   router.delete('/tasks/:id', validateParams(idParamSchema), async (req: Request, res: Response) => {
     try {
