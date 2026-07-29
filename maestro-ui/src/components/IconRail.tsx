@@ -20,6 +20,9 @@ const railItems: { section: Exclude<IconRailSection, null>; label: string; icon:
     { section: "lists", label: "Lists", icon: "inbox" },
     { section: "graphs", label: "Graphs", icon: "graph" },
     { section: "collab", label: "Collab Space", icon: "globe" },
+    // Token analytics is always visible (usage/cost is broadly useful, not a
+    // developer-only surface).
+    { section: "analytics", label: "Token analytics", icon: "hash" },
 ];
 
 // Advanced-only destinations, appended when Developer features are on.
@@ -28,7 +31,6 @@ const railItems: { section: Exclude<IconRailSection, null>; label: string; icon:
 const advancedRailItems: { section: Exclude<IconRailSection, null>; label: string; icon: IconName }[] = [
     { section: "files", label: "Files", icon: "folder" },
     { section: "profiles", label: "Model profiles", icon: "sliders" },
-    { section: "analytics", label: "Token analytics", icon: "hash" },
 ];
 function getBadge(section: string, props: IconRailProps): number | null {
     switch (section) {
