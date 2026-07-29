@@ -226,6 +226,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
 
+  // Working directory used to locate the agent's conversation log. The live
+  // session's own cwd is preferred, but it is EMPTY for restored sessions and
+  // in browser mode (it is only ever populated by the terminal's live OSC cwd
+  // reports, which don't fire on restore). Falling back to the project's
+  // working dir lets the chat view still find the log — and, critically, lets
+  // the Chat/Together/Terminal toggle render at all (it used to be gated on a
+  // truthy cwd, so restored agent sessions showed only the raw terminal).
+  const activeLogCwd = (active?.cwd || activeProject?.basePath || "").trim();
+
   // --- Derived SSH ---
   const activeIsSsh = active
     ? isSshCommandLine(active.launchCommand ?? active.restoreCommand ?? null)
@@ -475,14 +484,14 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         {/* Fused terminal strip — log toggle + stats + model + actions. A
             horizontal row in normal flow ABOVE the terminal deck (never an
             overlay pinned to the terminal's edge). */}
-        {active?.maestroSessionId && active?.cwd && (
+        {active?.maestroSessionId && (
           <>
             <div className="sessionViewSelectorRow" style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 10px 0' }}>
               <SessionViewSelector mode={sessionViewMode} onChange={selectSessionViewMode} />
             </div>
             <TerminalStrip
               key={active.id}
-              cwd={active.cwd}
+              cwd={activeLogCwd}
               maestroSessionId={active.maestroSessionId}
               agentTool={activeLogAgentTool}
               onAttach={handleAttach}
