@@ -33,6 +33,7 @@ type Props = {
   onDelete: (messageId: string) => Promise<void>;
   onRetryPending: (tempId: string) => void;
   onDismissPending: (tempId: string) => void;
+  onReply?: (messageId: string) => void;
 };
 
 export function MessagesPane({
@@ -49,6 +50,7 @@ export function MessagesPane({
   onDelete,
   onRetryPending,
   onDismissPending,
+  onReply,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastChannelRef = useRef<string | null>(null);
@@ -143,6 +145,7 @@ export function MessagesPane({
               grouped={grouped}
               onEdit={onEdit}
               onDelete={onDelete}
+              onReply={onReply}
             />
           );
         })}

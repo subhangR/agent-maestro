@@ -301,6 +301,21 @@ export type SessionTimelineEventType =
   | 'milestone'          // Milestone reached
   | 'doc_added';         // Document added
 
+// Pipeline stage model for multi-agent workflow visualization.
+// The 7 canonical stages reflect the standard software delivery lifecycle.
+// Timeline events may carry metadata.stage (PipelineStageName) for explicit
+// attribution; absent that, derivePipeline.ts uses keyword heuristics.
+export type PipelineStageName = 'ideate' | 'design' | 'build' | 'test' | 'host' | 'db' | 'realtime-db';
+export type PipelineStageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+
+export interface PipelineStage {
+  name: PipelineStageName;
+  status: PipelineStageStatus;
+  agentLabel?: string;    // optional name of the agent working this stage
+  startedAt?: number;
+  completedAt?: number;
+}
+
 
 
 
@@ -1235,6 +1250,7 @@ export interface SessionLogDigestResponse {
     warning: string;
   } | null;
   lastActivityTimestamp: number;
+  summary?: string;
 }
 
 export interface SessionStatsResponse {

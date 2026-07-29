@@ -119,6 +119,8 @@ function textToBase64(text: string): string {
   return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
 }
 
+type ViewMode = 'chat' | 'terminal' | 'split';
+
 export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspaceProps) {
   const { registry, pendingData } = props;
   const workspaceRowRef = useRef<HTMLDivElement | null>(null);
@@ -144,10 +146,33 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const activeMaestroSession = active?.maestroSessionId ? maestroSessions[active.maestroSessionId] : null;
   const activeIsCoordinator = isCoordinatorRole(activeMaestroSession?.mode);
 
-  // Redesign Phase 4 — plain-language Chat view (additive overlay over the terminal).
-  // Default ON for maestro-linked terminals so the conversational view leads and the
-  // raw terminal is one click away.
-  const [showActivity, setShowActivity] = useState(true);
+  // Redesign Phase 4 — Chat/Terminal/Split view mode with resizable split panel.
+  // Persisted to localStorage so the choice survives reload.
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    (localStorage.getItem('pn-view-mode') as ViewMode) ?? 'chat'
+  );
+  const [splitRatio, setSplitRatio] = useState(() => {
+    const s = localStorage.getItem('pn-split-ratio');
+    return s ? parseFloat(s) : 0.4;
+  });
+  const splitAreaRef = useRef<HTMLDivElement>(null);
+  const handleSplitDragStart = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    const area = splitAreaRef.current;
+    if (!area) return;
+    const onMove = (ev: PointerEvent) => {
+      const rect = area.getBoundingClientRect();
+      const ratio = Math.min(0.85, Math.max(0.15, (ev.clientX - rect.left) / rect.width));
+      setSplitRatio(ratio);
+      localStorage.setItem('pn-split-ratio', String(ratio));
+    };
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, []);
 
   // --- Spaces store (whiteboards & documents) ---
   const allSpaces = useSpacesStore((s) => s.spaces);
@@ -453,17 +478,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
           />
         )}
         <div className="terminalDeck">
-        {/* Redesign Phase 4 — Activity ⇄ Terminal toggle + additive overlay.
-            The terminal deck stays mounted underneath; the overlay simply covers
-            it when Activity is on, so nothing unmounts or breaks. */}
+        {/* Phase 4 — Chat/Split/Terminal toggle pill. Floats above the split area. */}
         {active?.maestroSessionId && (
           <div className="pn-viewseg" role="tablist" aria-label="Session view">
             <button
               type="button"
               role="tab"
-              aria-selected={showActivity}
-              className={"pn-viewseg__btn" + (showActivity ? " pn-viewseg__btn--on" : "")}
-              onClick={() => setShowActivity(true)}
+              aria-selected={viewMode === 'chat'}
+              className={"pn-viewseg__btn" + (viewMode === 'chat' ? " pn-viewseg__btn--on" : "")}
+              onClick={() => { setViewMode('chat'); localStorage.setItem('pn-view-mode', 'chat'); }}
               title="Plain-language conversation view"
             >
               Chat
@@ -471,62 +494,95 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
             <button
               type="button"
               role="tab"
-              aria-selected={!showActivity}
-              className={"pn-viewseg__btn" + (!showActivity ? " pn-viewseg__btn--on" : "")}
-              onClick={() => setShowActivity(false)}
+              aria-selected={viewMode === 'split'}
+              className={"pn-viewseg__btn" + (viewMode === 'split' ? " pn-viewseg__btn--on" : "")}
+              onClick={() => { setViewMode('split'); localStorage.setItem('pn-view-mode', 'split'); }}
+              title="Chat and terminal side by side"
+            >
+              Split
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'terminal'}
+              className={"pn-viewseg__btn" + (viewMode === 'terminal' ? " pn-viewseg__btn--on" : "")}
+              onClick={() => { setViewMode('terminal'); localStorage.setItem('pn-view-mode', 'terminal'); }}
               title="Raw terminal output"
             >
               Terminal
             </button>
           </div>
         )}
-        {active?.maestroSessionId && (
-          <div
-            className="pn-activity-overlay"
-            style={showActivity ? undefined : { display: "none" }}
-            aria-hidden={!showActivity}
-          >
-            <SessionActivityPanel
-              session={activeMaestroSession ?? maestroSessions[active.maestroSessionId] ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
-              visible={showActivity}
+        {/* Split area — fills terminalDeck. In split mode becomes a flex row;
+            in chat/terminal modes the chat overlay and terminal section are both
+            position:absolute inset:0 (terminal stays fully dimensioned, never
+            unmounts or loses xterm size). */}
+        <div
+          ref={splitAreaRef}
+          className={`pn-split-area pn-split-area--${viewMode}`}
+          style={viewMode === 'split'
+            ? ({ '--pn-split-chat': `${Math.round(splitRatio * 100)}%` } as React.CSSProperties)
+            : undefined}
+        >
+          {/* Chat panel */}
+          {active?.maestroSessionId && (
+            <div
+              className="pn-activity-overlay"
+              style={viewMode === 'terminal' ? { display: 'none' } : undefined}
+              aria-hidden={viewMode === 'terminal'}
+            >
+              <SessionActivityPanel
+                session={activeMaestroSession ?? maestroSessions[active.maestroSessionId] ?? { id: active.maestroSessionId, name: active.name, timeline: [] }}
+                visible={viewMode !== 'terminal'}
+              />
+            </div>
+          )}
+          {/* Drag handle — only rendered in split mode */}
+          {viewMode === 'split' && active?.maestroSessionId && (
+            <div
+              className="pn-split-handle"
+              onPointerDown={handleSplitDragStart}
+              role="separator"
+              aria-label="Resize chat and terminal"
+              title="Drag to resize"
             />
-          </div>
-        )}
-        {/* Mode chip — shows current session role (coordinator / worker).
-            Lives inside the deck so it overlays only the terminal content, not
-            the session-log strip above it. */}
-        {activeMaestroSession && (
-          <ModeChip mode={activeMaestroSession.mode} />
-        )}
-        {/*
-          Center-pane decision:
-          1. If the sidebar has explicitly selected an inactive maestro session
-             for inspection → render the SessionStatsView (overrides terminal).
-             This covers Done sessions with exited PTYs and Archived sessions
-             whose local terminal row is gone entirely.
-          2. Else, if there are no local terminals → show the empty hero.
-          3. Else, render the terminal map. For any container whose underlying
-             session has an exited PTY but a known maestro session, swap in the
-             stats view in-place (this is the original locked seam — covers
-             sessions that exit in real time without a sidebar re-click).
-        */}
-        {/* Inspected stats view — a sibling of the always-mounted terminal map,
-            sharing the same absolute box (.terminalContainer is position:absolute
-            inset:0). Keeping the map mounted whether or not stats is showing means
-            toggling stats ↔ terminal never unmounts and re-creates every live PTY.
-            That remount was the long freeze on every stats → terminal switch. */}
-        {inspectedMaestroSession && (
-          <TerminalRingContainer
-            maestroSessionId={inspectedMaestroSession.id}
-            className={`terminalContainer ${activeIsCoordinator ? "coordinator-glow" : ""}`}
-            dataTerminalId={`maestro:${inspectedMaestroSession.id}`}
-          >
-            <SessionStatsView session={inspectedMaestroSession} />
-          </TerminalRingContainer>
-        )}
-        {/* Hero shows when no terminal is actually visible: no sessions, or
-            activeId is stale/null. Suppressed while inspecting a stats view. */}
-        {!inspectedMaestroSession && !sessions.some((s) => s.id === activeId) && (
+          )}
+          {/* Terminal section — always mounted; position:absolute inset:0 in
+              chat/terminal modes so xterm always has full deck dimensions. */}
+          <div className="pn-terminal-section">
+            {/* Mode chip — overlays the terminal section */}
+            {activeMaestroSession && (
+              <ModeChip mode={activeMaestroSession.mode} />
+            )}
+            {/*
+              Center-pane decision:
+              1. If the sidebar has explicitly selected an inactive maestro session
+                 for inspection → render the SessionStatsView (overrides terminal).
+                 This covers Done sessions with exited PTYs and Archived sessions
+                 whose local terminal row is gone entirely.
+              2. Else, if there are no local terminals → show the empty hero.
+              3. Else, render the terminal map. For any container whose underlying
+                 session has an exited PTY but a known maestro session, swap in the
+                 stats view in-place (this is the original locked seam — covers
+                 sessions that exit in real time without a sidebar re-click).
+            */}
+            {/* Inspected stats view — a sibling of the always-mounted terminal map,
+                sharing the same absolute box (.terminalContainer is position:absolute
+                inset:0). Keeping the map mounted whether or not stats is showing means
+                toggling stats ↔ terminal never unmounts and re-creates every live PTY.
+                That remount was the long freeze on every stats → terminal switch. */}
+            {inspectedMaestroSession && (
+              <TerminalRingContainer
+                maestroSessionId={inspectedMaestroSession.id}
+                className={`terminalContainer ${activeIsCoordinator ? "coordinator-glow" : ""}`}
+                dataTerminalId={`maestro:${inspectedMaestroSession.id}`}
+              >
+                <SessionStatsView session={inspectedMaestroSession} />
+              </TerminalRingContainer>
+            )}
+            {/* Hero shows when no terminal is actually visible: no sessions, or
+                activeId is stale/null. Suppressed while inspecting a stats view. */}
+            {!inspectedMaestroSession && !sessions.some((s) => s.id === activeId) && (
               <div className="terminalEmptyState">
                 <div className="terminalEmptyAscii" aria-hidden="true">
 {`  ╔══════════════════════════════╗
@@ -588,6 +644,8 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
                 </TerminalRingContainer>
               );
             })}
+          </div>
+        </div>
         </div>
       </div>
 

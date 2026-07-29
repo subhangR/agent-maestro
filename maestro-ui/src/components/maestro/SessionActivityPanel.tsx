@@ -2,6 +2,8 @@ import React from "react";
 import { AgentTile, type AgentKind } from "./redesign/kit";
 import { maestroClient } from "../../utils/MaestroClient";
 import type { AgentTool, MaestroProject, SessionLogDigestResponse, SessionTranscriptMessage } from "../../app/types/maestro";
+import { derivePipeline } from "../../utils/derivePipeline";
+import { PipelineVisualization } from "./PipelineVisualization";
 import { useMaestroStore } from "../../stores/useMaestroStore";
 import { useProjectStore } from "../../stores/useProjectStore";
 import { useSessionStore } from "../../stores/useSessionStore";
@@ -414,6 +416,11 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
     [currentDigest],
   );
 
+  // Derive pipeline stage status from the real session timeline events.
+  // `events` comes from session.timeline (raw SessionTimelineEvent[] from the
+  // server) which carries optional metadata.stage for explicit attribution.
+  const pipelineStages = React.useMemo(() => derivePipeline(events), [events]);
+
   React.useEffect(() => {
     const el = feedRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -447,6 +454,7 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
 
       <div className="pn-chat__feed" ref={feedRef}>
         <div className="pn-chat__inner">
+          <PipelineVisualization stages={pipelineStages} />
           {loading && !hasFlow ? (
             <div className="pn-chat__loading">
               <span className="pn-chat__dots"><span /><span /><span /></span>

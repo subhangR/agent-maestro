@@ -402,6 +402,42 @@ html[data-redesign][data-redesign] .pn-viewseg__btn--on {
 }
 
 /* --------------------------------------------------------------------------
+   10b · SPLIT PANELS — pn-split-area wraps chat + terminal inside terminalDeck.
+   In chat/terminal modes both panels are position:absolute inset:0 so the
+   terminal always has the full deck dimensions (xterm never loses its size).
+   In split mode the wrapper becomes a flex row with a draggable divider.
+   -------------------------------------------------------------------------- */
+html[data-redesign][data-redesign] .pn-split-area {
+  position: absolute; inset: 0;
+}
+html[data-redesign][data-redesign] .pn-terminal-section {
+  position: absolute; inset: 0;
+}
+
+/* SPLIT MODE: flex row */
+html[data-redesign][data-redesign] .pn-split-area--split {
+  display: flex; flex-direction: row;
+}
+html[data-redesign][data-redesign] .pn-split-area--split .pn-activity-overlay {
+  position: relative; inset: auto; z-index: auto;
+  width: var(--pn-split-chat, 40%); flex: 0 0 auto;
+}
+html[data-redesign][data-redesign] .pn-split-area--split .pn-terminal-section {
+  position: relative; flex: 1 1 0; min-width: 0;
+}
+
+/* Drag handle between chat and terminal */
+html[data-redesign][data-redesign] .pn-split-handle {
+  flex: 0 0 4px; cursor: col-resize; z-index: 10;
+  background: var(--pn-line-2, rgba(255,255,255,0.12));
+  transition: background 120ms;
+}
+html[data-redesign][data-redesign] .pn-split-handle:hover,
+html[data-redesign][data-redesign] .pn-split-handle:active {
+  background: var(--pn-brand, #7c6fff);
+}
+
+/* --------------------------------------------------------------------------
    11 · PLAIN-LANGUAGE CHAT VIEW (SessionActivityPanel) — editorial timeline on
    the warm canvas, ambient glow, glass header (blur surface #2 of 4).
    -------------------------------------------------------------------------- */
@@ -783,6 +819,59 @@ html[data-redesign][data-redesign][data-theme='dark'] .pn-chat__composer-send {
 }
 html[data-redesign][data-redesign][data-theme='dark'] .pn-chat__composer-menu {
   box-shadow: 0 12px 30px -14px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Pipeline visualization strip (SessionActivityPanel top) ─────────────── */
+html[data-redesign][data-redesign] .pn-pipeline {
+  display: flex; align-items: center; justify-content: center; flex-wrap: nowrap;
+  gap: 0; padding: 10px 12px 8px; margin: 0 0 18px;
+  background: var(--pn-surface); border: 1px solid var(--pn-line-2);
+  border-radius: 10px; overflow-x: auto; scrollbar-width: none;
+}
+html[data-redesign][data-redesign] .pn-pipeline::-webkit-scrollbar { display: none; }
+html[data-redesign][data-redesign] .pn-pipeline__arrow {
+  width: 16px; flex: 0 0 16px; height: 1px; background: var(--pn-line-2); margin: 0 2px;
+  position: relative; top: -6px;
+}
+html[data-redesign][data-redesign] .pn-pipeline__stage {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  min-width: 54px; padding: 0 4px; cursor: default;
+}
+html[data-redesign][data-redesign] .pn-pipeline__ic {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--pn-line-2); color: var(--pn-ink-4);
+  flex: 0 0 auto; transition: background .18s, color .18s;
+}
+html[data-redesign][data-redesign] .pn-pipeline__label {
+  font-family: var(--pn-mono); font-size: 9.5px; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--pn-ink-4); font-weight: 600;
+  white-space: nowrap;
+}
+html[data-redesign][data-redesign] .pn-pipeline__agent {
+  font-size: 9px; color: var(--pn-ink-4); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 60px;
+}
+/* — done */
+html[data-redesign][data-redesign] .pn-pipeline__stage--done .pn-pipeline__ic {
+  background: var(--pn-brand); color: var(--pn-on-accent);
+}
+html[data-redesign][data-redesign] .pn-pipeline__stage--done .pn-pipeline__label { color: var(--pn-ink); }
+/* — active */
+html[data-redesign][data-redesign] .pn-pipeline__stage--active .pn-pipeline__ic {
+  background: var(--pn-card); border: 2px solid var(--pn-brand-2); color: var(--pn-brand);
+}
+html[data-redesign][data-redesign] .pn-pipeline__stage--active .pn-pipeline__label { color: var(--pn-brand); }
+/* — failed */
+html[data-redesign][data-redesign] .pn-pipeline__stage--failed .pn-pipeline__ic {
+  background: var(--pn-error, #e53e3e); color: #fff;
+}
+html[data-redesign][data-redesign] .pn-pipeline__stage--failed .pn-pipeline__label { color: var(--pn-error, #e53e3e); }
+/* — spin animation (reuses existing pnChatRot keyframe) */
+html[data-redesign][data-redesign] .pn-pipeline__spin { animation: pnChatRot 1.1s linear infinite; }
+/* dark theme */
+html[data-redesign][data-redesign][data-theme='dark'] .pn-pipeline {
+  background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.08);
 }
 
 /* ── Model picker chip popover (task modal) ─────────────────────────────── */

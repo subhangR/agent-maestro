@@ -85,8 +85,8 @@ export function resolveTeamContextLensForMode(mode: AgentModeInput): TeamContext
 }
 
 /** Supported agent tools */
-export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini';
-export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini';
+export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini' | 'kimi' | 'glm';
+export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini' | 'kimi' | 'glm';
 export type LaunchReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type LaunchSpeed = 'standard' | 'fast';
 export type LaunchAccessMode = 'safe' | 'acceptEdits' | 'plan' | 'fullAccess';

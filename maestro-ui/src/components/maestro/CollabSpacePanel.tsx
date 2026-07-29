@@ -428,6 +428,27 @@ function PrivateInviteJoinCard() {
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pastedLink = useMemo(() => parseInviteLink(invite.trim()), [invite]);
+  const autoRedeemed = useRef(false);
+
+  // Auto-redeem a deep-link invite as soon as the user is signed in.
+  // Guard with a ref so it only fires once per component mount.
+  useEffect(() => {
+    if (autoRedeemed.current || !parsed || !user) return;
+    autoRedeemed.current = true;
+    setOpen(true);
+    setJoining(true);
+    setError(null);
+    CollabSpaceClient.redeemInvite(user, parsed.spaceId, parsed.inviteId)
+      .then(() => {
+        setActiveId(makeCollabActiveId(parsed.spaceId));
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Couldn't join this private space.");
+      })
+      .finally(() => {
+        setJoining(false);
+      });
+  }, [parsed, user, setActiveId]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

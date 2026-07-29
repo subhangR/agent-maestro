@@ -3,6 +3,8 @@ import { ClaudeSpawner, type SpawnResult, type SpawnOptions } from './claude-spa
 import { CodexSpawner } from './codex-spawner.js';
 import { GeminiSpawner } from './gemini-spawner.js';
 import { HermesSpawner } from './hermes-spawner.js';
+import { KimiSpawner } from './kimi-spawner.js';
+import { GlmSpawner } from './glm-spawner.js';
 import { randomBytes } from 'crypto';
 import { AGENT_TOOL_DISPLAY_NAMES } from '../prompts/index.js';
 
@@ -28,11 +30,13 @@ export class AgentSpawner implements IAgentSpawner {
   private _codexSpawner?: CodexSpawner;
   private _geminiSpawner?: GeminiSpawner;
   private _hermesSpawner?: HermesSpawner;
+  private _kimiSpawner?: KimiSpawner;
+  private _glmSpawner?: GlmSpawner;
 
   /**
    * Get the appropriate spawner for a manifest (lazy-initialized)
    */
-  private getSpawner(manifest: MaestroManifest): ClaudeSpawner | CodexSpawner | GeminiSpawner | HermesSpawner {
+  private getSpawner(manifest: MaestroManifest): ClaudeSpawner | CodexSpawner | GeminiSpawner | HermesSpawner | KimiSpawner | GlmSpawner {
     const agentTool = manifest.agentTool || 'claude-code';
 
     switch (agentTool) {
@@ -42,6 +46,10 @@ export class AgentSpawner implements IAgentSpawner {
         return (this._geminiSpawner ??= new GeminiSpawner());
       case 'hermes':
         return (this._hermesSpawner ??= new HermesSpawner());
+      case 'kimi':
+        return (this._kimiSpawner ??= new KimiSpawner());
+      case 'glm':
+        return (this._glmSpawner ??= new GlmSpawner());
       case 'claude-code':
       default:
         return (this._claudeSpawner ??= new ClaudeSpawner());

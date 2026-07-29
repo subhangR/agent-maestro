@@ -11,6 +11,7 @@ import {
   setDoc,
   updateDoc,
   deleteDoc,
+  increment,
   serverTimestamp,
   onSnapshot,
   writeBatch,
@@ -379,6 +380,76 @@ export const MessagingClient = {
     messageId: string,
   ): Promise<void> {
     await withRetry(() => deleteDoc(messageDoc(spaceId, channelId, messageId)));
+  },
+
+  // ─── Threads ────────────────────────────────────────────────────
+
+  subscribeToThread(
+    spaceId: string,
+    channelId: string,
+    parentMessageId: string,
+    cb: (messages: Message[]) => void,
+    opts?: { onError?: (err: Error) => void },
+  ): Unsubscribe {
+    const q = query(
+      messagesCol(spaceId, channelId),
+      where('threadId', '==', parentMessageId),
+      orderBy('createdAt', 'asc'),
+    );
+    return onSnapshot(
+      q,
+      (snap) => cb(messagesFromQuery(snap)),
+      (err) => {
+        // eslint-disable-next-line no-console
+        console.warn('[Messaging] thread subscription failed:', err);
+        opts?.onError?.(err);
+      },
+    );
+  },
+
+  async sendReply(
+    user: User,
+    spaceId: string,
+    channelId: string,
+    parentMessageId: string,
+    content: string,
+    mentions: MessageMention[] = [],
+    opts?: { clientMsgId?: string },
+  ): Promise<Message> {
+    if (!content.trim()) throw new Error('Reply is empty.');
+    const now = serverTimestamp();
+    const newMsgRef = doc(messagesCol(spaceId, channelId));
+    await withRetry(() => {
+      const batch = writeBatch(getDb());
+      batch.set(newMsgRef, {
+        spaceId,
+        channelId,
+        authorUid: user.uid,
+        authorDisplayName: user.displayName ?? user.email ?? 'Unknown',
+        authorPhotoUrl: user.photoURL ?? null,
+        content,
+        createdAt: now,
+        editedAt: null,
+        deletedAt: null,
+        threadId: parentMessageId,
+        replyCount: 0,
+        mentions: mentions.map((m) => ({ id: m.id, displayName: m.displayName, kind: m.kind })),
+        attachments: [],
+        clientMsgId: opts?.clientMsgId ?? null,
+      });
+      batch.update(messageDoc(spaceId, channelId, parentMessageId), {
+        replyCount: increment(1),
+      });
+      batch.update(channelDoc(spaceId, channelId), {
+        lastMessageAt: now,
+        updatedAt: now,
+      });
+      return batch.commit();
+    });
+    const fresh = await withRetry(() => getDoc(newMsgRef));
+    const sent = messageFromSnap(fresh);
+    if (!sent) throw new Error('Reply was sent but could not be read back.');
+    return sent;
   },
 };
 

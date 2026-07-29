@@ -26,6 +26,7 @@ export interface TextOnlyDigest {
   entries: TextEntry[];
   stuck: StuckSignal | null;
   lastActivityTimestamp: number;
+  summary?: string;
 }
 
 export interface SessionStatsDigest {
@@ -242,6 +243,9 @@ export class LogDigestService {
     // Determine state from session status
     const state = this.mapSessionState(session.status, session.needsInput);
 
+    // End-of-job summary (idle sessions only; deterministic, no LLM)
+    const summary = this.synthesizeSummary(lines, state, allEntries);
+
     return {
       sessionId,
       workerName: session.teamMemberSnapshot?.name || session.name,
@@ -252,6 +256,7 @@ export class LogDigestService {
       lastActivityTimestamp: entries.length > 0
         ? entries[entries.length - 1].timestamp
         : session.lastActivity || Date.now(),
+      summary,
     };
   }
 
@@ -823,12 +828,12 @@ export class LogDigestService {
         const eventText = this.extractCodexEventText(line?.payload);
         if (!eventText) continue;
 
-        const cleaned = this.cleanText(eventText);
-        if (!cleaned) continue;
+        const firstLine = this.prepareForChat(eventText, maxLength);
+        if (!firstLine) continue;
 
         this.pushEntry(entries, {
           timestamp,
-          text: this.truncateText(cleaned, maxLength),
+          text: firstLine,
           source: 'assistant',
         });
         continue;
@@ -843,11 +848,11 @@ export class LogDigestService {
       if (!text) continue;
 
       if (role === 'assistant') {
-        const cleaned = this.cleanText(text);
-        if (cleaned) {
+        const firstLine = this.prepareForChat(text, maxLength);
+        if (firstLine) {
           this.pushEntry(entries, {
             timestamp,
-            text: this.truncateText(cleaned, maxLength),
+            text: firstLine,
             source: 'assistant',
           });
         }
@@ -957,6 +962,7 @@ export class LogDigestService {
   /**
    * Extract readable text from an assistant message.
    * Only keeps type: 'text' blocks. Drops thinking, tool_use, tool_result.
+   * Strips markdown noise and returns the first meaningful line/sentence.
    */
   private extractAssistantText(line: any, maxLength: number = MAX_TEXT_LENGTH): string[] {
     const message = line.message || line;
@@ -965,17 +971,17 @@ export class LogDigestService {
     if (!content) return [];
 
     if (typeof content === 'string') {
-      const cleaned = this.cleanText(content);
-      return cleaned ? [this.truncateText(cleaned, maxLength)] : [];
+      const firstLine = this.prepareForChat(content, maxLength);
+      return firstLine ? [firstLine] : [];
     }
 
     if (Array.isArray(content)) {
       const texts: string[] = [];
       for (const block of content) {
         if (block.type === 'text' && block.text) {
-          const cleaned = this.cleanText(block.text);
-          if (cleaned) {
-            texts.push(this.truncateText(cleaned, maxLength));
+          const firstLine = this.prepareForChat(block.text, maxLength);
+          if (firstLine) {
+            texts.push(firstLine);
           }
         }
       }
@@ -1069,6 +1075,114 @@ export class LogDigestService {
       .replace(/&amp;/g, '&')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  /**
+   * Strip markdown formatting from text (code fences, bold, italic, headings).
+   * Keeps the readable prose, removes the syntax noise.
+   */
+  private stripMarkdown(text: string): string {
+    let cleaned = text;
+    // Remove code fence blocks entirely (they're rarely the meaningful step)
+    cleaned = cleaned.replace(/```[\s\S]*?```/g, '').trim();
+    // Inline code — keep inner text
+    cleaned = cleaned.replace(/`([^`\n]+)`/g, '$1');
+    // Bold/italic — keep inner text
+    cleaned = cleaned.replace(/\*{1,3}([^*\n]*?)\*{1,3}/g, '$1');
+    cleaned = cleaned.replace(/_{1,3}([^_\n]*?)_{1,3}/g, '$1');
+    // Heading markers
+    cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+    // Blockquote markers
+    cleaned = cleaned.replace(/^>\s*/gm, '');
+    // Normalize whitespace
+    cleaned = cleaned.replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    return cleaned;
+  }
+
+  /**
+   * Extract the first line of text that carries meaningful content.
+   * Skips blank lines, pure punctuation, and list-marker-only lines.
+   */
+  private extractFirstMeaningfulLine(text: string): string {
+    const lines = text.split('\n');
+    for (const line of lines) {
+      // Strip leading list/quote markers
+      const trimmed = line.replace(/^[\s\-*•>|]+/, '').trim();
+      // Must have enough substance to be readable
+      if (trimmed.length >= 10) {
+        return trimmed;
+      }
+    }
+    // Fallback: collapse entire text to a single line
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Full assistant-text cleaning pipeline: XML noise → markdown → first meaningful line → truncate.
+   * Used for both Claude and Codex assistant text entries so chat shows concise step updates.
+   */
+  private prepareForChat(text: string, maxLength: number = MAX_TEXT_LENGTH): string {
+    const xmlCleaned = this.cleanText(text);
+    if (!xmlCleaned) return '';
+    const mdCleaned = this.stripMarkdown(xmlCleaned);
+    if (!mdCleaned) return '';
+    const firstLine = this.extractFirstMeaningfulLine(mdCleaned);
+    if (!firstLine) return '';
+    return this.truncateText(firstLine, maxLength);
+  }
+
+  /**
+   * Synthesize a plain-language end-of-job summary for idle sessions.
+   * Deterministic: derived from tool-call count and last assistant text in the tail.
+   * Returns undefined for active sessions (still in progress).
+   */
+  private synthesizeSummary(lines: any[], state: string, allEntries: TextEntry[]): string | undefined {
+    if (state === 'active') return undefined;
+
+    // Count tool calls visible in the transcript tail
+    let toolCallCount = 0;
+    if (this.isCodexLog(lines)) {
+      for (const line of lines) {
+        if (line?.type === 'function_call') toolCallCount++;
+        if (line?.type === 'response_item' && line?.payload?.type === 'function_call') toolCallCount++;
+      }
+    } else {
+      for (const line of lines) {
+        if (line?.type !== 'assistant') continue;
+        const content = line.message?.content || line.content;
+        if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block?.type === 'tool_use') toolCallCount++;
+          }
+        }
+      }
+    }
+
+    // Last substantive assistant text (already cleaned by extractAssistantText)
+    let lastAssistantText = '';
+    for (let i = allEntries.length - 1; i >= 0; i--) {
+      const entry = allEntries[i];
+      if (entry.source === 'assistant' && entry.text.trim().length >= 15) {
+        lastAssistantText = entry.text.trim();
+        break;
+      }
+    }
+
+    const prefix = state === 'needs_input' ? 'Waiting for input' : 'Completed';
+
+    const parts: string[] = [];
+    if (toolCallCount > 0) {
+      parts.push(`${toolCallCount} tool call${toolCallCount !== 1 ? 's' : ''}`);
+    }
+    if (lastAssistantText) {
+      const snippet = lastAssistantText.length > 120
+        ? lastAssistantText.substring(0, 120) + '...'
+        : lastAssistantText;
+      parts.push(snippet);
+    }
+
+    if (parts.length === 0) return prefix;
+    return `${prefix} — ${parts.join(' — ')}`;
   }
 
   /**

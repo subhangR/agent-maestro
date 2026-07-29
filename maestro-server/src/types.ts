@@ -92,8 +92,8 @@ export interface UpdateTaskGraphPayload {
 // Worker strategy types
 export type WorkerStrategy = 'simple' | 'tree';
 export type OrchestratorStrategy = 'default' | 'intelligent-batching' | 'dag';
-export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini';
-export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini';
+export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini' | 'kimi' | 'glm';
+export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini' | 'kimi' | 'glm';
 export type LaunchReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type LaunchSpeed = 'standard' | 'fast';
 export type LaunchAccessMode = 'safe' | 'acceptEdits' | 'plan' | 'fullAccess';
@@ -568,7 +568,20 @@ export interface SessionTimelineEvent {
   timestamp: number;
   message?: string;
   taskId?: string;                    // Which task this event relates to
-  metadata?: Record<string, any>;     // Extensible metadata
+  metadata?: Record<string, any>;     // Extensible metadata — may include `stage: PipelineStageName`
+}
+
+// Pipeline stage model for multi-agent workflow visualization.
+// Timeline events may carry metadata.stage for explicit stage attribution.
+export type PipelineStageName = 'ideate' | 'design' | 'build' | 'test' | 'host' | 'db' | 'realtime-db';
+export type PipelineStageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+
+export interface PipelineStage {
+  name: PipelineStageName;
+  status: PipelineStageStatus;
+  agentLabel?: string;
+  startedAt?: number;
+  completedAt?: number;
 }
 
 // Document entry for session/task docs
