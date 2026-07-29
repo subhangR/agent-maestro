@@ -370,8 +370,28 @@ export function TerminalStrip({ cwd, maestroSessionId, agentTool, onAttach, onDr
     };
   }, [allMessages]);
 
-  // Don't render until we've found the log file
-  if (!ready || !selectedFile) return null;
+  // Don't render until we've found the log file. Exception: when the parent
+  // has put us in an expanded (Chat / Together) view, returning null would
+  // leave a blank pane while we're still locating the agent's log — so show a
+  // lightweight "connecting" placeholder instead. In Terminal-only mode the raw
+  // terminal is visible anyway, so null is fine there.
+  if (!ready || !selectedFile) {
+    if (forceExpanded) {
+      return (
+        <div className="termStrip termStrip--expanded">
+          <div className="termStripBar">
+            <span className="termStripLabel">Session Log</span>
+            <span className="termStripLiveDot" />
+            <span className="termStripLiveTag">CONNECTING</span>
+          </div>
+          <div className="termStripOverlay">
+            <div className="termStripEmpty">Connecting to the agent’s conversation…</div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  }
 
   // Hidden: no strip content, no layout footprint — just a compact, labelled,
   // keyboard-reachable restore control floating in the terminal's top corner.
