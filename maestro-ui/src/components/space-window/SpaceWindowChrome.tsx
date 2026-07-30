@@ -13,7 +13,7 @@ export const SpaceWindowChrome: React.FC<Props> = ({ space, onSettings, inline =
     const visibilityLabel = space?.visibility === "private" ? "Private" : "Public";
 
     return (
-        <div className={`spaceWindowChrome ${inline ? "spaceWindowChrome--inline" : ""}`}>
+        <div className={`spaceWindowChrome pn-head ${inline ? "spaceWindowChrome--inline" : ""}`}>
             {space ? (
                 <SpaceAvatar colorKey={space.id} name={space.name} size={32} />
             ) : (
@@ -48,7 +48,7 @@ export const SpaceWindowChrome: React.FC<Props> = ({ space, onSettings, inline =
 
             <button
                 type="button"
-                className="spaceWindowSettings"
+                className="spaceWindowSettings pn-ib"
                 onClick={onSettings}
                 title="Space settings"
                 aria-label="Space settings"

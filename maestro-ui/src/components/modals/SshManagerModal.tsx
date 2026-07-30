@@ -106,7 +106,7 @@ export function SshManagerModal({
 
   return (
     <div className="modalBackdrop" onClick={onClose}>
-      <div className="modal sshModal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal sshModal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
         <div className="sshHeader">
           <div className="sshHeaderIcon" aria-hidden="true">
             <Icon name="ssh" size={20} />
@@ -141,7 +141,7 @@ export function SshManagerModal({
               />
               <button
                 type="button"
-                className="btnSmall"
+                className="pn-btn pn-btn--sm"
                 onClick={onRefreshHosts}
                 disabled={hostsLoading}
                 title="Refresh from ~/.ssh/config"
@@ -298,7 +298,7 @@ export function SshManagerModal({
 
                     <button
                       type="button"
-                      className="btnSmall btnDanger sshForwardRemove"
+                      className="pn-btn pn-btn--sm pn-btn--danger sshForwardRemove"
                       onClick={() => onRemoveForward(f.id)}
                       title="Remove forward"
                     >
@@ -310,7 +310,7 @@ export function SshManagerModal({
             )}
 
             <div className="sshForwardActions">
-              <button type="button" className="btnSmall" onClick={onAddForward}>
+              <button type="button" className="pn-btn pn-btn--sm" onClick={onAddForward}>
                 + Add forward
               </button>
             </div>
@@ -325,7 +325,7 @@ export function SshManagerModal({
               <div className="sshCommandPreviewActions">
                 <button
                   type="button"
-                  className="btnSmall"
+                  className="pn-btn pn-btn--sm"
                   disabled={!commandPreview}
                   onClick={onCopyCommand}
                   title={commandPreview ? "Copy command to clipboard" : "Nothing to copy yet"}
@@ -343,10 +343,10 @@ export function SshManagerModal({
           )}
 
           <div className="modalActions">
-            <button type="button" className="btn" onClick={onClose}>
+            <button type="button" className="pn-btn" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn btnPrimary">
+            <button type="submit" className="pn-btn pn-btn--primary">
               Connect
             </button>
           </div>

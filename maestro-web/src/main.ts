@@ -81,7 +81,13 @@ function connect(sessionId: string): void {
     cursorBlink: true,
     fontSize: 13,
     fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-    theme: { background: '#000000' },
+    theme: {
+      background: '#1c1a16',
+      foreground: '#e8e2d4',
+      cursor: '#cc785c',
+      cursorAccent: '#1c1a16',
+      selectionBackground: '#3a2a20',
+    },
   });
   fit = new FitAddon();
   term.loadAddon(fit);

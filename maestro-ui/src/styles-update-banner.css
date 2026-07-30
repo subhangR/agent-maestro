@@ -49,6 +49,30 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
+/* ========================================================================
+   REDESIGN OVERRIDES — warm-paper pn tokens
+   Repoints the legacy neon-green banner onto pn-run (the same success/positive
+   token used elsewhere in the redesign) when html[data-redesign] is active.
+   Token-only; base rules above are untouched.
+   ======================================================================== */
+html[data-redesign] .updateBanner {
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-run-soft);
+}
+html[data-redesign] .updateBannerText { color: var(--pn-ink-2); }
+html[data-redesign] .updateBannerBtn {
+  border: 1px solid var(--pn-run);
+  background: var(--pn-run-soft);
+  color: var(--pn-run);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .updateBannerBtn:hover {
+  background: var(--pn-run);
+  color: var(--pn-paper);
+}
+html[data-redesign] .updateBannerClose { color: var(--pn-ink-3); }
+html[data-redesign] .updateBannerClose:hover { color: var(--pn-ink); }
+
 .terminalArea {
   position: relative;
   flex: 1 1 0;

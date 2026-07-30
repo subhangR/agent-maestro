@@ -1303,15 +1303,201 @@ html[data-redesign][data-theme='dark'] .termStrip {
 }
 
 /* ===================================================================
-   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
-   SessionLogModal carries .pnLeakSkin which remaps --panel/--border/--text/
-   --muted to pn tokens. This block patches the remaining --style-font-ui leak
-   in the modal chrome (.sessionLogFileSelect, .sessionLogFilename, show-more
-   controls, etc.). The .termStripOverlay section below is intentionally dark
-   (bucket C) and is NOT touched by these overrides. Auto-flips dark.
-   =================================================================== */
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign]
+   .sessionLogModal. SessionLogModal carries .pnLeakSkin which remaps
+   --panel/--border/--text/--muted to pn tokens; this block finishes the job
+   for what pnLeakSkin does NOT cover — --accent/--accent-2/--accent-3
+   (still legacy neon blue/cyan/indigo) plus the many literal (non-var)
+   colors, hover washes and radii baked into this file when it predated the
+   redesign. Everything here is scoped under the modal root so it can never
+   reach the .termStripOverlay subtree below, which renders the very same
+   .sessionLog* classes but deliberately stays in the always-dark terminal
+   palette (bucket C) with its own separate remap + patches. Auto-flips dark
+   because every value is a --pn-* token. =================================================================== */
 html[data-redesign] .sessionLogModal {
   --style-font-ui: var(--pn-ui);
+  --accent: var(--pn-brand);
+  --accent-2: var(--pn-info);
+  --accent-3: var(--pn-run);
+  --accent-persistent: var(--pn-brand-2);
+}
+
+/* Rounded corners — legacy 2-4px chrome bumped to the Atelier scale. */
+html[data-redesign] .sessionLogModal .sessionLogUserMsg,
+html[data-redesign] .sessionLogModal .sessionLogThinking,
+html[data-redesign] .sessionLogModal .sessionLogToolCard,
+html[data-redesign] .sessionLogModal .sessionLogDiff,
+html[data-redesign] .sessionLogModal .sessionLogCode,
+html[data-redesign] .sessionLogModal .sessionLogBash,
+html[data-redesign] .sessionLogModal .sessionLogSubagent,
+html[data-redesign] .sessionLogModal .sessionLogTeammateCard,
+html[data-redesign] .sessionLogModal .sessionLogContextSection {
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .sessionLogModal .sessionLogToolCardErrorBadge,
+html[data-redesign] .sessionLogModal .sessionLogSubagentTypeBadge,
+html[data-redesign] .sessionLogModal .sessionLogLangBadge,
+html[data-redesign] .sessionLogModal .sessionLogTokenBadge,
+html[data-redesign] .sessionLogModal .sessionLogStateBadge,
+html[data-redesign] .sessionLogModal .sessionLogTeammateBadge,
+html[data-redesign] .sessionLogModal .sessionLogShowMore {
+  border-radius: var(--pn-r-xs);
+}
+
+/* User message tint (was legacy accent-blue rgba literals). */
+html[data-redesign] .sessionLogModal .sessionLogUserMsg {
+  background: var(--pn-brand-soft);
+  border-color: color-mix(in srgb, var(--pn-brand) 26%, transparent);
+}
+
+/* Thinking block */
+html[data-redesign] .sessionLogModal .sessionLogThinkingHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .sessionLogModal .sessionLogThinkingPreview {
+  color: var(--pn-ink-4);
+}
+
+/* Tool call card */
+html[data-redesign] .sessionLogModal .sessionLogToolCardError {
+  border-color: color-mix(in srgb, var(--pn-block) 32%, transparent);
+}
+html[data-redesign] .sessionLogModal .sessionLogToolCardHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .sessionLogModal .sessionLogToolCardErrorBadge {
+  background: var(--pn-block-soft);
+  color: var(--pn-block);
+}
+
+/* Diff viewer — chrome only; add/remove semantics kept, retinted to the
+   desaturated pn-run / pn-block pair instead of saturated Tailwind green/red. */
+html[data-redesign] .sessionLogModal .sessionLogDiffLineAdded {
+  background: var(--pn-run-soft);
+  border-left-color: var(--pn-run);
+}
+html[data-redesign] .sessionLogModal .sessionLogDiffLineRemoved {
+  background: var(--pn-block-soft);
+  border-left-color: var(--pn-block);
+}
+html[data-redesign] .sessionLogModal .sessionLogDiffLineAdded .sessionLogDiffPrefix,
+html[data-redesign] .sessionLogModal .sessionLogDiffLineAdded .sessionLogLineContent {
+  color: var(--pn-run);
+}
+html[data-redesign] .sessionLogModal .sessionLogDiffLineRemoved .sessionLogDiffPrefix,
+html[data-redesign] .sessionLogModal .sessionLogDiffLineRemoved .sessionLogLineContent {
+  color: var(--pn-block);
+}
+html[data-redesign] .sessionLogModal .sessionLogDiffAdded { color: var(--pn-run); }
+html[data-redesign] .sessionLogModal .sessionLogDiffRemoved { color: var(--pn-block); }
+
+/* Code block chrome (gutter + recessed body); code text itself stays --text. */
+html[data-redesign] .sessionLogModal .sessionLogCodeBody {
+  background: var(--pn-active);
+}
+html[data-redesign] .sessionLogModal .sessionLogLineNum {
+  color: var(--pn-ink-4);
+}
+
+/* File header (shared by diff + code) */
+html[data-redesign] .sessionLogModal .sessionLogFileHeader {
+  background: var(--pn-surface);
+}
+html[data-redesign] .sessionLogModal .sessionLogLangBadge {
+  background: var(--pn-active);
+}
+
+/* Bash output */
+html[data-redesign] .sessionLogModal .sessionLogBashCommand {
+  background: var(--pn-active);
+}
+html[data-redesign] .sessionLogModal .sessionLogBashOutput {
+  background: var(--pn-hover);
+}
+html[data-redesign] .sessionLogModal .sessionLogBashError {
+  color: var(--pn-block);
+}
+html[data-redesign] .sessionLogModal .sessionLogShowMore {
+  background: var(--pn-active);
+}
+html[data-redesign] .sessionLogModal .sessionLogShowMore:hover {
+  background: var(--pn-brand-soft);
+}
+
+/* Token usage badge + JSON blocks */
+html[data-redesign] .sessionLogModal .sessionLogTokenBadge {
+  background: var(--pn-active);
+}
+html[data-redesign] .sessionLogModal .sessionLogJsonBlock {
+  background: var(--pn-active);
+}
+
+/* Live / ongoing / state indicators */
+html[data-redesign] .sessionLogModal .sessionLogLiveBtn:hover {
+  border-color: color-mix(in srgb, var(--pn-block) 40%, transparent);
+}
+html[data-redesign] .sessionLogModal .sessionLogLiveBtnActive {
+  border-color: color-mix(in srgb, var(--pn-block) 45%, transparent);
+  color: var(--pn-block);
+  background: var(--pn-block-soft);
+}
+html[data-redesign] .sessionLogModal .sessionLogLiveIndicator {
+  background: var(--pn-block);
+}
+html[data-redesign] .sessionLogModal .sessionLogStateBadgeActive {
+  background: var(--pn-run-soft);
+  color: var(--pn-run);
+  border-color: color-mix(in srgb, var(--pn-run) 34%, transparent);
+}
+html[data-redesign] .sessionLogModal .sessionLogStateBadgeIdle {
+  background: var(--pn-active);
+}
+html[data-redesign] .sessionLogModal .sessionLogOngoingIndicator {
+  background: var(--pn-run);
+}
+
+/* View mode toggle */
+html[data-redesign] .sessionLogModal .sessionLogViewBtnActive {
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .sessionLogModal .sessionLogViewBtn:hover:not(.sessionLogViewBtnActive) {
+  background: var(--pn-hover);
+}
+
+/* Subagent card (border-left color already flows from the --accent-3 remap
+   above; only the literal indigo badge fill/border and recessed panels need
+   a direct override here). */
+html[data-redesign] .sessionLogModal .sessionLogSubagentError {
+  border-left-color: var(--pn-block);
+}
+html[data-redesign] .sessionLogModal .sessionLogSubagentHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .sessionLogModal .sessionLogSubagentTypeBadge {
+  background: var(--pn-run-soft);
+  border-color: color-mix(in srgb, var(--pn-run) 30%, transparent);
+}
+html[data-redesign] .sessionLogModal .sessionLogSubagentUsage,
+html[data-redesign] .sessionLogModal .sessionLogSubagentTraceContent {
+  background: var(--pn-active);
+}
+
+/* Teammate message card — the border-left/dot/badge colors are set inline
+   per-teammate (getTeamColorSet) and always win; this just retints the CSS
+   fallback so it is never a stray legacy blue if that ever renders unstyled. */
+html[data-redesign] .sessionLogModal .sessionLogTeammateCard {
+  border-left-color: var(--pn-brand-2);
+}
+html[data-redesign] .sessionLogModal .sessionLogTeammateHeader:hover {
+  background: var(--pn-hover);
+}
+
+/* Context panel */
+html[data-redesign] .sessionLogModal .sessionLogContextSectionHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .sessionLogModal .sessionLogContextSectionBar {
+  background: var(--pn-line);
 }
 
 /* Expanded transcript reuses LogMessageGroup (.sessionLog* classes), which are

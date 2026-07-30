@@ -4,6 +4,7 @@ import { InlineFolderBrowser } from "../InlineFolderBrowser";
 import { ProjectSoundSettings } from "./ProjectSoundSettings";
 import type { ProjectSoundConfig } from "../../app/types/maestro";
 import { IS_TAURI } from "../../platform/detect";
+import { Icon } from "../maestro/redesign/kit";
 
 type EnvironmentConfig = {
   id: string;
@@ -79,15 +80,19 @@ export function ProjectModal({
 
   return (
     <div className="themedModalBackdrop" onClick={onClose}>
-      <div className="themedModal themedModal--wide" onClick={(e) => e.stopPropagation()}>
-        <div className="themedModalHeader">
-          <span className="themedModalTitle">
-            [ {mode === "new" ? "New project" : "Project settings"} ]
-          </span>
-          <button type="button" className="themedModalClose" onClick={onClose}>×</button>
+      <div className="pn-mdl" style={{ width: 640 }} onClick={(e) => e.stopPropagation()}>
+        <div className="pn-mdl__hd">
+          <div className="pn-mdl__hdmain">
+            <div className="pn-mdl__titleinput">
+              {mode === "new" ? "New project" : "Project settings"}
+            </div>
+          </div>
+          <button type="button" className="pn-mdl__close" onClick={onClose} aria-label="Close">
+            <Icon name="x" size={16} />
+          </button>
         </div>
         <form onSubmit={onSubmit}>
-          <div className="themedModalContent">
+          <div className="pn-mdl__body">
             <div className="themedFormRow">
               <div className="themedFormLabel">Title</div>
               <input
@@ -109,13 +114,13 @@ export function ProjectModal({
               <div className="themedPathActions">
                 <button
                   type="button"
-                  className="themedBtn"
+                  className="pn-btn pn-btn--sm"
                   onClick={onUseCurrentTab}
                   disabled={!canUseCurrentTab}
                 >
                   Use current tab
                 </button>
-                <button type="button" className="themedBtn" onClick={onUseHome} disabled={!canUseHome}>
+                <button type="button" className="pn-btn pn-btn--sm" onClick={onUseHome} disabled={!canUseHome}>
                   Home
                 </button>
               </div>
@@ -174,7 +179,7 @@ export function ProjectModal({
                       </option>
                     ))}
                 </select>
-                <button type="button" className="themedBtn" onClick={onOpenEnvironments}>
+                <button type="button" className="pn-btn pn-btn--sm" onClick={onOpenEnvironments}>
                   Manage
                 </button>
               </div>
@@ -217,11 +222,11 @@ export function ProjectModal({
               </>
             )}
           </div>
-          <div className="themedFormActions">
-            <button type="button" className="themedBtn" onClick={onClose}>
+          <div className="pn-mdl__foot">
+            <button type="button" className="pn-btn" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="themedBtn themedBtnPrimary">
+            <button type="submit" className="pn-btn pn-btn--primary">
               {mode === "new" ? "Create" : "Save"}
             </button>
           </div>

@@ -33,7 +33,7 @@ export function ApplyAssetModal({
         onClose();
       }}
     >
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
         <h3 className="modalTitle">Apply template</h3>
 
         {error && (
@@ -51,12 +51,12 @@ export function ApplyAssetModal({
         </div>
 
         <div className="modalActions">
-          <button type="button" className="btn" onClick={onClose} disabled={applying}>
+          <button type="button" className="pn-btn" onClick={onClose} disabled={applying}>
             Cancel
           </button>
           <button
             type="button"
-            className="btn"
+            className="pn-btn"
             onClick={() => onApply(false)}
             disabled={applying}
             title="Skips writing if the file already exists"
@@ -65,7 +65,7 @@ export function ApplyAssetModal({
           </button>
           <button
             type="button"
-            className="btn"
+            className="pn-btn pn-btn--primary"
             onClick={() => onApply(true)}
             disabled={applying}
             title="Overwrites the file if it already exists"

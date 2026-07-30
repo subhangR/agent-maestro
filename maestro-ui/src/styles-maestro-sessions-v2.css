@@ -3334,6 +3334,20 @@
              · ExecutionBar dropdowns · ProjectDocsList.
    ========================================================================== */
 
+/* --- Timeline Event (TimelineEvent.tsx) --- */
+html[data-redesign] .timelineEvent { font-family: var(--pn-ui); }
+html[data-redesign] .timelineEvent--highlighted { background: var(--pn-active); }
+html[data-redesign] .timelineEvent--session .timelineEventDot { color: var(--pn-info); }
+html[data-redesign] .timelineEvent--started .timelineEventDot { color: var(--pn-run); }
+html[data-redesign] .timelineEvent--completed .timelineEventDot { color: var(--pn-run); }
+html[data-redesign] .timelineEvent--failed .timelineEventDot { color: var(--pn-block); }
+html[data-redesign] .timelineEvent--skipped .timelineEventDot { color: var(--pn-idle); }
+html[data-redesign] .timelineEvent--blocked .timelineEventDot { color: var(--pn-block); }
+html[data-redesign] .timelineEvent--warning .timelineEventDot { color: var(--pn-wait); }
+html[data-redesign] .timelineEvent--progress .timelineEventDot { color: var(--pn-info); }
+html[data-redesign] .timelineEvent--error .timelineEventDot { color: var(--pn-block); }
+html[data-redesign] .timelineEvent--milestone .timelineEventDot { color: var(--pn-brand); }
+
 /* --- Strategy Badge --- */
 html[data-redesign] .strategyBadge { font-family: var(--pn-ui); }
 html[data-redesign] .strategyBadge--simple {
@@ -3483,4 +3497,166 @@ html[data-redesign] .projectDocsListItem__time {
   font-family: var(--pn-mono);
 }
 html[data-redesign] .projectDocsListItem__close { color: var(--pn-ink-4); }
+
+/* --- Session Live Indicator (SessionLiveIndicator.tsx) --- */
+html[data-redesign] .sessionLiveIndicator__dot { background: var(--pn-idle); }
+html[data-redesign] .sessionLiveIndicator__dot--working {
+  background: var(--pn-run);
+  box-shadow: 0 0 6px var(--pn-run-soft);
+}
+html[data-redesign] .sessionLiveIndicator__dot--needsInput {
+  background: var(--pn-wait);
+  box-shadow: 0 0 6px var(--pn-wait-soft);
+}
+html[data-redesign] .sessionLiveIndicator__dot--idle { background: var(--pn-idle); }
+html[data-redesign] .sessionLiveIndicator__label { color: var(--pn-ink-3); }
+html[data-redesign] .sessionLiveIndicator__dot--working + .sessionLiveIndicator__label { color: var(--pn-run); }
+html[data-redesign] .sessionLiveIndicator__dot--needsInput + .sessionLiveIndicator__label { color: var(--pn-wait); }
+
+/* --- Session Details Section status/strategy/mode literal colors
+   (SessionDetailsSection.tsx) — the base rules above already flip surface/text
+   via var(--pn-*, legacy) fallbacks; only these flat status hexes need a
+   token-mapped override. --- */
+html[data-redesign] .sessionDetailsValue--strategy-simple { color: var(--pn-idle); }
+html[data-redesign] .sessionDetailsValue--strategy-queue { color: var(--pn-info); }
+html[data-redesign] .sessionDetailsValue--status-spawning { color: var(--pn-info); }
+html[data-redesign] .sessionDetailsValue--status-idle { color: var(--pn-idle); }
+html[data-redesign] .sessionDetailsValue--status-working { color: var(--pn-run); }
+html[data-redesign] .sessionDetailsValue--status-completed { color: var(--pn-run); }
+html[data-redesign] .sessionDetailsValue--status-failed { color: var(--pn-block); }
+html[data-redesign] .sessionDetailsValue--status-stopped { color: var(--pn-idle); }
+html[data-redesign] .sessionDetailsValue--mode-execute { color: var(--pn-run); }
+html[data-redesign] .sessionDetailsValue--mode-coordinate { color: var(--pn-brand); }
+
+/* --- Aggregated Timeline (SessionTimeline.tsx's AggregatedTimeline) — the
+   sibling .sessionTimeline* family above already flips via pn-first vars;
+   this family never got the same treatment. --- */
+html[data-redesign] .aggregatedTimelineHeader { color: var(--pn-ink); }
+html[data-redesign] .aggregatedTimelineHeader:hover { color: var(--pn-brand); }
+html[data-redesign] .aggregatedTimelineToggle { color: var(--pn-ink-3); }
+html[data-redesign] .aggregatedTimelineCount { color: var(--pn-ink-3); }
+html[data-redesign] .aggregatedTimelineFilterBtn {
+  background: var(--pn-surface);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .aggregatedTimelineFilterBtn:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+html[data-redesign] .aggregatedTimelineFilterBtn.active {
+  background: var(--pn-brand-soft);
+  border-color: var(--pn-brand);
+  color: var(--pn-brand);
+}
+html[data-redesign] .aggregatedTimelineEventSession { color: var(--pn-brand); }
+html[data-redesign] .aggregatedTimelineEmpty { color: var(--pn-ink-3); }
+
+/* --- Session-in-Task View (SessionInTaskView.tsx) — base rules are flat
+   dark-glass rgba(255,255,255,α) surfaces with neon status hexes; unlike
+   sibling families in this file, none of it references pn-* yet. --- */
+html[data-redesign] .sessionInTaskView {
+  border-color: var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .sessionInTaskView:hover { border-color: var(--pn-line-2); }
+html[data-redesign] .sessionInTaskView--expanded {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .sessionInTaskViewHeader:hover { background: var(--pn-hover); }
+html[data-redesign] .sessionInTaskViewToggle { color: var(--pn-ink-3); }
+html[data-redesign] .sessionInTaskViewStatus--spawning { background: var(--pn-info-soft); color: var(--pn-info); }
+html[data-redesign] .sessionInTaskViewStatus--idle { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .sessionInTaskViewStatus--working { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .sessionInTaskViewStatus--completed { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .sessionInTaskViewStatus--failed { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .sessionInTaskViewStatus--stopped { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .sessionInTaskViewStatus--needsInput { background: var(--pn-wait-soft); color: var(--pn-wait); }
+html[data-redesign] .sessionInTaskViewName { color: var(--pn-ink); }
+html[data-redesign] .sessionInTaskViewActivity { color: var(--pn-ink-3); }
+html[data-redesign] .sessionInTaskViewJumpBtn {
+  background: var(--pn-brand-soft);
+  border-color: rgba(178, 106, 43, 0.4);
+  color: var(--pn-brand);
+}
+html[data-redesign] .sessionInTaskViewJumpBtn:hover { background: var(--pn-brand-soft); border-color: var(--pn-brand); }
+html[data-redesign] .sessionInTaskViewRemoveBtn {
+  background: var(--pn-block-soft);
+  border-color: rgba(187, 77, 61, 0.3);
+  color: var(--pn-block);
+}
+html[data-redesign] .sessionInTaskViewRemoveBtn:hover { background: var(--pn-block-soft); border-color: var(--pn-block); }
+html[data-redesign] .sessionInTaskViewMeta { color: var(--pn-ink-3); }
+html[data-redesign] .sessionInTaskViewQueueStatus--queued { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .sessionInTaskViewQueueStatus--processing { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .sessionInTaskViewQueueStatus--completed { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .sessionInTaskViewQueueStatus--failed { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .sessionInTaskViewQueueStatus--skipped { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .sessionInTaskViewExpanded { border-top-color: var(--pn-line); }
+
+/* --- Session Status Badge is exported from SessionInTaskView.tsx but its
+   rules live in styles-themed-components.css — see that file's override. --- */
+
+/* --- Maestro Session Content (MaestroSessionContent.tsx) --- */
+html[data-redesign] .maestroSessionCompletionBanner {
+  background: var(--pn-run-soft);
+  border-color: rgba(62, 142, 90, 0.3);
+  border-left-color: var(--pn-run);
+}
+html[data-redesign] .maestroSessionCompletionBanner--stopped {
+  background: var(--pn-idle-soft);
+  border-color: var(--pn-line-2);
+  border-left-color: var(--pn-idle);
+}
+html[data-redesign] .maestroSessionCompletionBanner--failed {
+  background: var(--pn-block-soft);
+  border-color: rgba(187, 77, 61, 0.3);
+  border-left-color: var(--pn-block);
+}
+html[data-redesign] .maestroSessionCompletionIcon { color: var(--pn-run); }
+html[data-redesign] .maestroSessionCompletionBanner--stopped .maestroSessionCompletionIcon { color: var(--pn-idle); }
+html[data-redesign] .maestroSessionCompletionBanner--failed .maestroSessionCompletionIcon { color: var(--pn-block); }
+html[data-redesign] .maestroSessionCompletionTitle { color: var(--pn-ink); }
+html[data-redesign] .maestroSessionCompletionMeta { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContent { color: var(--pn-ink); font-family: var(--pn-ui); }
+html[data-redesign] .maestroSessionContentLoading { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContentHeader { border-bottom-color: var(--pn-line); }
+html[data-redesign] .maestroSessionContentActivity { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContentEventCount { color: var(--pn-brand); }
+html[data-redesign] .maestroSessionTabs { border-bottom-color: var(--pn-line); }
+html[data-redesign] .maestroSessionTab { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionTab:hover { color: var(--pn-ink); }
+html[data-redesign] .maestroSessionTab--active { color: var(--pn-brand); background: var(--pn-brand-soft); }
+html[data-redesign] .maestroSessionQueueSection { border-bottom-color: var(--pn-line); }
+html[data-redesign] .maestroSessionQueueHeader { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContentSectionHeader { color: var(--pn-ink); }
+html[data-redesign] .maestroSessionContentSectionHeader:hover { color: var(--pn-brand); }
+html[data-redesign] .maestroSessionContentEmpty { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContentTask:hover { background: var(--pn-hover); }
+html[data-redesign] .maestroSessionContentTask--subtask { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContentSubtaskPrefix { color: var(--pn-ink-4); }
+html[data-redesign] .maestroSessionContentTaskStatus--todo { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .maestroSessionContentTaskStatus--in_progress { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .maestroSessionContentTaskStatus--in_review { background: var(--pn-info-soft); color: var(--pn-info); }
+html[data-redesign] .maestroSessionContentTaskStatus--completed { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .maestroSessionContentTaskStatus--cancelled { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .maestroSessionContentTaskStatus--blocked { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--queued { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--working { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--needs_input { background: var(--pn-wait-soft); color: var(--pn-wait); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--blocked { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--completed { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--failed { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .maestroSessionContentTaskSessionStatus--skipped { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .maestroSessionContentTaskTitle { color: var(--pn-ink); }
+html[data-redesign] .maestroSessionContentTask--subtask .maestroSessionContentTaskTitle { color: var(--pn-ink-3); }
+html[data-redesign] .maestroSessionContentTaskPriority--low { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .maestroSessionContentTaskPriority--medium { background: var(--pn-wait-soft); color: var(--pn-wait); }
+html[data-redesign] .maestroSessionContentTaskPriority--high { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .maestroSessionContentTaskJump {
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .maestroSessionContentTaskJump:hover { background: var(--pn-hover); color: var(--pn-ink); }
 html[data-redesign] .projectDocsListItem__close:hover { background: var(--pn-active); color: var(--pn-ink-2); }

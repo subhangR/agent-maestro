@@ -19,7 +19,7 @@ export function GatewayPage() {
   }, [initAuth]);
   useGatewayPresence(user);
 
-  if (!initialized) return <div className="app" style={{ background: '#0d0d0f' }} />;
+  if (!initialized) return <div className="app" />;
   return <>
     {user ? <GatewayDashboard /> : <GatewayLoginGate />}
     <DeploymentVersion />

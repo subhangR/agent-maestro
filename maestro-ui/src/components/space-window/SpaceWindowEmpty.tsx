@@ -22,9 +22,9 @@ export const SpaceWindowEmpty: React.FC<Props> = ({ state, spaceName }) => {
 
     return (
         <div className="spaceWindowEmpty">
-            <div className="spaceWindowEmptyCard">
-                <div className="spaceWindowEmptyTitle">{title}</div>
-                <div className="spaceWindowEmptyText">
+            <div className="spaceWindowEmptyCard pn-empty">
+                <div className="spaceWindowEmptyTitle pn-empty__h">{title}</div>
+                <div className="spaceWindowEmptyText pn-empty__p">
                     {body}
                     {spaceName && state !== "loading" ? ` (${spaceName})` : ""}
                 </div>

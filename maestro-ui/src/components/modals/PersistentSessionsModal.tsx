@@ -32,7 +32,7 @@ export function PersistentSessionsModal({
 
   return (
     <div className="modalBackdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
         <h3 className="modalTitle">Persistent terminals</h3>
         <div className="hint" style={{ marginTop: 0 }}>
           Background terminal sessions started by Agent Maestro.
@@ -68,7 +68,7 @@ export function PersistentSessionsModal({
                     {!s.openInUi && (
                       <button
                         type="button"
-                        className="btnSmall"
+                        className="pn-btn pn-btn--sm"
                         onClick={() => onAttach(s.persistId)}
                         title="Attach"
                       >
@@ -77,7 +77,7 @@ export function PersistentSessionsModal({
                     )}
                     <button
                       type="button"
-                      className="btnSmall btnDanger"
+                      className="pn-btn pn-btn--sm pn-btn--danger"
                       onClick={() => onRequestKill(s.persistId)}
                       title="Kill session"
                     >
@@ -91,10 +91,10 @@ export function PersistentSessionsModal({
         </div>
 
         <div className="modalActions">
-          <button type="button" className="btnSmall" onClick={onRefresh} disabled={loading}>
+          <button type="button" className="pn-btn pn-btn--sm" onClick={onRefresh} disabled={loading}>
             Refresh
           </button>
-          <button type="button" className="btn" onClick={onClose}>
+          <button type="button" className="pn-btn" onClick={onClose}>
             Done
           </button>
         </div>

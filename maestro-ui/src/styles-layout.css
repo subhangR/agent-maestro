@@ -43,3 +43,57 @@ body {
   /* Main area takes remaining space via flex: 1 1 0 */
 }
 
+/* ------------------------------------------------------------------ */
+/*  ErrorBoundary fallback — generic "component crashed" card           */
+/* ------------------------------------------------------------------ */
+.errorBoundaryFallback {
+  padding: 20px;
+  background: rgba(255, 0, 0, 0.05);
+  border: 1px solid rgba(255, 0, 0, 0.2);
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.errorBoundaryFallback__title {
+  margin-bottom: 8px;
+  color: #ff4444;
+  font-weight: 600;
+}
+.errorBoundaryFallback__message {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  opacity: 0.7;
+}
+.errorBoundaryFallback__retry {
+  background: transparent;
+  border: 1px solid #666;
+  color: #e0e0e0;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+}
+
+/* ========================================================================
+   REDESIGN OVERRIDES — warm-paper pn tokens
+   ======================================================================== */
+html[data-redesign] .errorBoundaryFallback {
+  background: var(--pn-block-soft);
+  border-color: rgba(187, 77, 61, 0.35);
+  border-radius: var(--pn-r-sm);
+  color: var(--pn-ink-2);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .errorBoundaryFallback__title { color: var(--pn-block); }
+html[data-redesign] .errorBoundaryFallback__retry {
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .errorBoundaryFallback__retry:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+

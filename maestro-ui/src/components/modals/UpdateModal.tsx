@@ -41,7 +41,7 @@ export function UpdateModal({
 
   return (
     <div className="modalBackdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
         <h3 className="modalTitle">Updates</h3>
         <div className="hint" style={{ marginTop: 0 }}>
           {appName} {currentVersion ? `v${currentVersion}` : ""}
@@ -74,20 +74,20 @@ export function UpdateModal({
         {state.status === "error" ? <div className="hint">{state.message}</div> : null}
 
         <div className="modalActions">
-          <button type="button" className="btn" onClick={onClose}>
+          <button type="button" className="pn-btn" onClick={onClose}>
             Close
           </button>
           {releaseUrl ? (
             <button
               type="button"
-              className="btn"
+              className="pn-btn"
               onClick={() => onOpenRelease(releaseUrl)}
               disabled={isChecking}
             >
               Open release
             </button>
           ) : null}
-          <button type="button" className="btn" onClick={onCheck} disabled={isChecking}>
+          <button type="button" className="pn-btn pn-btn--primary" onClick={onCheck} disabled={isChecking}>
             {isChecking ? "Checking…" : "Check now"}
           </button>
         </div>

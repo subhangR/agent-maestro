@@ -12,3 +12,74 @@
 .gatewayDashboard__memberIdentity { grid-area: identity; min-width: 0; }.gatewayDashboard__memberIdentity h3 { overflow: hidden; margin: 0; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }.gatewayDashboard__memberIdentity p { overflow: hidden; margin: 4px 0 0; color: var(--pn-ink-3, #77736c); text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }.gatewayDashboard__memberStats { grid-area: stats; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--pn-ink-3, #77736c); font-size: 12px; }.gatewayDashboard__memberStats strong { color: var(--pn-ink, #171716); font-weight: 650; }.gatewayDashboard__onlineText { color: #248052; font-weight: 650; }.gatewayDashboard__notice { padding: 24px; border: 1px dashed var(--pn-line, #dedbd4); border-radius: 10px; color: var(--pn-ink-3, #77736c); background: var(--pn-card, #fff); }
 @media (max-width: 880px) { .gatewayDashboard__metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }.gatewayDashboard__metric:nth-child(n) { border-top: 1px solid var(--pn-line, #dedbd4); }.gatewayDashboard__metric:nth-child(odd) { border-left: 0; }.gatewayDashboard__metric:nth-child(1), .gatewayDashboard__metric:nth-child(2) { border-top: 0; } }
 @media (max-width: 620px) { .gatewayDashboard { padding: 0 20px 48px; }.gatewayDashboard__header { height: 62px; }.gatewayDashboard__brandSlash, .gatewayDashboard__brandGateway { display: none; }.gatewayDashboard__workspaceLink { font-size: 0; padding: 9px; }.gatewayDashboard__workspaceLink svg { width: 16px; height: 16px; }.gatewayDashboard__intro { padding: 48px 0 32px; }.gatewayDashboard__intro .gatewayDashboard__refresh { align-self: start; }.gatewayDashboard__metrics { grid-template-columns: 1fr; }.gatewayDashboard__metric:nth-child(n) { border-top: 1px solid var(--pn-line, #dedbd4); border-left: 0; }.gatewayDashboard__metric:first-child { border-top: 0; }.gatewayDashboard__sectionHeading { align-items: start; flex-direction: column; } }
+
+/* ------------------------------------------------------------------ */
+/*  GatewayLoginGate — pre-auth screen shown ahead of the dashboard    */
+/*  above. Same pn-token-with-fallback convention (no data-redesign    */
+/*  guard needed: this route always wants the paper look).            */
+/* ------------------------------------------------------------------ */
+.gatewayLoginGate {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pn-paper, #0d0d0f);
+  color: var(--pn-ink, #e7e7ea);
+  font-family: var(--pn-ui, ui-sans-serif, system-ui, sans-serif);
+}
+.gatewayLoginGate__card {
+  width: 360px;
+  max-width: 90vw;
+  padding: 32px;
+  border-radius: var(--pn-r-lg, 14px);
+  background: var(--pn-card, #161619);
+  border: 1px solid var(--pn-line-2, #262629);
+  text-align: center;
+  box-shadow: var(--pn-sh-pop, 0 12px 40px rgba(0, 0, 0, 0.45));
+}
+.gatewayLoginGate__title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--pn-ink, #e7e7ea);
+}
+.gatewayLoginGate__subtitle {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--pn-ink-3, rgba(231, 231, 234, 0.7));
+  line-height: 1.5;
+}
+.gatewayLoginGate__notice {
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--pn-block, #ff8a8a);
+  line-height: 1.5;
+}
+.gatewayLoginGate__button {
+  /* Kept a neutral light pill (not the accent color) — this button follows
+     Google's own "Continue with Google" button convention, independent of
+     the app's accent/theme. */
+  margin-top: 24px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: var(--pn-r-md, 9px);
+  border: 1px solid var(--pn-line-2, #34343a);
+  background: var(--pn-card, #f5f5f7);
+  color: var(--pn-ink, #111);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.gatewayLoginGate__button:hover:not(:disabled) { background: var(--pn-hover, #f5f5f7); }
+.gatewayLoginGate__button--loading {
+  background: var(--pn-active, #232327);
+  color: var(--pn-ink-3, #8a8a90);
+  cursor: default;
+}
+.gatewayLoginGate__error {
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--pn-block, #ff8a8a);
+  line-height: 1.5;
+}

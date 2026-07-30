@@ -994,3 +994,107 @@ html[data-redesign] .messagingThreadReplyCount {
   background: var(--pn-brand-soft);
   border-color: transparent;
 }
+
+/* ─── Redesign completion pass — remaining messaging/* token gaps ───────── */
+
+html[data-redesign] .messagingSidebarAddBtn:hover {
+  background: var(--pn-hover);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink);
+}
+
+html[data-redesign] .messagingAvatar { background: var(--pn-active); }
+html[data-redesign] .messagingAvatarFallback { background: var(--pn-brand); color: #fff; }
+
+html[data-redesign] .messagingBubbleFailed { background: var(--pn-block-soft); border-left-color: var(--pn-block); }
+html[data-redesign] .messagingBubbleFailed:hover { background: var(--pn-block-soft); }
+html[data-redesign] .messagingBubbleFailedTag { color: var(--pn-block); }
+html[data-redesign] .messagingBubbleActionBtnDanger:hover { background: var(--pn-block-soft); color: var(--pn-block); }
+
+html[data-redesign] .messagingBubbleEdited,
+html[data-redesign] .messagingBubbleEditedInline { color: var(--pn-ink-4); }
+html[data-redesign] .messagingBubblePendingTag { color: var(--pn-ink-3); }
+html[data-redesign] .messagingEditHint { color: var(--pn-ink-4); }
+
+html[data-redesign] .messagingMention { color: var(--pn-brand); background: var(--pn-brand-soft); }
+html[data-redesign] .messagingMentionOptionKind { color: var(--pn-brand); background: var(--pn-brand-soft); }
+
+html[data-redesign] .messagingComposerSendBtn { background: var(--pn-brand); color: #fff; }
+html[data-redesign] .messagingComposerAttachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 2px; }
+
+/* attachment chip states not covered by the base .messagingAttachChip rule */
+html[data-redesign] .messagingAttachChipIcon { font-size: 13px; }
+html[data-redesign] .messagingAttachChipGone { color: var(--pn-block); font-size: 10px; font-style: italic; }
+html[data-redesign] .messagingAttachError { color: var(--pn-block); font-size: 11px; }
+html[data-redesign] .messagingAttachPreviewBtn {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  overflow: hidden;
+  background: var(--pn-card);
+  cursor: pointer;
+  max-width: 240px;
+}
+html[data-redesign] .messagingAttachPreview { display: block; max-width: 240px; max-height: 200px; object-fit: cover; }
+html[data-redesign] .messagingAttachSpinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pn-line-2);
+  border-top-color: var(--pn-brand);
+  animation: messagingSpin 0.7s linear infinite;
+}
+@keyframes messagingSpin { to { transform: rotate(360deg); } }
+html[data-redesign] .messagingAttachInput { display: none; }
+
+/* ─── Create Channel modal — reuses pn-mdl / pn-fld / pn-btn primitives ──── */
+
+.messagingModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+html[data-redesign] .messagingModalOverlay {
+  background: rgba(21, 19, 14, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+html[data-redesign] .messagingCreateChannelModal { width: 440px; max-width: 92vw; }
+
+html[data-redesign] .messagingCreateChannelTitle {
+  font-family: var(--pn-serif);
+  font-size: 21px;
+  font-weight: 500;
+  color: var(--pn-ink);
+  letter-spacing: -0.01em;
+  padding: 2px 0 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--pn-line);
+}
+
+html[data-redesign] .messagingFormError {
+  font-size: 12px;
+  color: var(--pn-block);
+  background: var(--pn-block-soft);
+  border: 1px solid rgba(187, 77, 61, 0.25);
+  border-radius: var(--pn-r-sm);
+  padding: 8px 11px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+html[data-redesign] .messagingFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--pn-line);
+}

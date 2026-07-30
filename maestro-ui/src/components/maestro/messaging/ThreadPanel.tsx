@@ -116,7 +116,7 @@ export function ThreadPanel({
         )}
 
         {threadError && (
-          <div className="collabSpaceError" role="alert" style={{ margin: "8px 16px" }}>
+          <div className="messagingFormError" role="alert" style={{ margin: "8px 16px" }}>
             {threadError}
           </div>
         )}

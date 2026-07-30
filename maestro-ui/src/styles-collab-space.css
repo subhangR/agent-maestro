@@ -994,3 +994,217 @@ textarea.collabSpaceInput {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   CollabSpacePanel.tsx — base rules above are a dark-glass system built on
+   raw rgba(255,255,255,α) fills + var(--text-*, dark fallback) that never
+   flip in the warm-paper redesign. Token-only repoint; layout untouched.
+   Notification bell/toast (.collab-notify-*, owned by CollabNotificationBell)
+   intentionally left as-is — out of this component's scope.
+   =================================================================== */
+html[data-redesign] .collabSpaceHeader { border-bottom-color: var(--pn-line); }
+html[data-redesign] .collabSpaceUser,
+html[data-redesign] .collabSpaceRepo { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceUserLabel,
+html[data-redesign] .collabSpaceRepoLabel { color: var(--pn-ink-4); }
+html[data-redesign] .collabSpaceUserEmail,
+html[data-redesign] .collabSpaceRepoValue {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink);
+}
+html[data-redesign] .collabSpaceSectionTitle { color: var(--pn-ink-4); }
+html[data-redesign] .collabSpaceSectionTitle::after { background: var(--pn-line); }
+html[data-redesign] .collabSpaceSectionEmpty {
+  color: var(--pn-ink-3);
+  background: var(--pn-surface);
+  border: 1px dashed var(--pn-line-2);
+}
+html[data-redesign] .collabSpaceRow {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+}
+html[data-redesign] .collabSpaceRow:hover {
+  background: var(--pn-hover);
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .collabSpaceRowName { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceRowDescription { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceRowMeta { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceVisBadge {
+  background: var(--pn-wait-soft);
+  color: var(--pn-wait);
+  border-color: rgba(189, 138, 42, 0.3);
+}
+html[data-redesign] .collabSpaceButton {
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2);
+}
+html[data-redesign] .collabSpaceButton:hover:not(:disabled) {
+  background: var(--pn-hover);
+  border-color: var(--pn-ink-4);
+}
+html[data-redesign] .collabSpaceButtonPrimary {
+  background: var(--pn-brand);
+  color: #fff;
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .collabSpaceButtonPrimary:hover:not(:disabled) {
+  background: var(--pn-brand-2);
+  border-color: var(--pn-brand-2);
+}
+html[data-redesign] .collabSpaceButtonJoin {
+  background: var(--pn-run-soft);
+  color: var(--pn-run);
+  border-color: rgba(62, 142, 90, 0.3);
+}
+html[data-redesign] .collabSpaceButtonJoin:hover:not(:disabled) {
+  background: var(--pn-run-soft);
+  border-color: var(--pn-run);
+}
+html[data-redesign] .collabSpaceTextButton { color: var(--pn-brand); }
+html[data-redesign] .collabSpaceTextButton:hover {
+  color: var(--pn-brand-2);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .collabSpaceInput {
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2);
+}
+html[data-redesign] .collabSpaceInput:focus {
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 2px var(--pn-brand-soft);
+}
+html[data-redesign] .collabSpaceFieldLabel { color: var(--pn-ink-4); }
+html[data-redesign] .collabSpaceInputReadOnly {
+  background: var(--pn-surface);
+  color: var(--pn-ink-3);
+  border: 1px solid var(--pn-line);
+}
+html[data-redesign] .collabSpaceVisRow { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceVisOption:has(input:checked) {
+  background: var(--pn-brand-soft);
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .collabSpaceVisOption:hover { background: var(--pn-hover); }
+html[data-redesign] .collabSpaceVisOptionTitle { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceVisOptionDesc { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceFormActions { border-top-color: var(--pn-line); }
+html[data-redesign] .collabSpaceError {
+  color: var(--pn-block);
+  background: var(--pn-block-soft);
+  border: 1px solid rgba(187, 77, 61, 0.3);
+}
+html[data-redesign] .collabInviteJoin {
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+}
+html[data-redesign] .collabSpaceModalOverlay { background: rgba(40, 34, 24, 0.45); }
+html[data-redesign] .collabSpaceModal {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  box-shadow: var(--pn-sh-pop);
+}
+html[data-redesign] .collabSpaceModalTitle { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceSignInCard {
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+}
+html[data-redesign] .collabSpaceSignInTitle { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceSignInSubtitle { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceGoogleButton { border-color: var(--pn-line-2); }
+html[data-redesign] .collabSpaceDivider { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceDivider::before,
+html[data-redesign] .collabSpaceDivider::after { background: var(--pn-line); }
+html[data-redesign] .collabSpaceEmptyTitle { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceEmptyText { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceEmptyText code {
+  background: var(--pn-active);
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .collabSpaceRowChevron { color: var(--pn-ink-4); }
+html[data-redesign] .collabSpaceRow:hover .collabSpaceRowChevron { color: var(--pn-ink-2); }
+html[data-redesign] .collabSpaceDetailName { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceDetailRepo { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceDetailDescription { color: var(--pn-ink-2); }
+html[data-redesign] .collabSpaceDetailMeta { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceMetaSep { color: var(--pn-ink-4); }
+html[data-redesign] .collabSpaceTabBar { border-bottom-color: var(--pn-line); }
+html[data-redesign] .collabSpaceTabButton { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceTabButton:hover { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceTabButtonActive {
+  color: var(--pn-ink);
+  border-bottom-color: var(--pn-brand);
+}
+html[data-redesign] .collabSpaceTabCount { background: var(--pn-active); color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceMemberRow {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+}
+html[data-redesign] .collabSpaceMemberRow:hover { background: var(--pn-hover); }
+html[data-redesign] .collabSpaceAvatarFallback { background: var(--pn-brand); color: #fff; }
+html[data-redesign] .collabSpaceMemberName { color: var(--pn-ink); }
+html[data-redesign] .collabSpaceMemberEmail { color: var(--pn-ink-3); }
+html[data-redesign] .collabSpaceOwnerBadge {
+  background: var(--pn-run-soft);
+  color: var(--pn-run);
+  border-color: rgba(62, 142, 90, 0.3);
+}
+html[data-redesign] .collabSpacePlaceholderTitle { color: var(--pn-ink-2); }
+html[data-redesign] .collabSpacePlaceholderText { color: var(--pn-ink-3); }
+
+/* ========================================================================
+   REDESIGN OVERRIDES — warm-paper pn tokens
+   Repoints the legacy dark-panel bell/inbox/toast surfaces onto pn tokens
+   when html[data-redesign] is active. Token-only; base rules above are
+   untouched.
+   ======================================================================== */
+html[data-redesign] .collab-notify-toast {
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  box-shadow: var(--pn-sh-pop);
+  border-left-color: var(--pn-run);
+}
+html[data-redesign] .collab-notify-toast--mention { border-left-color: var(--pn-brand); }
+html[data-redesign] .collab-notify-toast__meta { color: var(--pn-ink-3); }
+html[data-redesign] .collab-notify-toast__msg { color: var(--pn-ink-2); }
+
+html[data-redesign] .collab-notify-bell__button { color: var(--pn-ink-3); }
+html[data-redesign] .collab-notify-bell__button:hover {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+html[data-redesign] .collab-notify-bell__badge {
+  background: var(--pn-block);
+  color: #fff;
+}
+
+html[data-redesign] .collab-notify-panel {
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2);
+  box-shadow: var(--pn-sh-pop);
+  border-radius: var(--pn-r-md);
+}
+html[data-redesign] .collab-notify-panel__head { border-bottom: 1px solid var(--pn-line); }
+html[data-redesign] .collab-notify-panel__headActions button { color: var(--pn-brand); }
+html[data-redesign] .collab-notify-panel__headActions button:hover { background: var(--pn-brand-soft); }
+html[data-redesign] .collab-notify-panel__prefs { border-bottom: 1px solid var(--pn-line); }
+html[data-redesign] .collab-notify-panel__prefs label { color: var(--pn-ink-3); }
+html[data-redesign] .collab-notify-panel__prefs select {
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink);
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .collab-notify-row {
+  border-bottom: 1px solid var(--pn-line);
+  color: var(--pn-ink);
+}
+html[data-redesign] .collab-notify-row:hover { background: var(--pn-hover); }
+html[data-redesign] .collab-notify-row--unread { background: var(--pn-brand-soft); }
+html[data-redesign] .collab-notify-row__chan,
+html[data-redesign] .collab-notify-row__time { color: var(--pn-ink-3); }
+html[data-redesign] .collab-notify-row__preview { color: var(--pn-ink-2); }

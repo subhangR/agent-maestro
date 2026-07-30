@@ -790,6 +790,60 @@
   color: rgba(240, 244, 248, 0.5);
 }
 
+/* ==========================================================================
+   MAESTRO REDESIGN — html[data-redesign] OVERRIDES (token-only)
+   Repoints TaskTimeline.tsx's neon-indigo timeline to the warm-paper pn-*
+   tokens. Base rules above are untouched so the data-redesign toggle keeps
+   switching cleanly between the legacy terminal theme and the Atelier
+   redesign. Per-event dot colors are set inline in TaskTimeline.tsx
+   (EVENT_COLORS) and are intentionally left as-is, same as Dashboard's chart
+   series colors.
+   ========================================================================== */
+html[data-redesign] .maestroTimelineTitle {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+}
+
+html[data-redesign] .maestroTimelineEventDot {
+  box-shadow: 0 0 0 3px var(--pn-active), var(--pn-sh-sm);
+}
+
+html[data-redesign] .maestroTimelineEventLineBar {
+  background: linear-gradient(180deg, var(--pn-line-2), transparent);
+}
+
+html[data-redesign] .maestroTimelineEventLabel {
+  font-family: var(--pn-ui);
+  color: var(--pn-ink);
+}
+
+html[data-redesign] .maestroTimelineEventTime {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+}
+
+html[data-redesign] .maestroTimelineEventMessage {
+  color: var(--pn-ink-2);
+  background: var(--pn-hover);
+  border-left-color: var(--pn-brand);
+  border-radius: var(--pn-r-sm);
+}
+
+html[data-redesign] .maestroTimelineEventSession {
+  background: var(--pn-active);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-3);
+  font-family: var(--pn-mono);
+}
+
+html[data-redesign] .maestroTimelineEmpty {
+  color: var(--pn-ink-4);
+}
+
+html[data-redesign] .maestroTimelineEmpty p {
+  color: var(--pn-ink-3);
+}
+
 /* Buttons */
 .maestroButton {
   border: 1px solid rgba(255, 255, 255, 0.1);

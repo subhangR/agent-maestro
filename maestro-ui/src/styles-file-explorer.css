@@ -1031,3 +1031,122 @@ html[data-redesign] .agent-modal-overlay {
   --color-text-tertiary: var(--pn-ink-3);
 }
 
+/* RecordingsListModal + ReplayModal — .recording*/.replayFlow*/.replayPreview*
+   are exclusive to those two modals (modals cluster) and use literal
+   rgba(255,255,255,…) glass-panel colors + a hardcoded blue "next" accent.
+   Those literals don't ride the --border/--text var repoint above (they never
+   referenced a var to begin with), so the panels rendered near-invisible
+   white-on-white in the redesign's light paper theme. Token-only, additive. */
+html[data-redesign] .recordingsList,
+html[data-redesign] .replayPreview {
+  border-color: var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .recordingItem {
+  border-color: var(--pn-line);
+  background: var(--pn-card);
+}
+html[data-redesign] .recordingMeta { color: var(--pn-ink-3); }
+html[data-redesign] .replayFlowGroup {
+  border-color: var(--pn-line);
+  background: var(--pn-card);
+}
+html[data-redesign] .replayFlowGroupNext {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .replayFlowGroupNext .replayFlowGroupHeader:hover,
+html[data-redesign] .replayFlowGroupHeader:hover { background: var(--pn-hover); }
+html[data-redesign] .replayFlowCaret,
+html[data-redesign] .replayFlowTime,
+html[data-redesign] .replayFlowRange { color: var(--pn-ink-3); }
+html[data-redesign] .replayFlowCount {
+  border-color: rgba(204, 120, 92, 0.32);
+  background: var(--pn-brand-soft);
+  color: var(--pn-brand-2);
+}
+html[data-redesign] .replayFlowCountNext {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand);
+  color: #fff;
+}
+html[data-redesign] .replayFlowItemNext {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .replayFlowItemMarker,
+html[data-redesign] .replayFlowItemIndex { color: var(--pn-ink-4); }
+html[data-redesign] .replayFlowNextBadge {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand);
+  color: #fff;
+}
+
+/* ---------------------------------------------------------------------
+   CodeEditorPanel — chrome around the (always-dark, theme="vs-dark")
+   Monaco surface. The header/tabs/path bar/overlays get the same paper
+   treatment as the sibling FileExplorerPanel above; only the Monaco body
+   itself stays dark (owned by the Editor `theme` prop, untouched here).
+   Token-only. --------------------------------------------------------- */
+html[data-redesign] .codeEditorPanel {
+  border-left: 1px solid var(--pn-line-2);
+  background: var(--pn-surface);
+}
+html[data-redesign] .codeEditorHeader {
+  border-bottom: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .codeEditorTabsScrollBtn {
+  background: linear-gradient(90deg, var(--pn-surface), transparent);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .codeEditorTabsScrollBtn:hover { color: var(--pn-ink); }
+html[data-redesign] .codeEditorTabsScrollBtn:active { color: var(--pn-brand); }
+html[data-redesign] .codeEditorTabsScrollBtnLeft {
+  background: linear-gradient(90deg, var(--pn-surface), transparent);
+}
+html[data-redesign] .codeEditorTabsScrollBtnRight {
+  background: linear-gradient(270deg, var(--pn-surface), transparent);
+}
+html[data-redesign] .codeEditorTab {
+  border-right: 1px solid var(--pn-line);
+  background: transparent;
+}
+html[data-redesign] .codeEditorTabActive {
+  background: var(--pn-card);
+  border-bottom-color: var(--pn-brand);
+}
+html[data-redesign] .codeEditorTabMain { color: var(--pn-ink-2); }
+html[data-redesign] .codeEditorTabActive .codeEditorTabMain { color: var(--pn-ink); }
+html[data-redesign] .codeEditorTabDirty { background: var(--pn-brand); }
+html[data-redesign] .codeEditorTabClose { color: var(--pn-ink-3); }
+html[data-redesign] .codeEditorTabClose:hover {
+  color: var(--pn-block);
+  background: var(--pn-block-soft);
+}
+html[data-redesign] .codeEditorTabClose:active { background: var(--pn-block-soft); }
+html[data-redesign] .codeEditorTabsMenuDropdown {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  box-shadow: var(--pn-sh-pop);
+}
+html[data-redesign] .codeEditorTabsMenuItemActive {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .codeEditorTabsMenuEmpty { color: var(--pn-ink-3); }
+html[data-redesign] .codeEditorPathBar {
+  color: var(--pn-ink-3);
+  background: var(--pn-surface);
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .codeEditorOverlay {
+  background: rgba(35, 32, 27, 0.5);
+  color: var(--pn-paper);
+}
+html[data-redesign] .codeEditorSaveError {
+  border: 1px solid rgba(187, 77, 61, 0.35);
+  background: var(--pn-block-soft);
+  color: var(--pn-block);
+}
+

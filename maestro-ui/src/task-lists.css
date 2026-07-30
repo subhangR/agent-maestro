@@ -127,3 +127,43 @@
   flex: 1;
   min-width: 0;
 }
+
+/* ==========================================================================
+   MAESTRO REDESIGN — html[data-redesign] OVERRIDES (token-only)
+   Repoints TaskListsPanel.tsx / TaskListAddTasksModal.tsx from the legacy
+   neon-indigo theme to the warm-paper pn-* tokens. Both components' root
+   containers also carry `.pnLeakSkin` (see styles-panel-leak-fix.css), which
+   remaps the legacy --text/--style-surface-*/--theme-primary-rgb variables
+   these base rules read from; the explicit overrides below handle the
+   literal (non-variable) colors that pnLeakSkin cannot reach.
+   ========================================================================== */
+html[data-redesign] .taskListActionBtn {
+  border-color: var(--pn-line-2);
+  background: var(--pn-card);
+}
+html[data-redesign] .taskListActionBtn:hover:not(:disabled) {
+  background: var(--pn-hover);
+  border-color: var(--pn-ink-4);
+}
+html[data-redesign] .taskListActionBtn--danger {
+  border-color: rgba(187, 77, 61, 0.4);
+  background: var(--pn-block-soft);
+  color: var(--pn-block);
+}
+
+html[data-redesign] .taskListEmptyTasks {
+  color: var(--pn-ink-4);
+}
+
+html[data-redesign] .taskListTaskRow {
+  background: var(--pn-card);
+  border-color: var(--pn-line);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .taskListTaskRow--missing {
+  border-color: rgba(187, 77, 61, 0.32);
+  background: var(--pn-block-soft);
+}
+html[data-redesign] .taskListTaskMeta {
+  color: var(--pn-ink-3);
+}
