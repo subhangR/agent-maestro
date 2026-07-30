@@ -97,7 +97,8 @@ export class TaskService {
    *
    * IMPORTANT: When updateSource === 'session', agents/sessions can only update:
    * - sessionStatus (their working status on this task)
-   * They CANNOT update user-controlled fields like status, priority, title, etc.
+   * - status, and only to 'completed' (an agent closing work it performed)
+   * They CANNOT update other user-controlled fields like priority, title, etc.
    * NOTE: Timeline is now on Session, not Task - use SessionService.addTimelineEvent()
    */
   async updateTask(id: string, updates: UpdateTaskPayload): Promise<Task> {
@@ -120,12 +121,26 @@ export class TaskService {
         };
       }
 
+      // An agent closing out work it performed is a legitimate agent action, not a
+      // user-controlled field edit. Without this, `maestro task report complete`
+      // PATCHes status:'completed' and the server silently discards it, leaving the
+      // task in_progress forever while the CLI reports success.
+      if (updates.status === 'completed') {
+        sessionAllowedUpdates.status = 'completed';
+      }
+
       const task = await this.taskRepo.update(id, sessionAllowedUpdates);
       await this.eventBus.emit('task:updated', task);
 
       // Emit notification events for taskSessionStatuses changes (using snapshot)
       if (oldTask && sessionAllowedUpdates.taskSessionStatuses) {
         await this.emitTaskSessionStatusNotifications(oldStatus!, oldTaskSessionStatuses, task);
+      }
+
+      // Session-driven completion must raise the same task-level notification a
+      // user-driven completion does, otherwise the UI never learns the task closed.
+      if (oldTask && sessionAllowedUpdates.status) {
+        await this.emitTaskStatusNotifications(oldStatus!, task);
       }
 
       return task;

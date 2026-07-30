@@ -188,4 +188,49 @@ describe('TaskService', () => {
       expect(children.every(t => t.parentId === parent.id)).toBe(true);
     });
   });
+
+  // Regression: `maestro task report complete` PATCHes status:'completed' with
+  // updateSource:'session'. The session branch used to build an allow-list that
+  // omitted `status`, so the field was silently discarded — the CLI reported
+  // success while the task stayed in_progress forever.
+  describe('updateTask from a session', () => {
+    it('should let a session close the task it worked on', async () => {
+      const task = await container.taskService.createTask(createTestTask(projectId));
+
+      const updated = await container.taskService.updateTask(task.id, {
+        status: 'completed',
+        updateSource: 'session',
+      });
+
+      expect(updated.status).toBe('completed');
+    });
+
+    it('should ignore every task status other than completed from a session', async () => {
+      for (const status of ['cancelled', 'blocked', 'in_review'] as const) {
+        const task = await container.taskService.createTask(createTestTask(projectId));
+
+        const updated = await container.taskService.updateTask(task.id, {
+          status,
+          updateSource: 'session',
+        });
+
+        expect(updated.status).toBe(task.status);
+      }
+    });
+
+    it('should still block user-controlled fields from a session', async () => {
+      const task = await container.taskService.createTask(
+        createTestTask(projectId, { title: 'original', priority: 'medium' })
+      );
+
+      const updated = await container.taskService.updateTask(task.id, {
+        title: 'HIJACKED',
+        priority: 'high',
+        updateSource: 'session',
+      });
+
+      expect(updated.title).toBe('original');
+      expect(updated.priority).toBe('medium');
+    });
+  });
 });
