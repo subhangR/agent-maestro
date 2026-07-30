@@ -1,4 +1,4 @@
-import { Session, SessionStatus, AgentMode, CreateSessionPayload, UpdateSessionPayload, SessionTimelineEvent, SessionTimelineEventType, DocEntry } from '../../types';
+import { Session, SessionStatus, AgentMode, CreateSessionPayload, UpdateSessionPayload, SessionTimelineEvent, SessionTimelineEventType, DocEntry, TokenUsageSnapshot, LaunchProvider, Task, TaskStatus } from '../../types';
 import { ISessionRepository, SessionFilter } from '../../domain/repositories/ISessionRepository';
 import { ITaskRepository } from '../../domain/repositories/ITaskRepository';
 import { IProjectRepository } from '../../domain/repositories/IProjectRepository';
@@ -6,12 +6,15 @@ import { IEventBus } from '../../domain/events/IEventBus';
 import { IIdGenerator } from '../../domain/common/IIdGenerator';
 import { ValidationError, NotFoundError } from '../../domain/common/Errors';
 import { GitWorktreeService } from './GitWorktreeService';
+import type { LogDigestService } from './LogDigestService';
 
 /**
  * Application service for session operations.
  * Manages session lifecycle, task associations, and events.
  */
 export class SessionService {
+  private logDigestService?: LogDigestService;
+
   constructor(
     private sessionRepo: ISessionRepository,
     private taskRepo: ITaskRepository,
@@ -19,6 +22,10 @@ export class SessionService {
     private eventBus: IEventBus,
     private idGenerator: IIdGenerator
   ) {}
+
+  setLogDigestService(svc: LogDigestService): void {
+    this.logDigestService = svc;
+  }
 
   /**
    * Create a new session.
@@ -132,6 +139,14 @@ export class SessionService {
       }
     }
 
+    // Auto-clear needsInput.active when the agent resumes working. The flag
+    // stays set on disk after a needs_input event until explicitly cleared,
+    // causing stale 'needs_input' state in digests. Clearing it here keeps the
+    // persisted flag in sync with the status so the two never contradict each other.
+    if (updates.status === 'working' && oldNeedsInputActive && !updates.needsInput) {
+      updates = { ...updates, needsInput: { active: false } };
+    }
+
     const session = await this.sessionRepo.update(id, updates);
 
     // Propagate terminal session status to task-level taskSessionStatuses
@@ -152,10 +167,39 @@ export class SessionService {
                 await this.eventBus.emit('task:updated', updatedTask);
               }
             }
+
+            // H1: Auto-advance task.status when all sessions reach a terminal state.
+            // Re-read to pick up the taskSessionStatuses we just wrote.
+            await this.tryAutoAdvanceTask(taskId);
           }
         } catch {
           // Best effort — don't fail the session update if task update fails
         }
+      }
+    }
+
+    // Best-effort: capture token usage snapshot when session reaches a terminal state
+    if (this.logDigestService && updates.status && ['stopped', 'completed', 'failed'].includes(updates.status)) {
+      try {
+        const statsDigest = await this.logDigestService.getSessionStats(id, { lastMessages: 0 });
+        if (statsDigest.jsonlFound) {
+          const provider: LaunchProvider | null =
+            session.teamMemberSnapshot?.launchConfig?.provider ?? null;
+          const model: string | null = statsDigest.models[0] ?? null;
+          const snap: TokenUsageSnapshot = {
+            input: statsDigest.tokens.input,
+            output: statsDigest.tokens.output,
+            cacheCreate: statsDigest.tokens.cacheCreate,
+            cacheRead: statsDigest.tokens.cacheRead,
+            total: statsDigest.tokens.total,
+            provider,
+            model,
+            capturedAt: Date.now(),
+          };
+          await this.sessionRepo.update(id, { tokenUsage: snap });
+        }
+      } catch {
+        // Best-effort: don't block session status update on log scan failure
       }
     }
 
@@ -296,7 +340,7 @@ export class SessionService {
     // Add timeline event to session
     const event: SessionTimelineEvent = {
       id: this.idGenerator.generate('evt'),
-      type: 'task_completed',  // Or could be task_skipped depending on context
+      type: 'task_skipped',
       timestamp: Date.now(),
       taskId,
       message: `Removed task from session`,
@@ -334,6 +378,138 @@ export class SessionService {
     const idle = await this.sessionRepo.countByStatus('idle');
     const working = await this.sessionRepo.countByStatus('working');
     return idle + working;
+  }
+
+  /**
+   * Shared auto-advance logic (H1 + H4).
+   *
+   * If the task is in_progress and every session listed in sessionIds has a
+   * terminal taskSessionStatuses entry, advance the task to completed (all done)
+   * or blocked (any failed). Conservative: a sessionId with no entry is treated
+   * as non-terminal so we never false-positive on a session that hasn't started yet.
+   *
+   * This is the single source of truth used by both the live H1 path
+   * (updateSession) and the H4 reconciliation sweep (reconcileStuckTasks).
+   */
+  private async tryAutoAdvanceTask(taskId: string): Promise<{ advanced: boolean; newStatus: TaskStatus | null }> {
+    const task = await this.taskRepo.findById(taskId);
+    if (!task || task.status !== 'in_progress' || task.sessionIds.length === 0) {
+      return { advanced: false, newStatus: null };
+    }
+    const statuses = task.taskSessionStatuses ?? {};
+    const allTerminal = task.sessionIds.every(sid => {
+      const s = statuses[sid];
+      return s === 'completed' || s === 'failed' || s === 'skipped';
+    });
+    if (!allTerminal) return { advanced: false, newStatus: null };
+
+    const anyFailed = task.sessionIds.some(sid => statuses[sid] === 'failed');
+    const newTaskStatus: TaskStatus = anyFailed ? 'blocked' : 'completed';
+    await this.taskRepo.update(taskId, { status: newTaskStatus });
+    const finalTask = await this.taskRepo.findById(taskId);
+    if (finalTask) {
+      await this.eventBus.emit('task:updated', finalTask);
+      if (newTaskStatus === 'completed') {
+        await this.eventBus.emit('notify:task_completed', { taskId, title: finalTask.title });
+      }
+    }
+    return { advanced: true, newStatus: newTaskStatus };
+  }
+
+  /**
+   * H4: Reconcile tasks that are stuck in_progress but whose sessions have all
+   * already reached a terminal state. Typically caused by agents that completed
+   * before H1 was deployed, or by session crashes that bypassed H3.
+   *
+   * This is an explicit maintenance operation — call it when you want to heal
+   * stuck tasks. It is NOT called on startup.
+   *
+   * @param options.dryRun - When true (default), report what would change without
+   *   mutating any data. Set to false to apply the advances.
+   */
+  async reconcileStuckTasks(options: { dryRun?: boolean } = {}): Promise<{
+    found: number;
+    advanced: Array<{ taskId: string; title: string; oldStatus: TaskStatus; newStatus: TaskStatus }>;
+    skipped: number;
+    errors: string[];
+    dryRun: boolean;
+  }> {
+    const dryRun = options.dryRun !== false; // default true
+    const inProgressTasks = await this.taskRepo.findByStatus('in_progress');
+
+    const advanced: Array<{ taskId: string; title: string; oldStatus: TaskStatus; newStatus: TaskStatus }> = [];
+    const errors: string[] = [];
+    let skipped = 0;
+
+    for (const task of inProgressTasks) {
+      try {
+        if (task.sessionIds.length === 0) {
+          skipped++;
+          continue;
+        }
+        const statuses = task.taskSessionStatuses ?? {};
+        const allTerminal = task.sessionIds.every(sid => {
+          const s = statuses[sid];
+          return s === 'completed' || s === 'failed' || s === 'skipped';
+        });
+        if (!allTerminal) {
+          skipped++;
+          continue;
+        }
+
+        const anyFailed = task.sessionIds.some(sid => statuses[sid] === 'failed');
+        const newTaskStatus: TaskStatus = anyFailed ? 'blocked' : 'completed';
+
+        if (!dryRun) {
+          // Delegate to the shared method so the exact same logic (including events) runs
+          await this.tryAutoAdvanceTask(task.id);
+        }
+
+        advanced.push({ taskId: task.id, title: task.title, oldStatus: 'in_progress', newStatus: newTaskStatus });
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        errors.push(`task ${task.id}: ${msg}`);
+      }
+    }
+
+    return { found: advanced.length + errors.length, advanced, skipped, errors, dryRun };
+  }
+
+  /**
+   * Mark all non-terminal sessions as 'stopped'. Called on server startup to
+   * clean up sessions whose PTY processes were orphaned by a server restart.
+   *
+   * When maestro-server exits (crashed or restarted), every PTY it was hosting
+   * dies with it. The session records survive on disk but their processes are
+   * gone. Those orphans then present as 'idle', 'working', or 'needs_input'
+   * forever, and the next coordinator sees a fleet of phantom sessions. This
+   * sweep resets them to 'stopped' at boot so the state model reflects reality.
+   *
+   * Terminal statuses ('completed', 'failed', 'stopped') are never touched.
+   */
+  async reconcileOrphanedSessions(): Promise<{ count: number }> {
+    const ACTIVE_STATUSES: SessionStatus[] = ['spawning', 'idle', 'working'];
+    let count = 0;
+    for (const status of ACTIVE_STATUSES) {
+      let sessions: Session[];
+      try {
+        sessions = await this.sessionRepo.findByStatus(status);
+      } catch {
+        continue; // repo unavailable — skip this status bucket
+      }
+      for (const session of sessions) {
+        try {
+          await this.sessionRepo.update(session.id, {
+            status: 'stopped',
+            needsInput: { active: false },
+          });
+          count++;
+        } catch {
+          // Best effort — don't abort startup for one bad session file
+        }
+      }
+    }
+    return { count };
   }
 
   /**

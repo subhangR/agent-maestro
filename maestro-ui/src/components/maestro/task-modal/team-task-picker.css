@@ -132,7 +132,7 @@
 }
 .ttp__team-check {
   flex: 0 0 auto;
-  color: var(--theme-primary, var(--pn-ink, #28221a));
+  color: var(--pn-brand, #cc785c);
   font-size: 12px;
 }
 

@@ -294,6 +294,8 @@ type Props = {
   onDelete?: (messageId: string) => Promise<void>;
   onRetry?: (tempId: string) => void;
   onDismiss?: (tempId: string) => void;
+  /** Open a thread panel for this message. */
+  onReply?: (messageId: string) => void;
 };
 
 function formatTimestamp(date: Date): string {
@@ -338,6 +340,7 @@ export function MessageBubble({
   onDelete,
   onRetry,
   onDismiss,
+  onReply,
 }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -531,7 +534,7 @@ export function MessageBubble({
             <div className="messagingEditActions">
               <button
                 type="button"
-                className="collabSpaceButton collabSpaceButtonPrimary"
+                className="pn-btn pn-btn--primary"
                 onClick={() => void saveEdit()}
                 disabled={busy || !draft.trim()}
               >
@@ -539,7 +542,7 @@ export function MessageBubble({
               </button>
               <button
                 type="button"
-                className="collabSpaceTextButton"
+                className="pn-btn pn-btn--ghost"
                 onClick={cancelEdit}
                 disabled={busy}
               >
@@ -569,12 +572,33 @@ export function MessageBubble({
                 ))}
               </div>
             )}
+            {message.replyCount > 0 && onReply && (
+              <button
+                type="button"
+                className="messagingThreadReplyCount"
+                onClick={() => onReply(message.id)}
+              >
+                {message.replyCount}{" "}
+                {message.replyCount === 1 ? "reply" : "replies"}
+              </button>
+            )}
           </>
         )}
       </div>
 
-      {!editing && (canEdit || canDelete) && (
+      {!editing && (canEdit || canDelete || onReply) && (
         <div className="messagingBubbleActions">
+          {onReply && !isDeleted && (
+            <button
+              type="button"
+              className="messagingBubbleActionBtn"
+              onClick={() => onReply(message.id)}
+              title="Reply in thread"
+              disabled={busy}
+            >
+              ↩
+            </button>
+          )}
           {canEdit && (
             <button
               type="button"

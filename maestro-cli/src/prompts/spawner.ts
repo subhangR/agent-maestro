@@ -24,6 +24,8 @@ export const AGENT_TOOL_DISPLAY_NAMES: Record<string, string> = {
   'hermes': 'Hermes',
   'gemini': 'Google Gemini',
   'claude-code': 'Claude Code',
+  'kimi': 'Kimi (Moonshot)',
+  'glm': 'GLM (Zhipu)',
 };
 
 // ── Stdin warning ───────────────────────────────────────────

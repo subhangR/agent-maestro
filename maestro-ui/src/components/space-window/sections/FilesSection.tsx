@@ -242,7 +242,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
                     <span className="spaceFileLimitNote">Max {MAX_FILE_KB} KB per file</span>
                     <button
                         type="button"
-                        className="spaceEntityPrimaryBtn"
+                        className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                         onClick={openPicker}
                         disabled={!user || uploading}
                         title={user ? undefined : "Sign in to share files"}
@@ -309,7 +309,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
                     </div>
                     <input
                         type="text"
-                        className="spaceEntitySearchInput spaceFileCaptionInput"
+                        className="spaceEntitySearchInput spaceFileCaptionInput pn-input"
                         placeholder="Add a caption (optional)"
                         aria-label="Caption for the shared file"
                         value={caption}
@@ -334,7 +334,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
                     <div className="spaceFileStagedActions">
                         <button
                             type="button"
-                            className="spaceEntityGhostBtn"
+                            className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                             onClick={cancelStaged}
                             disabled={uploading}
                         >
@@ -342,7 +342,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
                         </button>
                         <button
                             type="button"
-                            className={`spaceEntityPrimaryBtn ${uploading ? "spaceSharingBtn--pending" : ""}`}
+                            className={`spaceEntityPrimaryBtn pn-btn pn-btn--primary ${uploading ? "spaceSharingBtn--pending" : ""}`}
                             onClick={() => void handleUpload()}
                             disabled={uploading || !user}
                         >
@@ -427,7 +427,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
                                     <div className="spaceFileRowActions">
                                         <button
                                             type="button"
-                                            className={`spaceEntityGhostBtn ${isDownloading ? "spaceSharingBtn--pending" : ""}`}
+                                            className={`spaceEntityGhostBtn pn-btn pn-btn--ghost ${isDownloading ? "spaceSharingBtn--pending" : ""}`}
                                             onClick={() => void handleDownload(f)}
                                             disabled={isDownloading}
                                             aria-label={`Download ${f.name} (${formatBytes(f.size)})`}
@@ -437,7 +437,7 @@ export const FilesSection: React.FC<Props> = ({ space }) => {
                                         {canManage && (
                                             <button
                                                 type="button"
-                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
+                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--danger pn-btn pn-btn--ghost pn-btn--danger"
                                                 onClick={() => void handleDelete(f)}
                                                 aria-label={`Delete ${f.name}`}
                                             >

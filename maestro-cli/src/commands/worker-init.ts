@@ -193,7 +193,19 @@ export class WorkerInitCommand {
       // Wait for process to exit
       const pid = spawnResult.process.pid;
       spawnResult.process.on('exit', async (code) => {
-        // Silent exit
+        // H3: When the agent process exits without calling `maestro session report complete`,
+        // the session stays in 'working'/'idle' forever. Mark it 'stopped' so the task
+        // auto-advance logic (H1) can run and downstream coordinators get notified.
+        // Exit code 0 means the agent finished cleanly — it may have already reported
+        // complete, in which case the server guard (completed → stopped is a no-op) prevents
+        // overwriting. Non-zero exits are crashes/OOM/token-exhaustion — definitely stopped.
+        if (code !== null) {
+          try {
+            await api.patch(`/api/sessions/${sessionId}`, { status: 'stopped' });
+          } catch {
+            // Best-effort: server may be down or session already deleted.
+          }
+        }
       });
 
     } catch (error: any) {

@@ -10,6 +10,7 @@ import { SpaceShareClient } from "../../../firebase/SpaceShareClient";
 import { encodeFileToBase64 } from "../../../firebase/SpaceFilesClient";
 import { SPACE_FILE_MAX_RAW_BYTES } from "../../../firebase/spaceShareTypes";
 import { extractImageFiles, dataTransferHasFiles } from "../../../utils/clipboardImages";
+import { Icon } from "../redesign/kit";
 
 type Props = {
   channelId: string;
@@ -221,10 +222,10 @@ export function MessageComposer({
   };
 
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file
-    if (!file) return;
-    stageFiles([file]);
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // allow re-picking the same files
+    if (files.length === 0) return;
+    stageFiles(files);
   };
 
   // Pasting or dropping a screenshot stages it as a real Collab attachment
@@ -463,18 +464,17 @@ export function MessageComposer({
           {attaching ? (
             <span className="messagingAttachSpinner" aria-hidden="true" />
           ) : (
-            <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <path d="M11 7.5l-4 4a2 2 0 1 1-2.8-2.8l5-5a3.2 3.2 0 0 1 4.5 4.5l-5.5 5.5a4.6 4.6 0 0 1-6.5-6.5l5-5" strokeLinecap="round" />
-            </svg>
+            <Icon name="paperclip" size={13} sw={1.5} />
           )}
           <span>{attaching ? "Uploading…" : "Attach file"}</span>
         </button>
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           className="messagingAttachInput"
           onChange={(e) => void handleFilePicked(e)}
-          aria-label="Choose a file to attach"
+          aria-label="Choose files to attach"
           tabIndex={-1}
         />
         <div className="messagingComposerHint">

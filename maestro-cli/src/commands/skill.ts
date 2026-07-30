@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import chalk from 'chalk';
@@ -158,28 +158,23 @@ export function registerSkillCommands(program: Command): void {
         mkdirSync(installDir, { recursive: true });
       }
 
-      // Try npx skillsadd first, fall back to git clone
+      // Try npx skillsadd first, fall back to git clone.
+      // Use spawnSync with argv arrays (no shell) to avoid metacharacter expansion.
       let installed = false;
-      try {
-        execSync(`npx skillsadd ${repo}`, {
-          cwd: installDir,
-          stdio: globalOpts.json ? 'pipe' : 'inherit',
-          timeout: 60000,
-        });
+      const spawnOpts = { cwd: installDir, stdio: globalOpts.json ? 'pipe' : 'inherit', timeout: 60000 } as const;
+      const npxResult = spawnSync('npx', ['skillsadd', repo], spawnOpts);
+      if (npxResult.status === 0) {
         installed = true;
-      } catch {
+      } else {
         // skillsadd not available, fall back to git clone
-        try {
-          const cloneUrl = `https://github.com/${repo}.git`;
-          execSync(`git clone --depth 1 ${cloneUrl} ${repoName}`, {
-            cwd: installDir,
-            stdio: globalOpts.json ? 'pipe' : 'inherit',
-            timeout: 60000,
-          });
+        const cloneUrl = `https://github.com/${repo}.git`;
+        const gitResult = spawnSync('git', ['clone', '--depth', '1', cloneUrl, repoName], spawnOpts);
+        if (gitResult.status === 0) {
           installed = true;
-        } catch (err: any) {
+        } else {
+          const errMsg = gitResult.stderr ? gitResult.stderr.toString().trim() : `exit ${gitResult.status}`;
           if (globalOpts.json) {
-            outputJSON({ success: false, error: `Failed to install: ${err.message}` });
+            outputJSON({ success: false, error: `Failed to install: ${errMsg}` });
           }
           process.exit(1);
         }
@@ -208,12 +203,12 @@ export function registerSkillCommands(program: Command): void {
         return;
       }
 
-      // Try to open in browser
+      // Try to open in browser using argv-array spawn (no shell metacharacter risk).
       try {
         const openCmd = process.platform === 'darwin' ? 'open'
           : process.platform === 'win32' ? 'start'
           : 'xdg-open';
-        execSync(`${openCmd} ${url}`, { stdio: 'ignore' });
+        spawnSync(openCmd, [url], { stdio: 'ignore' });
       } catch {
         // Silent fail - URL is already printed
       }

@@ -146,14 +146,14 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                 <div className="spaceEntityHeaderRight">
                     <input
                         type="text"
-                        className="spaceEntitySearchInput"
+                        className="spaceEntitySearchInput pn-input"
                         placeholder="Search tasks…"
                         aria-label="Search tasks"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                     <select
-                        className="spaceEntityFilter"
+                        className="spaceEntityFilter pn-select"
                         value={statusFilter}
                         aria-label="Filter by status"
                         onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
@@ -168,7 +168,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                     </select>
                     <button
                         type="button"
-                        className="spaceEntityPrimaryBtn"
+                        className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                         onClick={() => setPushOpen(true)}
                         disabled={!user}
                         title={user ? undefined : "Sign in to push tasks"}
@@ -279,7 +279,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                         {pulled ? (
                                             <button
                                                 type="button"
-                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success"
+                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success pn-btn pn-btn--ghost"
                                                 disabled
                                             >
                                                 ✓ Pulled
@@ -287,7 +287,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                         ) : (
                                             <button
                                                 type="button"
-                                                className={`spaceEntityPrimaryBtn ${isPulling ? "spaceSharingBtn--pending" : ""}`}
+                                                className={`spaceEntityPrimaryBtn pn-btn pn-btn--primary ${isPulling ? "spaceSharingBtn--pending" : ""}`}
                                                 onClick={() => handlePull(t)}
                                                 disabled={!user || isPulling}
                                                 title={user ? undefined : "Sign in to pull"}
@@ -306,7 +306,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                             <>
                                                 <button
                                                     type="button"
-                                                    className="spaceEntityGhostBtn"
+                                                    className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                                                     onClick={() => {
                                                         if (canManage) setEditTask(t);
                                                     }}
@@ -315,7 +315,7 @@ export const TasksSection: React.FC<Props> = ({ space }) => {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
+                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger pn-btn pn-btn--ghost pn-btn--danger"
                                                     onClick={() => handleDelete(t)}
                                                 >
                                                     Delete
@@ -457,14 +457,14 @@ function PushTaskModal({
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>Push tasks to space</div>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Push tasks to space</div>
                 <p className="spaceModalBody">
                     Pick tasks from <strong>{projectName}</strong> to share with everyone in this
                     space.
@@ -521,7 +521,7 @@ function PushTaskModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={submitting}
                     >
@@ -529,7 +529,7 @@ function PushTaskModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={selectedIds.size === 0 || submitting}
                         onClick={handlePush}
                     >
@@ -583,17 +583,17 @@ function EditTaskModal({
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>Edit shared task</div>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Edit shared task</div>
                 <input
                     type="text"
-                    className="spaceEntitySearchInput"
+                    className="spaceEntitySearchInput pn-input"
                     style={{ width: "100%", marginBottom: 10 }}
                     value={title}
                     placeholder="Title"
@@ -602,7 +602,7 @@ function EditTaskModal({
                     onChange={(e) => setTitle(e.target.value)}
                 />
                 <textarea
-                    className="spaceEntitySearchInput"
+                    className="spaceEntitySearchInput pn-input"
                     style={{ width: "100%", minHeight: 96, marginBottom: 10, resize: "vertical" }}
                     value={description}
                     placeholder="Description"
@@ -612,7 +612,7 @@ function EditTaskModal({
                 />
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                     <select
-                        className="spaceEntityFilter"
+                        className="spaceEntityFilter pn-select"
                         value={status}
                         aria-label="Status"
                         onChange={(e) => setStatus(e.target.value as SpaceTaskStatus)}
@@ -625,7 +625,7 @@ function EditTaskModal({
                         <option value="cancelled">Cancelled</option>
                     </select>
                     <select
-                        className="spaceEntityFilter"
+                        className="spaceEntityFilter pn-select"
                         value={priority}
                         aria-label="Priority"
                         onChange={(e) => setPriority(e.target.value as SpaceTaskPriority)}
@@ -646,7 +646,7 @@ function EditTaskModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={saving}
                     >
@@ -654,7 +654,7 @@ function EditTaskModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={!title.trim() || saving}
                         onClick={handleSave}
                     >

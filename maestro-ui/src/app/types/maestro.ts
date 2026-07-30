@@ -70,10 +70,14 @@ export type HermesModel =
   | 'gpt-5.3-codex'
   | 'gpt-5.3-codex-spark'
   | 'gpt-5.2';
+// Kimi (Moonshot AI) and GLM (Zhipu AI) models — CLI-based providers. Model ids
+// mirror the CLI/server conventions (kimi-*/moonshot-*, glm-*/chatglm-*).
+export type KimiModel = 'kimi-k2-0711-preview' | (string & {});
+export type GlmModel = 'glm-4' | 'glm-4-plus' | (string & {});
 // Union of all supported models
-export type ModelType = ClaudeModel | CodexModel | GeminiModel | HermesModel;
-export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini';
-export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini';
+export type ModelType = ClaudeModel | CodexModel | GeminiModel | HermesModel | KimiModel | GlmModel;
+export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini' | 'kimi' | 'glm';
+export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini' | 'kimi' | 'glm';
 export type LaunchReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type LaunchSpeed = 'standard' | 'fast';
 export type LaunchAccessMode = 'safe' | 'acceptEdits' | 'plan' | 'fullAccess';
@@ -87,7 +91,7 @@ export interface LaunchConfig {
 }
 
 // Strategy types
-export type WorkerStrategy = 'simple' | 'queue';
+export type WorkerStrategy = 'simple' | 'tree';
 export type OrchestratorStrategy = 'default' | 'intelligent-batching' | 'dag';
 
 // Team Member types
@@ -264,6 +268,45 @@ export interface UpdateTeamMemberPayload {
   soundInstrument?: InstrumentType;
 }
 
+// Token usage snapshot — matches maestro-server/src/types.ts TokenUsageSnapshot.
+export interface TokenUsageSnapshot {
+  input: number;
+  output: number;
+  cacheCreate: number;
+  cacheRead: number;
+  total: number;
+  provider: string | null;
+  model: string | null;
+  capturedAt: number;
+}
+
+// Token analytics response shapes — mirror TokenAnalyticsService.
+export interface GlobalTokenSummary {
+  totals: TokenUsageSnapshot;
+  byProvider: Partial<Record<string, TokenUsageSnapshot>>;
+  byModel: Record<string, TokenUsageSnapshot>;
+  sessionCount: number;
+  windowMs: number;
+}
+
+export interface SessionTokenEntry {
+  sessionId: string;
+  tokenUsage: TokenUsageSnapshot | null;
+}
+
+export interface TaskTokenSummary {
+  taskId: string;
+  sessions: SessionTokenEntry[];
+  totals: TokenUsageSnapshot;
+}
+
+// Quota limits on a model profile.
+export interface ModelProfileQuotas {
+  maxTokensPerSession?: number;
+  maxTokensPerDay?: number;
+  maxConcurrentSessions?: number;
+}
+
 // Model profile types — a named, workspace-global launch config that team members
 // reference by id. Mirrors maestro-server/src/types.ts ModelProfile.
 export interface ModelProfile {
@@ -271,6 +314,7 @@ export interface ModelProfile {
   name: string;
   description?: string;
   launchConfig: LaunchConfig;
+  quotas?: ModelProfileQuotas;
   isDefault?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -280,12 +324,14 @@ export interface CreateModelProfilePayload {
   name: string;
   description?: string;
   launchConfig: LaunchConfig;
+  quotas?: ModelProfileQuotas;
 }
 
 export interface UpdateModelProfilePayload {
   name?: string;
   description?: string;
   launchConfig?: LaunchConfig;
+  quotas?: ModelProfileQuotas;
 }
 
 // Session timeline event types
@@ -302,6 +348,23 @@ export type SessionTimelineEventType =
   | 'error'              // Error occurred
   | 'milestone'          // Milestone reached
   | 'doc_added';         // Document added
+
+// Pipeline stage model for multi-agent workflow visualization.
+// The 7 canonical stages reflect the standard software delivery lifecycle.
+// Timeline events may carry metadata.stage (PipelineStageName) for explicit
+// attribution; absent that, derivePipeline.ts uses keyword heuristics.
+export type PipelineStageName =
+  | 'empathize' | 'define' | 'ideate' | 'design' | 'build'
+  | 'secure' | 'test' | 'review' | 'ship' | 'analyze';
+export type PipelineStageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+
+export interface PipelineStage {
+  name: PipelineStageName;
+  status: PipelineStageStatus;
+  agentLabel?: string;    // optional name of the agent working this stage
+  startedAt?: number;
+  completedAt?: number;
+}
 
 
 
@@ -1237,6 +1300,7 @@ export interface SessionLogDigestResponse {
     warning: string;
   } | null;
   lastActivityTimestamp: number;
+  summary?: string;
 }
 
 export interface SessionStatsResponse {

@@ -114,3 +114,42 @@
   opacity: 0.45;
   cursor: default;
 }
+
+/* ========================================================================
+   REDESIGN OVERRIDES — warm-paper pn tokens
+   The base rules above reference --bg-primary/--bg-secondary/--border-primary/
+   --accent-primary/--text-* custom properties that are never defined anywhere
+   in the app, so this screen always rendered on its hardcoded near-black
+   fallbacks regardless of theme. Repoint it onto --pn-* tokens when
+   html[data-redesign] is active. Token-only; base rules above are untouched.
+   ======================================================================== */
+html[data-redesign] .login-overlay { background: var(--pn-paper); }
+html[data-redesign] .login-card {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+  border-radius: var(--pn-r-lg);
+  box-shadow: var(--pn-sh-pop);
+}
+html[data-redesign] .login-logo {
+  background: var(--pn-brand);
+  border-radius: var(--pn-r-md);
+}
+html[data-redesign] .login-title { color: var(--pn-ink); }
+html[data-redesign] .login-subtitle { color: var(--pn-ink-3); }
+html[data-redesign] .login-input {
+  background: var(--pn-surface);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .login-input:focus { border-color: var(--pn-brand); }
+html[data-redesign] .login-input::placeholder { color: var(--pn-ink-4); }
+html[data-redesign] .login-error { color: var(--pn-block); }
+html[data-redesign] .login-button {
+  background: var(--pn-brand);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .login-button:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--pn-brand-2);
+}

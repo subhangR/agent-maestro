@@ -9,7 +9,7 @@ import { atomicWriteFile } from './utils/atomicWrite';
 
 /**
  * Workspace-global model profiles, stored flat at <dataDir>/model-profiles/<id>.json
- * (not scoped to a project). On first run, five default tiers are seeded.
+ * (not scoped to a project). On first run, six default tiers are seeded.
  */
 export class FileSystemModelProfileRepository implements IModelProfileRepository {
   private profilesDir: string;
@@ -42,7 +42,7 @@ export class FileSystemModelProfileRepository implements IModelProfileRepository
     if (!this.initialized) await this.initialize();
   }
 
-  /** Seed the 5 default tiers only when no profiles exist yet (respects user deletions). */
+  /** Seed the 6 default tiers only when no profiles exist yet (respects user deletions). */
   private async seedDefaultsIfEmpty(): Promise<void> {
     let existing: string[] = [];
     try {

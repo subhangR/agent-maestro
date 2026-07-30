@@ -128,8 +128,8 @@ export const InviteMemberModal: React.FC<Props> = ({ space, onClose }) => {
 
     return (
         <div className="spaceModalOverlay" onClick={onClose}>
-            <div ref={modalRef} className="spaceModal spaceModal--invites" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
-                <div className="spaceModalTitle" id={titleId}>Invite to {space.name}</div>
+            <div ref={modalRef} className="spaceModal spaceModal--invites pn-mdl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1}>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Invite to {space.name}</div>
                 {space.visibility !== "private" ? (
                     <p className="spaceModalBody">This is a public space. Any signed-in Maestro user can find and join it from the Collab Space list for this repository.</p>
                 ) : !canManage ? (
@@ -142,27 +142,27 @@ export const InviteMemberModal: React.FC<Props> = ({ space, onClose }) => {
                                 <label><input type="radio" checked={kind === "link"} onChange={() => setKind("link")} /> Invite link</label>
                                 <label><input type="radio" checked={kind === "code"} onChange={() => setKind("code")} /> Join code</label>
                             </div>
-                            <label className="spaceInviteField"><span>Expires after</span><select value={expiryHours} onChange={(e) => setExpiryHours(e.target.value)} disabled={busy}>{EXPIRY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
-                            <label className="spaceInviteField"><span>Maximum uses</span><input type="number" min="1" max="1000" value={maxUses} onChange={(e) => setMaxUses(e.target.value)} disabled={busy} /></label>
-                            <button type="submit" className="spaceModalPrimaryBtn" disabled={busy}>{busy ? "Creating…" : `Create ${kind === "link" ? "link" : "code"}`}</button>
+                            <label className="spaceInviteField"><span>Expires after</span><select className="pn-select" value={expiryHours} onChange={(e) => setExpiryHours(e.target.value)} disabled={busy}>{EXPIRY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+                            <label className="spaceInviteField"><span>Maximum uses</span><input className="pn-input" type="number" min="1" max="1000" value={maxUses} onChange={(e) => setMaxUses(e.target.value)} disabled={busy} /></label>
+                            <button type="submit" className="spaceModalPrimaryBtn pn-btn pn-btn--primary" disabled={busy}>{busy ? "Creating…" : `Create ${kind === "link" ? "link" : "code"}`}</button>
                         </form>
                         {created && (
                             <div className="spaceInviteCreated" aria-live="polite">
                                 <span className="spaceInviteCreatedLabel">New {labelForInvite(created)}</span>
-                                <div className="spaceInviteLinkRow"><input readOnly type="text" className="spaceInviteLinkInput" value={shareValue} aria-label={labelForInvite(created)} onFocus={(e) => e.currentTarget.select()} /><button type="button" className="spaceModalPrimaryBtn" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+                                <div className="spaceInviteLinkRow"><input readOnly type="text" className="spaceInviteLinkInput" value={shareValue} aria-label={labelForInvite(created)} onFocus={(e) => e.currentTarget.select()} /><button type="button" className="spaceModalPrimaryBtn pn-btn pn-btn--primary" onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
                             </div>
                         )}
                         <div className="spaceInviteListHeader"><span>Active and recent</span>{loading && <span>Loading…</span>}</div>
                         <div className="spaceInviteList">
                             {invites.length === 0 && !loading ? <p className="spaceModalHint">No private invitations yet.</p> : invites.map((invite) => {
                                 const status = inviteStatus(invite);
-                                return <div className="spaceInviteRow" key={invite.id}><div><strong>{labelForInvite(invite)}</strong><span>{invite.useCount}/{invite.maxUses} uses · {status}</span></div><button type="button" className="spaceSectionDetailGhostBtn" disabled={busy || status !== "active"} onClick={() => void revoke(invite)}>{status === "active" ? "Revoke" : status}</button></div>;
+                                return <div className="spaceInviteRow" key={invite.id}><div><strong>{labelForInvite(invite)}</strong><span>{invite.useCount}/{invite.maxUses} uses · {status}</span></div><button type="button" className="spaceSectionDetailGhostBtn pn-btn pn-btn--ghost" disabled={busy || status !== "active"} onClick={() => void revoke(invite)}>{status === "active" ? "Revoke" : status}</button></div>;
                             })}
                         </div>
                     </>
                 )}
                 {error && <div className="spaceShareError" role="alert">{error}</div>}
-                <div className="spaceModalActions"><button type="button" className="spaceSectionDetailGhostBtn" onClick={onClose}>Done</button></div>
+                <div className="spaceModalActions"><button type="button" className="spaceSectionDetailGhostBtn pn-btn pn-btn--ghost" onClick={onClose}>Done</button></div>
             </div>
         </div>
     );

@@ -54,7 +54,7 @@ const COMMAND_DEFINITIONS: Array<Omit<CommandCatalogEntry, 'syntax'>> = [
   { id: 'task:children', description: 'List child tasks', group: 'task', allowedModes: ALL_MODES },
   { id: 'task:tree', description: 'Show task tree', group: 'task', allowedModes: ALL_MODES },
   { id: 'task:report:progress', description: 'Report task progress', group: 'task', allowedModes: ALL_MODES },
-  { id: 'task:report:complete', description: 'Report task completion', group: 'task', allowedModes: ALL_MODES },
+  { id: 'task:report:complete', description: 'Report task completion and close task (transitions status to completed)', group: 'task', allowedModes: ALL_MODES },
   { id: 'task:report:blocked', description: 'Report task blocked', group: 'task', allowedModes: ALL_MODES },
   { id: 'task:report:error', description: 'Report task error', group: 'task', allowedModes: ALL_MODES },
   { id: 'task:docs:add', description: 'Add doc to task', group: 'task', allowedModes: ALL_MODES },

@@ -48,15 +48,15 @@ export function CreateChannelModal({ user, spaceId, onClose, onCreated }: Props)
   };
 
   return (
-    <div className="collabSpaceModalOverlay" onClick={onClose}>
-      <div className="collabSpaceModal" onClick={(e) => e.stopPropagation()}>
-        <div className="collabSpaceModalTitle">Create Channel</div>
-        <form onSubmit={submit} className="collabSpaceForm">
-          <label className="collabSpaceField">
-            <span className="collabSpaceFieldLabel">Name</span>
+    <div className="messagingModalOverlay" onClick={onClose}>
+      <div className="pn-mdl messagingCreateChannelModal" onClick={(e) => e.stopPropagation()}>
+        <div className="messagingCreateChannelTitle">Create Channel</div>
+        <form onSubmit={submit} className="pn-mdl__body">
+          <label className="pn-fld">
+            <span className="pn-flabel">Name</span>
             <input
               type="text"
-              className="collabSpaceInput"
+              className="pn-input"
               value={name}
               onChange={(e) => setName(e.target.value.toLowerCase())}
               placeholder="e.g. design"
@@ -64,14 +64,14 @@ export function CreateChannelModal({ user, spaceId, onClose, onCreated }: Props)
               required
               maxLength={CHANNEL_NAME_MAX_LENGTH}
             />
-            <span className="messagingChannelHint">
+            <span className="pn-fhint">
               Lowercase letters, numbers, and dashes only
             </span>
           </label>
-          <label className="collabSpaceField">
-            <span className="collabSpaceFieldLabel">Description</span>
+          <label className="pn-fld">
+            <span className="pn-flabel">Description</span>
             <textarea
-              className="collabSpaceInput"
+              className="pn-textarea"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="optional"
@@ -79,20 +79,20 @@ export function CreateChannelModal({ user, spaceId, onClose, onCreated }: Props)
             />
           </label>
           {validationError && (
-            <div className="collabSpaceError">{validationError}</div>
+            <div className="messagingFormError">{validationError}</div>
           )}
           {actionError && (
-            <div className="collabSpaceError" onClick={clearActionError}>
+            <div className="messagingFormError" onClick={clearActionError}>
               {actionError}
             </div>
           )}
-          <div className="collabSpaceFormActions">
-            <button type="button" className="collabSpaceTextButton" onClick={onClose}>
+          <div className="messagingFormActions">
+            <button type="button" className="pn-btn pn-btn--ghost" onClick={onClose}>
               Cancel
             </button>
             <button
               type="submit"
-              className="collabSpaceButton collabSpaceButtonPrimary"
+              className="pn-btn pn-btn--primary"
               disabled={creating || !name.trim() || Boolean(validationError)}
             >
               {creating ? "Creating…" : "Create"}

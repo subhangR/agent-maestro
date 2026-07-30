@@ -51,12 +51,16 @@ const SHORTCUT_AGENT_TOOL: Record<string, AgentTool> = {
   codex: "codex",
   gemini: "gemini",
   hermes: "hermes",
+  kimi: "kimi",
+  glm: "glm",
 };
 const SHORTCUT_LABEL: Record<string, string> = {
   claude: "Claude",
   codex: "Codex",
   gemini: "Gemini",
   hermes: "Hermes",
+  kimi: "Kimi",
+  glm: "GLM",
 };
 
 function formatSpaceAgo(timestamp: number): string {
@@ -72,6 +76,9 @@ const AGENT_TOOL_ICONS: Record<string, string> = {
   'claude-code': '/agent-icons/claude-code-icon.png',
   'codex': '/agent-icons/openai-codex-icon.png',
   'gemini': '/agent-icons/gemini-logo.png',
+  'hermes': '/agent-icons/hermes-agent-icon.svg',
+  'kimi': '/agent-icons/kimi-icon.svg',
+  'glm': '/agent-icons/glm-icon.svg',
 };
 
 // Segmented filter tabs — icon + label. Each toggles one section independently.

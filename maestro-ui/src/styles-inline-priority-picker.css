@@ -2341,6 +2341,131 @@
   opacity: 0.5;
 }
 
+/* ==========================================================================
+   MAESTRO REDESIGN — html[data-redesign] OVERRIDES (token-only)
+   Repoints TaskStatusControl.tsx's neon-terminal trigger/dropdown/session
+   display to the warm-paper pn-* tokens. Base rules above are untouched so
+   the data-redesign toggle keeps switching cleanly.
+   ========================================================================== */
+html[data-redesign] .terminalStatusTrigger {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .terminalStatusTrigger:hover:not(:disabled) {
+  border-color: var(--pn-brand);
+  box-shadow: none;
+}
+html[data-redesign] .terminalStatusTrigger.open {
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+
+html[data-redesign] .terminalStatusTrigger--todo,
+html[data-redesign] .terminalStatusTrigger--cancelled {
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .terminalStatusTrigger--in_progress {
+  border-color: var(--pn-run);
+}
+html[data-redesign] .terminalStatusTrigger--in_review {
+  border-color: var(--pn-info);
+}
+html[data-redesign] .terminalStatusTrigger--completed {
+  border-color: var(--pn-run);
+}
+html[data-redesign] .terminalStatusTrigger--blocked {
+  border-color: var(--pn-block);
+}
+
+html[data-redesign] .terminalStatusDropdown {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+  box-shadow: var(--pn-sh-pop);
+}
+
+html[data-redesign] .terminalStatusOption {
+  border-bottom-color: var(--pn-line);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+}
+html[data-redesign] .terminalStatusOption:hover {
+  background: var(--pn-hover);
+  color: var(--pn-brand);
+}
+html[data-redesign] .terminalStatusOption.current {
+  background: var(--pn-active);
+  box-shadow: none;
+}
+html[data-redesign] .terminalStatusCheck {
+  color: var(--pn-brand);
+}
+
+html[data-redesign] .terminalStatusError {
+  background: var(--pn-block-soft);
+  border-color: var(--pn-block);
+  color: var(--pn-block);
+  font-family: var(--pn-ui);
+}
+
+html[data-redesign] .terminalSessionStatusDisplay {
+  background: var(--pn-card);
+  border-color: var(--pn-line-2);
+  font-family: var(--pn-ui);
+}
+html[data-redesign] .terminalSessionStatusPrefix {
+  color: var(--pn-ink-4);
+}
+html[data-redesign] .terminalSessionStatusLabel {
+  color: var(--pn-ink);
+}
+html[data-redesign] .terminalSessionStatusDisplay--queued,
+html[data-redesign] .terminalSessionStatusDisplay--skipped {
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .terminalSessionStatusDisplay--queued .terminalSessionStatusLabel,
+html[data-redesign] .terminalSessionStatusDisplay--skipped .terminalSessionStatusLabel {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .terminalSessionStatusDisplay--working {
+  border-color: var(--pn-run);
+}
+html[data-redesign] .terminalSessionStatusDisplay--working .terminalSessionStatusLabel {
+  color: var(--pn-run);
+}
+html[data-redesign] .terminalSessionStatusDisplay--blocked {
+  border-color: var(--pn-block);
+}
+html[data-redesign] .terminalSessionStatusDisplay--blocked .terminalSessionStatusLabel {
+  color: var(--pn-block);
+}
+html[data-redesign] .terminalSessionStatusDisplay--needs_input {
+  border-color: var(--pn-wait);
+}
+html[data-redesign] .terminalSessionStatusDisplay--needs_input .terminalSessionStatusLabel {
+  color: var(--pn-wait);
+}
+html[data-redesign] .terminalSessionStatusDisplay--completed {
+  border-color: var(--pn-run);
+}
+html[data-redesign] .terminalSessionStatusDisplay--completed .terminalSessionStatusLabel {
+  color: var(--pn-run);
+}
+html[data-redesign] .terminalSessionStatusDisplay--failed {
+  border-color: var(--pn-block);
+}
+html[data-redesign] .terminalSessionStatusDisplay--failed .terminalSessionStatusLabel {
+  color: var(--pn-block);
+}
+html[data-redesign] .terminalSessionStatusDisplay--none {
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .terminalSessionStatusDisplay--none .terminalSessionStatusLabel {
+  color: var(--pn-ink-4);
+}
+
 /* Screen reader only */
 .sr-only {
   position: absolute;
@@ -2717,4 +2842,83 @@ html[data-redesign] .terminalLaunchDropdown__clear:hover {
 html[data-redesign] .terminalLaunchDropdown__model .terminalStatusCheck { color: var(--pn-brand); }
 @media (max-width: 640px) {
   html[data-redesign] .terminalLaunchDropdown__providers { border-bottom: 1px solid var(--pn-line); }
+}
+
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   AgentChip (brand logo + tool name) — repoints the per-tool neon hues to
+   restrained pn-* accents. Used by AgentChip.tsx / LaunchConfigDropdown.tsx.
+   =================================================================== */
+html[data-redesign] .agentChip {
+  color: var(--pn-ink-3);
+  font-family: var(--pn-ui);
+}
+html[data-redesign] .agentChip__model { color: var(--pn-ink-4); }
+html[data-redesign] .agentChip--claude-code { color: var(--pn-brand); }
+html[data-redesign] .agentChip--codex { color: var(--pn-run); }
+html[data-redesign] .agentChip--hermes { color: var(--pn-wait); }
+html[data-redesign] .agentChip--gemini { color: var(--pn-info); }
+html[data-redesign] .agentChip--kimi { color: var(--pn-brand-2); }
+html[data-redesign] .agentChip--glm { color: var(--pn-ink-2); }
+
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   Maestro Agent Selector (terminal quick-launch picker: claude/codex/hermes/
+   which) — base styles are solid-black + neon-green glow. Used by
+   AgentSelector.tsx.
+   =================================================================== */
+html[data-redesign] .maestroAgentSelectorTrigger {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink);
+}
+html[data-redesign] .maestroAgentSelectorTrigger:hover {
+  border-color: var(--pn-brand);
+  background: var(--pn-hover);
+  box-shadow: none;
+}
+html[data-redesign] .maestroAgentIcon { color: var(--pn-brand); }
+html[data-redesign] .maestroAgentCaret { color: var(--pn-ink-3); }
+html[data-redesign] .maestroAgentDropdown {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  box-shadow: var(--pn-sh-pop);
+}
+html[data-redesign] .maestroAgentOption {
+  border-bottom: 1px solid var(--pn-line);
+  color: var(--pn-ink);
+}
+html[data-redesign] .maestroAgentOption:hover { background: var(--pn-hover); }
+html[data-redesign] .maestroAgentOption.selected { background: var(--pn-active); }
+html[data-redesign] .maestroAgentOptionLabel { color: var(--pn-ink); }
+html[data-redesign] .maestroAgentOptionDesc { color: var(--pn-ink-3); }
+html[data-redesign] .maestroAgentCheck { color: var(--pn-brand); }
+
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   Inline Add-Subtask row (terminal-strip "+ Add subtask..." input). Used by
+   AddSubtaskInput.tsx.
+   =================================================================== */
+html[data-redesign] .terminalAddSubtaskRow {
+  background: var(--pn-surface);
+  border-top: 1px solid var(--pn-line);
+}
+html[data-redesign] .terminalAddSubtaskPrefix { color: var(--pn-brand); }
+html[data-redesign] .terminalAddSubtaskField {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink);
+}
+html[data-redesign] .terminalAddSubtaskField::placeholder { color: var(--pn-ink-4); }
+html[data-redesign] .terminalAddSubtaskField:focus {
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 2px var(--pn-brand-soft);
+  background: var(--pn-card);
+}
+html[data-redesign] .terminalAddSubtaskSpinner { color: var(--pn-brand); }
+html[data-redesign] .terminalAddSubtaskHint { color: var(--pn-ink-3); }
+html[data-redesign] .terminalAddSubtaskHint kbd {
+  background: var(--pn-active);
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink-2);
 }

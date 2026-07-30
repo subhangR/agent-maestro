@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Icon } from "../maestro/redesign/kit";
 
 type NewSessionModalProps = {
   isOpen: boolean;
@@ -53,14 +54,18 @@ export function NewSessionModal({
 
   return createPortal(
     <div className="themedModalBackdrop" onClick={onClose}>
-      <div className="themedModal" onClick={(e) => e.stopPropagation()}>
-        <div className="themedModalHeader">
-          <span className="themedModalTitle">[ NEW TERMINAL ]</span>
-          <button type="button" className="themedModalClose" onClick={onClose}>×</button>
+      <div className="pn-mdl" style={{ width: 460 }} onClick={(e) => e.stopPropagation()}>
+        <div className="pn-mdl__hd">
+          <div className="pn-mdl__hdmain">
+            <div className="pn-mdl__titleinput">New terminal</div>
+          </div>
+          <button type="button" className="pn-mdl__close" onClick={onClose} aria-label="Close">
+            <Icon name="x" size={16} />
+          </button>
         </div>
 
         <form onSubmit={onSubmit}>
-          <div className="themedModalContent">
+          <div className="pn-mdl__body">
             <div className="themedFormHint" style={{ marginBottom: '10px' }}>
               Enter a name for your new terminal session
             </div>
@@ -77,11 +82,11 @@ export function NewSessionModal({
             </div>
           </div>
 
-          <div className="themedFormActions">
-            <button type="button" className="themedBtn" onClick={onClose}>
+          <div className="pn-mdl__foot">
+            <button type="button" className="pn-btn" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="themedBtn themedBtnPrimary">
+            <button type="submit" className="pn-btn pn-btn--primary">
               Create Terminal
             </button>
           </div>

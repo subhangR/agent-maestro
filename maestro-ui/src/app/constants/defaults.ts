@@ -24,7 +24,7 @@ export const SESSION_CLOSE_CLEANUP_TIMEOUT_MS = 30_000;
 export const MAX_PENDING_SESSIONS = 32;
 export const MAX_PENDING_CHUNKS_PER_SESSION = 200;
 
-export const DEFAULT_AGENT_SHORTCUT_IDS = ["codex", "claude", "hermes", "gemini"];
+export const DEFAULT_AGENT_SHORTCUT_IDS = ["codex", "claude", "hermes", "gemini", "kimi", "glm"];
 export const DEFAULT_SIDEBAR_PROJECTS_LIST_MAX_HEIGHT = 290;
 export const MIN_SIDEBAR_PROJECTS_LIST_MAX_HEIGHT = 0;
 export const MAX_SIDEBAR_PROJECTS_LIST_MAX_HEIGHT = 1200;

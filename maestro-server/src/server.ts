@@ -27,6 +27,7 @@ import { createAlexaRoutes } from './api/alexaRoutes';
 import { createGitRoutes } from './api/gitRoutes';
 import { createAgentLogRoutes } from './api/agentLogRoutes';
 import { createFsRoutes } from './api/fsRoutes';
+import { createTokenAnalyticsRoutes } from './api/tokenAnalyticsRoutes';
 import { WebSocketBridge } from './infrastructure/websocket/WebSocketBridge';
 import { PtyWebSocketServer } from './infrastructure/websocket/PtyWebSocketServer';
 import { errorHandler } from './api/middleware/errorHandler';
@@ -218,6 +219,9 @@ async function startServer() {
     eventBus,
   });
   app.use('/api', gitRoutes);
+
+  // Token analytics routes
+  app.use('/api', createTokenAnalyticsRoutes(container.tokenAnalyticsService));
 
   // Agent session-log routes — let the browser web-ui read claude/codex logs
   // (the Tauri shell uses Rust invoke commands; the browser has none).

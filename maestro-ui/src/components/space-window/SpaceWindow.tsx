@@ -72,7 +72,7 @@ export const SpaceWindow: React.FC<Props> = ({ spaceId, inline = false }) => {
 
     if (loading && !space) {
         return (
-            <div className="spaceWindow">
+            <div className="spaceWindow pn-panel">
                 <SpaceWindowChrome space={null} inline={inline} />
                 <SpaceWindowEmpty state="loading" />
             </div>
@@ -81,7 +81,7 @@ export const SpaceWindow: React.FC<Props> = ({ spaceId, inline = false }) => {
 
     if (missing || !space) {
         return (
-            <div className="spaceWindow">
+            <div className="spaceWindow pn-panel">
                 <SpaceWindowChrome space={null} inline={inline} />
                 <SpaceWindowEmpty state="missing" />
             </div>
@@ -91,7 +91,7 @@ export const SpaceWindow: React.FC<Props> = ({ spaceId, inline = false }) => {
     const isMember = user ? space.memberIds.includes(user.uid) : false;
     if (!isMember) {
         return (
-            <div className="spaceWindow">
+            <div className="spaceWindow pn-panel">
                 <SpaceWindowChrome space={space} inline={inline} />
                 <SpaceWindowEmpty state="not-member" spaceName={space.name} />
             </div>
@@ -99,7 +99,7 @@ export const SpaceWindow: React.FC<Props> = ({ spaceId, inline = false }) => {
     }
 
     return (
-        <div className="spaceWindow">
+        <div className="spaceWindow pn-panel">
             <SpaceWindowChrome
                 space={space}
                 inline={inline}

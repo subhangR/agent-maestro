@@ -71,6 +71,8 @@ export class HookDispatcherService {
   private inFlightPerSession = new Map<string, number>();
   /** C5: live child processes, killed on shutdown. */
   private children = new Set<ChildProcess>();
+  /** Serialize hook dispatches that update loop counters for the same session. */
+  private sessionLocks = new Map<string, Promise<unknown>>();
 
   constructor(
     private sessionRepo: ISessionRepository,
@@ -85,6 +87,16 @@ export class HookDispatcherService {
     if (!payload?.sessionId) throw new ValidationError('sessionId is required');
     if (!payload?.event) throw new ValidationError('event is required');
 
+    const previous = this.sessionLocks.get(payload.sessionId) ?? Promise.resolve();
+    const run = previous.then(
+      () => this.dispatchLocked(payload),
+      () => this.dispatchLocked(payload),
+    );
+    this.sessionLocks.set(payload.sessionId, run.then(() => {}, () => {}));
+    return run;
+  }
+
+  private async dispatchLocked(payload: HookDispatchPayload): Promise<DispatchResult> {
     const dryRun = !!payload.dryRun;
     const session = await this.sessionRepo.findById(payload.sessionId);
     if (!session) throw new NotFoundError('Session', payload.sessionId);
@@ -622,7 +634,11 @@ export class HookDispatcherService {
     iterationUpdates: Map<string, Record<string, number>>,
   ): Promise<void> {
     if (iterationUpdates.size === 0) return;
-    const nextActives = (session.activeSpells ?? []).map(a => {
+    // Re-read immediately before the write so a spell activation/toggle that
+    // completed during rule execution is merged instead of overwritten.
+    const current = await this.sessionRepo.findById(session.id);
+    if (!current) throw new NotFoundError('Session', session.id);
+    const nextActives = (current.activeSpells ?? []).map(a => {
       const updates = iterationUpdates.get(a.spellId);
       if (!updates) return a;
       return { ...a, ruleIterations: { ...(a.ruleIterations ?? {}), ...updates } };

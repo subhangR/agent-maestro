@@ -35,7 +35,7 @@ export function SecureStorageModal({
                 onClose();
             }}
         >
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
                 <h3 className="modalTitle">Secure storage</h3>
 
                 {error && (
@@ -89,7 +89,7 @@ export function SecureStorageModal({
                 <div className="modalActions">
                     <button
                         type="button"
-                        className="btn"
+                        className="pn-btn"
                         onClick={onClose}
                         disabled={busy}
                     >
@@ -97,7 +97,7 @@ export function SecureStorageModal({
                     </button>
                     <button
                         type="button"
-                        className="btn"
+                        className="pn-btn pn-btn--primary"
                         onClick={() => onApply()}
                         disabled={busy}
                     >

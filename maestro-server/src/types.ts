@@ -92,8 +92,8 @@ export interface UpdateTaskGraphPayload {
 // Worker strategy types
 export type WorkerStrategy = 'simple' | 'tree';
 export type OrchestratorStrategy = 'default' | 'intelligent-batching' | 'dag';
-export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini';
-export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini';
+export type AgentTool = 'claude-code' | 'codex' | 'hermes' | 'gemini' | 'kimi' | 'glm';
+export type LaunchProvider = 'claude' | 'openai' | 'hermes' | 'gemini' | 'kimi' | 'glm';
 export type LaunchReasoningEffort = 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 export type LaunchSpeed = 'standard' | 'fast';
 export type LaunchAccessMode = 'safe' | 'acceptEdits' | 'plan' | 'fullAccess';
@@ -106,6 +106,23 @@ export interface LaunchConfig {
   accessMode?: LaunchAccessMode;
 }
 
+export interface TokenUsageSnapshot {
+  input: number;
+  output: number;
+  cacheCreate: number;
+  cacheRead: number;
+  total: number;
+  provider: LaunchProvider | null;
+  model: string | null;
+  capturedAt: number;
+}
+
+export interface ModelProfileQuotas {
+  maxTokensPerSession?: number;
+  maxTokensPerDay?: number;
+  maxConcurrentSessions?: number;
+}
+
 // Model Profile — a named, workspace-global launch config ("class" of model)
 // that team members reference by id. Updating a profile re-points every member
 // bound to it, so the fleet can be upgraded in one place (dependency inversion).
@@ -115,6 +132,7 @@ export interface ModelProfile {
   description?: string;
   launchConfig: LaunchConfig;
   isDefault?: boolean;                 // true for the auto-seeded tiers
+  quotas?: ModelProfileQuotas;
   createdAt: string;                   // ISO 8601
   updatedAt: string;                   // ISO 8601
 }
@@ -123,12 +141,14 @@ export interface CreateModelProfilePayload {
   name: string;
   description?: string;
   launchConfig: LaunchConfig;
+  quotas?: ModelProfileQuotas;
 }
 
 export interface UpdateModelProfilePayload {
   name?: string;
   description?: string;
   launchConfig?: LaunchConfig;
+  quotas?: ModelProfileQuotas;
 }
 
 /**
@@ -309,6 +329,8 @@ export interface TeamMemberSnapshot {
   avatar: string;
   role: string;
   model?: string;
+  modelProfileId?: string;
+  launchConfig?: LaunchConfig;
   agentTool?: AgentTool;
   permissionMode?: 'acceptEdits' | 'interactive' | 'readOnly' | 'bypassPermissions';
 }
@@ -538,6 +560,7 @@ export interface Session {
 
   // P1: Spells currently active on this session (foundation for trigger/loop/gate behavior)
   activeSpells: ActiveSpell[];
+  tokenUsage?: TokenUsageSnapshot;
 }
 
 // Supporting types
@@ -568,7 +591,22 @@ export interface SessionTimelineEvent {
   timestamp: number;
   message?: string;
   taskId?: string;                    // Which task this event relates to
-  metadata?: Record<string, any>;     // Extensible metadata
+  metadata?: Record<string, any>;     // Extensible metadata — may include `stage: PipelineStageName`
+}
+
+// Pipeline stage model for multi-agent workflow visualization.
+// Timeline events may carry metadata.stage for explicit stage attribution.
+export type PipelineStageName =
+  | 'empathize' | 'define' | 'ideate' | 'design' | 'build'
+  | 'secure' | 'test' | 'review' | 'ship' | 'analyze';
+export type PipelineStageStatus = 'pending' | 'active' | 'done' | 'failed' | 'skipped';
+
+export interface PipelineStage {
+  name: PipelineStageName;
+  status: PipelineStageStatus;
+  agentLabel?: string;
+  startedAt?: number;
+  completedAt?: number;
 }
 
 // Document entry for session/task docs
@@ -1084,6 +1122,7 @@ export interface UpdateSessionPayload {
   humanCompletedAt?: number | null;  // Human-driven completion timestamp (null to reopen)
   archivedAt?: number | null;  // Archive timestamp (null to unarchive)
   activeSpells?: ActiveSpell[]; // P1: replace the session's active spell list
+  tokenUsage?: TokenUsageSnapshot;
 }
 
 /** Payload emitted on session:mode_changed event */

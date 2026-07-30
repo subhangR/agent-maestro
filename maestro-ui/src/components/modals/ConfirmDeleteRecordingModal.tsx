@@ -17,16 +17,16 @@ export function ConfirmDeleteRecordingModal({
 
   return (
     <div className="modalBackdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
         <h3 className="modalTitle">Delete recording</h3>
         <div className="hint" style={{ marginTop: 0 }}>
           Delete "{recordingLabel}"? This cannot be undone.
         </div>
         <div className="modalActions">
-          <button type="button" className="btn" onClick={onClose}>
+          <button type="button" className="pn-btn" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="btn btnDanger" onClick={onConfirmDelete}>
+          <button type="button" className="pn-btn pn-btn--danger" onClick={onConfirmDelete}>
             Delete
           </button>
         </div>

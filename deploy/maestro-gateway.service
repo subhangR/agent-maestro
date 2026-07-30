@@ -1,0 +1,54 @@
+# deploy/maestro-gateway.service — systemd unit template for Maestro Gateway
+#
+# Placeholders (filled in by deploy scripts):
+#   %%USER%%         — OS user to run the service as (e.g. ubuntu)
+#   %%REPO_DIR%%     — Absolute path to the repo (e.g. /home/ubuntu/agent-maestro)
+#   %%NODE_BIN%%     — Absolute path to the node binary (e.g. /usr/bin/node)
+#   %%ENV_FILE%%     — Absolute path to gateway env file (e.g. /etc/maestro/gateway.env)
+#
+# To install manually (fill in %%PLACEHOLDERS%% first):
+#   sudo cp deploy/maestro-gateway.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now maestro-gateway
+#
+# To view logs:
+#   journalctl -u maestro-gateway -f
+
+[Unit]
+Description=Maestro Trusted-Team Hub Gateway (process-per-user, Design A)
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%%USER%%
+Group=%%USER%%
+WorkingDirectory=%%REPO_DIR%%
+EnvironmentFile=%%ENV_FILE%%
+
+# RUNTIME must be node — same constraint as maestro-server (node-pty compatibility).
+ExecStart=%%NODE_BIN%% %%REPO_DIR%%/maestro-gateway/dist/server.js
+
+Restart=always
+RestartSec=3
+StartLimitBurst=5
+StartLimitIntervalSec=30
+
+# Kill the whole cgroup on stop so every per-user maestro-server child the gateway
+# spawned is torn down with it (no orphaned instances holding ports).
+KillMode=control-group
+TimeoutStopSec=20
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=maestro-gateway
+
+# Give child agent CLIs room; raise if the box is running many concurrent users.
+LimitNOFILE=65536
+
+# Security hardening
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

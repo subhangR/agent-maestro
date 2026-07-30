@@ -6,8 +6,8 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: #1e1e1e;
-  color: #ddd;
+  background: #1c1a16;
+  color: #e8e2d4;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -19,15 +19,15 @@ body {
 #sidebar {
   width: 280px;
   flex-shrink: 0;
-  border-right: 1px solid #333;
+  border-right: 1px solid #3b3524;
   display: flex;
   flex-direction: column;
-  background: #252526;
+  background: #211d17;
 }
 
 #sidebar-header {
   padding: 12px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #3b3524;
 }
 
 #sidebar-header h1 {
@@ -42,7 +42,7 @@ body {
 }
 
 button {
-  background: #0e639c;
+  background: #cc785c;
   color: #fff;
   border: none;
   padding: 6px 10px;
@@ -52,13 +52,13 @@ button {
 }
 
 button:hover {
-  background: #1177bb;
+  background: #b35f42;
 }
 
 #conn-info {
   margin-top: 8px;
   font-size: 11px;
-  color: #888;
+  color: #948c78;
   word-break: break-all;
 }
 
@@ -72,23 +72,23 @@ button:hover {
 
 #sessions li {
   padding: 10px 12px;
-  border-bottom: 1px solid #2d2d2d;
+  border-bottom: 1px solid #2c2719;
   cursor: pointer;
   font-size: 13px;
 }
 
 #sessions li:hover {
-  background: #2a2d2e;
+  background: #2a241a;
 }
 
 #sessions li.active {
-  background: #094771;
+  background: #3a2a20;
 }
 
 #sessions li .sid {
   display: block;
   font-size: 11px;
-  color: #888;
+  color: #948c78;
   margin-top: 2px;
 }
 
@@ -98,7 +98,7 @@ button:hover {
   height: 8px;
   border-radius: 50%;
   margin-right: 6px;
-  background: #888;
+  background: #948c78;
 }
 .status-dot.working { background: #4ec9b0; }
 .status-dot.idle { background: #d7ba7d; }
@@ -114,7 +114,7 @@ button:hover {
 
 #status-bar {
   padding: 8px 12px;
-  background: #007acc;
+  background: #cc785c;
   color: #fff;
   font-size: 12px;
   flex-shrink: 0;
@@ -129,6 +129,6 @@ button:hover {
 
 .empty {
   padding: 16px 12px;
-  color: #777;
+  color: #948c78;
   font-size: 12px;
 }

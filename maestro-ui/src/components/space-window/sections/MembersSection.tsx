@@ -101,7 +101,7 @@ export const MembersSection: React.FC<Props> = ({ space }) => {
                 <div className="spaceEntityHeaderRight">
                     <button
                         type="button"
-                        className="spaceEntityPrimaryBtn"
+                        className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                         onClick={() => setInviteOpen(true)}
                     >
                         + Invite
@@ -214,7 +214,7 @@ const MemberRow: React.FC<MemberRowProps> = ({
                 <div className="spaceMemberFullActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onToggleMenu}
                         aria-haspopup="menu"
                         aria-expanded={menuOpen}

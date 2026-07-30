@@ -28,6 +28,7 @@ function sectionToPrimaryTab(section: IconRailSection): PrimaryTab | null {
         case "graphs": return "graphs";
         case "collab": return "collab";
         case "profiles": return "profiles";
+        case "analytics": return "analytics";
         default: return null;
     }
 }

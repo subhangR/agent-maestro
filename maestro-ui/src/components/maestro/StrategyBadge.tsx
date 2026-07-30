@@ -18,23 +18,18 @@ export function StrategyBadge({
 }: StrategyBadgeProps) {
   if (!strategy && !orchestratorStrategy) return null;
 
-  const isQueue = strategy === "queue";
-  const isTree = strategy === "queue";
-  const hasQueueInfo = isQueue && queuePosition !== undefined && queueTotal !== undefined;
+  const isTree = strategy === "tree";
+  const hasQueueInfo = isTree && queuePosition !== undefined && queueTotal !== undefined;
 
   const titleText = isTree
-    ? "Tree strategy: works through task tree holistically"
-    : isQueue
-      ? `Queue strategy: position ${queuePosition} of ${queueTotal}`
-      : "Simple strategy: sequential task processing";
+    ? `Tree strategy: works through task tree${hasQueueInfo ? ` (${queuePosition}/${queueTotal})` : ""}`
+    : "Simple strategy: sequential task processing";
 
   const label = isTree
-    ? (compact ? "T" : "TREE")
-    : isQueue
-      ? (compact
-          ? (hasQueueInfo ? `Q:${queuePosition}/${queueTotal}` : "Q")
-          : (hasQueueInfo ? `QUEUE: ${queuePosition}/${queueTotal}` : "QUEUE"))
-      : (compact ? "S" : "SIMPLE");
+    ? (compact
+        ? (hasQueueInfo ? `T:${queuePosition}/${queueTotal}` : "T")
+        : (hasQueueInfo ? `TREE: ${queuePosition}/${queueTotal}` : "TREE"))
+    : (compact ? "S" : "SIMPLE");
 
   return (
     <>

@@ -78,7 +78,7 @@ export function SessionInTaskView({
     return Math.max(...taskEvents.map((e) => e.timestamp));
   }, [timeline, taskId, session.lastActivity]);
 
-  const isQueue = session.strategy === "queue";
+  const isQueue = session.strategy === "tree";
 
   return (
     <div

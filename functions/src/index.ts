@@ -229,9 +229,10 @@ export const fanoutMessageNotification = onDocumentCreated(
       focused: await isFocusedOnChannel(spaceId, uid, channelId),
     } satisfies RecipientPlan)));
 
-    const actorName = typeof message.authorDisplayName === 'string' && message.authorDisplayName.trim()
-      ? message.authorDisplayName.trim()
-      : 'Someone';
+    // Use the space-document member record rather than message.authorDisplayName so
+    // that a malicious client cannot spoof another member's name in push notifications
+    // by writing an arbitrary authorDisplayName when creating a message.
+    const actorName = actorNameFromSpace(spaceSnapshot.data() as Record<string, unknown>, authorUid);
     const spaceName = typeof spaceSnapshot.get('name') === 'string' ? spaceSnapshot.get('name') : null;
     const channelName = typeof channelSnapshot.get('name') === 'string' ? channelSnapshot.get('name') : null;
     const preview = messagePreview(message.content, message.attachments);

@@ -64,6 +64,15 @@ export function TaskTabBar({
                     <span className="pn-mtab__n">{sessions.length}</span>
                 </button>
             )}
+            {isEditMode && sessions.length > 0 && (
+                <button
+                    type="button"
+                    className={`pn-mtab ${activeTab === 'tokens' ? 'pn-mtab--active' : ''}`}
+                    onClick={() => onToggleTab('tokens')}
+                >
+                    <Icon name="hash" /> Tokens
+                </button>
+            )}
             <button
                 type="button"
                 className={`pn-mtab ${activeTab === 'ref-docs' ? 'pn-mtab--active' : ''}`}

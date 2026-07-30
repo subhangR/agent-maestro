@@ -1,5 +1,6 @@
 import React from "react";
 import { Channel } from "../../../firebase/messagingTypes";
+import { Icon } from "../redesign/kit";
 
 type Props = {
   channels: Channel[];
@@ -30,9 +31,7 @@ export function ChannelList({
             title="Create channel"
             aria-label="Create channel"
           >
-            <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M6 1v10M1 6h10" />
-            </svg>
+            <Icon name="plus" size={10} sw={1.8} />
           </button>
         )}
       </div>

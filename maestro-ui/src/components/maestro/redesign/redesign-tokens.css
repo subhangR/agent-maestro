@@ -35,10 +35,10 @@ html[data-redesign] {
   --pn-ink-3:    #8E897B;   /* muted / meta */
   --pn-ink-4:    #B7B2A4;   /* faint / placeholder */
 
-  /* one restrained brand accent — brass (the conductor's baton, daylit) --- */
-  --pn-brand:    #B26A2B;
-  --pn-brand-2:  #9A581F;
-  --pn-brand-soft: rgba(178, 106, 43, 0.11);
+  /* one restrained brand accent — Claude-like warm terracotta/clay --------- */
+  --pn-brand:    #CC785C;
+  --pn-brand-2:  #B35F42;
+  --pn-brand-soft: rgba(204, 120, 92, 0.12);
 
   /* muted functional status — desaturated for a paper world (anti-neon) --- */
   --pn-run:    #3E8E5A;   --pn-run-soft:   rgba(62, 142, 90, 0.12);
@@ -68,7 +68,7 @@ html[data-redesign] {
   /* terminal chrome (stays dark in both themes; only --pn-term-bg flips) ---- */
   --pn-term-bg:  #1c1a16;
   --pn-term-ink: #cfc9bb;
-  --pn-term-acc: #d99a4e;
+  --pn-term-acc: #d98868;
   --pn-term-dim: #8a8474;
 }
 
@@ -237,6 +237,8 @@ html[data-redesign] .pn-btn--danger { background: var(--pn-block); color: var(--
 html[data-redesign] .pn-btn--danger:hover { background: var(--pn-block-soft); color: var(--pn-block); border-color: var(--pn-block); }
 html[data-redesign] .pn-btn--danger.pn-btn--ghost { background: transparent; border-color: transparent; color: var(--pn-block); }
 html[data-redesign] .pn-btn--danger.pn-btn--ghost:hover { background: var(--pn-block-soft); }
+/* modals-cluster net-new: compact button for dense in-row actions (list rows, footers) */
+html[data-redesign] .pn-btn--sm { height: 26px; padding: 0 10px; font-size: 11.5px; gap: 5px; border-radius: var(--pn-r-sm); }
 
 html[data-redesign] .pn-kbd {
   font-family: var(--pn-mono); font-size: 10px; font-weight: 600;
@@ -338,10 +340,11 @@ html[data-redesign] .pn-search input::placeholder { color: var(--pn-ink-4); }
 /* filter tabs — single-row segmented control */
 html[data-redesign] .pn-filters {
   display: flex; align-items: stretch; gap: 2px; margin: 4px 14px 10px;
-  padding: 3px; flex-wrap: wrap;
+  padding: 3px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
   background: var(--pn-active); border: 1px solid var(--pn-line);
   border-radius: var(--pn-r-sm);
 }
+html[data-redesign] .pn-filters::-webkit-scrollbar { display: none; }
 html[data-redesign] .pn-filter {
   flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
@@ -763,7 +766,7 @@ html[data-redesign] .pn-sp { width: 340px; flex: 0 0 auto; display: flex; flex-d
 /* left sub-tab / action bar */
 html[data-redesign] .pn-subbar {
   display: flex; align-items: center; gap: 3px; padding: 4px 10px 8px; flex: 0 0 auto;
-  flex-wrap: wrap; row-gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none;
+  flex-wrap: nowrap; min-width: 0; overflow-x: auto; scrollbar-width: none;
 }
 html[data-redesign] .pn-subbar::-webkit-scrollbar { display: none; }
 html[data-redesign] .pn-subtab {
@@ -798,9 +801,9 @@ html[data-redesign][data-theme='dark'] {
   --pn-ink-3:   #8C8470;   /* muted / meta */
   --pn-ink-4:   #665E4C;   /* faint / placeholder */
 
-  --pn-brand:    #E0A45A;
-  --pn-brand-2:  #C98A3E;
-  --pn-brand-soft: rgba(224, 164, 90, 0.15);
+  --pn-brand:    #E0916F;
+  --pn-brand-2:  #C97552;
+  --pn-brand-soft: rgba(224, 145, 111, 0.16);
 
   --pn-run:   #5CB381;  --pn-run-soft:   rgba(92, 179, 129, 0.17);
   --pn-wait:  #D9AA49;  --pn-wait-soft:  rgba(217, 170, 73, 0.18);

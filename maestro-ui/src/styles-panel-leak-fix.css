@@ -18,6 +18,13 @@
    ========================================================================== */
 
 html[data-redesign] .pnLeakSkin {
+  /* Elements inside that never declare their own `color` (relying on plain
+     inheritance rather than var(--text)/var(--theme-text)) were inheriting
+     the stale near-white body color from before this scope remaps anything.
+     Setting color here recomputes it at this scope so normal inheritance
+     carries the correct value down to every such descendant. */
+  color: var(--pn-ink);
+
   /* dynamic color theme (neon green by default) → calm warm ink/paper ----- */
   --theme-primary:      var(--pn-brand);
   --theme-primary-dim:  var(--pn-brand-2);

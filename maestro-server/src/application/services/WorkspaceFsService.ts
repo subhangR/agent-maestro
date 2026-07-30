@@ -194,6 +194,37 @@ export class WorkspaceFsService {
     await fs.writeFile(file, content, 'utf8');
   }
 
+  /**
+   * Create or overwrite a text file confined to `root`, creating parent
+   * directories as needed. Relative `target` paths are resolved against
+   * `root`. Returns the absolute canonical path of the written file.
+   */
+  async createOrOverwriteTextFile(root: string, target: string, content: string): Promise<string> {
+    const r = root.trim();
+    if (!path.isAbsolute(r)) {
+      throw new ValidationError('root must be absolute');
+    }
+    if (!(await isDirectory(r))) {
+      throw new ValidationError('root is not a directory');
+    }
+    const canonRoot = await fs.realpath(r);
+
+    const t = target.trim();
+    if (t.split(/[\\/]/).includes('..')) {
+      throw new ValidationError('path must not contain ".."');
+    }
+    const absTarget = path.isAbsolute(t) ? t : path.resolve(canonRoot, t);
+    const resolved = await this.realResolve(absTarget);
+
+    if (!isWithin(canonRoot, resolved)) {
+      throw new ValidationError('path is outside root');
+    }
+
+    await fs.mkdir(path.dirname(resolved), { recursive: true });
+    await fs.writeFile(resolved, content, 'utf8');
+    return resolved;
+  }
+
   /** Rename an entry (within its parent) confined within `root`. */
   async renameEntry(root: string, target: string, newName: string): Promise<string> {
     const canonRoot = await this.ensureParentWithinRoot(root, target);

@@ -76,7 +76,7 @@ export function TaskListAddTasksModal({
 
   return (
     <div className="themedModalBackdrop" onClick={onClose}>
-      <div className="themedModal themedModal--wide" onClick={(e) => e.stopPropagation()}>
+      <div className="themedModal themedModal--wide pnLeakSkin" onClick={(e) => e.stopPropagation()}>
         <div className="themedModalHeader">
           <span className="themedModalTitle">[ ADD TASKS TO LIST ]</span>
           <button type="button" className="themedModalClose" onClick={onClose} disabled={isSaving}>×</button>

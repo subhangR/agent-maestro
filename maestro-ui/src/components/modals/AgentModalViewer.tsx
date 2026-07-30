@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import type { AgentModal } from '../../stores/useMaestroStore';
 import { API_BASE_URL } from '../../utils/serverConfig';
+import { Icon } from '../maestro/redesign/kit';
 
 interface AgentModalViewerProps {
   modal: AgentModal;
@@ -81,7 +82,7 @@ export function AgentModalViewer({ modal, onClose }: AgentModalViewerProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        backgroundColor: 'rgba(40, 34, 24, 0.45)',
         backdropFilter: 'blur(4px)',
       }}
     >
@@ -92,13 +93,14 @@ export function AgentModalViewer({ modal, onClose }: AgentModalViewerProps) {
           maxWidth: '900px',
           height: '70vh',
           maxHeight: '700px',
-          borderRadius: '12px',
+          borderRadius: 'var(--pn-r-lg, 12px)',
           overflow: 'hidden',
           backgroundColor: 'var(--color-bg-primary, #1a1a2e)',
           border: '1px solid var(--color-border, #333)',
-          boxShadow: '0 24px 48px rgba(0, 0, 0, 0.4)',
+          boxShadow: 'var(--pn-sh-pop, 0 24px 48px rgba(0, 0, 0, 0.4))',
           display: 'flex',
           flexDirection: 'column',
+          fontFamily: 'var(--pn-ui, inherit)',
         }}
       >
         {/* Header */}
@@ -114,7 +116,7 @@ export function AgentModalViewer({ modal, onClose }: AgentModalViewerProps) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '14px' }}>📋</span>
+            <Icon name="doc" size={14} style={{ color: 'var(--color-text-tertiary, #888)' }} />
             <span
               style={{
                 fontSize: '13px',
@@ -128,7 +130,7 @@ export function AgentModalViewer({ modal, onClose }: AgentModalViewerProps) {
               style={{
                 fontSize: '11px',
                 color: 'var(--color-text-tertiary, #888)',
-                fontFamily: 'monospace',
+                fontFamily: 'var(--pn-mono, monospace)',
               }}
             >
               {modal.modalId}
@@ -141,14 +143,16 @@ export function AgentModalViewer({ modal, onClose }: AgentModalViewerProps) {
               border: 'none',
               color: 'var(--color-text-secondary, #aaa)',
               cursor: 'pointer',
-              fontSize: '18px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               padding: '4px 8px',
-              borderRadius: '4px',
+              borderRadius: 'var(--pn-r-sm, 4px)',
               lineHeight: 1,
             }}
             title="Close modal (Esc)"
           >
-            ✕
+            <Icon name="x" size={16} />
           </button>
         </div>
 

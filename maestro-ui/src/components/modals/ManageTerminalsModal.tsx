@@ -36,7 +36,7 @@ export function ManageTerminalsModal({ sessions, onReorder, onClose }: ManageTer
 
     return (
         <div className="modalBackdrop" onClick={onClose}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
                 <h3 className="modalTitle">Manage Terminals</h3>
                 <div className="hint" style={{ marginTop: 0 }}>
                     Reorder terminals using the arrow buttons. Changes are saved automatically.
@@ -67,7 +67,7 @@ export function ManageTerminalsModal({ sessions, onReorder, onClose }: ManageTer
                                         <div className="agentShortcutEditorActions">
                                             <button
                                                 type="button"
-                                                className="btnSmall btnIcon"
+                                                className="pn-ib"
                                                 onClick={() => handleMoveUp(index)}
                                                 disabled={isFirst}
                                                 title="Move up"
@@ -78,7 +78,7 @@ export function ManageTerminalsModal({ sessions, onReorder, onClose }: ManageTer
                                             </button>
                                             <button
                                                 type="button"
-                                                className="btnSmall btnIcon"
+                                                className="pn-ib"
                                                 onClick={() => handleMoveDown(index)}
                                                 disabled={isLast}
                                                 title="Move down"
@@ -96,7 +96,7 @@ export function ManageTerminalsModal({ sessions, onReorder, onClose }: ManageTer
                 </div>
 
                 <div className="modalActions">
-                    <button type="button" className="btn" onClick={onClose}>
+                    <button type="button" className="pn-btn" onClick={onClose}>
                         Done
                     </button>
                 </div>

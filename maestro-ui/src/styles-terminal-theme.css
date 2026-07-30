@@ -1304,3 +1304,73 @@
   }
 }
 
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   PanelErrorState.tsx / NoProjectState — a stylized "fake terminal window"
+   (macOS chrome + scanlines + ASCII art). Per the redesign's own convention
+   ("center terminal stays dark in both themes — light chrome around a dark
+   terminal"), this fatal-error/idle terminal mock keeps its dark identity
+   instead of flipping to warm paper; only the token source moves from the
+   legacy neon --theme-*/--terminal-* system to the --pn-term-* dark palette.
+   =================================================================== */
+html[data-redesign] .maestroPanel.terminalTheme {
+  background: var(--pn-term-bg);
+  box-shadow: none;
+}
+html[data-redesign] .terminalWindowTitle { color: var(--pn-term-dim); }
+html[data-redesign] .terminalPromptSymbol {
+  color: var(--pn-term-acc);
+  text-shadow: none;
+}
+html[data-redesign] .terminalPath { color: var(--pn-wait); }
+html[data-redesign] .terminalDisconnected {
+  color: var(--pn-block);
+  border-color: var(--pn-block);
+  background: var(--pn-block-soft);
+}
+html[data-redesign] .terminalTheme .terminalCmd {
+  border-color: var(--pn-term-dim);
+  color: var(--pn-term-ink);
+}
+html[data-redesign] .terminalTheme .terminalCmd:hover {
+  border-color: var(--pn-term-acc);
+  background: rgba(217, 154, 78, 0.12);
+  box-shadow: none;
+}
+html[data-redesign] .terminalTheme .terminalCmdPrimary {
+  border-color: var(--pn-term-acc);
+  background: rgba(217, 154, 78, 0.1);
+  box-shadow: none;
+}
+html[data-redesign] .terminalTheme .terminalCmdPrimary:hover {
+  background: rgba(217, 154, 78, 0.16);
+}
+html[data-redesign] .terminalTheme .terminalAsciiArt {
+  color: var(--pn-term-acc);
+  text-shadow: none;
+}
+html[data-redesign] .terminalTheme .terminalErrorAscii {
+  color: var(--pn-block);
+  text-shadow: none;
+}
+html[data-redesign] .terminalTheme .terminalErrorBox {
+  background: var(--pn-block-soft);
+  border-color: var(--pn-block);
+}
+html[data-redesign] .terminalTheme .terminalErrorLabel { color: var(--pn-block); }
+html[data-redesign] .terminalTheme .terminalErrorMessage { color: var(--pn-term-ink); }
+html[data-redesign] .terminalTheme .terminalErrorHint { color: var(--pn-wait); }
+html[data-redesign] .terminalTheme .terminalLoadingState,
+html[data-redesign] .terminalTheme .terminalEmptyState { color: var(--pn-term-ink); }
+html[data-redesign] .terminalTheme .terminalSpinnerDot,
+html[data-redesign] .terminalTheme .terminalCursor { color: var(--pn-term-acc); }
+html[data-redesign] .terminalTheme .terminalLoadingText { color: var(--pn-term-dim); }
+
+/* Generic (non-terminal-chrome) loading spinner — used e.g. by
+   CollabSpacePanel.tsx's LoadingState(), rendered on the ordinary warm-paper
+   panel surface rather than inside the dark terminal mock. */
+html[data-redesign] .terminalLoadingState { color: var(--pn-ink-3); }
+html[data-redesign] .terminalSpinnerDot { color: var(--pn-brand); }
+html[data-redesign] .terminalLoadingText { color: var(--pn-ink-3); }
+html[data-redesign] .terminalCursor { color: var(--pn-brand); }
+

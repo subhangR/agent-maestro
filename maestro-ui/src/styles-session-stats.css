@@ -8,7 +8,9 @@
    so the root is an absolutely-positioned, self-scrolling column.
    ========================================================================== */
 
-.sessionStatsView {
+.sessionStatsView,
+.ssv-huddle-list,
+.ssv-prompt-list {
   /* ---- canvas / surfaces (foundation --pn-* indirection) ---- */
   --ssv-bg-app: var(--pn-paper);
   --ssv-bg-surface: var(--pn-surface);

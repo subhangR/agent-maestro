@@ -12,6 +12,7 @@ import { SessionPromptService } from '../application/services/SessionPromptServi
 import { HuddleService } from '../application/services/HuddleService';
 import { CommandUsageService } from '../application/services/CommandUsageService';
 import { GitService } from '../application/services/GitService';
+import { WorkspaceFsService } from '../application/services/WorkspaceFsService';
 import { LogDigestService } from '../application/services/LogDigestService';
 import { TeamService } from '../application/services/TeamService';
 import { IProjectRepository } from '../domain/repositories/IProjectRepository';
@@ -291,6 +292,10 @@ function agentToolForProvider(provider: LaunchConfig['provider']): AgentTool {
       return 'hermes';
     case 'gemini':
       return 'gemini';
+    case 'kimi':
+      return 'kimi';
+    case 'glm':
+      return 'glm';
   }
 }
 
@@ -317,6 +322,10 @@ function providerForAgentTool(agentTool?: AgentTool): LaunchConfig['provider'] {
       return 'hermes';
     case 'gemini':
       return 'gemini';
+    case 'kimi':
+      return 'kimi';
+    case 'glm':
+      return 'glm';
     case 'claude-code':
     default:
       return 'claude';
@@ -341,6 +350,12 @@ function providerForModel(model?: string): LaunchConfig['provider'] | undefined 
   }
   if (m.startsWith('hermes')) {
     return 'hermes';
+  }
+  if (m.startsWith('kimi') || m.startsWith('moonshot')) {
+    return 'kimi';
+  }
+  if (m.startsWith('glm') || m.startsWith('chatglm')) {
+    return 'glm';
   }
   return undefined;
 }
@@ -387,6 +402,10 @@ function defaultModelForAgentTool(agentTool: AgentTool): string {
       return 'hermes-default';
     case 'gemini':
       return 'gemini-2.5-pro';
+    case 'kimi':
+      return 'kimi-k2-0711-preview';
+    case 'glm':
+      return 'glm-4';
     case 'claude-code':
     default:
       return 'claude-opus-4-8';
@@ -395,7 +414,7 @@ function defaultModelForAgentTool(agentTool: AgentTool): string {
 
 function sanitizeLaunchConfig(config?: LaunchConfig | null): LaunchConfig | undefined {
   if (!config?.provider || !config.model) return undefined;
-  const validProviders: LaunchConfig['provider'][] = ['claude', 'openai', 'hermes', 'gemini'];
+  const validProviders: LaunchConfig['provider'][] = ['claude', 'openai', 'hermes', 'gemini', 'kimi', 'glm'];
   if (!validProviders.includes(config.provider)) return undefined;
 
   const validReasoning = getValidReasoningEfforts(config.provider, config.model);
@@ -1116,6 +1135,35 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         });
       }
 
+      // Write the file to disk when content is provided
+      let resolvedPath: string | undefined;
+      if (content !== undefined && content !== null) {
+        const sessionForFs = await sessionService.getSession(sessionId);
+        const project = await projectRepo.findById(sessionForFs.projectId);
+        if (project) {
+          const baseDir = (sessionForFs.metadata?.worktreePath as string | undefined) || project.workingDir;
+          try {
+            const wfs = new WorkspaceFsService();
+            resolvedPath = await wfs.createOrOverwriteTextFile(baseDir, filePath, content);
+          } catch (fsErr) {
+            return res.status(400).json({
+              error: true,
+              message: fsErr instanceof Error ? fsErr.message : String(fsErr),
+              code: 'FS_ERROR'
+            });
+          }
+          // Stage the written file (non-fatal — keeps git up-to-date for PR flow)
+          try {
+            const isGit = await gitService.isGitRepo(baseDir);
+            if (isGit) {
+              await gitService.stageFile(baseDir, resolvedPath!);
+            }
+          } catch (gitErr) {
+            console.warn('[docs] git stage failed (non-fatal):', gitErr);
+          }
+        }
+      }
+
       const session = await sessionService.addDoc(
         sessionId,
         title,
@@ -1124,7 +1172,7 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         taskId,
         kind,
       );
-      res.json(session);
+      res.json({ ...session, resolvedPath });
     } catch (err: unknown) {
       handleRouteError(err, res);
     }
@@ -1298,19 +1346,22 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
       const { content, mode, senderSessionId } = req.body as { content: string; mode: 'send' | 'paste'; senderSessionId: string };
 
       const sessionId = req.params.id as string;
-      const [session, senderSession] = await Promise.all([
-        sessionService.getSession(sessionId),
-        sessionService.getSession(senderSessionId),
-      ]);
-
-      if (!senderSession) {
+      // getSession() throws NotFoundError on miss — catch each independently so
+      // the caller gets a specific error code instead of the generic 404 message.
+      let session: Awaited<ReturnType<typeof sessionService.getSession>>;
+      let senderSession: Awaited<ReturnType<typeof sessionService.getSession>>;
+      try {
+        senderSession = await sessionService.getSession(senderSessionId);
+      } catch {
         return res.status(404).json({
           error: true,
           code: 'sender_not_found',
           message: `Sender session ${senderSessionId} not found.`,
         });
       }
-      if (!session) {
+      try {
+        session = await sessionService.getSession(sessionId);
+      } catch {
         return res.status(404).json({
           error: true,
           code: 'target_not_found',
@@ -1767,6 +1818,44 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         effectiveTeamMemberIds = [coordinatorSelf.id];
       }
 
+      // Advisory concurrent-session quota check (Phase 1: accept race at this threshold).
+      // For each effective team member bound to a profile with maxConcurrentSessions set,
+      // count active sessions using that profile and return 429 if at capacity.
+      {
+        const profileIdsToCheck = new Set<string>();
+        for (const tmId of effectiveTeamMemberIds) {
+          const tm = teamMemberMap.get(tmId);
+          if (tm?.modelProfileId) profileIdsToCheck.add(tm.modelProfileId);
+        }
+
+        if (profileIdsToCheck.size > 0) {
+          const profilesToEnforce = [...profileIdsToCheck]
+            .map((pid) => modelProfileMap.get(pid))
+            .filter((p) => p?.quotas?.maxConcurrentSessions && p.quotas.maxConcurrentSessions > 0);
+
+          if (profilesToEnforce.length > 0) {
+            const allSessions = await sessionService.listSessions();
+            const ACTIVE_STATUSES = new Set(['spawning', 'idle', 'working']);
+            const activeSessions = allSessions.filter((s) => ACTIVE_STATUSES.has(s.status));
+
+            for (const profile of profilesToEnforce) {
+              const activeCount = activeSessions.filter((s) => {
+                const snaps = s.teamMemberSnapshots ?? (s.teamMemberSnapshot ? [s.teamMemberSnapshot] : []);
+                return snaps.some((snap) => snap.modelProfileId === profile!.id);
+              }).length;
+
+              if (activeCount >= profile!.quotas!.maxConcurrentSessions!) {
+                return res.status(429).json({
+                  error: true,
+                  code: 'QUOTA_EXCEEDED',
+                  message: `Profile "${profile!.name}" concurrent session limit (${profile!.quotas!.maxConcurrentSessions}) reached`,
+                });
+              }
+            }
+          }
+        }
+      }
+
       // Fetch team member defaults from the effective members (after task-level fallback)
       const MODEL_POWER: Record<string, number> = {
         'claude-fable-5[1m]': 6.1,
@@ -1856,6 +1945,8 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
                 avatar: teamMember.avatar,
                 role: teamMember.role,
                 model: effectiveModel,
+                modelProfileId: teamMember.modelProfileId,
+                launchConfig: effectiveLaunchConfig,
                 agentTool: effectiveAgentTool,
                 permissionMode: effectivePermissionMode,
               });
@@ -2208,6 +2299,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'GOOGLE_GENAI_USE_GCA',
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
+        'KIMI_API_KEY',
+        'KIMI_BASE_URL',
+        'GLM_API_KEY',
+        'GLM_BASE_URL',
       ];
       const authEnvVars: Record<string, string> = {};
       for (const key of authEnvKeys) {
@@ -2493,6 +2588,10 @@ export function createSessionRoutes(deps: SessionRouteDependencies) {
         'GOOGLE_GENAI_USE_GCA',
         'OPENAI_API_KEY',
         'ANTHROPIC_API_KEY',
+        'KIMI_API_KEY',
+        'KIMI_BASE_URL',
+        'GLM_API_KEY',
+        'GLM_BASE_URL',
       ];
       const authEnvVars: Record<string, string> = {};
       for (const key of authEnvKeys) {

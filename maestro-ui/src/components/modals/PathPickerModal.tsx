@@ -1,6 +1,7 @@
 import React from "react";
 import { DirectoryListing } from "../../app/types/app-state";
 import { InlineFolderBrowser } from "../InlineFolderBrowser";
+import { Icon } from "../maestro/redesign/kit";
 
 type PathPickerModalProps = {
   isOpen: boolean;
@@ -25,12 +26,16 @@ export function PathPickerModal({
 
   return (
     <div className="themedModalBackdrop" onClick={onClose}>
-      <div className="themedModal themedModal--wide" onClick={(e) => e.stopPropagation()}>
-        <div className="themedModalHeader">
-          <span className="themedModalTitle">[ SELECT FOLDER ]</span>
-          <button type="button" className="themedModalClose" onClick={onClose}>×</button>
+      <div className="pn-mdl" style={{ width: 640 }} onClick={(e) => e.stopPropagation()}>
+        <div className="pn-mdl__hd">
+          <div className="pn-mdl__hdmain">
+            <div className="pn-mdl__titleinput">Select folder</div>
+          </div>
+          <button type="button" className="pn-mdl__close" onClick={onClose} aria-label="Close">
+            <Icon name="x" size={16} />
+          </button>
         </div>
-        <div className="themedModalContent">
+        <div className="pn-mdl__body">
           <InlineFolderBrowser
             listing={listing}
             loading={loading}
@@ -39,11 +44,11 @@ export function PathPickerModal({
             onSelect={() => {}}
           />
         </div>
-        <div className="themedFormActions">
-          <button type="button" className="themedBtn" onClick={onClose}>
+        <div className="pn-mdl__foot">
+          <button type="button" className="pn-btn" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" className="themedBtn themedBtnPrimary" disabled={!listing} onClick={onSelect}>
+          <button type="button" className="pn-btn pn-btn--primary" disabled={!listing} onClick={onSelect}>
             Select
           </button>
         </div>

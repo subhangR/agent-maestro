@@ -249,3 +249,98 @@
 .spaceShareDocList {
   margin-bottom: 12px;
 }
+
+/* ==========================================================================
+   ATELIER REDESIGN — Docs section. Scoped under html[data-redesign], token-only,
+   no structural changes. See styles-space-window.css for the shared cluster
+   override block (spaceEntityPane/Header/etc.).
+   ========================================================================== */
+html[data-redesign] .spaceDocItem {
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-md);
+  background: var(--pn-card);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceDocItem--expanded {
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .spaceDocItemHeader {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceDocItemHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceDocItemHeader:focus-visible {
+  outline: 2px solid var(--pn-brand);
+}
+html[data-redesign] .spaceDocItemTitle {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceDocItemMeta,
+html[data-redesign] .spaceDocItemAt {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceDocKindBadge {
+  font-family: var(--pn-mono);
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink-3);
+  background: var(--pn-active);
+  border-radius: var(--pn-r-pill);
+}
+html[data-redesign] .spaceDocKindBadge--diagram {
+  color: var(--pn-info);
+  border-color: transparent;
+  background: var(--pn-info-soft);
+}
+html[data-redesign] .spaceDocPreview {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+  color: var(--pn-ink-2);
+  font-family: var(--pn-mono);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceDocPreview:focus-visible {
+  outline: 2px solid var(--pn-brand);
+}
+html[data-redesign] .spaceDocPreviewTruncated,
+html[data-redesign] .spaceDocPreviewEmpty {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceDocItemDetailMeta {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceDocPullTargetRow {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceDocPullTargetRow:hover {
+  border-color: var(--pn-line-2);
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceDocPullTargetRow:focus-visible {
+  outline: 2px solid var(--pn-brand);
+}
+html[data-redesign] .spaceDocPullTargetRow--selected {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .spaceDocPullTargetMeta {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceDocPullTargetCheck {
+  color: var(--pn-brand);
+}
+html[data-redesign] .spaceDocPickerHint {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceDocDeleteConfirmBtn {
+  border-color: var(--pn-block);
+  background: var(--pn-block);
+  color: #fff;
+}
+html[data-redesign] .spaceDocDeleteConfirmBtn:hover {
+  background: var(--pn-block-soft);
+  color: var(--pn-block);
+}

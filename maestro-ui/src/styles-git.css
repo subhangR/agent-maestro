@@ -1124,3 +1124,23 @@ html[data-redesign] .prChip:hover {
 html[data-redesign] .prChip__open {
   color: var(--pn-ink-3);
 }
+
+/* PR-opened milestone row in the session timeline (TimelineEvent.tsx). */
+html[data-redesign] .timelineEvent--prOpened .timelineEventDot {
+  color: var(--pn-brand);
+}
+
+html[data-redesign] .timelineEventPrLink {
+  color: var(--pn-brand);
+}
+
+/* Worktree branch badge (WorktreeBadge.tsx) — base is a neon-green terminal
+   pill; repoint to the run (git/success) pn-* token so it reads as a calm
+   inline chip on warm paper. */
+html[data-redesign] .worktreeBadge {
+  background: var(--pn-run-soft);
+  border: 1px solid rgba(62, 142, 90, 0.3);
+  color: var(--pn-run);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .worktreeBadge__leaf { color: var(--pn-run); }

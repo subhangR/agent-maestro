@@ -13,6 +13,7 @@ import { ChannelHeader } from "./ChannelHeader";
 import { MessagesPane } from "./MessagesPane";
 import { MessageComposer } from "./MessageComposer";
 import { CreateChannelModal } from "./CreateChannelModal";
+import { ThreadPanel } from "./ThreadPanel";
 
 type Props = {
   space: CollabSpace;
@@ -54,6 +55,7 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
   const dismissPending = useMessagingStore((s) => s.dismissPending);
 
   const [showCreate, setShowCreate] = useState(false);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
 
   // @mention candidates: the space's human members (excluding self).
   // NOTE: agent mentionables (shared team members, kind: 'agent') would be
@@ -151,13 +153,24 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
     dismissPending(activeChannelId, tempId);
   };
 
+  const handleReply = (messageId: string) => {
+    setActiveThreadId((prev) => (prev === messageId ? null : messageId));
+  };
+
+  const activeThreadMessage = activeThreadId
+    ? messages.find((m) => m.id === activeThreadId) ?? null
+    : null;
+
   return (
     <div className="messagingRoot">
       <ChannelList
         channels={channels}
         loading={channelsLoading}
         activeChannelId={activeChannelId}
-        onSelectChannel={(id) => selectChannel(space.id, id)}
+        onSelectChannel={(id) => {
+          selectChannel(space.id, id);
+          setActiveThreadId(null);
+        }}
         onRequestCreate={() => setShowCreate(true)}
         canCreate={isMember && Boolean(user)}
       />
@@ -180,6 +193,7 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
               onDelete={handleDelete}
               onRetryPending={handleRetry}
               onDismissPending={handleDismiss}
+              onReply={handleReply}
             />
             <MessageComposer
               channelId={activeChannel.id}
@@ -203,6 +217,20 @@ export function MessagingView({ space, user, isMember, isOwner }: Props) {
           </div>
         )}
       </div>
+
+      {activeThreadMessage && activeChannelId && (
+        <ThreadPanel
+          spaceId={space.id}
+          channelId={activeChannelId}
+          parentMessage={activeThreadMessage}
+          currentUid={user?.uid ?? null}
+          isOwner={isOwner}
+          user={user}
+          onClose={() => setActiveThreadId(null)}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
       {showCreate && user && (
         <CreateChannelModal

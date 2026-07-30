@@ -55,6 +55,7 @@ import { AppModals } from "./components/app/AppModals";
 import { AppWorkspace } from "./components/app/AppWorkspace";
 import { ConfirmActionModal } from "./components/modals/ConfirmActionModal";
 import { StartupSettingsOverlay } from "./components/StartupSettingsOverlay";
+import { LogoIntro } from "./components/LogoIntro";
 const LazyBoard = React.lazy(() =>
   import("./components/maestro/MultiProjectBoard").then(m => ({ default: m.Board }))
 );
@@ -96,6 +97,13 @@ export default function App() {
   const [showStartupSettings, setShowStartupSettings] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_SETUP_COMPLETE_KEY) !== 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [showLogoIntro, setShowLogoIntro] = useState(() => {
+    try {
+      return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     } catch {
       return true;
     }
@@ -580,6 +588,7 @@ export default function App() {
   // Show login overlay in web mode when auth is enabled and user is not authenticated
   if (!IS_TAURI && (authChecking ? false : showLogin)) {
     return <>
+      {showLogoIntro && <LogoIntro onComplete={() => setShowLogoIntro(false)} />}
       <LoginOverlay />
       <DeploymentVersion />
     </>;
@@ -587,6 +596,9 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* -------- Logo Reveal (one per launch) -------- */}
+      {showLogoIntro && <LogoIntro onComplete={() => setShowLogoIntro(false)} />}
+
       {/* -------- Prompt Send Animation Overlay -------- */}
       <PromptSendAnimationLayer />
 

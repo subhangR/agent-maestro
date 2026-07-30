@@ -105,7 +105,7 @@ export const DocsSection: React.FC<Props> = ({ space }) => {
                 <div className="spaceEntityHeaderRight">
                     <input
                         type="text"
-                        className="spaceEntitySearchInput"
+                        className="spaceEntitySearchInput pn-input"
                         placeholder="Search docs…"
                         aria-label="Search shared docs"
                         value={search}
@@ -113,7 +113,7 @@ export const DocsSection: React.FC<Props> = ({ space }) => {
                     />
                     <button
                         type="button"
-                        className="spaceEntityPrimaryBtn"
+                        className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                         onClick={() => setPushOpen(true)}
                         disabled={!user}
                         title={user ? undefined : "Sign in to push docs"}
@@ -222,7 +222,7 @@ export const DocsSection: React.FC<Props> = ({ space }) => {
                                         {pulled ? (
                                             <button
                                                 type="button"
-                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success"
+                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success pn-btn pn-btn--ghost"
                                                 disabled
                                             >
                                                 ✓ Pulled
@@ -230,7 +230,7 @@ export const DocsSection: React.FC<Props> = ({ space }) => {
                                         ) : (
                                             <button
                                                 type="button"
-                                                className="spaceEntityPrimaryBtn"
+                                                className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                                                 onClick={() => {
                                                     clearRowError(d.id);
                                                     setPullDoc(d);
@@ -245,7 +245,7 @@ export const DocsSection: React.FC<Props> = ({ space }) => {
                                             <>
                                                 <button
                                                     type="button"
-                                                    className="spaceEntityGhostBtn"
+                                                    className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                                                     onClick={() => setEditDoc(d)}
                                                     aria-label={`Edit title of ${d.title}`}
                                                 >
@@ -253,7 +253,7 @@ export const DocsSection: React.FC<Props> = ({ space }) => {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
+                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger pn-btn pn-btn--ghost pn-btn--danger"
                                                     onClick={() => setConfirmDeleteDoc(d)}
                                                     aria-label={`Delete ${d.title}`}
                                                 >
@@ -420,13 +420,13 @@ function PushDocsModal({
             <div
                 ref={dialogRef}
                 tabIndex={-1}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="spacePushDocsTitle"
             >
-                <div className="spaceModalTitle" id="spacePushDocsTitle">
+                <div className="spaceModalTitle pn-mdl__titleinput" id="spacePushDocsTitle">
                     Push docs to space
                 </div>
                 <p className="spaceModalBody">
@@ -492,7 +492,7 @@ function PushDocsModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={submitting}
                     >
@@ -500,7 +500,7 @@ function PushDocsModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={selectedIds.size === 0 || submitting}
                         onClick={handlePush}
                     >
@@ -581,13 +581,13 @@ function PullDocModal({
             <div
                 ref={dialogRef}
                 tabIndex={-1}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="spacePullDocTitle"
             >
-                <div className="spaceModalTitle" id="spacePullDocTitle">
+                <div className="spaceModalTitle pn-mdl__titleinput" id="spacePullDocTitle">
                     Pull “{doc.title}” to local
                 </div>
                 <p className="spaceModalBody">
@@ -652,7 +652,7 @@ function PullDocModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={pulling}
                     >
@@ -660,7 +660,7 @@ function PullDocModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={!user || !selectedSessionId || pulling}
                         onClick={handlePull}
                     >
@@ -727,18 +727,18 @@ function EditDocModal({
             <div
                 ref={dialogRef}
                 tabIndex={-1}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="spaceEditDocTitle"
             >
-                <div className="spaceModalTitle" id="spaceEditDocTitle">
+                <div className="spaceModalTitle pn-mdl__titleinput" id="spaceEditDocTitle">
                     Edit shared doc
                 </div>
                 <input
                     type="text"
-                    className="spaceEntitySearchInput spaceDocEditTitleInput"
+                    className="spaceEntitySearchInput spaceDocEditTitleInput pn-input"
                     value={title}
                     placeholder="Title"
                     aria-label="Doc title"
@@ -752,7 +752,7 @@ function EditDocModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={saving}
                     >
@@ -760,7 +760,7 @@ function EditDocModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={!title.trim() || saving}
                         onClick={handleSave}
                     >
@@ -791,13 +791,13 @@ function ConfirmDeleteModal({
             <div
                 ref={dialogRef}
                 tabIndex={-1}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="spaceDeleteDocTitle"
             >
-                <div className="spaceModalTitle" id="spaceDeleteDocTitle">
+                <div className="spaceModalTitle pn-mdl__titleinput" id="spaceDeleteDocTitle">
                     Delete shared doc?
                 </div>
                 <p className="spaceModalBody">
@@ -805,12 +805,12 @@ function ConfirmDeleteModal({
                     already pulled stay in their local projects.
                 </p>
                 <div className="spaceModalActions">
-                    <button type="button" className="spaceEntityGhostBtn" onClick={onCancel}>
+                    <button type="button" className="spaceEntityGhostBtn pn-btn pn-btn--ghost" onClick={onCancel}>
                         Cancel
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn spaceDocDeleteConfirmBtn"
+                        className="spaceModalPrimaryBtn spaceDocDeleteConfirmBtn pn-btn pn-btn--danger"
                         onClick={onConfirm}
                     >
                         Delete

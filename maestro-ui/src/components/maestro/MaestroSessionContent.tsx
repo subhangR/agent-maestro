@@ -129,8 +129,7 @@ export const MaestroSessionContent = React.memo(function MaestroSessionContent({
 }: MaestroSessionContentProps) {
   const [activeTab, setActiveTab] = useState<SessionTab>('tasks');
 
-  const isQueue = session.strategy === "queue";
-  const isTree = session.strategy === "queue";
+  const isTree = session.strategy === "tree";
   const hasTimeline = session.timeline && session.timeline.length > 0;
   const timelineCount = session.timeline?.length || 0;
 
@@ -233,8 +232,8 @@ export const MaestroSessionContent = React.memo(function MaestroSessionContent({
         {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <div className="maestroSessionTabPane">
-            {/* Queue Status (integrated at top for queue sessions) */}
-            {isQueue && queueState && (
+            {/* Tree queue status for tree strategy sessions */}
+            {isTree && queueState && (
               <div className="maestroSessionQueueSection">
                 <div className="maestroSessionQueueHeader">Queue Status</div>
                 <QueueStatusDisplay

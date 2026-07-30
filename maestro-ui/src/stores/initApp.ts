@@ -528,7 +528,7 @@ export function initApp(
       if (loaded.length > 0 && cleaned.length === 0) {
         return cleanAgentShortcutIds(DEFAULTS.DEFAULT_AGENT_SHORTCUT_IDS);
       }
-      return cleanAgentShortcutIds([...cleaned, 'hermes', 'gemini']);
+      return cleanAgentShortcutIds([...cleaned, 'hermes', 'gemini', 'kimi', 'glm']);
     });
 
     // ──── ASSETS ────

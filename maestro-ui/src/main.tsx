@@ -31,12 +31,14 @@ import "./components/maestro/redesign/redesign-boards.css";
 import "./components/maestro/redesign/redesign-views.css";
 import "./components/maestro/redesign/redesign-modals.css";
 import "./components/maestro/redesign/redesign-buttons.css";
+import "./styles-maestro-redesign.css";
 import "./styles-spell-colors.css";
 import "./styles-spell-ring.css";
 import "./styles-spells.css";
 import "./styles-panel-leak-fix.css";
 import "./styles-gateway-dashboard.css";
 import "./styles-deployment-version.css";
+import "./styles-logo-intro.css";
 import { setRedesignActive } from "./components/maestro/redesign/useRedesignTheme";
 
 // Redesign is default-on for the maestro-redesign branch. The scoped tokens in
