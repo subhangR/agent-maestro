@@ -1,0 +1,93 @@
+name: Deploy UI to Tailscale server
+
+# Auto-deploys the maestro-ui to the AWS/Tailscale "maestro" server whenever
+# staging changes. The build runs ON the server (capable box), reached over
+# Tailscale — so no large artifact transfer and no local build needed.
+#
+# ── ONE-TIME SETUP (repo Settings → Secrets and variables → Actions) ──────────
+# Secrets:
+#   TS_OAUTH_CLIENT_ID   Tailscale OAuth client id  (tailscale.com/admin → Settings → OAuth clients, scope: auth_keys, tag: tag:ci)
+#   TS_OAUTH_SECRET      Tailscale OAuth client secret
+#   DEPLOY_SSH_KEY       Private SSH key whose PUBLIC key is in the server's ~/.ssh/authorized_keys
+# Variables (optional — sensible defaults shown):
+#   DEPLOY_HOST          Tailscale name of the server           (default: maestro)
+#   DEPLOY_USER          SSH user on the server                 (default: ubuntu)
+#   DEPLOY_REPO_PATH     Absolute repo path on the server       (default: ~/agent-maestro)
+#   DEPLOY_RESTART_CMD   Command that restarts the :8443 server (default: sudo systemctl restart maestro-ui)
+#                        e.g. "pm2 restart maestro-ui"  or  "sudo systemctl restart maestro"
+# Also: in the Tailscale admin ACLs, allow tag:ci to SSH to the "maestro" host.
+# Until the secrets are set, this workflow no-ops with a friendly message (no red X).
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'maestro-ui/**'
+      - '.github/workflows/deploy-ui-staging.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-ui-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deploy is configured
+        id: gate
+        run: |
+          if [ -n "${{ secrets.TS_OAUTH_CLIENT_ID }}" ] && [ -n "${{ secrets.DEPLOY_SSH_KEY }}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Auto-deploy not configured::Add TS_OAUTH_CLIENT_ID, TS_OAUTH_SECRET and DEPLOY_SSH_KEY (see workflow header). Skipping."
+          fi
+
+      - name: Connect to Tailscale
+        if: steps.gate.outputs.ready == 'true'
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Install SSH key
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ vars.DEPLOY_HOST || 'maestro' }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Build + restart on server
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          HOST: ${{ vars.DEPLOY_HOST || 'maestro' }}
+          SSH_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+          REPO: ${{ vars.DEPLOY_REPO_PATH || '~/agent-maestro' }}
+          RESTART: ${{ vars.DEPLOY_RESTART_CMD || 'sudo systemctl restart maestro-ui' }}
+        run: |
+          ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new "$SSH_USER@$HOST" \
+            "REPO='$REPO' RESTART='$RESTART' bash -s" <<'REMOTE'
+          set -euo pipefail
+          eval cd "$REPO"
+          echo "→ deploying in $(pwd)"
+          export PATH="$HOME/.bun/bin:/usr/local/bin:$PATH"
+          git fetch origin staging
+          git reset --hard origin/staging
+          bun install --frozen-lockfile || bun install
+          bun run build:ui
+          eval "$RESTART"
+          echo "✅ deployed $(git rev-parse --short HEAD)"
+          REMOTE
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.gate.outputs.ready }}" = "true" ]; then
+            echo "Deployed staging UI to ${{ vars.DEPLOY_HOST || 'maestro' }} — check https://maestro.tail28ac62.ts.net:8443/" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Auto-deploy is scaffolded but not yet configured. Add the secrets in the workflow header to enable it." >> "$GITHUB_STEP_SUMMARY"
+          fi

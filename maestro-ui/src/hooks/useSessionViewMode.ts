@@ -6,9 +6,14 @@ export const SESSION_VIEW_MODE_KEY = "maestro.sessionViewMode";
 
 export function getInitialSessionViewMode(
   storage: Pick<Storage, "getItem"> | undefined = typeof window === "undefined" ? undefined : window.localStorage,
-  isNarrow = typeof window === "undefined" ? true : window.matchMedia("(max-width: 900px)").matches,
+  _isNarrow = typeof window === "undefined" ? true : window.matchMedia("(max-width: 900px)").matches,
 ): SessionViewMode {
-  if (isNarrow) return "chat";
+  // Default to "split" (Together): the terminal is ALWAYS mounted, so the user
+  // can never land on a blank pane if the agent's chat log hasn't been found
+  // yet. (We used to auto-pick "chat" on narrow screens, which showed a blank
+  // pane whenever the log wasn't resolved — the raw terminal was display:none'd
+  // and TerminalStrip renders null until it finds the log.) Users can still
+  // explicitly switch to Chat or Terminal; the choice persists.
   const saved = storage?.getItem(SESSION_VIEW_MODE_KEY);
   return saved === "chat" || saved === "split" || saved === "terminal" ? saved : "split";
 }

@@ -14,7 +14,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "test": "vitest run",
     "test:watch": "vitest",
-    "dev:web": "VITE_APP_MODE=browser vite --port 4570 --strictPort --host 127.0.0.1",
+    "dev:web": "VITE_APP_MODE=browser vite --port 4570 --strictPort --host 0.0.0.0",
     "build:web": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser vite build",
     "build:web:gateway": "VITE_APP_MODE=browser tsc -b && VITE_APP_MODE=browser VITE_MAESTRO_AUTH_MODE=firebase vite build --outDir dist-gateway --emptyOutDir"
   },

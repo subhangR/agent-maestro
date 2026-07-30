@@ -2,7 +2,7 @@
   "$schema": "./site.schema.json",
   "schemaVersion": 1,
   "productName": "Maestro",
-  "eyebrow": "Local-first agent orchestration",
-  "heroDescription": "Maestro turns parallel coding sessions into a legible team. Plan the work, choose the right model, and see what every agent is doing—without managing a wall of terminals.",
+  "eyebrow": "Local-first · Open source",
+  "heroDescription": "Maestro runs Claude Code, Codex, and Gemini as one team on your own machine. Plan the work, hand out tasks, and see exactly what each agent changed.",
   "installCommand": "git clone https://github.com/subhangR/agent-maestro.git && cd agent-maestro && bun install && bun run dev:all"
 }

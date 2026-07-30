@@ -135,6 +135,11 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const sendPromptToActive = useSessionStore((s) => s.sendPromptToActive);
   const sendPromptToSession = useSessionStore((s) => s.sendPromptToSession);
   const active = sessions.find((s) => s.id === activeId) ?? null;
+  // Session view mode (Chat / Together / Terminal). Drives whether the parsed
+  // conversation ("chat") view, the raw terminal, or both are shown for a
+  // running session. Previously imported but never wired — so only the raw
+  // terminal ever showed. Default is "split" (both) / "chat" on narrow screens.
+  const { mode: sessionViewMode, selectMode: selectSessionViewMode, showActivity, showTerminal } = useSessionViewMode();
   const teamViewOpen = useUIStore((s) => s.teamViewRootId) !== null;
   // Terminals stay MOUNTED under their stable key (constructed once in
   // SessionTerminal's mount effect, never rebuilt on session:updated re-renders).
@@ -220,6 +225,15 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
   const projects = useProjectStore((s) => s.projects);
   const activeProjectId = useProjectStore((s) => s.activeProjectId);
   const activeProject = projects.find((p) => p.id === activeProjectId) ?? null;
+
+  // Working directory used to locate the agent's conversation log. The live
+  // session's own cwd is preferred, but it is EMPTY for restored sessions and
+  // in browser mode (it is only ever populated by the terminal's live OSC cwd
+  // reports, which don't fire on restore). Falling back to the project's
+  // working dir lets the chat view still find the log — and, critically, lets
+  // the Chat/Together/Terminal toggle render at all (it used to be gated on a
+  // truthy cwd, so restored agent sessions showed only the raw terminal).
+  const activeLogCwd = (active?.cwd || activeProject?.basePath || "").trim();
 
   // --- Derived SSH ---
   const activeIsSsh = active
@@ -470,17 +484,23 @@ export const AppWorkspace = React.memo(function AppWorkspace(props: AppWorkspace
         {/* Fused terminal strip — log toggle + stats + model + actions. A
             horizontal row in normal flow ABOVE the terminal deck (never an
             overlay pinned to the terminal's edge). */}
-        {active?.maestroSessionId && active?.cwd && (
-          <TerminalStrip
-            key={active.id}
-            cwd={active.cwd}
-            maestroSessionId={active.maestroSessionId}
-            agentTool={activeLogAgentTool}
-            onAttach={handleAttach}
-            onDraw={handleDraw}
-          />
+        {active?.maestroSessionId && (
+          <>
+            <div className="sessionViewSelectorRow" style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 10px 0' }}>
+              <SessionViewSelector mode={sessionViewMode} onChange={selectSessionViewMode} />
+            </div>
+            <TerminalStrip
+              key={active.id}
+              cwd={activeLogCwd}
+              maestroSessionId={active.maestroSessionId}
+              agentTool={activeLogAgentTool}
+              onAttach={handleAttach}
+              onDraw={handleDraw}
+              forceExpanded={showActivity}
+            />
+          </>
         )}
-        <div className="terminalDeck">
+        <div className="terminalDeck" style={(!showTerminal && active?.maestroSessionId) ? { display: 'none' } : undefined}>
         {/* Mode chip — shows current session role (coordinator / worker).
             Lives inside the deck so it overlays only the terminal content, not
             the session-log strip above it. */}
