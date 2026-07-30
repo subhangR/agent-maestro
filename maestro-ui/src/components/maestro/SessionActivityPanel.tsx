@@ -370,6 +370,7 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
   const mode: string = session?.mode || session?.metadata?.mode || "worker";
   const status: string = session?.status || "idle";
   const working = status === "working";
+  const isFinished = status === "completed" || status === "stopped" || status === "failed";
 
   const [digest, setDigest] = React.useState<SessionLogDigestResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -519,6 +520,31 @@ export function SessionActivityPanel({ session, visible = true }: { session: any
                   {kind} is finishing up
                 </div>
               )}
+
+              {isFinished && !working && (() => {
+                const lastMsg = [...flow].reverse().find((m) => m.source === "assistant");
+                const summary = lastMsg ? lastMsg.text.trim().slice(0, 400) : null;
+                return (
+                  <div className={`pn-chat__done pn-chat__done--${status}`}>
+                    <span className="pn-chat__done-ic" aria-hidden="true">
+                      {status === "completed" ? "✓" : status === "failed" ? "✗" : "◾"}
+                    </span>
+                    <div className="pn-chat__done-body">
+                      <span className="pn-chat__done-title">
+                        {status === "completed"
+                          ? "Session finished successfully"
+                          : status === "failed"
+                            ? "Session ended with errors"
+                            : "Session stopped"}
+                      </span>
+                      {summary && <span className="pn-chat__done-summary">{summary}</span>}
+                      {!summary && (
+                        <span className="pn-chat__done-meta">No summary available — check the terminal for details.</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>

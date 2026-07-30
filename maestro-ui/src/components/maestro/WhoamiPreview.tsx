@@ -12,7 +12,7 @@ type WhoamiPreviewProps = {
  * Generates the worker workflow section based on strategy
  */
 function renderWorkerWorkflow(strategy: WorkerStrategy, primaryTask: MaestroTask): string {
-    if (strategy === 'queue') {
+    if (strategy === 'tree') {
         return `## Queue Worker Workflow
 
 **IMPORTANT**: This is a QUEUE WORKER session. You must follow the queue workflow below.
@@ -118,7 +118,7 @@ function renderCommandsSection(mode: 'execute' | 'orchestrate', strategy: Worker
             { name: 'session info', desc: 'Get session info' },
         ];
 
-    const queueCommands = strategy === 'queue'
+    const queueCommands = strategy === 'tree'
         ? [
             { name: 'queue top', desc: 'Show next task' },
             { name: 'queue start', desc: 'Start processing task' },
@@ -198,7 +198,7 @@ function buildWhoamiPreview(
 
     // Assignment section
     if (mode === 'execute') {
-        parts.push(`# Maestro Worker Session${strategy === 'queue' ? ' (Queue Strategy)' : ''}`);
+        parts.push(`# Maestro Worker Session${strategy === 'tree' ? ' (Tree Strategy)' : ''}`);
     } else {
         parts.push(`# Maestro Orchestrator Session (${strategy} Strategy)`);
     }
