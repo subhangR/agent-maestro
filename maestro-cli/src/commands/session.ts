@@ -780,6 +780,9 @@ export function registerSessionCommands(program: Command) {
                 };
 
                 // Include initial directive if --subject is set
+                if (cmdOpts.message && !cmdOpts.subject) {
+                    if (!isJson) console.warn('Warning: --message is ignored without --subject. Add --subject "<subject>" to deliver the message to the spawned session.');
+                }
                 if (cmdOpts.subject) {
                     spawnRequest.initialDirective = {
                         subject: cmdOpts.subject,

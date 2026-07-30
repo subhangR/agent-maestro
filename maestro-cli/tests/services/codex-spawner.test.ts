@@ -12,16 +12,12 @@ import { CodexSpawner } from '../../src/services/codex-spawner.js';
 import type { MaestroManifest } from '../../src/types/manifest.js';
 
 describe('CodexSpawner', () => {
+  // Current supported Codex models (PR #83 removed older gpt-5.x entries;
+  // legacy aliases now redirect to gpt-5.6-* equivalents via mapModel()).
   const officialCodexModels = [
     'gpt-5.6-sol',
     'gpt-5.6-terra',
     'gpt-5.6-luna',
-    'gpt-5.5',
-    'gpt-5.4',
-    'gpt-5.4-mini',
-    'gpt-5.3-codex',
-    'gpt-5.3-codex-spark',
-    'gpt-5.2',
   ];
   const codexReasoningEfforts = ['low', 'medium', 'high', 'xhigh'];
   const maxReasoningModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna'];
@@ -60,13 +56,13 @@ describe('CodexSpawner', () => {
   );
 
   it.each([
-    ['gpt-5.2-codex', 'gpt-5.2'],
-    ['gpt-5.1-codex', 'gpt-5.2'],
-    ['gpt-5-codex', 'gpt-5.2'],
-    ['gpt-5.1-codex-max', 'gpt-5.3-codex'],
-    ['gpt-5.1-codex-mini', 'gpt-5.4-mini'],
-    ['gpt-5-codex-mini', 'gpt-5.4-mini'],
-  ])('maps legacy Codex model %s to supported official model %s', (legacyModel, expectedModel) => {
+    ['gpt-5.2-codex', 'gpt-5.6-luna'],
+    ['gpt-5.1-codex', 'gpt-5.6-luna'],
+    ['gpt-5-codex', 'gpt-5.6-luna'],
+    ['gpt-5.1-codex-max', 'gpt-5.6-terra'],
+    ['gpt-5.1-codex-mini', 'gpt-5.6-luna'],
+    ['gpt-5-codex-mini', 'gpt-5.6-luna'],
+  ])('maps legacy Codex model %s to current gpt-5.6-* equivalent %s', (legacyModel, expectedModel) => {
     const args = new CodexSpawner().buildCodexArgs(createManifest(legacyModel));
 
     expect(args[args.indexOf('--model') + 1]).toBe(expectedModel);
