@@ -109,8 +109,12 @@ async function sendInquiryEmail(inquiry: Inquiry, referenceId: string): Promise<
 }
 
 function clientFingerprint(request: { ip?: string; headers: Record<string, unknown> }): string {
-  const forwarded = request.headers['x-forwarded-for'];
-  const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : request.ip ?? 'unknown';
+  // request.ip is set by Cloud Functions infrastructure and cannot be spoofed.
+  // x-forwarded-for is a client-controlled header; fall back only when ip is absent.
+  const ip = request.ip ?? (() => {
+    const forwarded = request.headers['x-forwarded-for'];
+    return typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : 'unknown';
+  })();
   const agent = typeof request.headers['user-agent'] === 'string' ? request.headers['user-agent'] : 'unknown';
   return createHash('sha256').update(`maestro-contact-v1|${ip}|${agent}`).digest('hex');
 }

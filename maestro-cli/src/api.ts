@@ -18,9 +18,10 @@ export class APIClient {
     const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
     const url = `${base}${path}`;
 
-    const maxRetries = config.retries || 3;
-    const retryDelay = config.retryDelay || 1000;
-    const REQUEST_TIMEOUT_MS = 30_000;
+    const maxRetries = config.retries;
+    const retryDelay = config.retryDelay;
+    // Hook commands set MAESTRO_API_TIMEOUT for fast-fail; default is 30s.
+    const REQUEST_TIMEOUT_MS = parseInt(process.env.MAESTRO_API_TIMEOUT || '30000', 10);
     const MAX_TOTAL_MS = 120_000;
     const totalStart = Date.now();
     let lastError: Error | undefined;

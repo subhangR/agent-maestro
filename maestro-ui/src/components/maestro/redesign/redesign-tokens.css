@@ -338,10 +338,11 @@ html[data-redesign] .pn-search input::placeholder { color: var(--pn-ink-4); }
 /* filter tabs — single-row segmented control */
 html[data-redesign] .pn-filters {
   display: flex; align-items: stretch; gap: 2px; margin: 4px 14px 10px;
-  padding: 3px; flex-wrap: wrap;
+  padding: 3px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
   background: var(--pn-active); border: 1px solid var(--pn-line);
   border-radius: var(--pn-r-sm);
 }
+html[data-redesign] .pn-filters::-webkit-scrollbar { display: none; }
 html[data-redesign] .pn-filter {
   flex: 0 0 auto;
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
@@ -763,7 +764,7 @@ html[data-redesign] .pn-sp { width: 340px; flex: 0 0 auto; display: flex; flex-d
 /* left sub-tab / action bar */
 html[data-redesign] .pn-subbar {
   display: flex; align-items: center; gap: 3px; padding: 4px 10px 8px; flex: 0 0 auto;
-  flex-wrap: wrap; row-gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: none;
+  flex-wrap: nowrap; min-width: 0; overflow-x: auto; scrollbar-width: none;
 }
 html[data-redesign] .pn-subbar::-webkit-scrollbar { display: none; }
 html[data-redesign] .pn-subtab {

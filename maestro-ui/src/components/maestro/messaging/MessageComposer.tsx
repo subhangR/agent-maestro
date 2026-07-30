@@ -221,10 +221,10 @@ export function MessageComposer({
   };
 
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file
-    if (!file) return;
-    stageFiles([file]);
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ""; // allow re-picking the same files
+    if (files.length === 0) return;
+    stageFiles(files);
   };
 
   // Pasting or dropping a screenshot stages it as a real Collab attachment
@@ -472,9 +472,10 @@ export function MessageComposer({
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           className="messagingAttachInput"
           onChange={(e) => void handleFilePicked(e)}
-          aria-label="Choose a file to attach"
+          aria-label="Choose files to attach"
           tabIndex={-1}
         />
         <div className="messagingComposerHint">

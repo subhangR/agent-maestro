@@ -536,7 +536,7 @@ export function registerTaskCommands(program: Command) {
         });
 
     taskReport.command('complete <taskId> <summary>')
-        .description('Record this session\'s contribution to a task (does NOT complete the task or session — use `task complete <taskId>` to close the task)')
+        .description('Record this session\'s contribution to a task and close it (transitions task status to completed)')
         .action(async (taskId: string, summary: string) => {
             await guardCommand('task:report:complete');
             const globalOpts = program.opts();
@@ -551,7 +551,9 @@ export function registerTaskCommands(program: Command) {
 
             const spinner = !isJson ? ora('Reporting task completion...').start() : null;
             try {
+                // Transition task to completed AND record this session's contribution.
                 await api.patch(`/api/tasks/${taskId}`, {
+                    status: 'completed',
                     sessionStatus: 'completed',
                     updateSource: 'session',
                     sessionId,
@@ -563,9 +565,9 @@ export function registerTaskCommands(program: Command) {
                     taskId,
                 });
 
-                spinner?.succeed('Task completion reported');
+                spinner?.succeed('Task completed');
                 if (isJson) {
-                    outputJSON({ success: true, taskId, sessionStatus: 'completed', sessionId });
+                    outputJSON({ success: true, taskId, status: 'completed', sessionStatus: 'completed', sessionId });
                 }
             } catch (err) {
                 spinner?.stop();
