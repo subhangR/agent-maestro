@@ -167,3 +167,27 @@ html[data-redesign] .taskListTaskRow--missing {
 html[data-redesign] .taskListTaskMeta {
   color: var(--pn-ink-3);
 }
+
+/* --------------------------------------------------------------------------
+   LAYOUT / ORGANIZATION FIXES (cards/graphs/lists tab audit)
+   Consistent 4px-grid spacing, breathing room from panel edges, and
+   comfortable touch targets for the dense in-row controls.
+   -------------------------------------------------------------------------- */
+/* Panel gutter: the base .terminalContent host uses a cramped 6px/4px pad;
+   align the lists tab with the 14px gutter used by the tasks tab. */
+html[data-redesign] .taskListsPanel {
+  padding: 14px;
+  gap: 12px;
+  box-sizing: border-box;
+}
+/* Even, legible spacing between list cards (was a 2px hairline gap). */
+html[data-redesign] .taskList {
+  gap: 8px;
+}
+/* Touch target: row move/remove buttons were ~28px tall. */
+html[data-redesign] .taskListActionBtn {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

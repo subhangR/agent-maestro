@@ -111,10 +111,10 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
                 flex: 1,
                 padding: '6px 10px',
                 fontSize: 12,
-                background: 'var(--bg-tertiary, #1f1f1f)',
+                background: 'var(--pn-card)',
                 border: '1px solid var(--pn-line-2)',
                 borderRadius: 6,
-                color: 'var(--text-primary, #e5e5e5)',
+                color: 'var(--pn-ink)',
                 outline: 'none',
               }}
             />
@@ -142,7 +142,7 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
                 background: 'transparent',
                 border: '1px solid var(--pn-line-2)',
                 borderRadius: 6,
-                color: 'var(--text-secondary, #a0a0a0)',
+                color: 'var(--pn-ink-3)',
                 cursor: 'pointer',
               }}
             >
@@ -164,11 +164,14 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
             key={graph.id}
             onClick={() => selectGraph(graph.id)}
             style={{
-              padding: '10px 12px',
-              marginBottom: 6,
-              background: 'var(--bg-tertiary, #1f1f1f)',
+              padding: '12px',
+              marginBottom: 8,
+              minHeight: 52,
+              gap: 12,
+              background: 'var(--pn-card)',
               border: '1px solid var(--pn-line)',
-              borderRadius: 8,
+              borderRadius: 'var(--pn-r-md)',
+              boxShadow: 'var(--pn-sh-sm)',
               cursor: 'pointer',
               display: 'flex',
               justifyContent: 'space-between',
@@ -188,14 +191,18 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
               type="button"
               onClick={(e) => handleDeleteGraph(graph.id, e)}
               style={{
+                flex: '0 0 auto',
+                display: 'grid',
+                placeItems: 'center',
+                width: 30,
+                height: 30,
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-secondary, #a0a0a0)',
+                color: 'var(--pn-ink-3)',
                 cursor: 'pointer',
-                fontSize: 14,
-                padding: '2px 6px',
-                borderRadius: 4,
-                opacity: 0.5,
+                fontSize: 16,
+                borderRadius: 'var(--pn-r-sm)',
+                opacity: 0.6,
               }}
               title="Delete graph"
             >
@@ -215,7 +222,7 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        padding: '6px 12px',
+        padding: '8px 12px',
         borderBottom: '1px solid var(--pn-line)',
         fontSize: 12,
         flexShrink: 0,
@@ -224,12 +231,17 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
           type="button"
           onClick={() => selectGraph(null)}
           style={{
+            flex: '0 0 auto',
+            display: 'grid',
+            placeItems: 'center',
+            width: 30,
+            height: 30,
             background: 'transparent',
             border: 'none',
-            color: 'var(--text-secondary, #a0a0a0)',
+            color: 'var(--pn-ink-3)',
             cursor: 'pointer',
-            fontSize: 14,
-            padding: '2px 6px',
+            fontSize: 16,
+            borderRadius: 'var(--pn-r-sm)',
           }}
           title="Back to graph list"
         >
@@ -240,12 +252,15 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
           type="button"
           onClick={() => setShowTaskPicker(!showTaskPicker)}
           style={{
-            padding: '4px 10px',
-            fontSize: 11,
-            background: showTaskPicker ? 'var(--pn-brand)' : 'var(--bg-tertiary, #1f1f1f)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            height: 30,
+            padding: '0 12px',
+            fontSize: 12,
+            background: showTaskPicker ? 'var(--pn-brand)' : 'var(--pn-card)',
             border: '1px solid var(--pn-line-2)',
-            borderRadius: 5,
-            color: showTaskPicker ? 'var(--pn-paper)' : 'var(--text-primary, #e5e5e5)',
+            borderRadius: 'var(--pn-r-sm)',
+            color: showTaskPicker ? 'var(--pn-paper)' : 'var(--pn-ink)',
             cursor: 'pointer',
           }}
         >
@@ -255,12 +270,15 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
           type="button"
           onClick={handleValidate}
           style={{
-            padding: '4px 10px',
-            fontSize: 11,
-            background: 'var(--bg-tertiary, #1f1f1f)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            height: 30,
+            padding: '0 12px',
+            fontSize: 12,
+            background: 'var(--pn-card)',
             border: '1px solid var(--pn-line-2)',
-            borderRadius: 5,
-            color: 'var(--text-primary, #e5e5e5)',
+            borderRadius: 'var(--pn-r-sm)',
+            color: 'var(--pn-ink)',
             cursor: 'pointer',
           }}
         >
@@ -270,12 +288,15 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
           type="button"
           onClick={handleSave}
           style={{
-            padding: '4px 10px',
-            fontSize: 11,
-            background: 'var(--bg-tertiary, #1f1f1f)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            height: 30,
+            padding: '0 12px',
+            fontSize: 12,
+            background: 'var(--pn-card)',
             border: '1px solid var(--pn-line-2)',
-            borderRadius: 5,
-            color: 'var(--text-primary, #e5e5e5)',
+            borderRadius: 'var(--pn-r-sm)',
+            color: 'var(--pn-ink)',
             cursor: 'pointer',
           }}
         >
@@ -320,7 +341,7 @@ export const TaskGraphPanel: React.FC<TaskGraphPanelProps> = ({ projectId, creat
                   padding: '6px 8px',
                   marginBottom: 4,
                   borderRadius: 5,
-                  background: 'var(--bg-tertiary, #1f1f1f)',
+                  background: 'var(--pn-card)',
                   border: '1px solid var(--pn-line)',
                   cursor: 'pointer',
                   fontSize: 11,

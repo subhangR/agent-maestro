@@ -31,17 +31,17 @@ html[data-redesign] .pn-bcols::-webkit-scrollbar-thumb { background: var(--pn-li
 
 html[data-redesign] .pn-bcol { width: 270px; flex: 0 0 auto; background: var(--pn-surface); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); display: flex; flex-direction: column; }
 html[data-redesign] .pn-bcol--over { border-color: var(--pn-brand); box-shadow: 0 0 0 3px var(--pn-brand-soft); }
-html[data-redesign] .pn-bcol__hd { display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-bottom: 1px solid var(--pn-line); }
+html[data-redesign] .pn-bcol__hd { display: flex; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid var(--pn-line); }
 html[data-redesign] .pn-bcol__label { font-family: var(--pn-mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pn-ink-2); white-space: nowrap; }
 html[data-redesign] .pn-bcol__count { font-family: var(--pn-mono); font-size: 10.5px; font-weight: 600; color: var(--pn-ink-3); background: var(--pn-active); border-radius: var(--pn-r-pill); padding: 1px 7px; margin-left: auto; }
-html[data-redesign] .pn-bcol__body { padding: 10px; display: flex; flex-direction: column; gap: 9px; min-height: 70px; }
+html[data-redesign] .pn-bcol__body { padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 72px; }
 html[data-redesign] .pn-bcol__empty { border: 1px dashed var(--pn-line-2); border-radius: var(--pn-r-sm); padding: 14px; text-align: center; font-family: var(--pn-mono); font-size: 11px; color: var(--pn-ink-4); }
 html[data-redesign] .pn-bcol--collapsed { width: 46px; flex: 0 0 auto; align-self: stretch; background: var(--pn-surface); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0; cursor: pointer; }
 html[data-redesign] .pn-bcol--collapsed:hover { background: var(--pn-hover); }
 html[data-redesign] .pn-bcol--collapsed .pn-bcol__label { writing-mode: vertical-rl; }
 
 /* ----- board card (no left stripe) ----- */
-html[data-redesign] .pn-bcard { background: var(--pn-card); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); padding: 11px 12px; box-shadow: var(--pn-sh-sm); display: flex; flex-direction: column; gap: 8px; cursor: grab; transition: box-shadow 150ms, border-color 150ms; }
+html[data-redesign] .pn-bcard { background: var(--pn-card); border: 1px solid var(--pn-line); border-radius: var(--pn-r-md); padding: 12px; box-shadow: var(--pn-sh-sm); display: flex; flex-direction: column; gap: 8px; cursor: grab; transition: box-shadow 150ms, border-color 150ms; }
 html[data-redesign] .pn-bcard:hover { box-shadow: var(--pn-sh-md); border-color: var(--pn-line-2); }
 html[data-redesign] .pn-bcard--blocked { border-color: rgba(187, 77, 61, 0.3); }
 html[data-redesign] .pn-bcard--done { opacity: 0.64; }
@@ -51,7 +51,7 @@ html[data-redesign] .pn-bcard__title { flex: 1; min-width: 0; font-size: 13px; f
 html[data-redesign] .pn-bcard--done .pn-bcard__title { text-decoration: line-through; color: var(--pn-ink-4); }
 html[data-redesign] .pn-bcard__glyph { flex: 0 0 auto; }
 html[data-redesign] .pn-bcard__pbadge { align-self: flex-start; font-family: var(--pn-mono); font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: var(--pn-r-xs); border: 1px solid var(--pn-line-2); color: var(--pn-ink-3); white-space: nowrap; }
-html[data-redesign] .pn-bcard__meta { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+html[data-redesign] .pn-bcard__meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 html[data-redesign] .pn-bcard__prog { display: inline-flex; align-items: center; gap: 5px; font-family: var(--pn-mono); font-size: 10.5px; color: var(--pn-ink-3); }
 html[data-redesign] .pn-bcard__progbar { width: 34px; height: 3px; border-radius: 2px; background: var(--pn-line); overflow: hidden; }
 html[data-redesign] .pn-bcard__progbar > i { display: block; height: 100%; background: var(--pn-run); }

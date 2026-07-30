@@ -534,3 +534,21 @@ html[data-redesign] .taskListItemActionBtn:hover {
   transform: none;
 }
 
+/* --------------------------------------------------------------------------
+   LAYOUT / ORGANIZATION FIXES (lists tab audit)
+   -------------------------------------------------------------------------- */
+/* The expanded work area was a centered flex row, which shrink-wrapped the
+   task-list rows so they no longer spanned the card width. Make it a block
+   so the inner .taskListTasks column fills the row. */
+html[data-redesign] .taskListItemWorkArea {
+  display: block;
+}
+/* Touch targets: expand chevron (was 24px) and header action buttons. */
+html[data-redesign] .taskListItemExpand {
+  width: 30px;
+  height: 30px;
+}
+html[data-redesign] .taskListItemActionBtn {
+  min-height: 32px;
+}
+
