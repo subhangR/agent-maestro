@@ -1,0 +1,83 @@
+/* One-time logo reveal shown on app launch, fading into the real UI. */
+.logoIntro {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--bg, #0a0e16);
+  color: var(--text, #f0f4f8);
+  cursor: pointer;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+html[data-redesign] .logoIntro {
+  background: var(--pn-paper);
+  color: var(--pn-ink);
+}
+.logoIntro--out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.logoIntro__ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  color: #6b8afd;
+  transform: rotate(-130deg) scale(0.5);
+  opacity: 0;
+  animation: logoIntroRing 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+html[data-redesign] .logoIntro__ring {
+  border-color: var(--pn-line-2);
+  color: var(--pn-brand);
+}
+.logoIntro__ring svg {
+  width: 40px;
+  height: 40px;
+}
+
+@keyframes logoIntroRing {
+  to {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.logoIntro__word {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: logoIntroWord 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+}
+html[data-redesign] .logoIntro__word {
+  font-family: var(--pn-serif);
+  color: var(--pn-ink-2);
+}
+
+@keyframes logoIntroWord {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logoIntro__ring,
+  .logoIntro__word {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -438,3 +438,117 @@
   font-weight: 500;
 }
 
+/* ==========================================================================
+   MAESTRO REDESIGN — html[data-redesign] OVERRIDES (token-only)
+   Repoints the .taskListItem* family (rendered by TaskListsPanel.tsx /
+   TaskListAddTasksModal.tsx, both of which carry the `.pnLeakSkin` skin
+   class — see styles-panel-leak-fix.css) from the legacy neon-indigo theme
+   to the warm-paper pn-* tokens. Only selectors used by those two components
+   are covered here; .taskListItemMenu*/.taskSubtaskItem*/.maestroAgentSelector
+   etc. belong to other, unrelated components and are left untouched.
+   ========================================================================== */
+html[data-redesign] .taskListItem {
+  background: var(--pn-card);
+  border-color: var(--pn-line);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .taskListItem:hover {
+  background: var(--pn-hover);
+  border-color: var(--pn-line-2);
+  box-shadow: var(--pn-sh-md);
+}
+
+html[data-redesign] .taskListItemExpand {
+  background: transparent;
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .taskListItemExpand:hover {
+  background: var(--pn-active);
+  color: var(--pn-brand);
+}
+
+html[data-redesign] .taskListItemStatusBadge {
+  border-radius: var(--pn-r-xs);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .taskListItemStatusBadge--todo,
+html[data-redesign] .taskListItemStatusBadge--cancelled {
+  background: var(--pn-idle-soft);
+  border-color: var(--pn-line-2);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .taskListItemStatusBadge--in_progress {
+  background: var(--pn-run-soft);
+  border-color: rgba(62, 142, 90, 0.32);
+  color: var(--pn-run);
+}
+html[data-redesign] .taskListItemStatusBadge--in_review {
+  background: var(--pn-info-soft);
+  border-color: rgba(63, 108, 144, 0.32);
+  color: var(--pn-info);
+}
+html[data-redesign] .taskListItemStatusBadge--completed {
+  background: var(--pn-run-soft);
+  border-color: rgba(62, 142, 90, 0.32);
+  color: var(--pn-run);
+}
+html[data-redesign] .taskListItemStatusBadge--blocked {
+  background: var(--pn-block-soft);
+  border-color: rgba(187, 77, 61, 0.32);
+  color: var(--pn-block);
+}
+
+html[data-redesign] .taskListItemPriorityBadge {
+  border-radius: var(--pn-r-xs);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .taskListItemPriorityBadge--low {
+  background: var(--pn-idle-soft);
+  border-color: var(--pn-line-2);
+  color: var(--pn-idle);
+}
+html[data-redesign] .taskListItemPriorityBadge--medium {
+  background: var(--pn-wait-soft);
+  border-color: rgba(189, 138, 42, 0.4);
+  color: var(--pn-wait);
+}
+html[data-redesign] .taskListItemPriorityBadge--high {
+  background: var(--pn-block-soft);
+  border-color: rgba(187, 77, 61, 0.32);
+  color: var(--pn-block);
+}
+
+html[data-redesign] .taskListItemMetaItem {
+  color: var(--pn-ink-3);
+}
+
+html[data-redesign] .taskListItemActionBtn {
+  border-color: var(--pn-line-2);
+  background: var(--pn-card);
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .taskListItemActionBtn:hover {
+  border-color: var(--pn-ink-4);
+  background: var(--pn-hover);
+  box-shadow: none;
+  transform: none;
+}
+
+/* --------------------------------------------------------------------------
+   LAYOUT / ORGANIZATION FIXES (lists tab audit)
+   -------------------------------------------------------------------------- */
+/* The expanded work area was a centered flex row, which shrink-wrapped the
+   task-list rows so they no longer spanned the card width. Make it a block
+   so the inner .taskListTasks column fills the row. */
+html[data-redesign] .taskListItemWorkArea {
+  display: block;
+}
+/* Touch targets: expand chevron (was 24px) and header action buttons. */
+html[data-redesign] .taskListItemExpand {
+  width: 30px;
+  height: 30px;
+}
+html[data-redesign] .taskListItemActionBtn {
+  min-height: 32px;
+}
+

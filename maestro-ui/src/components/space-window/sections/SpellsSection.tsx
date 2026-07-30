@@ -146,7 +146,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                 <div className="spaceEntityHeaderRight">
                     <input
                         type="text"
-                        className="spaceEntitySearchInput"
+                        className="spaceEntitySearchInput pn-input"
                         placeholder="Search spells…"
                         aria-label="Search spells"
                         value={search}
@@ -154,7 +154,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                     />
                     <button
                         type="button"
-                        className="spaceEntityPrimaryBtn"
+                        className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                         onClick={() => setPublishOpen(true)}
                         disabled={!user}
                         title={user ? undefined : "Sign in to publish"}
@@ -258,7 +258,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         {installed ? (
                                             <button
                                                 type="button"
-                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success"
+                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success pn-btn pn-btn--ghost"
                                                 disabled
                                             >
                                                 ✓ Installed
@@ -266,7 +266,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         ) : (
                                             <button
                                                 type="button"
-                                                className={`spaceEntityPrimaryBtn ${isInstalling ? "spaceSharingBtn--pending" : ""}`}
+                                                className={`spaceEntityPrimaryBtn pn-btn pn-btn--primary ${isInstalling ? "spaceSharingBtn--pending" : ""}`}
                                                 onClick={() => runInstall(sp)}
                                                 disabled={!user || isInstalling}
                                                 title={user ? undefined : "Sign in to install"}
@@ -283,7 +283,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                         )}
                                         <button
                                             type="button"
-                                            className="spaceEntityGhostBtn"
+                                            className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                                             onClick={() => setPreviewId(open ? null : sp.id)}
                                         >
                                             {open ? "Hide" : "Preview"}
@@ -292,7 +292,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                             <>
                                                 <button
                                                     type="button"
-                                                    className="spaceEntityGhostBtn"
+                                                    className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                                                     onClick={() => {
                                                         if (canManage) setEditSpell(sp);
                                                     }}
@@ -301,7 +301,7 @@ export const SpellsSection: React.FC<Props> = ({ space }) => {
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
+                                                    className="spaceEntityGhostBtn spaceEntityGhostBtn--danger pn-btn pn-btn--ghost pn-btn--danger"
                                                     onClick={() => handleDelete(sp)}
                                                 >
                                                     Delete
@@ -406,14 +406,14 @@ function PublishSpellModal({
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>Publish spell</div>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Publish spell</div>
                 <p className="spaceModalBody">
                     Pick a spell from your library to share with everyone in this space.
                 </p>
@@ -466,7 +466,7 @@ function PublishSpellModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={submitting}
                     >
@@ -474,7 +474,7 @@ function PublishSpellModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={!selectedId || submitting}
                         onClick={handlePublish}
                     >
@@ -522,17 +522,17 @@ function EditSpellModal({
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>Edit shared spell</div>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Edit shared spell</div>
                 <input
                     type="text"
-                    className="spaceEntitySearchInput"
+                    className="spaceEntitySearchInput pn-input"
                     style={{ width: "100%", marginBottom: 10 }}
                     value={name}
                     placeholder="Spell name"
@@ -541,7 +541,7 @@ function EditSpellModal({
                     onChange={(e) => setName(e.target.value)}
                 />
                 <textarea
-                    className="spaceEntitySearchInput"
+                    className="spaceEntitySearchInput pn-input"
                     style={{ width: "100%", minHeight: 80, marginBottom: 10, resize: "vertical" }}
                     value={description}
                     placeholder="Description"
@@ -558,7 +558,7 @@ function EditSpellModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={saving}
                     >
@@ -566,7 +566,7 @@ function EditSpellModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={!name.trim() || saving}
                         onClick={handleSave}
                     >
@@ -598,14 +598,14 @@ function SpellConflictModal({
         <div className="spaceModalOverlay" onClick={onCancel}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>Spell already exists</div>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Spell already exists</div>
                 <p className="spaceModalBody">
                     A spell named <strong>/{conflictingName}</strong> is already in your library.
                     Replace it, install under a new name, or cancel.
@@ -614,7 +614,7 @@ function SpellConflictModal({
                 {renaming && (
                     <input
                         type="text"
-                        className="spaceEntitySearchInput"
+                        className="spaceEntitySearchInput pn-input"
                         style={{ width: "100%", marginBottom: 10 }}
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
@@ -624,13 +624,13 @@ function SpellConflictModal({
                 )}
 
                 <div className="spaceModalActions">
-                    <button type="button" className="spaceEntityGhostBtn" onClick={onCancel}>
+                    <button type="button" className="spaceEntityGhostBtn pn-btn pn-btn--ghost" onClick={onCancel}>
                         Cancel
                     </button>
                     {renaming ? (
                         <button
                             type="button"
-                            className="spaceModalPrimaryBtn"
+                            className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                             disabled={!renameValue.trim()}
                             onClick={() => onRename(renameValue.trim())}
                         >
@@ -640,14 +640,14 @@ function SpellConflictModal({
                         <>
                             <button
                                 type="button"
-                                className="spaceEntityGhostBtn"
+                                className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                                 onClick={() => setRenaming(true)}
                             >
                                 Rename
                             </button>
                             <button
                                 type="button"
-                                className="spaceModalPrimaryBtn"
+                                className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                                 onClick={onReplace}
                             >
                                 Replace

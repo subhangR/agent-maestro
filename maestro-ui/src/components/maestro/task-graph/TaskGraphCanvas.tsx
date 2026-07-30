@@ -86,8 +86,8 @@ export const TaskGraphCanvas: React.FC<TaskGraphCanvasProps> = ({
         target: e.targetTaskId,
         label: e.label,
         animated: false,
-        markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-        style: { stroke: '#6b7280', strokeWidth: 1.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: '#8E897B' },
+        style: { stroke: '#8E897B', strokeWidth: 1.5 },
       })),
     [graph.edges]
   );
@@ -121,8 +121,8 @@ export const TaskGraphCanvas: React.FC<TaskGraphCanvasProps> = ({
           {
             ...connection,
             id: edgeId,
-            markerEnd: { type: MarkerType.ArrowClosed, color: '#6b7280' },
-            style: { stroke: '#6b7280', strokeWidth: 1.5 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#8E897B' },
+            style: { stroke: '#8E897B', strokeWidth: 1.5 },
           },
           eds
         )
@@ -197,17 +197,17 @@ export const TaskGraphCanvas: React.FC<TaskGraphCanvasProps> = ({
         fitView
         deleteKeyCode={['Backspace', 'Delete']}
         proOptions={{ hideAttribution: true }}
-        style={{ background: 'var(--bg-primary, #0a0a0a)' }}
+        style={{ background: 'var(--pn-paper, #0a0a0a)' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="rgba(255,255,255,0.05)" />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--pn-line-2, rgba(255,255,255,0.05))" />
         <Controls
           showInteractive={false}
-          style={{ background: 'var(--bg-secondary, #1a1a1a)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6 }}
+          style={{ background: 'var(--pn-surface, #1a1a1a)', border: '1px solid var(--pn-line, rgba(255,255,255,0.1))', borderRadius: 'var(--pn-r-sm, 6px)' }}
         />
         <MiniMap
-          style={{ background: 'var(--bg-secondary, #1a1a1a)', border: '1px solid rgba(255,255,255,0.1)' }}
-          maskColor="rgba(0,0,0,0.5)"
-          nodeColor="#3b82f6"
+          style={{ background: 'var(--pn-surface, #1a1a1a)', border: '1px solid var(--pn-line, rgba(255,255,255,0.1))' }}
+          maskColor="rgba(40,34,24,0.14)"
+          nodeColor="var(--pn-brand, #3b82f6)"
         />
       </ReactFlow>
 
@@ -221,10 +221,10 @@ export const TaskGraphCanvas: React.FC<TaskGraphCanvasProps> = ({
           right: 10,
           padding: '6px 12px',
           fontSize: 11,
-          background: 'var(--bg-secondary, #1a1a1a)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          borderRadius: 6,
-          color: 'var(--text-primary, #e5e5e5)',
+          background: 'var(--pn-card, #1a1a1a)',
+          border: '1px solid var(--pn-line-2, rgba(255,255,255,0.15))',
+          borderRadius: 'var(--pn-r-sm, 6px)',
+          color: 'var(--pn-ink, #e5e5e5)',
           cursor: 'pointer',
           zIndex: 5,
         }}

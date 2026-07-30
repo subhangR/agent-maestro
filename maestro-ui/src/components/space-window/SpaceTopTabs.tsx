@@ -100,7 +100,7 @@ export const SpaceTopTabs: React.FC<Props> = ({ spaceId }) => {
     const setActive = useUIStore((s) => s.setSpaceActiveSection);
 
     return (
-        <nav className="spaceTopTabs" role="tablist" aria-label="Space sections">
+        <nav className="spaceTopTabs pn-tabs" role="tablist" aria-label="Space sections">
             {TABS.map((t) => {
                 const isActive = active === t.id;
                 return (
@@ -109,7 +109,7 @@ export const SpaceTopTabs: React.FC<Props> = ({ spaceId }) => {
                         type="button"
                         role="tab"
                         aria-selected={isActive}
-                        className={`spaceTopTab ${isActive ? "spaceTopTab--active" : ""}`}
+                        className={`spaceTopTab pn-tab ${isActive ? "spaceTopTab--active pn-tab--active" : ""}`}
                         onClick={() => setActive(t.id, spaceId)}
                     >
                         <span className="spaceTopTabIcon" aria-hidden="true">{t.icon}</span>

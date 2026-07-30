@@ -38,6 +38,7 @@ import "./styles-spells.css";
 import "./styles-panel-leak-fix.css";
 import "./styles-gateway-dashboard.css";
 import "./styles-deployment-version.css";
+import "./styles-logo-intro.css";
 import { setRedesignActive } from "./components/maestro/redesign/useRedesignTheme";
 
 // Redesign is default-on for the maestro-redesign branch. The scoped tokens in

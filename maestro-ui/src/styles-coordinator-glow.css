@@ -46,3 +46,27 @@
   background: rgba(var(--coordinator-glow-color-rgb), 0.1);
   border: 1px solid rgba(var(--coordinator-glow-color-rgb), 0.3);
 }
+
+/* ==========================================================================
+   MAESTRO REDESIGN — html[data-redesign] OVERRIDES (token-only)
+   Repoints the neon-amber coordinator indicator to the warm-paper pn-* tokens.
+   Base rules above are untouched so the data-redesign toggle keeps switching
+   cleanly between the legacy terminal theme and the Atelier redesign.
+   ========================================================================== */
+html[data-redesign] .modeChip {
+  font-family: var(--pn-ui);
+  border-radius: var(--pn-r-pill);
+  letter-spacing: 0.02em;
+}
+
+html[data-redesign] .modeChip--worker {
+  color: var(--pn-ink-3);
+  background: var(--pn-active);
+  border-color: var(--pn-line-2);
+}
+
+html[data-redesign] .modeChip--coordinator {
+  color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+  border-color: rgba(178, 106, 43, 0.32);
+}

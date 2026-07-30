@@ -138,7 +138,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                 <div className="spaceEntityHeaderRight">
                     <input
                         type="text"
-                        className="spaceEntitySearchInput"
+                        className="spaceEntitySearchInput pn-input"
                         placeholder="Search agents…"
                         aria-label="Search agents"
                         value={search}
@@ -146,7 +146,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                     />
                     <button
                         type="button"
-                        className="spaceEntityPrimaryBtn"
+                        className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                         onClick={() => setPublishOpen(true)}
                         disabled={!user}
                         title={user ? undefined : "Sign in to publish"}
@@ -279,7 +279,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                                         {adopted ? (
                                             <button
                                                 type="button"
-                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success"
+                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--success pn-btn pn-btn--ghost"
                                                 disabled
                                             >
                                                 ✓ Adopted
@@ -287,7 +287,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                                         ) : (
                                             <button
                                                 type="button"
-                                                className={`spaceEntityPrimaryBtn ${isAdopting ? "spaceSharingBtn--pending" : ""}`}
+                                                className={`spaceEntityPrimaryBtn pn-btn pn-btn--primary ${isAdopting ? "spaceSharingBtn--pending" : ""}`}
                                                 onClick={() => handleAdopt(m)}
                                                 disabled={!user || isAdopting}
                                                 title={user ? undefined : "Sign in to adopt"}
@@ -305,7 +305,7 @@ export const TeamMembersSection: React.FC<Props> = ({ space }) => {
                                         {canManage && (
                                             <button
                                                 type="button"
-                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--danger"
+                                                className="spaceEntityGhostBtn spaceEntityGhostBtn--danger pn-btn pn-btn--ghost pn-btn--danger"
                                                 onClick={() => handleDelete(m)}
                                             >
                                                 Delete
@@ -395,14 +395,14 @@ function PublishTeamMemberModal({
         <div className="spaceModalOverlay" onClick={onClose}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>Publish team member</div>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>Publish team member</div>
                 <p className="spaceModalBody">
                     Pick a team member from your active project. Its identity prompt and command
                     permissions will be visible to everyone in this space.
@@ -464,7 +464,7 @@ function PublishTeamMemberModal({
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceEntityGhostBtn"
+                        className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                         onClick={onClose}
                         disabled={submitting}
                     >
@@ -472,7 +472,7 @@ function PublishTeamMemberModal({
                     </button>
                     <button
                         type="button"
-                        className="spaceModalPrimaryBtn"
+                        className="spaceModalPrimaryBtn pn-btn pn-btn--primary"
                         disabled={!selectedId || submitting}
                         onClick={handlePublish}
                     >

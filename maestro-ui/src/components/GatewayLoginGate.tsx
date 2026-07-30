@@ -16,43 +16,22 @@ export function GatewayLoginGate() {
   const configured = useFirebaseAuthStore((s) => s.configured);
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#0d0d0f',
-        color: '#e7e7ea',
-        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-      }}
-    >
-      <div
-        style={{
-          width: 360,
-          maxWidth: '90vw',
-          padding: 32,
-          borderRadius: 14,
-          background: '#161619',
-          border: '1px solid #262629',
-          textAlign: 'center',
-          boxShadow: '0 12px 40px rgba(0,0,0,0.45)',
-        }}
-      >
-        <div style={{ fontSize: 20, fontWeight: 700, letterSpacing: 0.3 }}>Maestro Hub</div>
-        <div style={{ marginTop: 8, fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>
+    <div className="gatewayLoginGate">
+      <div className="gatewayLoginGate__card">
+        <div className="gatewayLoginGate__title">Maestro Hub</div>
+        <div className="gatewayLoginGate__subtitle">
           Sign in with your Google account to open your private workspace.
         </div>
 
         {!configured ? (
-          <div style={{ marginTop: 24, fontSize: 13, color: '#ff8a8a', lineHeight: 1.5 }}>
+          <div className="gatewayLoginGate__notice">
             Firebase is not configured in this build. The gateway login cannot start.
           </div>
         ) : (
           <>
             <button
               type="button"
+              className={`gatewayLoginGate__button${loading ? ' gatewayLoginGate__button--loading' : ''}`}
               onClick={async () => {
                 await signInGoogle();
                 // The app's startup effects run once on mount (before sign-in), so
@@ -61,23 +40,11 @@ export function GatewayLoginGate() {
                 if (getFbAuth().currentUser) window.location.reload();
               }}
               disabled={loading}
-              style={{
-                marginTop: 24,
-                width: '100%',
-                padding: '11px 16px',
-                borderRadius: 9,
-                border: '1px solid #34343a',
-                background: loading ? '#232327' : '#f5f5f7',
-                color: loading ? '#8a8a90' : '#111',
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: loading ? 'default' : 'pointer',
-              }}
             >
               {loading ? 'Signing in…' : 'Continue with Google'}
             </button>
             {error && (
-              <div style={{ marginTop: 14, fontSize: 12.5, color: '#ff8a8a', lineHeight: 1.5 }}>
+              <div className="gatewayLoginGate__error">
                 {error}
               </div>
             )}

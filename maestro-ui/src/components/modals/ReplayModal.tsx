@@ -48,7 +48,7 @@ export function ReplayModal({
 
     return (
         <div className="modalBackdrop" onClick={onClose}>
-            <div className="modal recordingsModal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal recordingsModal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
                 <h3 className="modalTitle">Replay recording</h3>
 
                 {error && (
@@ -191,12 +191,12 @@ export function ReplayModal({
                 )}
 
                 <div className="modalActions">
-                    <button type="button" className="btn" onClick={onClose}>
+                    <button type="button" className="pn-btn" onClick={onClose}>
                         Close
                     </button>
                     <button
                         type="button"
-                        className="btn"
+                        className="pn-btn"
                         onClick={() => setShowAll((v) => !v)}
                         disabled={loading || Boolean(error) || !recording}
                     >
@@ -204,7 +204,7 @@ export function ReplayModal({
                     </button>
                     <button
                         type="button"
-                        className="btn"
+                        className="pn-btn pn-btn--primary"
                         onClick={() => void onSendNext()}
                         disabled={loading || Boolean(error) || index >= steps.length}
                         title="Creates a new replay tab if needed"

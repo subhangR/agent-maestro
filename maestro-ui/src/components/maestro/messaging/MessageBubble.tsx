@@ -534,7 +534,7 @@ export function MessageBubble({
             <div className="messagingEditActions">
               <button
                 type="button"
-                className="collabSpaceButton collabSpaceButtonPrimary"
+                className="pn-btn pn-btn--primary"
                 onClick={() => void saveEdit()}
                 disabled={busy || !draft.trim()}
               >
@@ -542,7 +542,7 @@ export function MessageBubble({
               </button>
               <button
                 type="button"
-                className="collabSpaceTextButton"
+                className="pn-btn pn-btn--ghost"
                 onClick={cancelEdit}
                 disabled={busy}
               >

@@ -32,7 +32,7 @@ export function RecordingsListModal({
 
     return (
         <div className="modalBackdrop" onClick={onClose}>
-            <div className="modal recordingsModal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal recordingsModal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
                 <h3 className="modalTitle">Recordings</h3>
 
                 {error && (
@@ -70,7 +70,7 @@ export function RecordingsListModal({
                                     <div className="recordingActions">
                                         <button
                                             type="button"
-                                            className="btnSmall"
+                                            className="pn-btn pn-btn--sm"
                                             onClick={() => {
                                                 onClose();
                                                 onOpenReplay(r.recordingId, "step");
@@ -81,7 +81,7 @@ export function RecordingsListModal({
                                         </button>
                                         <button
                                             type="button"
-                                            className="btnSmall"
+                                            className="pn-btn pn-btn--sm"
                                             onClick={() => {
                                                 onClose();
                                                 onOpenReplay(r.recordingId, "all");
@@ -92,7 +92,7 @@ export function RecordingsListModal({
                                         </button>
                                         <button
                                             type="button"
-                                            className="btnSmall btnDanger"
+                                            className="pn-btn pn-btn--sm pn-btn--danger"
                                             onClick={() => onDelete(r.recordingId)}
                                             title="Delete recording"
                                         >
@@ -106,12 +106,12 @@ export function RecordingsListModal({
                 </div>
 
                 <div className="modalActions">
-                    <button type="button" className="btn" onClick={onClose}>
+                    <button type="button" className="pn-btn" onClick={onClose}>
                         Close
                     </button>
                     <button
                         type="button"
-                        className="btn"
+                        className="pn-btn"
                         onClick={onRefresh}
                         disabled={loading}
                     >

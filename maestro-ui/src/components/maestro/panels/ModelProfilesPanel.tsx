@@ -72,7 +72,7 @@ export function ModelProfilesPanel({ createSignal = 0 }: ModelProfilesPanelProps
                             <div
                                 key={p.id}
                                 className="modelProfileCard"
-                                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--theme-border, #333)", borderRadius: 6 }}
+                                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid var(--theme-border, #333)", borderRadius: "var(--pn-r-sm, 6px)", background: "var(--pn-card, transparent)" }}
                             >
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

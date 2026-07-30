@@ -28,7 +28,7 @@ export function StartRecordingModal({
 
     return (
         <div className="modalBackdrop" onClick={onClose}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal pnLeakSkin" onClick={(e) => e.stopPropagation()}>
                 <h3 className="modalTitle">Start recording</h3>
                 <form
                     onSubmit={(e) => {
@@ -59,12 +59,12 @@ export function StartRecordingModal({
                         </div>
                     </div>
                     <div className="modalActions">
-                        <button type="button" className="btn" onClick={onClose}>
+                        <button type="button" className="pn-btn" onClick={onClose}>
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="btn"
+                            className="pn-btn pn-btn--primary"
                             disabled={!sessionId || !name.trim()}
                         >
                             Start

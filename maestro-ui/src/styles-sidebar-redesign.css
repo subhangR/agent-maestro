@@ -239,6 +239,20 @@ html[data-redesign] .agentShortcutBtn:hover {
   color: var(--pn-ink);
   box-shadow: none;
 }
+/* app/ResizeHandle.tsx (orientation="horizontal") — the row-resize handle
+   still used the legacy neon-terminal tokens above; repoint to pn tokens. */
+html[data-redesign] .sidebarResizeHandle::before {
+  background: var(--pn-line);
+}
+html[data-redesign] .sidebarResizeHandle:hover::before,
+html[data-redesign] .sidebarResizeHandle:focus-visible::before {
+  background: var(--pn-brand);
+  box-shadow: 0 0 4px var(--pn-brand-soft);
+}
+html[data-redesign] .sidebarResizeHandle:focus-visible {
+  outline: 2px solid var(--pn-brand);
+  outline-offset: -2px;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Mobile overrides (≤768px)                                          */

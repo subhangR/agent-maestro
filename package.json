@@ -17,6 +17,7 @@
     "dev:server": "cd maestro-server && bun run dev",
     "dev:all": "cd maestro-ui && bun run dev:all",
     "build:ui": "cd maestro-ui && NODE_OPTIONS=--max-old-space-size=4096 bun run build",
+    "build:web:gateway": "cd maestro-ui && NODE_OPTIONS=--max-old-space-size=6144 bun run build:web:gateway",
     "build:server": "cd maestro-server && bun run build",
     "build:cli": "cd maestro-cli && bun run build",
     "build:gateway": "cd maestro-gateway && bun run build",

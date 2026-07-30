@@ -1,5 +1,6 @@
 import React from 'react';
 import type { MaestroSession } from '../../app/types/maestro';
+import { Icon } from './redesign/kit';
 
 export interface WorktreeInfo {
   branch: string;
@@ -26,7 +27,7 @@ export function WorktreeBadge({ branch, compact = false }: WorktreeBadgeProps) {
       className={`worktreeBadge${compact ? ' worktreeBadge--compact' : ''}`}
       title={`Worktree branch: ${branch}`}
     >
-      <span className="worktreeBadge__leaf" aria-hidden="true">🌿</span>
+      <span className="worktreeBadge__leaf" aria-hidden="true"><Icon name="gitBranch" size={10} /></span>
       <span className="worktreeBadge__branch">{branch}</span>
     </span>
   );

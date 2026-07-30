@@ -2024,3 +2024,569 @@ img.spaceMemberFullAvatar {
     display: none;
   }
 }
+
+/* ==========================================================================
+   ATELIER REDESIGN — space-window cluster
+   Pure visual re-skin: every rule below is scoped under html[data-redesign]
+   and repaints existing legacy classes with --pn-* tokens (see
+   src/components/maestro/redesign/redesign-tokens.css). No JSX structure,
+   state, or behavior changes — see the paired className additions in the
+   component files for the handful of spots that adopt generic .pn-* classes
+   (buttons, inputs, tabs, modals) instead of a bespoke override here.
+   ========================================================================== */
+
+/* ---- Avatar ---- */
+html[data-redesign] .spaceAvatar {
+  font-family: var(--pn-ui);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceWindowChromeAvatarPlaceholder {
+  background: var(--pn-active);
+}
+
+/* ---- Window shell + chrome ---- */
+html[data-redesign] .spaceWindow {
+  background: var(--pn-surface);
+  color: var(--pn-ink);
+  font-family: var(--pn-ui);
+}
+html[data-redesign] .spaceWindowChrome {
+  background: var(--pn-surface);
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceWindowChromeTitle {
+  color: var(--pn-ink);
+  font-weight: 600;
+}
+html[data-redesign] .spaceWindowChromeSubtitle {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceWindowChromeMeta {
+  color: var(--pn-ink-3);
+  background: var(--pn-active);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceWindowChromeVisBadge {
+  border-radius: var(--pn-r-xs);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .spaceWindowChromeVisBadge--public {
+  background: var(--pn-run-soft);
+  color: var(--pn-run);
+  border: 1px solid transparent;
+}
+html[data-redesign] .spaceWindowChromeVisBadge--private {
+  background: var(--pn-wait-soft);
+  color: var(--pn-wait);
+  border: 1px solid transparent;
+}
+html[data-redesign] .spaceWindowSettings {
+  color: var(--pn-ink-3);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceWindowSettings:hover:not(:disabled) {
+  color: var(--pn-ink);
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceWindowBack {
+  border: 1px solid var(--pn-line-2);
+  color: var(--pn-ink-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceWindowBack:hover {
+  background: var(--pn-hover);
+  border-color: var(--pn-ink-4);
+  color: var(--pn-ink);
+}
+
+/* ---- Top tabs ---- */
+html[data-redesign] .spaceTopTabs {
+  background: var(--pn-surface);
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceTopTab {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceTopTab:hover {
+  color: var(--pn-ink-2);
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceTopTab--active {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceTopTab--active::after {
+  background: var(--pn-ink);
+}
+
+html[data-redesign] .spaceWindowBody {
+  background: var(--pn-surface);
+}
+
+/* ---- Entity pane (Docs/Files/Members/Settings/Spells/Tasks/Team shared shell) ---- */
+html[data-redesign] .spaceEntityHeader {
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceEntityTitle {
+  font-family: var(--pn-serif);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceEntityCount {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+  background: var(--pn-active);
+}
+html[data-redesign] .spaceEntitySearchInput,
+html[data-redesign] .spaceEntityFilter {
+  background: var(--pn-surface);
+  color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceEntitySearchInput:focus,
+html[data-redesign] .spaceEntityFilter:focus {
+  outline: none;
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+html[data-redesign] .spaceEntityNoResults {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceEntityMetaLabel {
+  color: var(--pn-ink-3);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .spaceEntityPrimaryBtn,
+html[data-redesign] .spaceEntityGhostBtn,
+html[data-redesign] .spaceEntityDangerBtn,
+html[data-redesign] .spaceModalPrimaryBtn,
+html[data-redesign] .spaceSectionDetailGhostBtn,
+html[data-redesign] .spaceEmptySectionAction,
+html[data-redesign] .spaceEmptySectionAction:disabled {
+  font-family: var(--pn-ui);
+}
+
+/* ---- Empty states ---- */
+html[data-redesign] .spaceEmptySectionIcon {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceEmptySectionTitle {
+  font-family: var(--pn-serif);
+  color: var(--pn-ink);
+  font-size: 15px;
+}
+html[data-redesign] .spaceEmptySectionBody {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceWindowEmptyCard {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-lg);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceWindowEmptyTitle {
+  font-family: var(--pn-serif);
+  color: var(--pn-ink);
+  font-weight: 500;
+}
+html[data-redesign] .spaceWindowEmptyText {
+  color: var(--pn-ink-3);
+}
+
+/* ---- Messages (loading state only — the live view is MessagingView, out of
+   this cluster's scope) ---- */
+html[data-redesign] .spaceEntityPane--messages .messagingEmptyStateTitle {
+  font-family: var(--pn-serif);
+  color: var(--pn-ink);
+}
+
+/* ---- Tasks ---- */
+html[data-redesign] .spaceTaskItem {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceTaskItem--expanded {
+  border-color: var(--pn-brand);
+  background: var(--pn-card);
+}
+html[data-redesign] .spaceTaskItemHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceTaskItemTitle {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceTaskItemMeta,
+html[data-redesign] .spaceTaskItemAt {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceTaskItemDetail {
+  border-top: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceTaskItemDescription {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceTaskItemDetailMeta {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceTaskItemActions {
+  border-top: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceTaskPriorityDot--high { background: var(--pn-block); }
+html[data-redesign] .spaceTaskPriorityDot--medium { background: var(--pn-wait); }
+html[data-redesign] .spaceTaskPriorityDot--low { background: var(--pn-idle); }
+html[data-redesign] .spaceTaskStatus {
+  font-family: var(--pn-mono);
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .spaceTaskStatus--todo { background: var(--pn-idle-soft); color: var(--pn-ink-3); }
+html[data-redesign] .spaceTaskStatus--inProgress { background: var(--pn-wait-soft); color: var(--pn-wait); }
+html[data-redesign] .spaceTaskStatus--blocked { background: var(--pn-block-soft); color: var(--pn-block); }
+html[data-redesign] .spaceTaskStatus--done { background: var(--pn-run-soft); color: var(--pn-run); }
+
+/* ---- Team members ---- */
+html[data-redesign] .spaceTeamItem {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceTeamItem--expanded {
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .spaceTeamItemHeader:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceTeamItemAvatar {
+  background: var(--pn-brand);
+  color: #fff;
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceTeamItemName {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceTeamItemModel,
+html[data-redesign] .spaceTeamItemMono {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceTeamItemMeta,
+html[data-redesign] .spaceTeamItemAdoptions {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceTeamItemDetail {
+  border-top: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceTeamItemIdentity {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink);
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceTeamItemRow {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceTeamItemActions {
+  border-top: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceTeamPermPill,
+html[data-redesign] .spaceModeBadge {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-2);
+  background: var(--pn-active);
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .spaceModeBadge {
+  color: var(--pn-info);
+  background: var(--pn-info-soft);
+}
+
+/* ---- Spells ---- */
+html[data-redesign] .spaceSpellItem {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceSpellItem--expanded {
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .spaceSpellItemName {
+  font-family: var(--pn-mono);
+  color: var(--pn-brand);
+}
+html[data-redesign] .spaceSpellTargetPill {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+  background: var(--pn-active);
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .spaceSpellItemMeta,
+html[data-redesign] .spaceSpellItemAt,
+html[data-redesign] .spaceSpellItemInstalls {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceSpellItemDesc {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceSpellItemBody {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink);
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+}
+
+/* ---- Members ---- */
+html[data-redesign] .spaceMembersGroupHeader {
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceMembersGroupLabel,
+html[data-redesign] .spaceMembersGroupCount {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceMemberFullRow:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .spaceMemberFullYou {
+  color: var(--pn-ink-2);
+  background: var(--pn-active);
+}
+html[data-redesign] .spaceMemberFullName {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceMemberFullSub {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceMemberFullBadge {
+  border-radius: var(--pn-r-xs);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .spaceMemberFullBadge--owner {
+  background: var(--pn-run-soft);
+  color: var(--pn-run);
+}
+html[data-redesign] .spaceMemberFullBadge--admin {
+  background: var(--pn-info-soft);
+  color: var(--pn-info);
+}
+html[data-redesign] .spaceMemberMenu {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-pop);
+}
+html[data-redesign] .spaceMemberMenuItem {
+  color: var(--pn-ink-2);
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .spaceMemberMenuItem:hover:not(:disabled) {
+  background: var(--pn-hover);
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceMemberMenuItem--danger {
+  color: var(--pn-block);
+}
+html[data-redesign] .spaceMemberMenuSep {
+  background: var(--pn-line);
+}
+
+/* ---- Settings ---- */
+html[data-redesign] .spaceSettingsGroup {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceSettingsGroup--danger {
+  border-color: rgba(187, 77, 61, 0.3);
+  background: var(--pn-block-soft);
+}
+html[data-redesign] .spaceSettingsGroupTitle {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink-3);
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceSettingsGroupTitle--danger {
+  color: var(--pn-block);
+}
+html[data-redesign] .spaceSettingsLabel {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceSettingsInput,
+html[data-redesign] .spaceSettingsTextarea {
+  background: var(--pn-surface);
+  color: var(--pn-ink);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceSettingsInput:focus,
+html[data-redesign] .spaceSettingsTextarea:focus {
+  outline: none;
+  border-color: var(--pn-brand);
+  box-shadow: 0 0 0 3px var(--pn-brand-soft);
+}
+html[data-redesign] .spaceSettingsRadio {
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceSettingsRadio:hover {
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .spaceSettingsRadio:has(input:checked) {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .spaceSettingsRadioTitle {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceSettingsRadioHint,
+html[data-redesign] .spaceSettingsHint {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceSettingsSavedNote {
+  color: var(--pn-run);
+  font-family: var(--pn-mono);
+}
+html[data-redesign] .spaceSettingsAdminRow {
+  background: var(--pn-surface);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceSettingsAdminName {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceSettingsDangerTitle {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceSettingsDangerHint {
+  color: var(--pn-ink-3);
+}
+
+/* ---- Modals (Invite / Push / Edit / Confirm) ---- */
+html[data-redesign] .spaceModalTitle {
+  color: var(--pn-ink);
+  font-family: var(--pn-serif);
+}
+html[data-redesign] .spaceModalBody {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceModalHint {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceInviteKindRow {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceInviteField {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceInviteField select,
+html[data-redesign] .spaceInviteField input {
+  color: var(--pn-ink);
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceInviteCreated {
+  border: 1px solid var(--pn-run);
+  background: var(--pn-run-soft);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceInviteCreatedLabel,
+html[data-redesign] .spaceInviteListHeader {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceInviteLinkInput {
+  font-family: var(--pn-mono);
+  color: var(--pn-ink);
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceInviteRow {
+  border-bottom: 1px solid var(--pn-line);
+}
+html[data-redesign] .spaceInviteRow strong {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceInviteRow span {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spacePushPickerList {
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+  background: var(--pn-surface);
+}
+html[data-redesign] .spacePushPickerRow {
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .spacePushPickerRow:hover {
+  background: var(--pn-hover);
+}
+html[data-redesign] .spacePushPickerRow--checked {
+  background: var(--pn-brand-soft);
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .spacePushPickerTitle {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spacePushPickerProject {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceShareError {
+  color: var(--pn-block);
+  background: var(--pn-block-soft);
+  border: 1px solid rgba(187, 77, 61, 0.3);
+  border-radius: var(--pn-r-sm);
+}
+
+/* ---- Share-to-space modal (ShareToSpaceModal.tsx) ---- */
+html[data-redesign] .spaceModalOverlay { background: rgba(35, 32, 27, 0.45); }
+html[data-redesign] .spaceModal {
+  background: var(--pn-card);
+  border: 1px solid var(--pn-line-2);
+  border-radius: var(--pn-r-lg);
+  box-shadow: var(--pn-sh-pop);
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceModalPrimaryBtn {
+  background: var(--pn-brand);
+  color: #fff;
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceModalPrimaryBtn:hover { background: var(--pn-brand-2); }
+html[data-redesign] .spaceShareEntityPreview {
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceShareEntityKindLabel,
+html[data-redesign] .spaceShareSpaceListLabel {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceShareEntityName { color: var(--pn-ink); }
+html[data-redesign] .spaceShareSpaceList {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceShareSpaceRow { color: var(--pn-ink-2); }
+html[data-redesign] .spaceShareSpaceRow:hover { background: var(--pn-hover); }
+html[data-redesign] .spaceShareSpaceRow--selected {
+  background: var(--pn-brand-soft);
+  border-color: var(--pn-brand);
+}
+html[data-redesign] .spaceShareSpaceAvatar {
+  background: var(--pn-active);
+  color: var(--pn-brand);
+}
+html[data-redesign] .spaceShareSpaceName { color: var(--pn-ink); }
+html[data-redesign] .spaceShareSpaceSubtitle { color: var(--pn-ink-3); }
+html[data-redesign] .spaceShareSpaceCheck { color: var(--pn-brand); }
+html[data-redesign] .spaceShareEmpty { color: var(--pn-ink-3); }
+html[data-redesign] .spaceShareSuccessTitle { color: var(--pn-ink); }
+html[data-redesign] .spaceShareSuccessBody { color: var(--pn-ink-3); }

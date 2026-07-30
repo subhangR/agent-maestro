@@ -132,7 +132,7 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                         <input
                             id="space-name"
                             type="text"
-                            className="spaceSettingsInput"
+                            className="spaceSettingsInput pn-input"
                             value={name}
                             disabled={!canManage || saving}
                             onChange={(e) => setName(e.target.value)}
@@ -145,7 +145,7 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                         </label>
                         <textarea
                             id="space-desc"
-                            className="spaceSettingsTextarea"
+                            className="spaceSettingsTextarea pn-textarea"
                             value={description}
                             disabled={!canManage || saving}
                             onChange={(e) => setDescription(e.target.value)}
@@ -203,7 +203,7 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                         <div className="spaceSettingsActions">
                             <button
                                 type="button"
-                                className="spaceEntityPrimaryBtn"
+                                className="spaceEntityPrimaryBtn pn-btn pn-btn--primary"
                                 disabled={!dirty || saving}
                                 onClick={save}
                             >
@@ -211,7 +211,7 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                             </button>
                             <button
                                 type="button"
-                                className="spaceEntityGhostBtn"
+                                className="spaceEntityGhostBtn pn-btn pn-btn--ghost"
                                 disabled={!dirty || saving}
                                 onClick={discard}
                             >
@@ -272,7 +272,7 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                         </div>
                         <button
                             type="button"
-                            className="spaceEntityDangerBtn"
+                            className="spaceEntityDangerBtn pn-btn pn-btn--danger"
                             onClick={() => setConfirm("leave")}
                         >
                             Leave
@@ -289,7 +289,7 @@ export const SettingsSection: React.FC<Props> = ({ space }) => {
                             </div>
                             <button
                                 type="button"
-                                className="spaceEntityDangerBtn"
+                                className="spaceEntityDangerBtn pn-btn pn-btn--danger"
                                 onClick={() => setConfirm("delete")}
                             >
                                 Delete
@@ -337,14 +337,14 @@ const ConfirmDangerModal: React.FC<{
         <div className="spaceModalOverlay" onClick={onCancel}>
             <div
                 ref={modalRef}
-                className="spaceModal"
+                className="spaceModal pn-mdl"
                 onClick={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 tabIndex={-1}
             >
-                <div className="spaceModalTitle" id={titleId}>
+                <div className="spaceModalTitle pn-mdl__titleinput" id={titleId}>
                     {isDelete ? `Delete ${spaceName}?` : `Leave ${spaceName}?`}
                 </div>
                 <p className="spaceModalBody">
@@ -355,7 +355,7 @@ const ConfirmDangerModal: React.FC<{
                 <div className="spaceModalActions">
                     <button
                         type="button"
-                        className="spaceSectionDetailGhostBtn"
+                        className="spaceSectionDetailGhostBtn pn-btn pn-btn--ghost"
                         onClick={onCancel}
                         disabled={busy}
                     >
@@ -363,7 +363,7 @@ const ConfirmDangerModal: React.FC<{
                     </button>
                     <button
                         type="button"
-                        className="spaceEntityDangerBtn"
+                        className="spaceEntityDangerBtn pn-btn pn-btn--danger"
                         onClick={onConfirm}
                         disabled={busy}
                     >

@@ -270,3 +270,46 @@
   border-color: var(--terminal-green);
 }
 
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   Whoami Preview (WhoamiPreview.tsx) — base rules are solid-black + neon
+   green/amber terminal chrome. Repoint to warm paper + brand/wait accents.
+   =================================================================== */
+html[data-redesign] .whoamiPreview {
+  border-color: var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .whoamiPreviewToggle { color: var(--pn-ink); }
+html[data-redesign] .whoamiPreviewToggle:hover {
+  background: var(--pn-hover);
+  border-bottom-color: var(--pn-brand);
+}
+html[data-redesign] .whoamiPreviewToggleIcon { color: var(--pn-brand); }
+html[data-redesign] .whoamiPreviewToggleLabel { color: var(--pn-brand); }
+html[data-redesign] .whoamiPreviewToggleMeta { color: var(--pn-ink-3); }
+html[data-redesign] .whoamiPreviewContent {
+  border-top-color: var(--pn-line);
+  background: var(--pn-card);
+}
+html[data-redesign] .whoamiPreviewText { color: var(--pn-ink-2); }
+html[data-redesign] .whoamiPreviewText code {
+  color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .whoamiPreview--orchestrate { background: var(--pn-wait-soft); }
+html[data-redesign] .whoamiPreview--orchestrate .whoamiPreviewToggle:hover {
+  background: var(--pn-wait-soft);
+  border-bottom-color: var(--pn-wait);
+}
+html[data-redesign] .whoamiPreview--orchestrate .whoamiPreviewToggleIcon,
+html[data-redesign] .whoamiPreview--orchestrate .whoamiPreviewToggleLabel {
+  color: var(--pn-wait);
+}
+html[data-redesign] .whoamiPreview--orchestrate .whoamiPreviewText code {
+  color: var(--pn-wait);
+  background: var(--pn-wait-soft);
+}
+html[data-redesign] .whoamiPreviewContent::-webkit-scrollbar-track { background: var(--pn-surface); }
+html[data-redesign] .whoamiPreviewContent::-webkit-scrollbar-thumb { background: var(--pn-line-2); }
+html[data-redesign] .whoamiPreviewContent::-webkit-scrollbar-thumb:hover { background: var(--pn-brand); }
+

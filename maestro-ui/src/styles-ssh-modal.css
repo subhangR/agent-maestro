@@ -315,3 +315,68 @@
   }
 }
 
+/* ===================================================================
+   REDESIGN OVERRIDE (Atelier / pn-* tokens) — scoped to html[data-redesign].
+   This whole stylesheet is exclusive to SshManagerModal (modals cluster) and
+   was authored as a dark glass panel: literal rgba(255,255,255,…) hairlines/
+   fills and rgba(34,211,238,…)/rgba(107,138,253,…) cyan-blue accents, plus a
+   hardcoded white command-preview text color. None of that rides a CSS var,
+   so it rendered as near-invisible white-on-white once the redesign's warm
+   light paper theme is active. Repoint every literal to --pn-* tokens.
+   Token-only, additive — no layout/behavior change. Auto-flips dark.
+   =================================================================== */
+html[data-redesign] .sshHeaderIcon {
+  border: 1px solid var(--pn-line-2);
+  background: var(--pn-brand-soft);
+  box-shadow: none;
+  color: var(--pn-brand);
+}
+html[data-redesign] .sshHostList {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .sshHostListHeaderMeta {
+  color: var(--pn-ink-3);
+  border: 1px solid var(--pn-line);
+  background: var(--pn-card);
+}
+html[data-redesign] .sshHostItem {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-card);
+  color: var(--pn-ink);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .sshHostItem:hover {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .sshHostItemActive {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+}
+html[data-redesign] .sshHostMeta { color: var(--pn-ink-3); }
+html[data-redesign] .sshHostPick {
+  color: var(--pn-brand);
+  background: var(--pn-brand-soft);
+  border: 1px solid rgba(204, 120, 92, 0.28);
+}
+html[data-redesign] .sshOptionGrid {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .sshForwardRow {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-surface);
+}
+html[data-redesign] .sshCommandPreview {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-card);
+}
+html[data-redesign] .sshCommandPreviewText { color: var(--pn-ink-2); }
+html[data-redesign] .btn.btnPrimary {
+  border-color: var(--pn-brand);
+  background: var(--pn-brand);
+  color: #fff;
+}
+html[data-redesign] .btn.btnPrimary:hover { background: var(--pn-brand-2); }
+

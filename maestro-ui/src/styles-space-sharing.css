@@ -196,3 +196,58 @@
     min-width: 0;
   }
 }
+
+/* ==========================================================================
+   ATELIER REDESIGN — space-window cluster (sharing states: skeletons,
+   error banner, spinners, pending affordance). Scoped under html[data-redesign],
+   token-only, no structural changes. See styles-space-window.css for the
+   larger cluster override block.
+   ========================================================================== */
+html[data-redesign] .spaceSharingSkeletonRow {
+  background: linear-gradient(
+    100deg,
+    var(--pn-hover) 30%,
+    var(--pn-active) 50%,
+    var(--pn-hover) 70%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--pn-r-md);
+}
+html[data-redesign] .spaceSharingLoadingLabel,
+html[data-redesign] .spaceSharingPickerEmpty,
+html[data-redesign] .spaceSharingPickerLoading {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceSharingSpinner {
+  border: 2px solid var(--pn-line-2);
+  border-top-color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceSharingError {
+  border: 1px solid rgba(187, 77, 61, 0.3);
+  background: var(--pn-block-soft);
+  color: var(--pn-block);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceSharingErrorRetry {
+  border: 1px solid rgba(187, 77, 61, 0.4);
+  color: var(--pn-block);
+  border-radius: var(--pn-r-xs);
+}
+html[data-redesign] .spaceSharingErrorRetry:hover {
+  background: var(--pn-block-soft);
+}
+html[data-redesign] .spaceSharingErrorDismiss {
+  color: var(--pn-block);
+}
+html[data-redesign] .spaceSharingBtnSpinner {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+}
+html[data-redesign] .spaceTaskItem--pending,
+html[data-redesign] .spaceTeamItem--pending,
+html[data-redesign] .spaceSpellItem--pending {
+  outline-color: var(--pn-brand-soft);
+}
+html[data-redesign] .spaceSharingRowError {
+  color: var(--pn-block);
+}

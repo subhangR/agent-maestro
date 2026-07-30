@@ -1067,6 +1067,13 @@ html[data-redesign] .themedFormSelect {
 html[data-redesign] .themedFormSelect:focus { border-color: var(--pn-brand); }
 html[data-redesign] .themedFormHint { color: var(--pn-ink-3); }
 html[data-redesign] .themedFormActions { border-top: 1px solid var(--pn-line); }
+/* .themedWarning is exclusively used by ConfirmDeleteProjectModal (modals cluster) —
+   the raw amber-on-amber-tint reads low-contrast on the light paper card. Token-only. */
+html[data-redesign] .themedWarning {
+  border-color: rgba(189, 138, 42, 0.35);
+  background: var(--pn-wait-soft);
+  color: var(--pn-wait);
+}
 
 /* buttons (also used by ExcalidrawBoard .themedBtn) */
 html[data-redesign] .themedBtn {
@@ -1271,5 +1278,20 @@ html[data-redesign] .emptyStateBtn {
 html[data-redesign] .emptyStateBtn:hover {
   background: var(--pn-brand-2);
   box-shadow: var(--pn-sh-md);
+}
+
+/* Session Status Badge (SessionStatusBadge, exported from
+   SessionInTaskView.tsx) — flat neon status hexes, token-mapped here. */
+html[data-redesign] .sessionStatusBadge { font-family: var(--pn-mono); }
+html[data-redesign] .sessionStatusBadge--spawning { background: var(--pn-info-soft); color: var(--pn-info); }
+html[data-redesign] .sessionStatusBadge--working { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .sessionStatusBadge--idle { background: var(--pn-idle-soft); color: var(--pn-ink-3); }
+html[data-redesign] .sessionStatusBadge--stopped { background: var(--pn-idle-soft); color: var(--pn-idle); }
+html[data-redesign] .sessionStatusBadge--completed { background: var(--pn-run-soft); color: var(--pn-run); }
+html[data-redesign] .sessionStatusBadge--clickable:hover { box-shadow: 0 0 6px var(--pn-brand-soft); }
+html[data-redesign] .sessionStatusBadge--needsInput {
+  background: var(--pn-wait-soft);
+  color: var(--pn-wait);
+  border: 1px solid rgba(189, 138, 42, 0.4);
 }
 

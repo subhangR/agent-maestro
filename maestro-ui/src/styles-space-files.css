@@ -180,6 +180,51 @@
   }
 }
 
+/* ==========================================================================
+   ATELIER REDESIGN — Files section. Scoped under html[data-redesign], token-only,
+   no structural changes. See styles-space-window.css for the shared cluster
+   override block (spaceEntityPane/Header/etc.). The .messagingAttach* rules
+   below this point style the chat composer/attachments (MessagingView, outside
+   this cluster) and are intentionally left untouched.
+   ========================================================================== */
+html[data-redesign] .spaceFileLimitNote {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceFileStaged {
+  border: 1px solid var(--pn-brand);
+  background: var(--pn-brand-soft);
+  border-radius: var(--pn-r-md);
+}
+html[data-redesign] .spaceFileStagedName {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceFileStagedSize {
+  color: var(--pn-ink-3);
+}
+html[data-redesign] .spaceFileRow {
+  border: 1px solid var(--pn-line);
+  background: var(--pn-card);
+  border-radius: var(--pn-r-md);
+  box-shadow: var(--pn-sh-sm);
+}
+html[data-redesign] .spaceFileRow:hover {
+  border-color: var(--pn-line-2);
+}
+html[data-redesign] .spaceFileRowMedia {
+  background: var(--pn-surface);
+  border: 1px solid var(--pn-line);
+  border-radius: var(--pn-r-sm);
+}
+html[data-redesign] .spaceFileRowName {
+  color: var(--pn-ink);
+}
+html[data-redesign] .spaceFileRowCaption {
+  color: var(--pn-ink-2);
+}
+html[data-redesign] .spaceFileRowMeta {
+  color: var(--pn-ink-3);
+}
+
 /* ================================================================== */
 /*  Message attachments (composer chips + bubble chips/previews)      */
 /* ================================================================== */
