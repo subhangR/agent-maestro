@@ -139,6 +139,14 @@ export class SessionService {
       }
     }
 
+    // Auto-clear needsInput.active when the agent resumes working. The flag
+    // stays set on disk after a needs_input event until explicitly cleared,
+    // causing stale 'needs_input' state in digests. Clearing it here keeps the
+    // persisted flag in sync with the status so the two never contradict each other.
+    if (updates.status === 'working' && oldNeedsInputActive && !updates.needsInput) {
+      updates = { ...updates, needsInput: { active: false } };
+    }
+
     const session = await this.sessionRepo.update(id, updates);
 
     // Propagate terminal session status to task-level taskSessionStatuses
@@ -465,6 +473,43 @@ export class SessionService {
     }
 
     return { found: advanced.length + errors.length, advanced, skipped, errors, dryRun };
+  }
+
+  /**
+   * Mark all non-terminal sessions as 'stopped'. Called on server startup to
+   * clean up sessions whose PTY processes were orphaned by a server restart.
+   *
+   * When maestro-server exits (crashed or restarted), every PTY it was hosting
+   * dies with it. The session records survive on disk but their processes are
+   * gone. Those orphans then present as 'idle', 'working', or 'needs_input'
+   * forever, and the next coordinator sees a fleet of phantom sessions. This
+   * sweep resets them to 'stopped' at boot so the state model reflects reality.
+   *
+   * Terminal statuses ('completed', 'failed', 'stopped') are never touched.
+   */
+  async reconcileOrphanedSessions(): Promise<{ count: number }> {
+    const ACTIVE_STATUSES: SessionStatus[] = ['spawning', 'idle', 'working'];
+    let count = 0;
+    for (const status of ACTIVE_STATUSES) {
+      let sessions: Session[];
+      try {
+        sessions = await this.sessionRepo.findByStatus(status);
+      } catch {
+        continue; // repo unavailable — skip this status bucket
+      }
+      for (const session of sessions) {
+        try {
+          await this.sessionRepo.update(session.id, {
+            status: 'stopped',
+            needsInput: { active: false },
+          });
+          count++;
+        } catch {
+          // Best effort — don't abort startup for one bad session file
+        }
+      }
+    }
+    return { count };
   }
 
   /**
