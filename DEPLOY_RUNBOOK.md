@@ -63,9 +63,15 @@ Wait for all sessions to reach a safe stopping point, then:
 ```
 
 The script will:
-1. Re-check for active sessions via the API and **abort** if any are found
-2. If all clear: `sudo systemctl restart maestro-server && maestro-gateway`
-3. Run the gateway health check and verify the live commit matches the built SHA
+1. Find `maestro-gateway`'s MainPID via systemctl, enumerate its child processes via `pgrep -P`,
+   map each child to its listening port via `ss -lntp`, and query `/api/sessions?active=true` on
+   every child instance. Sessions live in gateway children (ports 4600-4699), NOT in the standalone
+   `maestro-server.service` on 4570 (which always reports 0 sessions).
+2. The check is **fail-closed**: any instance that cannot be reached or parsed is treated as unsafe.
+   Unreachable ≠ "server is down, safe to restart".
+3. If any sessions are found or any instance is unverifiable: **ABORT with session list**.
+4. If all clear: `sudo systemctl restart maestro-server && maestro-gateway`
+5. Run the gateway health check and verify the live commit matches the built SHA
 
 ---
 

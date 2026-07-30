@@ -102,57 +102,100 @@ if [[ "$DO_RESTART" == "0" ]]; then
   echo "  Build complete. A human should restart when sessions are clear:"
   echo "    cd ~/agent-maestro && ./scripts/deploy-local.sh --skip-pull --skip-ui --restart"
 else
-  # Detect server port and check for active sessions before restarting.
-  _SERVER_PORT=$(sudo grep -E '^PORT=' /etc/maestro/maestro.env 2>/dev/null | cut -d= -f2 || true)
-  if [[ -z "$_SERVER_PORT" ]]; then
-    for _p in 4570 4569 4567 3001; do
-      if curl -sf --max-time 2 "http://127.0.0.1:${_p}/health" >/dev/null 2>&1; then
-        _SERVER_PORT="$_p"; break
-      fi
-    done
-  fi
+  # Guard: enumerate ALL per-user maestro-server instances via the gateway process tree.
+  # Sessions live in gateway child processes (ports 4600-4699), not in maestro-server.service.
+  # FAIL-CLOSED: any unverifiable instance is treated as UNSAFE.
+  echo "  Checking for active agent sessions across all gateway instances..."
+  _gw_status=$(systemctl is-active maestro-gateway 2>/dev/null || echo "unknown")
+  _gw_pid=$(systemctl show maestro-gateway --property=MainPID --value 2>/dev/null | tr -d '[:space:]')
+  _total_sessions=0
+  _guard_errors=0
+  _session_lines=""
 
-  if [[ -n "$_SERVER_PORT" ]]; then
-    _ACTIVE_JSON=$(curl -sf --max-time 5 \
-      "http://127.0.0.1:${_SERVER_PORT}/api/sessions?active=true" 2>/dev/null || echo '[]')
-    _ACTIVE_COUNT=$(echo "$_ACTIVE_JSON" | python3 -c \
-      "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else len(d.get('items',d.get('sessions',[]))))" \
-      2>/dev/null || echo 0)
-
-    if [[ "$_ACTIVE_COUNT" -gt 0 && "$DO_FORCE" == "0" ]]; then
-      echo ""
-      echo "$_ACTIVE_JSON" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-sessions = data if isinstance(data, list) else data.get('items', data.get('sessions', []))
-for s in sessions:
-    name = s.get('name') or (s.get('teamMemberSnapshot') or {}).get('name') or 'unnamed'
-    print(f\"  [{s.get('status','?'):<8}] {s.get('id','?')[:16]}  {name}\")
-" 2>/dev/null || true
-      echo "ERROR: ABORT: $_ACTIVE_COUNT active agent session(s) found (listed above)."
-      echo "  Restarting would kill them. Options:"
-      echo "  • Wait for sessions to complete, then run:"
-      echo "      ./scripts/deploy-hub.sh --skip-ui --restart"
-      echo "  • Force (DESTRUCTIVE):"
-      echo "      ./scripts/deploy-hub.sh --skip-ui --restart --force"
+  if [[ "$_gw_status" != "active" ]]; then
+    echo "  Gateway is $_gw_status — no per-user instances, safe to restart"
+  elif [[ -z "$_gw_pid" || "$_gw_pid" == "0" ]]; then
+    if [[ "$DO_FORCE" == "0" ]]; then
+      echo "ERROR: ABORT: maestro-gateway active but MainPID unknown. Use --force to bypass."
       exit 1
     fi
-
-    if [[ "$_ACTIVE_COUNT" -gt 0 && "$DO_FORCE" == "1" ]]; then
-      echo "  WARNING: --force: $_ACTIVE_COUNT active session(s) will be killed:"
-      echo "$_ACTIVE_JSON" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-sessions = data if isinstance(data, list) else data.get('items', data.get('sessions', []))
-for s in sessions:
-    name = s.get('name') or (s.get('teamMemberSnapshot') or {}).get('name') or 'unnamed'
-    print(f\"  [KILL] {s.get('id','?')[:16]}  {name}\")
-" 2>/dev/null || true
-      echo "  Proceeding in 5 seconds — Ctrl-C to abort..."
-      sleep 5
-    fi
+    echo "  WARNING: --force: cannot determine gateway PID, proceeding anyway"
   else
-    echo "  Maestro server not responding on any known port — assuming down, safe to restart."
+    _child_pids=$(pgrep -P "$_gw_pid" 2>/dev/null || true)
+    if [[ -z "$_child_pids" ]]; then
+      echo "  Gateway (PID $_gw_pid) has no child instances — no sessions"
+    else
+      for _pid in $_child_pids; do
+        _port=$(ss -lntp 2>/dev/null \
+          | awk -v p="$_pid" '$0 ~ "pid="p"," {n=split($4,a,":"); v=a[n]+0; if(v>0) print v; exit}')
+        if [[ -z "$_port" ]]; then
+          echo "  WARNING: PID $_pid: cannot determine listening port → UNSAFE"
+          _guard_errors=$((_guard_errors+1)); continue
+        fi
+        _tmpf=$(mktemp)
+        _hc=$(curl --max-time 5 -s -o "$_tmpf" -w "%{http_code}" \
+          "http://127.0.0.1:${_port}/api/sessions?active=true" 2>/dev/null || echo "000")
+        if [[ "$_hc" != "200" ]]; then
+          echo "  WARNING: port $_port (PID $_pid): HTTP $_hc → UNSAFE"
+          rm -f "$_tmpf"; _guard_errors=$((_guard_errors+1)); continue
+        fi
+        _cnt=$(python3 -c "
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    ss=d if isinstance(d,list) else d.get('items',d.get('sessions'))
+    if ss is None: sys.exit(1)
+    print(len(ss))
+except Exception as e:
+    sys.stderr.write(str(e)+'\n'); sys.exit(1)
+" "$_tmpf" 2>/tmp/maestro-guard-parse-err)
+        _ec=$?
+        if [[ $_ec -ne 0 || -z "$_cnt" || ! "$_cnt" =~ ^[0-9]+$ ]]; then
+          echo "  WARNING: port $_port (PID $_pid): parse failed ($(cat /tmp/maestro-guard-parse-err 2>/dev/null)) → UNSAFE"
+          rm -f "$_tmpf"; _guard_errors=$((_guard_errors+1)); continue
+        fi
+        if [[ "$_cnt" -gt 0 ]]; then
+          _lines=$(python3 -c "
+import json,sys
+d=json.load(open(sys.argv[1]))
+ss=d if isinstance(d,list) else d.get('items',d.get('sessions',[]))
+for s in ss:
+    name=s.get('name') or (s.get('teamMemberSnapshot') or {}).get('name') or 'unnamed'
+    print(f'  [{s.get(\"status\",\"?\"):<8}] port=${_port}  {s.get(\"id\",\"?\")[:16]}  {name}')
+" "$_tmpf" 2>/dev/null || true)
+          _session_lines="${_session_lines}${_lines}"$'\n'
+        fi
+        _total_sessions=$((_total_sessions+_cnt))
+        rm -f "$_tmpf"
+      done
+    fi
+  fi
+
+  if [[ $_guard_errors -gt 0 && "$DO_FORCE" == "0" ]]; then
+    echo "ERROR: ABORT: $_guard_errors gateway instance(s) could not be verified (fail-closed)."
+    echo "  Use --force to bypass (DESTRUCTIVE)."
+    exit 1
+  fi
+
+  if [[ $_total_sessions -gt 0 && "$DO_FORCE" == "0" ]]; then
+    echo ""
+    echo "${_session_lines}"
+    echo "ERROR: ABORT: $_total_sessions active session(s) across gateway instances (listed above)."
+    echo "  Restarting will kill them. Options:"
+    echo "  • Wait for sessions to finish, then: ./scripts/deploy-hub.sh --skip-ui --restart"
+    echo "  • Force (DESTRUCTIVE): ./scripts/deploy-hub.sh --skip-ui --restart --force"
+    exit 1
+  fi
+
+  if [[ $_total_sessions -gt 0 && "$DO_FORCE" == "1" ]]; then
+    echo "  WARNING: --force: $_total_sessions session(s) will be killed:"
+    echo "${_session_lines}"
+    echo "  Proceeding in 5 seconds — Ctrl-C to abort..."
+    sleep 5
+  fi
+
+  if [[ $_guard_errors -gt 0 && "$DO_FORCE" == "1" ]]; then
+    echo "  WARNING: --force: $_guard_errors instance(s) unverifiable (assumed safe)"
   fi
 
   echo "  Restarting services …"

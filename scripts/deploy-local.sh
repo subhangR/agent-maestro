@@ -143,58 +143,113 @@ if [[ $RESTART -eq 0 ]]; then
   warn "  To override the active-session guard (DESTRUCTIVE — kills running sessions):"
   warn "    $0 --skip-pull --skip-ui --restart --force"
 else
-  # Detect the server's API port from the known env file, then probe fallbacks.
-  _SERVER_PORT=$(sudo grep -E '^PORT=' /etc/maestro/maestro.env 2>/dev/null | cut -d= -f2 || true)
-  if [[ -z "$_SERVER_PORT" ]]; then
-    for _p in 4570 4569 4567 3001; do
-      if curl -sf --max-time 2 "http://127.0.0.1:${_p}/health" >/dev/null 2>&1; then
-        _SERVER_PORT="$_p"; break
-      fi
-    done
+  # Guard: enumerate ALL per-user maestro-server instances via the gateway process tree.
+  # Agent sessions live in gateway child processes (ports 4600-4699), NOT in the standalone
+  # maestro-server.service on 4570. Probing 4570 would always report 0 and give false safety.
+  # This guard is FAIL-CLOSED: any instance that cannot be reached or parsed is treated as UNSAFE.
+  info "  Checking for active agent sessions across all gateway instances..."
+
+  _gw_status=$(systemctl is-active maestro-gateway 2>/dev/null || echo "unknown")
+  _gw_pid=$(systemctl show maestro-gateway --property=MainPID --value 2>/dev/null | tr -d '[:space:]')
+  _total_sessions=0
+  _guard_errors=0
+  _session_lines=""
+
+  if [[ "$_gw_status" != "active" ]]; then
+    warn "  Gateway is $_gw_status — no per-user instances running, safe to restart"
+  elif [[ -z "$_gw_pid" || "$_gw_pid" == "0" ]]; then
+    # Gateway is active but we can't get its PID — refuse unless --force
+    if [[ $FORCE -eq 0 ]]; then
+      die "ABORT: maestro-gateway is active but MainPID could not be determined.
+Cannot safely check for sessions. Use --force to bypass (DESTRUCTIVE)."
+    fi
+    warn "  --force: cannot determine gateway PID, proceeding anyway"
+  else
+    _child_pids=$(pgrep -P "$_gw_pid" 2>/dev/null || true)
+    if [[ -z "$_child_pids" ]]; then
+      warn "  Gateway (PID $_gw_pid) has no child instances — no active sessions"
+    else
+      for _pid in $_child_pids; do
+        _port=$(ss -lntp 2>/dev/null \
+          | awk -v p="$_pid" '$0 ~ "pid="p"," {n=split($4,a,":"); v=a[n]+0; if(v>0) print v; exit}')
+        if [[ -z "$_port" ]]; then
+          warn "  PID $_pid: cannot determine listening port → treating as UNSAFE"
+          _guard_errors=$((_guard_errors + 1))
+          continue
+        fi
+
+        _tmpf=$(mktemp)
+        _hc=$(curl --max-time 5 -s -o "$_tmpf" -w "%{http_code}" \
+          "http://127.0.0.1:${_port}/api/sessions?active=true" 2>/dev/null || echo "000")
+        if [[ "$_hc" != "200" ]]; then
+          warn "  Port $_port (PID $_pid): HTTP $_hc → treating as UNSAFE"
+          rm -f "$_tmpf"
+          _guard_errors=$((_guard_errors + 1))
+          continue
+        fi
+
+        _cnt=$(python3 -c "
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    ss=d if isinstance(d,list) else d.get('items',d.get('sessions'))
+    if ss is None: sys.exit(1)
+    print(len(ss))
+except Exception as e:
+    sys.stderr.write(str(e)+'\n'); sys.exit(1)
+" "$_tmpf" 2>/tmp/maestro-guard-parse-err)
+        _ec=$?
+        if [[ $_ec -ne 0 || -z "$_cnt" || ! "$_cnt" =~ ^[0-9]+$ ]]; then
+          warn "  Port $_port (PID $_pid): JSON parse failed ($(cat /tmp/maestro-guard-parse-err 2>/dev/null)) → UNSAFE"
+          rm -f "$_tmpf"
+          _guard_errors=$((_guard_errors + 1))
+          continue
+        fi
+
+        if [[ "$_cnt" -gt 0 ]]; then
+          _lines=$(python3 -c "
+import json,sys
+d=json.load(open(sys.argv[1]))
+ss=d if isinstance(d,list) else d.get('items',d.get('sessions',[]))
+for s in ss:
+    name=s.get('name') or (s.get('teamMemberSnapshot') or {}).get('name') or 'unnamed'
+    print(f'  [{s.get(\"status\",\"?\"):<8}] port=${_port}  {s.get(\"id\",\"?\")[:16]}  {name}')
+" "$_tmpf" 2>/dev/null || true)
+          _session_lines="${_session_lines}${_lines}"$'\n'
+        fi
+        _total_sessions=$((_total_sessions + _cnt))
+        rm -f "$_tmpf"
+      done
+    fi
   fi
 
-  if [[ -n "$_SERVER_PORT" ]]; then
-    _ACTIVE_JSON=$(curl -sf --max-time 5 \
-      "http://127.0.0.1:${_SERVER_PORT}/api/sessions?active=true" 2>/dev/null || echo '[]')
-    _ACTIVE_COUNT=$(echo "$_ACTIVE_JSON" | python3 -c \
-      "import sys,json; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else len(d.get('items',d.get('sessions',[]))))" \
-      2>/dev/null || echo 0)
+  if [[ $_guard_errors -gt 0 && $FORCE -eq 0 ]]; then
+    die "ABORT: $_guard_errors gateway instance(s) could not be verified (fail-closed).
+Cannot confirm it is safe to restart. Use --force to bypass (DESTRUCTIVE)."
+  fi
 
-    if [[ "$_ACTIVE_COUNT" -gt 0 && $FORCE -eq 0 ]]; then
-      echo ""
-      echo "$_ACTIVE_JSON" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-sessions = data if isinstance(data, list) else data.get('items', data.get('sessions', []))
-for s in sessions:
-    name = s.get('name') or (s.get('teamMemberSnapshot') or {}).get('name') or 'unnamed'
-    print(f\"  [{s.get('status','?'):<8}] {s.get('id','?')[:16]}  {name}\")
-" 2>/dev/null || true
-      die "ABORT: $_ACTIVE_COUNT active agent session(s) found (listed above).
-Restarting now will kill them and discard their in-progress work.
+  if [[ $_total_sessions -gt 0 && $FORCE -eq 0 ]]; then
+    echo ""
+    echo "${_session_lines}"
+    die "ABORT: $_total_sessions active session(s) detected across gateway instances (listed above).
+Restarting will kill them and discard in-progress work.
 
 Options:
   • Wait for sessions to finish, then re-run:
       $0 --skip-pull --skip-ui --restart
   • Force restart (DESTRUCTIVE — kills all listed sessions):
       $0 --skip-pull --skip-ui --restart --force"
-    fi
+  fi
 
-    if [[ "$_ACTIVE_COUNT" -gt 0 && $FORCE -eq 1 ]]; then
-      warn "  --force: $_ACTIVE_COUNT active session(s) will be killed:"
-      echo "$_ACTIVE_JSON" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-sessions = data if isinstance(data, list) else data.get('items', data.get('sessions', []))
-for s in sessions:
-    name = s.get('name') or (s.get('teamMemberSnapshot') or {}).get('name') or 'unnamed'
-    print(f\"  [KILL] {s.get('id','?')[:16]}  {name}\")
-" 2>/dev/null || true
-      warn "  Proceeding in 5 seconds — Ctrl-C to abort..."
-      sleep 5
-    fi
-  else
-    warn "  Maestro server not responding on any known port — assuming it is down, safe to restart."
+  if [[ $_total_sessions -gt 0 && $FORCE -eq 1 ]]; then
+    warn "  --force: $_total_sessions active session(s) will be killed:"
+    echo "${_session_lines}"
+    warn "  Proceeding in 5 seconds — Ctrl-C to abort..."
+    sleep 5
+  fi
+
+  if [[ $_guard_errors -gt 0 && $FORCE -eq 1 ]]; then
+    warn "  --force: $_guard_errors instance(s) could not be verified (assumed safe by --force)"
   fi
 
   sudo systemctl restart maestro-server
