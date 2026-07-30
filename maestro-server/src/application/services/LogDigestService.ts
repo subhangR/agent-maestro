@@ -1244,6 +1244,9 @@ export class LogDigestService {
 
     let toolCallsSinceLastText = 0;
     let lastTextTimestamp = 0;
+    // Track the most recent tool call timestamp: scanning backwards, the first
+    // tool-use entry we encounter IS the most recent one.
+    let lastToolCallTimestamp = 0;
 
     // Scan backwards from most recent to count tool calls since last text
     for (let i = lines.length - 1; i >= 0; i--) {
@@ -1261,6 +1264,10 @@ export class LogDigestService {
           }
           if (hasToolUse) {
             toolCallsSinceLastText++;
+            // The first tool-use found in the backwards scan is the most recent one.
+            if (lastToolCallTimestamp === 0) {
+              lastToolCallTimestamp = line.timestamp ? new Date(line.timestamp).getTime() : 0;
+            }
           }
         }
       }
@@ -1279,6 +1286,14 @@ export class LogDigestService {
       return null; // Recent text found — not stuck yet
     }
 
+    // If tool calls are still arriving recently, the agent is actively working, not stuck.
+    // An agent making rapid tool calls with no narration is the MOST productive state —
+    // only escalate to stuck when BOTH text AND tool calls have fallen silent.
+    const toolCallSilentMs = lastToolCallTimestamp > 0 ? Date.now() - lastToolCallTimestamp : 0;
+    if (lastToolCallTimestamp > 0 && toolCallSilentMs < STUCK_SILENCE_MS) {
+      return null; // Tool calls still arriving — not stuck
+    }
+
     return {
       silentDurationMs,
       toolCallsSinceLastText,
@@ -1295,6 +1310,9 @@ export class LogDigestService {
 
     let toolCallsSinceLastText = 0;
     let lastTextTimestamp = 0;
+    // Track the most recent tool call timestamp: scanning backwards, the first
+    // tool-use entry we encounter IS the most recent one.
+    let lastToolCallTimestamp = 0;
 
     for (let i = lines.length - 1; i >= 0; i--) {
       const line = lines[i];
@@ -1319,11 +1337,17 @@ export class LogDigestService {
 
       if (line?.type === 'function_call') {
         toolCallsSinceLastText++;
+        if (lastToolCallTimestamp === 0) {
+          lastToolCallTimestamp = this.parseTimestamp(line, 0);
+        }
         continue;
       }
 
       if (line?.type === 'response_item' && line?.payload?.type === 'function_call') {
         toolCallsSinceLastText++;
+        if (lastToolCallTimestamp === 0) {
+          lastToolCallTimestamp = this.parseTimestamp(line, 0);
+        }
       }
     }
 
@@ -1334,6 +1358,12 @@ export class LogDigestService {
     const silentDurationMs = lastTextTimestamp > 0 ? Date.now() - lastTextTimestamp : 0;
     if (lastTextTimestamp > 0 && silentDurationMs < STUCK_SILENCE_MS) {
       return null;
+    }
+
+    // If tool calls are still arriving recently, the agent is actively working, not stuck.
+    const toolCallSilentMs = lastToolCallTimestamp > 0 ? Date.now() - lastToolCallTimestamp : 0;
+    if (lastToolCallTimestamp > 0 && toolCallSilentMs < STUCK_SILENCE_MS) {
+      return null; // Tool calls still arriving — not stuck
     }
 
     return {
@@ -1356,8 +1386,12 @@ export class LogDigestService {
   }
 
   private mapSessionState(status: string, needsInput?: { active: boolean }): 'active' | 'idle' | 'needs_input' {
-    if (needsInput?.active) return 'needs_input';
+    // Status is the authoritative source of truth. An actively working session is
+    // 'active' regardless of any stale needsInput flag left over from a previous
+    // input request (the flag is only cleared when the agent explicitly resumes or
+    // when updateSession transitions to 'working').
     if (status === 'working' || status === 'spawning') return 'active';
+    if (needsInput?.active) return 'needs_input';
     return 'idle';
   }
 

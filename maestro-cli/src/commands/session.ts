@@ -200,7 +200,7 @@ async function buildSessionContext(task: TaskResponse, options: { includeRelated
     ];
 
     if (options.skill === 'maestro-worker') {
-        initialCommands.push(`maestro task start ${task.id}`);
+        initialCommands.push(`maestro task update ${task.id} --status in_progress`);
     }
     context.initialCommands = initialCommands;
 
@@ -780,6 +780,9 @@ export function registerSessionCommands(program: Command) {
                 };
 
                 // Include initial directive if --subject is set
+                if (cmdOpts.message && !cmdOpts.subject) {
+                    if (!isJson) console.warn('Warning: --message is ignored without --subject. Add --subject "<subject>" to deliver the message to the spawned session.');
+                }
                 if (cmdOpts.subject) {
                     spawnRequest.initialDirective = {
                         subject: cmdOpts.subject,
@@ -1092,7 +1095,7 @@ export function registerSessionCommands(program: Command) {
     session
         .command('prompt <targetSessionId>')
         .description('Send an input prompt to another active Maestro session')
-        .requiredOption('--message <message>', 'The prompt message to send')
+        .requiredOption('--message <message>', 'The prompt message to send (wrap in single quotes to prevent shell substitution of backticks and $())')
         .option('--mode <mode>', '"send" (type + Enter) or "paste" (type only)', 'send')
         .action(async (targetSessionId: string, cmdOpts: { message: string; mode?: string }) => {
             await guardCommand('session:prompt');
@@ -1103,6 +1106,12 @@ export function registerSessionCommands(program: Command) {
             if (!['send', 'paste'].includes(mode || '')) {
                 console.error('Error: --mode must be "send" or "paste"');
                 process.exit(1);
+            }
+
+            // Warn if message is suspiciously short or empty after shell processes it —
+            // a common symptom of unquoted backtick substitution swallowing content.
+            if (!message || message.trim().length === 0) {
+                if (!isJson) console.warn('Warning: --message is empty. If your message contained backticks or $() it may have been shell-expanded before reaching this CLI. Wrap your message in single quotes to prevent substitution.');
             }
 
             const senderSessionId = config.sessionId;

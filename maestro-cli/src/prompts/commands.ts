@@ -71,7 +71,7 @@ export const CMD_DESC = {
   'task:children': 'List child tasks',
   'task:tree': 'Show task tree',
   'task:report:progress': 'Report task progress',
-  'task:report:complete': 'Report task completion',
+  'task:report:complete': 'Report task completion and close task (transitions status to completed)',
   'task:report:blocked': 'Report task blocked',
   'task:report:error': 'Report task error',
   'task:docs:add': 'Add doc to task',

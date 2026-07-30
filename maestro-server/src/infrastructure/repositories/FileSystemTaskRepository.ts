@@ -297,56 +297,61 @@ export class FileSystemTaskRepository implements ITaskRepository {
     return this.loadTaskFromDisk(id);
   }
 
+  /**
+   * Resolve a set of task IDs to Task objects, lazy-loading from disk for any
+   * IDs that are not currently in the in-memory cache (i.e. were LRU-evicted).
+   * Silently skips IDs that cannot be found on disk.
+   */
+  private async resolveTaskIds(taskIds: Set<string>): Promise<Task[]> {
+    const tasks: Task[] = [];
+    const toLoad: string[] = [];
+    for (const id of taskIds) {
+      const task = this.tasks.get(id);
+      if (task) {
+        tasks.push(task);
+      } else {
+        toLoad.push(id);
+      }
+    }
+    for (const id of toLoad) {
+      const task = await this.loadTaskFromDisk(id);
+      if (task) tasks.push(task);
+    }
+    return tasks;
+  }
+
   async findByProjectId(projectId: string): Promise<Task[]> {
     await this.ensureInitialized();
     const taskIds = this.projectIndex.get(projectId);
     if (!taskIds) return [];
-    const tasks: Task[] = [];
-    for (const id of taskIds) {
-      const task = this.tasks.get(id);
-      if (task) tasks.push(task);
-    }
-    return tasks;
+    return this.resolveTaskIds(taskIds);
   }
 
   async findByStatus(status: TaskStatus): Promise<Task[]> {
     await this.ensureInitialized();
     const taskIds = this.statusIndex.get(status);
     if (!taskIds) return [];
-    const tasks: Task[] = [];
-    for (const id of taskIds) {
-      const task = this.tasks.get(id);
-      if (task) tasks.push(task);
-    }
-    return tasks;
+    return this.resolveTaskIds(taskIds);
   }
 
   async findByParentId(parentId: string | null): Promise<Task[]> {
     await this.ensureInitialized();
     if (parentId === null) {
-      // Can't use index for null — scan
+      // Can't use index for null — scan the in-memory cache only.
+      // Evicted tasks (completed/cancelled) are excluded here, which is acceptable
+      // since parent-child traversal is primarily used for in-progress subtask trees.
       return Array.from(this.tasks.values()).filter(t => t.parentId === null);
     }
     const taskIds = this.parentIndex.get(parentId);
     if (!taskIds) return [];
-    const tasks: Task[] = [];
-    for (const id of taskIds) {
-      const task = this.tasks.get(id);
-      if (task) tasks.push(task);
-    }
-    return tasks;
+    return this.resolveTaskIds(taskIds);
   }
 
   async findBySessionId(sessionId: string): Promise<Task[]> {
     await this.ensureInitialized();
     const taskIds = this.sessionIndex.get(sessionId);
     if (!taskIds) return [];
-    const tasks: Task[] = [];
-    for (const id of taskIds) {
-      const task = this.tasks.get(id);
-      if (task) tasks.push(task);
-    }
-    return tasks;
+    return this.resolveTaskIds(taskIds);
   }
 
   async findAll(filter?: TaskFilter): Promise<Task[]> {
@@ -397,12 +402,7 @@ export class FileSystemTaskRepository implements ITaskRepository {
       }
 
       if (candidateIds) {
-        const tasks: Task[] = [];
-        for (const id of candidateIds) {
-          const task = this.tasks.get(id);
-          if (task) tasks.push(task);
-        }
-        return tasks;
+        return this.resolveTaskIds(candidateIds);
       }
     }
 

@@ -4,7 +4,7 @@
   "description": "Trusted-Team Hub gateway — process-per-user Maestro (Design A). Verifies each user's Firebase login, spawns/owns a maestro-server instance per uid, and reverse-proxies /api /ws /pty to it.",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && (git rev-parse HEAD 2>/dev/null || echo unknown) > dist/.git-sha",
     "start": "node dist/server.js",
     "dev": "tsc && node dist/server.js",
     "watch": "tsc --watch"

@@ -25,8 +25,7 @@ export const WORKER_IDENTITY_INSTRUCTION =
   'Understand the assigned tasks and plan for them, create subtasks if required. ' +
   'Work through the completion of the tasks. ' +
   'Update key milestones for a task using (maestro task {report,complete,blocked}) commands. ' +
-  'When you finish a task, close it with `maestro task complete <taskId>` — this is the command that actually advances the task status. ' +
-  'Note: `maestro task report complete` only records your session\'s contribution and does NOT complete the task. ' +
+  'When you finish a task, run `maestro task report complete <taskId> "<summary>"` — this records your contribution AND closes the task (transitions status to completed). ' +
   'Only close a task if no other sessions are still working on it (check with `maestro session siblings`). ' +
   'When all assigned tasks are done, finalize the session by running `maestro session report complete "<summary>"`.';
 
@@ -93,8 +92,7 @@ export const COORDINATED_WORKER_IDENTITY_INSTRUCTION =
   'Your coordinator\'s session id is provided in your <coordination_context> block; report back to it by running ' +
   '`maestro session prompt <coordinatorSessionId> --message "<status, results, and deliverables>"`. ' +
   'Do not just go idle after finishing -- the coordinator is waiting on your report to proceed. ' +
-  'When you finish a task, close it with `maestro task complete <taskId>` — this is the command that actually advances the task status. ' +
-  'Note: `maestro task report complete` only records your session\'s contribution and does NOT complete the task. ' +
+  'When you finish a task, run `maestro task report complete <taskId> "<summary>"` — this records your contribution AND closes the task (transitions status to completed). ' +
   'Only close a task if no other sessions are still working on it (check with `maestro session siblings`). ' +
   'When all assigned work is done, finalize the session by running `maestro session report complete "<summary>"`.';
 

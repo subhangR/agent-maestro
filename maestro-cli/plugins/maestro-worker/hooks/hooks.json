@@ -7,8 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session register",
-            "timeout": 5
+            "command": "MAESTRO_RETRIES=1 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session register",
+            "timeout": 10
           },
           {
             "type": "command",
@@ -24,8 +24,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session complete",
-            "timeout": 3
+            "command": "MAESTRO_RETRIES=0 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session complete",
+            "timeout": 10
           },
           {
             "type": "command",
@@ -53,8 +53,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
-            "timeout": 3
+            "command": "MAESTRO_RETRIES=0 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
+            "timeout": 10
           },
           {
             "type": "command",
@@ -70,8 +70,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
-            "timeout": 3
+            "command": "MAESTRO_RETRIES=0 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
+            "timeout": 10
           },
           {
             "type": "command",
@@ -87,8 +87,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session resume-working",
-            "timeout": 3
+            "command": "MAESTRO_RETRIES=0 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session resume-working",
+            "timeout": 10
           },
           {
             "type": "command",
@@ -138,8 +138,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
-            "timeout": 3
+            "command": "MAESTRO_RETRIES=0 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
+            "timeout": 10
           }
         ]
       }
@@ -150,8 +150,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
-            "timeout": 3
+            "command": "MAESTRO_RETRIES=0 MAESTRO_API_TIMEOUT=8000 ${CLAUDE_PLUGIN_ROOT}/bin/maestro-cli session needs-input",
+            "timeout": 10
           }
         ]
       }

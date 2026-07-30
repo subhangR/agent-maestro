@@ -451,6 +451,14 @@ export async function createContainer(): Promise<Container> {
       // Voice/Alexa bootstrap: ensure Master project + Alexa Coordinator (idempotent)
       await masterProjectBootstrap.ensure();
 
+      // Orphan reconciliation: any session that was spawning/idle/working/needs_input
+      // when the server last exited has a PTY process that is now dead. Mark those
+      // sessions as 'stopped' so the coordinator never sees phantom active sessions.
+      const { count: orphanedCount } = await sessionService.reconcileOrphanedSessions();
+      if (orphanedCount > 0) {
+        logger.info(`Startup reconciliation: marked ${orphanedCount} orphaned session(s) as stopped`);
+      }
+
       logger.info('Container initialized');
     },
 

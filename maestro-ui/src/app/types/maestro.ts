@@ -91,7 +91,7 @@ export interface LaunchConfig {
 }
 
 // Strategy types
-export type WorkerStrategy = 'simple' | 'queue';
+export type WorkerStrategy = 'simple' | 'tree';
 export type OrchestratorStrategy = 'default' | 'intelligent-batching' | 'dag';
 
 // Team Member types
