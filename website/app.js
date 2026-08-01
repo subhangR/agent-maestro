@@ -144,12 +144,12 @@
           "Reach-out type: " + (payload.type || "general"), "", payload.message || ""]
           .filter(function (l) { return l !== ""; });
         return "mailto:manzilshaik95@gmail.com?subject=" +
-          encodeURIComponent("Maestro enquiry — " + (payload.type || "general") + " — " + (payload.name || "")) +
+          encodeURIComponent("Maestro enquiry · " + (payload.type || "general") + " · " + (payload.name || "")) +
           "&body=" + encodeURIComponent(lines.join("\n"));
       }
       function offerFallback() {
         contactForm.reset();
-        status.className = "form-status"; status.textContent = "Ready to send — we'll open a prefilled email for you. ";
+        status.className = "form-status"; status.textContent = "Ready to send. We'll open a prefilled email for you. ";
         var a = document.createElement("a");
         a.className = "form-status-link"; a.href = mailtoHref(); a.textContent = "Open email to send →";
         status.appendChild(a);
