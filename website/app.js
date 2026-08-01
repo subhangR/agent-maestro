@@ -100,15 +100,15 @@
   }
 
   // ---- Product tour tabs ----
-  var tourTabs = document.querySelectorAll("[data-shot-tab]");
-  var tourShots = document.querySelectorAll(".tour-shot [data-shot]");
+  var tourTabs = document.querySelectorAll(".tour-tab[data-tour-key]");
+  var tourShots = document.querySelectorAll(".tour-shot-img[data-tour-key]");
   var tourCaption = document.querySelector("[data-tour-caption]");
   if (tourTabs.length && tourShots.length) {
     tourTabs.forEach(function (tab) {
       tab.addEventListener("click", function () {
-        var key = tab.getAttribute("data-shot-tab");
+        var key = tab.getAttribute("data-tour-key");
         tourTabs.forEach(function (o) { o.setAttribute("aria-selected", String(o === tab)); });
-        tourShots.forEach(function (img) { img.hidden = img.getAttribute("data-shot") !== key; });
+        tourShots.forEach(function (img) { img.hidden = img.getAttribute("data-tour-key") !== key; });
         if (tourCaption) {
           var num = tourCaption.querySelector("[data-tour-num]");
           var title = tourCaption.querySelector("[data-tour-title]");
@@ -174,6 +174,35 @@
       }).finally(function () {
         submitButton.disabled = false; submitButton.textContent = "Send enquiry";
       });
+    });
+  }
+
+  // ---- Hero tour video: respect reduced motion, and only play while on screen ----
+  var heroVideo = document.querySelector("[data-hero-video]");
+  if (heroVideo) {
+    if (reduceMotion) {
+      // Keep the poster frame; never autoplay for reduced-motion users.
+      heroVideo.removeAttribute("autoplay");
+      heroVideo.removeAttribute("loop");
+      try { heroVideo.pause(); } catch (e) {}
+    } else if ("IntersectionObserver" in window) {
+      var vio = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) { var p = heroVideo.play(); if (p && p.catch) p.catch(function () {}); }
+          else { try { heroVideo.pause(); } catch (err) {} }
+        });
+      }, { threshold: 0.25 });
+      vio.observe(heroVideo);
+    }
+  }
+
+  // ---- Capabilities moving frame: duplicate the track for a seamless loop ----
+  var marqueeTrack = document.querySelector("[data-marquee-track]");
+  if (marqueeTrack && !reduceMotion) {
+    Array.prototype.slice.call(marqueeTrack.children).forEach(function (node) {
+      var clone = node.cloneNode(true);
+      clone.setAttribute("aria-hidden", "true");
+      marqueeTrack.appendChild(clone);
     });
   }
 

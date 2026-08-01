@@ -200,7 +200,32 @@ h1, h2, h3 { font-weight: 600; }
 .cap-row .cap-body { display: contents; }
 .cap-body p { margin: 0; max-width: 560px; color: rgba(244, 243, 236, .6); font-size: .95rem; line-height: 1.65; }
 .cap-list code, .cap-foot code { font: .86em var(--mono); color: var(--accent-bright); background: rgba(111, 191, 142, .12); padding: 1px 6px; border-radius: 5px; }
-.cap-foot { margin: 40px 0 0; max-width: 640px; color: rgba(244, 243, 236, .6); font-size: .96rem; line-height: 1.7; }
+.cap-foot { margin: 44px 0 0; max-width: 640px; color: rgba(244, 243, 236, .6); font-size: .96rem; line-height: 1.7; }
+
+/* ---- Hero video frame ---- */
+.product-frame--video { transform: rotate(.5deg); }
+.frame-video { width: 100%; height: auto; display: block; aspect-ratio: 1440 / 900; object-fit: cover; object-position: top center; background: var(--dark); }
+
+/* ---- Capabilities: moving frame (marquee of real screens) ---- */
+.cap-marquee { margin: 8px 0 60px; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+.cap-marquee-track { display: flex; gap: 22px; width: max-content; will-change: transform; animation: cap-marquee 64s linear infinite; }
+.cap-marquee:hover .cap-marquee-track { animation-play-state: paused; }
+@keyframes cap-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.cap-frame { flex: 0 0 auto; width: 340px; margin: 0; border: 1px solid rgba(244, 243, 236, .14); border-radius: 12px; overflow: hidden; background: var(--dark-raised); box-shadow: 0 22px 54px -36px rgba(0,0,0,.85); }
+.cap-frame img { width: 100%; height: 202px; object-fit: cover; object-position: top left; display: block; }
+.cap-frame figcaption { padding: 11px 14px; color: rgba(244, 243, 236, .72); font: .62rem var(--mono); letter-spacing: .05em; text-transform: uppercase; border-top: 1px solid rgba(244, 243, 236, .1); }
+
+/* ---- Capabilities: icon + one-liner grid ---- */
+.cap-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1px; background: rgba(244, 243, 236, .12); border: 1px solid rgba(244, 243, 236, .12); border-radius: 16px; overflow: hidden; }
+.cap-card { background: var(--dark); padding: 30px 26px 32px; transition: background .25s ease; }
+.cap-card:hover { background: var(--dark-raised); }
+.cap-ico { display: inline-grid; place-items: center; width: 42px; height: 42px; margin-bottom: 18px; border: 1px solid rgba(111, 191, 142, .32); border-radius: 11px; color: var(--accent-bright); background: rgba(111, 191, 142, .09); }
+.cap-ico svg { width: 21px; height: 21px; }
+.cap-card h3 { margin: 0 0 8px; font-size: 1.06rem; letter-spacing: -.02em; color: #f7f6ef; font-weight: 600; }
+.cap-card p { margin: 0; color: rgba(244, 243, 236, .62); font-size: .9rem; line-height: 1.55; }
+.cap-card code { font: .84em var(--mono); color: var(--accent-bright); background: rgba(111, 191, 142, .12); padding: 1px 5px; border-radius: 5px; }
 
 /* ---- Workflow ---- */
 .workflow-section { border-top: 1px solid var(--line); background: var(--section-alt); }
@@ -369,6 +394,9 @@ html.intro-play, html.intro-play body { overflow: hidden; }
   .cap-row .cap-body { display: block; }
   .cap-idx { grid-row: span 2; }
   .cap-body p { margin-top: 10px; }
+  .cap-marquee { margin-bottom: 44px; }
+  .cap-frame { width: 250px; }
+  .cap-frame img { height: 156px; }
 
   .workflow-grid, .start-grid, .contact-grid { grid-template-columns: 1fr; gap: 48px; }
   .workflow-copy, .contact-copy { position: static; }
@@ -398,5 +426,6 @@ html.intro-play, html.intro-play body { overflow: hidden; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .button, .site-header, .product-frame { transition: none; }
   .loopmark .lm-ring { animation: none !important; }
+  .cap-marquee-track { animation: none !important; }
   .intro { display: none; }
 }
