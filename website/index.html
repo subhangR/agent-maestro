@@ -23,19 +23,36 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,340..800,0..100,0..1;1,9..144,340..700,0..100,0..1&amp;family=Schibsted+Grotesk:ital,wght@0,400..800;1,400&amp;family=Fragment+Mono:ital@0;1&amp;display=swap" rel="stylesheet">
   <title>Maestro · Conduct your coding agents</title>
+  <script>
+    /* restore the visitor's theme before first paint; explicit choice wins, then system preference, then the lit stage */
+    (function(){
+      var d = document.documentElement, t = null;
+      try { t = localStorage.getItem("maestro-theme"); } catch(_e){}
+      if (t !== "light" && t !== "dark"){
+        t = (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches) ? "light" : "dark";
+      }
+      d.setAttribute("data-theme", t);
+    })();
+  </script>
   <style>
     /* ============================================================
        MAESTRO · concert programme for software
-       One committed theme: ebony lacquer, ivory ink, four voices.
+       One score, two lit states.
+       The lit stage (default): ebony lacquer, ivory ink.
+       The printed programme (light): warm paper, ink black.
        Voice I  amber      · Claude Code
        Voice II verdigris  · OpenAI Codex
        Voice III cornflower· Gemini CLI
        Voice IV madder     · Hermes
+       Every surface, ink, hairline, and label routes through the
+       tokens below; the theme blocks flip all of it at once.
        ============================================================ */
     :root{
+      /* -- the lit stage (dark, default) -- */
       --bg:#161014;
       --bg-2:#1e161b;
       --bg-3:#241a20;
+      --bg-rgb:22,16,20;
       --ink:#f0e9dd;
       --dim:#b6aa9d;
       --mute:#8c8175;
@@ -45,11 +62,120 @@
       --v2:#84c4b1;
       --v3:#93aae7;
       --v4:#da8aa0;
+      --score-stave:rgba(240,233,221,.05);
+      --score-band:rgba(240,233,221,.05);
+      --score-band-0:rgba(240,233,221,0);
+      --score-baton:rgba(240,233,221,.10);
+      --shot-shadow-1:0 30px 80px rgba(0,0,0,.5);
+      --shot-shadow-2:0 24px 70px rgba(0,0,0,.6);
+      --grain-o:.06;
+      --mark-filter:none;
+      --wm-o:.05;
       --f-display:"Fraunces",Georgia,"Times New Roman",serif;
       --f-body:"Schibsted Grotesk",system-ui,-apple-system,sans-serif;
       --f-mono:"Fragment Mono",ui-monospace,"SF Mono",Menlo,monospace;
       --ease-out:cubic-bezier(.16,1,.3,1);
       --shell:min(1180px,calc(100vw - 3rem));
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#161014;
+        --bg-2:#1e161b;
+        --bg-3:#241a20;
+        --bg-rgb:22,16,20;
+        --ink:#f0e9dd;
+        --dim:#b6aa9d;
+        --mute:#8c8175;
+        --line:rgba(240,233,221,.13);
+        --line-soft:rgba(240,233,221,.07);
+        --v1:#e3a55a;
+        --v2:#84c4b1;
+        --v3:#93aae7;
+        --v4:#da8aa0;
+        --score-stave:rgba(240,233,221,.05);
+        --score-band:rgba(240,233,221,.05);
+        --score-band-0:rgba(240,233,221,0);
+        --score-baton:rgba(240,233,221,.10);
+        --shot-shadow-1:0 30px 80px rgba(0,0,0,.5);
+        --shot-shadow-2:0 24px 70px rgba(0,0,0,.6);
+        --grain-o:.06;
+        --mark-filter:none;
+        --wm-o:.05;
+      }
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg:#f4eee1;
+        --bg-2:#ede5d4;
+        --bg-3:#e5dbc7;
+        --bg-rgb:244,238,225;
+        --ink:#221a1f;
+        --dim:#584d43;
+        --mute:#6b5f52;
+        --line:rgba(34,26,31,.2);
+        --line-soft:rgba(34,26,31,.1);
+        --v1:#8a520e;
+        --v2:#1e6b58;
+        --v3:#3e55ae;
+        --v4:#a03a57;
+        --score-stave:rgba(34,26,31,.09);
+        --score-band:rgba(34,26,31,.05);
+        --score-band-0:rgba(34,26,31,0);
+        --score-baton:rgba(34,26,31,.18);
+        --shot-shadow-1:0 30px 80px rgba(64,46,31,.18);
+        --shot-shadow-2:0 24px 70px rgba(64,46,31,.22);
+        --grain-o:.05;
+        --mark-filter:invert(1);
+        --wm-o:.06;
+      }
+    }
+    :root[data-theme="dark"]{
+      --bg:#161014;
+      --bg-2:#1e161b;
+      --bg-3:#241a20;
+      --bg-rgb:22,16,20;
+      --ink:#f0e9dd;
+      --dim:#b6aa9d;
+      --mute:#8c8175;
+      --line:rgba(240,233,221,.13);
+      --line-soft:rgba(240,233,221,.07);
+      --v1:#e3a55a;
+      --v2:#84c4b1;
+      --v3:#93aae7;
+      --v4:#da8aa0;
+      --score-stave:rgba(240,233,221,.05);
+      --score-band:rgba(240,233,221,.05);
+      --score-band-0:rgba(240,233,221,0);
+      --score-baton:rgba(240,233,221,.10);
+      --shot-shadow-1:0 30px 80px rgba(0,0,0,.5);
+      --shot-shadow-2:0 24px 70px rgba(0,0,0,.6);
+      --grain-o:.06;
+      --mark-filter:none;
+      --wm-o:.05;
+    }
+    :root[data-theme="light"]{
+      --bg:#f4eee1;
+      --bg-2:#ede5d4;
+      --bg-3:#e5dbc7;
+      --bg-rgb:244,238,225;
+      --ink:#221a1f;
+      --dim:#584d43;
+      --mute:#6b5f52;
+      --line:rgba(34,26,31,.2);
+      --line-soft:rgba(34,26,31,.1);
+      --v1:#8a520e;
+      --v2:#1e6b58;
+      --v3:#3e55ae;
+      --v4:#a03a57;
+      --score-stave:rgba(34,26,31,.09);
+      --score-band:rgba(34,26,31,.05);
+      --score-band-0:rgba(34,26,31,0);
+      --score-baton:rgba(34,26,31,.18);
+      --shot-shadow-1:0 30px 80px rgba(64,46,31,.18);
+      --shot-shadow-2:0 24px 70px rgba(64,46,31,.22);
+      --grain-o:.05;
+      --mark-filter:invert(1);
+      --wm-o:.06;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{scroll-behavior:smooth}
@@ -68,7 +194,7 @@
     body::after{
       content:"";position:fixed;inset:0;z-index:80;pointer-events:none;
       background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-      opacity:.06;mix-blend-mode:overlay;
+      opacity:var(--grain-o);mix-blend-mode:overlay;
     }
     ::selection{background:var(--v1);color:var(--bg)}
     img{max-width:100%;height:auto;display:block}
@@ -113,11 +239,12 @@
       transition:background .35s ease,border-color .35s ease;
       border-bottom:1px solid transparent;
     }
-    .site-header.scrolled{background:rgba(22,16,20,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom-color:var(--line-soft)}
+    .site-header.scrolled{background:rgba(var(--bg-rgb),.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom-color:var(--line-soft)}
     .header-inner{display:flex;align-items:center;gap:1.5rem;padding:.8rem 0}
     .brand{display:flex;align-items:center;gap:.65rem;text-decoration:none}
     .loopmark{position:relative;width:30px;height:30px;flex:none;display:inline-block}
     .loopmark img{position:absolute;inset:0;width:100%;height:100%}
+    .lm-ring{filter:var(--mark-filter)}
     .brand-word{font-family:var(--f-display);font-size:1.22rem;font-weight:560;letter-spacing:.01em}
     .site-nav{display:flex;gap:1.8rem;margin-left:auto}
     .site-nav a{
@@ -137,18 +264,31 @@
       transition:background .25s ease,color .25s ease,border-color .25s ease;
     }
     .header-cta:hover{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+    .theme-toggle{
+      display:none;align-items:center;justify-content:center;flex:none;
+      width:36px;height:36px;background:none;border:1px solid var(--line);border-radius:2px;
+      color:var(--dim);cursor:pointer;
+      transition:color .25s ease,border-color .25s ease;
+    }
+    .js .theme-toggle{display:inline-flex}
+    .theme-toggle:hover{color:var(--ink);border-color:var(--ink)}
+    .theme-toggle svg{width:16px;height:16px;display:block;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+    .theme-toggle .tt-moon{display:none}
+    :root[data-theme="light"] .theme-toggle .tt-sun{display:none}
+    :root[data-theme="light"] .theme-toggle .tt-moon{display:block}
     .menu-button{display:none}
 
     @media (max-width:840px){
       .site-nav{
         position:fixed;inset:0;top:0;padding:6.5rem 2rem 2rem;
-        flex-direction:column;gap:0;background:rgba(22,16,20,.97);
+        flex-direction:column;gap:0;background:rgba(var(--bg-rgb),.97);
         transform:translateY(-102%);transition:transform .45s var(--ease-out);
         z-index:-1;
       }
       .site-nav.open{transform:none}
       .site-nav a{font-size:1rem;padding:1.1rem 0;border-bottom:1px solid var(--line-soft)}
-      .header-cta{margin-left:auto}
+      .theme-toggle{margin-left:auto}
+      .header-cta{margin-left:0}
       .menu-button{
         display:flex;flex-direction:column;justify-content:center;gap:5px;
         width:40px;height:40px;background:none;border:1px solid var(--line);border-radius:2px;
@@ -164,11 +304,11 @@
     #score{position:absolute;inset:0;width:100%;height:100%;display:block}
     .hero::before{ /* legibility scrim over the score */
       content:"";position:absolute;inset:0;pointer-events:none;
-      background:linear-gradient(102deg,rgba(22,16,20,.93) 8%,rgba(22,16,20,.62) 46%,rgba(22,16,20,.05) 74%);
+      background:linear-gradient(102deg,rgba(var(--bg-rgb),.93) 8%,rgba(var(--bg-rgb),.62) 46%,rgba(var(--bg-rgb),.05) 74%);
     }
     .hero::after{ /* settle into the page */
       content:"";position:absolute;left:0;right:0;bottom:0;height:8rem;pointer-events:none;
-      background:linear-gradient(to bottom,rgba(22,16,20,0),var(--bg));
+      background:linear-gradient(to bottom,rgba(var(--bg-rgb),0),var(--bg));
     }
     .hero-shell{position:relative;z-index:2;padding:9rem 0 7rem}
     .hero h1{
@@ -239,8 +379,8 @@
       font-size:.85rem;color:var(--dim);
     }
     .shot figcaption b{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;color:var(--vc,var(--v1));font-weight:400;flex:none}
-    .shot-main{width:76%;box-shadow:0 30px 80px rgba(0,0,0,.5)}
-    .shot-over{position:absolute;right:0;bottom:3.5rem;width:47%;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+    .shot-main{width:76%;box-shadow:var(--shot-shadow-1)}
+    .shot-over{position:absolute;right:0;bottom:3.5rem;width:47%;box-shadow:var(--shot-shadow-2)}
     .shot{transition:transform .5s var(--ease-out)}
     .shot:hover{transform:translateY(-5px)}
     @media (max-width:840px){
@@ -335,8 +475,8 @@
     /* ---- coda ---- */
     .coda{padding-bottom:8.5rem;overflow:clip}
     .coda-watermark{
-      position:absolute;right:-10rem;top:2rem;width:34rem;height:34rem;opacity:.05;pointer-events:none;
-      user-select:none;
+      position:absolute;right:-10rem;top:2rem;width:34rem;height:34rem;opacity:var(--wm-o);pointer-events:none;
+      user-select:none;filter:var(--mark-filter);
     }
     .coda-grid{display:grid;grid-template-columns:minmax(0,24rem) minmax(0,1fr);gap:4.5rem;align-items:start;position:relative}
     .coda-note{font-family:var(--f-mono);font-size:.78rem;color:var(--mute);margin-top:1.6rem;max-width:34ch}
@@ -457,6 +597,10 @@
         <a href="#start">Get started</a>
         <a href="https://github.com/subhangR/agent-maestro/tree/staging/docs" target="_blank" rel="noreferrer">Docs</a>
       </nav>
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme">
+        <svg class="tt-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4 7 7M17 17l1.6 1.6M18.6 5.4 17 7M7 17l-1.6 1.6"/></svg>
+        <svg class="tt-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.6 14.2A8 8 0 1 1 9.8 4.4a6.4 6.4 0 0 0 9.8 9.8Z"/></svg>
+      </button>
       <a class="header-cta" href="https://github.com/subhangR/agent-maestro" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">&#8599;</span></a>
       <button class="menu-button" type="button" aria-expanded="false" aria-controls="site-nav" data-menu-button>
         <span class="sr-only">Toggle navigation</span>
@@ -741,6 +885,46 @@
     function reduced(){ return mqRM.matches; }
     if (reduced()) docEl.classList.add("no-motion");
 
+    /* ---------- theme: the lit stage or the printed programme ---------- */
+    var THEME_KEY = "maestro-theme";
+    var themeMeta = document.querySelector('meta[name="theme-color"]');
+    var themeBtn = document.querySelector("[data-theme-toggle]");
+    var mqLight = window.matchMedia("(prefers-color-scheme: light)");
+    function storedTheme(){
+      try {
+        var t = localStorage.getItem(THEME_KEY);
+        return (t === "light" || t === "dark") ? t : null;
+      } catch(_e){ return null; }
+    }
+    function currentTheme(){
+      return docEl.getAttribute("data-theme") === "light" ? "light" : "dark";
+    }
+    function applyTheme(t){
+      docEl.setAttribute("data-theme", t);
+      if (themeMeta) themeMeta.setAttribute("content", getComputedStyle(docEl).getPropertyValue("--bg").trim());
+      if (themeBtn) themeBtn.setAttribute("aria-label", t === "light" ? "Switch to dark theme" : "Switch to light theme");
+      document.dispatchEvent(new Event("maestro:theme"));
+    }
+    (function(){
+      var initial = docEl.getAttribute("data-theme");
+      if (initial !== "light" && initial !== "dark"){
+        initial = storedTheme() || (mqLight.matches ? "light" : "dark");
+      }
+      applyTheme(initial);
+    })();
+    if (themeBtn){
+      themeBtn.addEventListener("click", function(){
+        var next = currentTheme() === "light" ? "dark" : "light";
+        applyTheme(next);
+        try { localStorage.setItem(THEME_KEY, next); } catch(_e){}
+      });
+    }
+    function onSchemeChange(){
+      if (!storedTheme()) applyTheme(mqLight.matches ? "light" : "dark");
+    }
+    if (mqLight.addEventListener) mqLight.addEventListener("change", onSchemeChange);
+    else if (mqLight.addListener) mqLight.addListener(onSchemeChange);
+
     /* ---------- year ---------- */
     var yr = document.querySelector("[data-year]");
     if (yr) yr.textContent = String(new Date().getFullYear());
@@ -869,6 +1053,27 @@
           {c:"#93aae7", f:0.78, f2:2.60, ph:3.1, amp:0.92},
           {c:"#da8aa0", f:1.38, f2:1.35, ph:4.6, amp:0.80}
         ];
+        /* the score reads its palette from the same tokens as the page,
+           so both lit states paint with their own inks */
+        var STAVE = "rgba(240,233,221,0.05)";
+        var BAND = "rgba(240,233,221,0.05)";
+        var BAND0 = "rgba(240,233,221,0)";
+        var BATON = "rgba(240,233,221,0.10)";
+        function readScoreColors(){
+          var cs = getComputedStyle(docEl);
+          function tok(name, fb){
+            var v = cs.getPropertyValue(name).trim();
+            return v || fb;
+          }
+          for (var i = 0; i < VOICES.length; i++){
+            VOICES[i].c = tok("--v" + (i + 1), VOICES[i].c);
+          }
+          STAVE = tok("--score-stave", STAVE);
+          BAND = tok("--score-band", BAND);
+          BAND0 = tok("--score-band-0", BAND0);
+          BATON = tok("--score-baton", BATON);
+        }
+        readScoreColors();
         var TAU = Math.PI * 2;
         var TEMPO = 0.75;            // beats per second
         var SIGMA = 0.075;           // baton focus width
@@ -907,7 +1112,7 @@
           ctx.clearRect(0, 0, W, H);
 
           // faint stave rules
-          ctx.strokeStyle = "rgba(240,233,221,0.05)";
+          ctx.strokeStyle = STAVE;
           ctx.lineWidth = 1;
           for (var i = 0; i < 4; i++){
             ctx.beginPath();
@@ -919,12 +1124,12 @@
           // baton band
           var px = bx * W;
           var grad = ctx.createLinearGradient(px - 80, 0, px + 80, 0);
-          grad.addColorStop(0, "rgba(240,233,221,0)");
-          grad.addColorStop(0.5, "rgba(240,233,221,0.05)");
-          grad.addColorStop(1, "rgba(240,233,221,0)");
+          grad.addColorStop(0, BAND0);
+          grad.addColorStop(0.5, BAND);
+          grad.addColorStop(1, BAND0);
           ctx.fillStyle = grad;
           ctx.fillRect(px - 80, voiceBase(0) - H * 0.1, 160, voiceBase(3) - voiceBase(0) + H * 0.2);
-          ctx.strokeStyle = "rgba(240,233,221,0.10)";
+          ctx.strokeStyle = BATON;
           ctx.beginPath();
           ctx.moveTo(px, voiceBase(0) - H * 0.08);
           ctx.lineTo(px, voiceBase(3) + H * 0.08);
@@ -963,7 +1168,7 @@
             var age = (now - note.born) / note.life;
             if (age >= 1){ notes.splice(n, 1); continue; }
             ctx.globalAlpha = (1 - age) * 0.85;
-            ctx.fillStyle = note.c;
+            ctx.fillStyle = VOICES[note.vi].c;
             ctx.beginPath();
             ctx.arc(note.x, note.y - age * 16, 2.1 + age * 1.2, 0, TAU);
             ctx.fill();
@@ -994,7 +1199,7 @@
                 notes.push({
                   x: batonX * W,
                   y: voiceY(batonX, t, vi, g, batonX),
-                  c: VOICES[vi].c,
+                  vi: vi,
                   born: now,
                   life: 1500
                 });
@@ -1012,7 +1217,7 @@
             notes.push({
               x: (0.30 + k * 0.13) * W,
               y: voiceY(0.30 + k * 0.13, t, k % 4, 1, bx),
-              c: VOICES[k % 4].c,
+              vi: k % 4,
               born: now - 400,
               life: 100000
             });
@@ -1065,6 +1270,12 @@
         }
         document.addEventListener("visibilitychange", function(){
           if (document.hidden) stop(); else start();
+        });
+        document.addEventListener("maestro:theme", function(){
+          readScoreColors();
+          /* live frames pick the new inks up next tick; a paused or
+             reduced-motion score repaints its resolved still now */
+          if (reduced() || !raf) drawStatic();
         });
         mqRM.addEventListener ? mqRM.addEventListener("change", function(){
           if (reduced()){ docEl.classList.add("no-motion"); stop(); drawStatic(); }
