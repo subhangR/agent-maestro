@@ -110,6 +110,63 @@
       });
     }
 
+    /* ---------- contact form (graceful mailto fallback if the endpoint is unavailable) ---------- */
+    var contactForm = document.querySelector("[data-contact-form]");
+    if (contactForm){
+      contactForm.addEventListener("submit", function(event){
+        event.preventDefault();
+        if (!contactForm.reportValidity()) return;
+        var submitButton = contactForm.querySelector("[data-contact-submit]");
+        var status = contactForm.querySelector("[data-contact-status]");
+        if (!submitButton || !status) return;
+        var fd = new FormData(contactForm);
+        var payload = {
+          name: fd.get("name"), email: fd.get("email"), phone: fd.get("phone"),
+          company: fd.get("company"), type: fd.get("type"), message: fd.get("message"),
+          website: fd.get("website"), consent: fd.get("consent") === "on"
+        };
+        submitButton.disabled = true; submitButton.textContent = "Sending…";
+        status.className = "form-status"; status.textContent = "Sending your enquiry securely.";
+
+        function mailtoHref(){
+          var lines = ["Name: " + (payload.name || ""), "Email: " + (payload.email || ""),
+            payload.phone ? "Phone: " + payload.phone : "", payload.company ? "Company: " + payload.company : "",
+            "Reach-out type: " + (payload.type || "general"), "", payload.message || ""]
+            .filter(function(l){ return l !== ""; });
+          return "mailto:manzilshaik95@gmail.com?subject=" +
+            encodeURIComponent("Maestro enquiry · " + (payload.type || "general") + " · " + (payload.name || "")) +
+            "&body=" + encodeURIComponent(lines.join("\n"));
+        }
+        function offerFallback(){
+          contactForm.reset();
+          status.className = "form-status"; status.textContent = "Ready to send. We'll open a prefilled email for you. ";
+          var a = document.createElement("a");
+          a.className = "form-status-link"; a.href = mailtoHref(); a.textContent = "Open email to send →";
+          status.appendChild(a);
+          try { window.location.href = a.href; } catch(_e){}
+        }
+        fetch("/api/contact", {
+          method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
+          body: JSON.stringify(payload)
+        }).then(function(res){
+          return res.json().catch(function(){ return {}; }).then(function(body){
+            if (res.status === 400 || res.status === 429){ var e = new Error(body.error || "Please review your enquiry."); e.handled = true; throw e; }
+            if (!res.ok) throw new Error("endpoint-unavailable");
+            return body;
+          });
+        }).then(function(body){
+          contactForm.reset();
+          status.className = "form-status success";
+          status.textContent = "Message received. Reference " + (body && body.reference ? body.reference : "sent") + ".";
+        }).catch(function(err){
+          if (err && err.handled){ status.className = "form-status error"; status.textContent = err.message; }
+          else offerFallback();
+        }).finally(function(){
+          submitButton.disabled = false; submitButton.textContent = "Send enquiry";
+        });
+      });
+    }
+
     /* ---------- scroll choreography ---------- */
     var cues = Array.prototype.slice.call(document.querySelectorAll("[data-cue]"));
     cues.forEach(function(el){
@@ -198,6 +255,10 @@
         var TAU = Math.PI * 2;
         var TEMPO = 0.75;            // beats per second
         var SIGMA = 0.075;           // baton focus width
+        /* small touch screens: paint every other frame and sample the
+           voices a little more sparsely, so phones stay smooth */
+        var mqLowPower = window.matchMedia("(pointer: coarse) and (max-width: 700px)");
+        var skipTick = false;
         var W = 0, H = 0, dpr = 1;
         var raf = 0, inView = true;
         var t0 = performance.now();
@@ -257,7 +318,7 @@
           ctx.stroke();
 
           // voices: a bright strand and a soft echo strand each
-          var step = Math.max(10, W / 110);
+          var step = Math.max(mqLowPower.matches ? 14 : 10, W / 110);
           for (var vi = 0; vi < 4; vi++){
             for (var s = 0; s < 2; s++){
               ctx.beginPath();
@@ -299,6 +360,10 @@
 
         function frame(now){
           raf = window.requestAnimationFrame(frame);
+          if (mqLowPower.matches){
+            skipTick = !skipTick;
+            if (skipTick) return;
+          }
           var t = (now - t0) / 1000;
 
           // the downbeat: tense near-flat lines, then bloom at ~0.55s
@@ -381,6 +446,23 @@
           pointer.active = true;
         });
         hero.addEventListener("pointerleave", function(){ pointer.active = false; });
+        /* touch has no hover: conduct while the finger moves, then hand
+           the baton back to the automatic sweep */
+        hero.addEventListener("pointerup", function(e){
+          if (e.pointerType !== "mouse") pointer.active = false;
+        });
+        hero.addEventListener("pointercancel", function(){ pointer.active = false; });
+        if (!("PointerEvent" in window)){
+          hero.addEventListener("touchmove", function(e){
+            if (!e.touches || !e.touches.length) return;
+            var r = hero.getBoundingClientRect();
+            pointer.x = Math.min(1, Math.max(0, (e.touches[0].clientX - r.left) / Math.max(1, r.width)));
+            pointer.y = Math.min(1, Math.max(0, (e.touches[0].clientY - r.top) / Math.max(1, r.height)));
+            pointer.active = true;
+          }, {passive:true});
+          hero.addEventListener("touchend", function(){ pointer.active = false; }, {passive:true});
+          hero.addEventListener("touchcancel", function(){ pointer.active = false; }, {passive:true});
+        }
 
         if ("IntersectionObserver" in window){
           var cio = new IntersectionObserver(function(entries){

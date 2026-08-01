@@ -61,6 +61,7 @@
       --grain-o:.06;
       --mark-filter:none;
       --wm-o:.05;
+      --scrim-a:.58;
       --f-display:"Fraunces",Georgia,"Times New Roman",serif;
       --f-body:"Schibsted Grotesk",system-ui,-apple-system,sans-serif;
       --f-mono:"Fragment Mono",ui-monospace,"SF Mono",Menlo,monospace;
@@ -91,6 +92,7 @@
         --grain-o:.06;
         --mark-filter:none;
         --wm-o:.05;
+        --scrim-a:.58;
       }
     }
     @media (prefers-color-scheme: light){
@@ -117,6 +119,7 @@
         --grain-o:.05;
         --mark-filter:invert(1);
         --wm-o:.06;
+        --scrim-a:.62;
       }
     }
     :root[data-theme="dark"]{
@@ -142,6 +145,7 @@
       --grain-o:.06;
       --mark-filter:none;
       --wm-o:.05;
+      --scrim-a:.58;
     }
     :root[data-theme="light"]{
       --bg:#f4eee1;
@@ -166,6 +170,7 @@
       --grain-o:.05;
       --mark-filter:invert(1);
       --wm-o:.06;
+      --scrim-a:.62;
     }
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     html{scroll-behavior:smooth}
@@ -269,6 +274,7 @@
     .menu-button{display:none}
 
     @media (max-width:840px){
+      .header-inner{gap:.6rem}
       .site-nav{
         position:fixed;inset:0;top:0;padding:6.5rem 2rem 2rem;
         flex-direction:column;gap:0;background:rgba(var(--bg-rgb),.97);
@@ -277,12 +283,12 @@
       }
       .site-nav.open{transform:none}
       .site-nav a{font-size:1rem;padding:1.1rem 0;border-bottom:1px solid var(--line-soft)}
-      .theme-toggle{margin-left:auto}
-      .header-cta{margin-left:0}
+      .theme-toggle{margin-left:auto;width:44px;height:44px}
+      .header-cta{margin-left:0;padding:.8rem .85rem}
       .menu-button{
-        display:flex;flex-direction:column;justify-content:center;gap:5px;
-        width:40px;height:40px;background:none;border:1px solid var(--line);border-radius:2px;
-        cursor:pointer;padding:0 9px;order:3;
+        display:flex;flex-direction:column;justify-content:center;gap:5px;flex:none;
+        width:44px;height:44px;background:none;border:1px solid var(--line);border-radius:2px;
+        cursor:pointer;padding:0 11px;order:3;
       }
       .menu-button span:not(.sr-only){display:block;height:1px;background:var(--ink);transition:transform .3s ease}
       .menu-button[aria-expanded="true"] span:nth-of-type(1){transform:translateY(3px) rotate(45deg)}
@@ -290,7 +296,7 @@
     }
 
     /* ---- hero: the overture ---- */
-    .hero{position:relative;min-height:100svh;display:flex;align-items:center;overflow:clip}
+    .hero{position:relative;min-height:100vh;min-height:100svh;display:flex;align-items:center;overflow:clip}
     #score{position:absolute;inset:0;width:100%;height:100%;display:block}
     .hero::before{ /* legibility scrim over the score */
       content:"";position:absolute;inset:0;pointer-events:none;
@@ -330,6 +336,32 @@
     .hero-facts div{border-left:1px solid var(--line);padding-left:1rem}
     .hero-facts dt{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
     .hero-facts dd{font-size:.94rem;color:var(--ink);margin-top:.3rem}
+    /* a soft pool of the ground colour under the lede and facts, so the
+       copy reads over the score without silencing the voices around it */
+    .hero-copy{position:relative;max-width:40rem}
+    .hero-copy::before{
+      content:"";position:absolute;z-index:-1;pointer-events:none;
+      inset:-1.6rem -2.6rem -1.8rem -1.6rem;
+      background:radial-gradient(115% 100% at 30% 45%,
+        rgba(var(--bg-rgb),var(--scrim-a)) 0%,
+        rgba(var(--bg-rgb),calc(var(--scrim-a)*.55)) 55%,
+        rgba(var(--bg-rgb),0) 96%);
+      -webkit-backdrop-filter:blur(5px);
+      backdrop-filter:blur(5px);
+      -webkit-mask-image:radial-gradient(115% 100% at 30% 45%,#000 40%,rgba(0,0,0,.45) 68%,transparent 96%);
+      mask-image:radial-gradient(115% 100% at 30% 45%,#000 40%,rgba(0,0,0,.45) 68%,transparent 96%);
+    }
+    @supports not ((backdrop-filter:blur(5px)) or (-webkit-backdrop-filter:blur(5px))){
+      .hero-copy::before{
+        background:radial-gradient(115% 100% at 30% 45%,
+          rgba(var(--bg-rgb),calc(var(--scrim-a) + .2)) 0%,
+          rgba(var(--bg-rgb),calc(var(--scrim-a)*.72)) 55%,
+          rgba(var(--bg-rgb),0) 96%);
+      }
+    }
+    @media (max-width:840px){
+      .hero-copy::before{inset:-1.2rem -1rem -1.2rem -1rem}
+    }
     .hero-scroll{
       position:absolute;right:2.2rem;bottom:2.2rem;z-index:2;
       display:flex;flex-direction:column;align-items:center;gap:.7rem;
@@ -497,6 +529,65 @@
     .disk-note{font-size:.88rem;color:var(--dim);margin-top:1rem;max-width:44ch}
     @media (max-width:960px){.coda-grid{grid-template-columns:1fr;gap:3rem}.coda-watermark{display:none}}
 
+    /* ---- encore: contact ---- */
+    .contact{padding:6.5rem 0 8.5rem}
+    .contact-grid{display:grid;grid-template-columns:minmax(0,22rem) minmax(0,1fr);gap:4.5rem;align-items:start}
+    .contact-copy h2{margin:1.4rem 0 1.1rem}
+    .contact-copy>p:not(.cue){color:var(--dim)}
+    .contact-promises{list-style:none;margin-top:1.8rem;display:grid;gap:.9rem}
+    .contact-promises li{position:relative;padding-left:1.5rem;font-size:.9rem;color:var(--dim);max-width:38ch}
+    .contact-promises li::before{content:"";position:absolute;left:0;top:.72em;width:.8rem;height:1px;background:var(--vc,var(--v2))}
+    .contact-promises li:nth-child(1){--vc:var(--v2)}
+    .contact-promises li:nth-child(2){--vc:var(--v4)}
+    .contact-form{
+      display:grid;grid-template-columns:1fr 1fr;gap:1.9rem 2.2rem;
+      border-top:1px solid var(--line);padding-top:2.4rem;
+    }
+    .field{display:flex;flex-direction:column;gap:.5rem;min-width:0}
+    .field label{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+    .field .opt{opacity:.65;letter-spacing:.12em}
+    .field input,.field select,.field textarea{
+      width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);
+      border-radius:0;color:var(--ink);font-family:var(--f-body);font-size:1rem;line-height:1.5;
+      padding:.5rem .1rem .6rem;transition:border-color .25s ease;
+      -webkit-appearance:none;appearance:none;
+    }
+    .field input:hover,.field select:hover,.field textarea:hover{border-bottom-color:var(--dim)}
+    .field textarea{min-height:9rem;resize:vertical}
+    .field-select{position:relative}
+    .field-select::after{
+      content:"";position:absolute;right:.45rem;bottom:1.15rem;width:8px;height:8px;
+      border-right:1.5px solid var(--mute);border-bottom:1.5px solid var(--mute);
+      transform:rotate(45deg);pointer-events:none;
+    }
+    .field select{cursor:pointer;padding-right:1.9rem}
+    .field select option{background:var(--bg);color:var(--ink)}
+    .field-wide,.contact-consent,.contact-actions,.contact-form .form-status{grid-column:1/-1}
+    .hp{position:absolute !important;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden}
+    .contact-consent{display:flex;align-items:flex-start;gap:.8rem;font-size:.92rem;color:var(--dim);cursor:pointer}
+    .contact-consent input{
+      flex:none;width:17px;height:17px;margin-top:.25rem;cursor:pointer;
+      accent-color:var(--v1);
+    }
+    .contact-actions{display:flex;align-items:center;gap:1.6rem;flex-wrap:wrap}
+    button.btn{cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:default;transform:none}
+    .form-status{font-family:var(--f-mono);font-size:.78rem;color:var(--mute);min-height:1.3em;max-width:none}
+    .form-status.success{color:var(--v2)}
+    .form-status.error{color:var(--v4)}
+    .form-status-link{color:var(--ink)}
+    @media (max-width:960px){
+      .contact{padding-top:5rem}
+      .contact-grid{grid-template-columns:1fr;gap:3.2rem}
+    }
+    @media (max-width:640px){
+      .contact-form{grid-template-columns:1fr;gap:1.6rem}
+      .contact-actions .btn{width:100%;text-align:center;padding:1.05rem 1.7rem}
+    }
+    @media (max-width:840px){
+      .copy-btn{padding:.7rem 1rem}
+    }
+
     /* ---- footer ---- */
     .site-footer{border-top:1px solid var(--line-soft);margin-top:2rem;background:var(--bg)}
     .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2.5rem;padding:4rem 0 3rem}
@@ -585,6 +676,7 @@
         <a href="#capabilities">Programme</a>
         <a href="#run">The run</a>
         <a href="#start">Get started</a>
+        <a href="#contact">Contact</a>
         <a href="https://github.com/subhangR/agent-maestro/tree/staging/docs" target="_blank" rel="noreferrer">Docs</a>
       </nav>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to light theme">
@@ -611,16 +703,18 @@
           <span class="hl"><span class="hl-in">One command center</span></span>
           <span class="hl"><span class="hl-in">for your coding agents.</span></span>
         </h1>
-        <p class="hero-lede o-fade o-lede">Maestro turns parallel coding sessions into a team you can actually read. You plan the work and hand it to Claude, Codex, or Gemini; then you watch what each one changes instead of babysitting a wall of terminals.</p>
-        <div class="hero-actions o-fade o-actions">
-          <a class="btn btn-solid" href="#start">Get started</a>
-          <a class="text-link" href="https://github.com/subhangR/agent-maestro" target="_blank" rel="noreferrer">View on GitHub <span aria-hidden="true">&#8599;</span></a>
+        <div class="hero-copy">
+          <p class="hero-lede o-fade o-lede">Maestro turns parallel coding sessions into a team you can actually read. You plan the work and hand it to Claude, Codex, or Gemini; then you watch what each one changes instead of babysitting a wall of terminals.</p>
+          <div class="hero-actions o-fade o-actions">
+            <a class="btn btn-solid" href="#start">Get started</a>
+            <a class="text-link" href="https://github.com/subhangR/agent-maestro" target="_blank" rel="noreferrer">View on GitHub <span aria-hidden="true">&#8599;</span></a>
+          </div>
+          <dl class="hero-facts o-fade o-facts" aria-label="Product facts">
+            <div><dt>Runs on</dt><dd>Your machine</dd></div>
+            <div><dt>Works with</dt><dd>Claude &middot; Codex &middot; Gemini &middot; Hermes</dd></div>
+            <div><dt>License</dt><dd>Open source</dd></div>
+          </dl>
         </div>
-        <dl class="hero-facts o-fade o-facts" aria-label="Product facts">
-          <div><dt>Runs on</dt><dd>Your machine</dd></div>
-          <div><dt>Works with</dt><dd>Claude &middot; Codex &middot; Gemini &middot; Hermes</dd></div>
-          <div><dt>License</dt><dd>Open source</dd></div>
-        </dl>
       </div>
       <p class="hero-scroll" aria-hidden="true">Scroll</p>
     </section>
@@ -827,6 +921,65 @@
         </div>
       </div>
     </section>
+
+    <!-- ================= ENCORE · CONTACT ================= -->
+    <section class="movement contact" id="contact" aria-label="Contact">
+      <div class="shell contact-grid">
+        <div class="contact-copy" data-cue>
+          <p class="cue" style="--vc:var(--v4)"><b>Encore</b>&ensp;Contact</p>
+          <h2>Talk to a human.</h2>
+          <p>Tell us what you're building, where your agent workflow is getting difficult, or how you'd like to work with Maestro.</p>
+          <ul class="contact-promises">
+            <li>Useful context: product questions, demos, partnerships, contributions, and support.</li>
+            <li>Private by default: your enquiry is stored privately and used only to respond.</li>
+          </ul>
+        </div>
+        <form class="contact-form" method="post" action="/api/contact" data-contact-form data-cue data-cue-delay=".15s">
+          <div class="field">
+            <label for="cf-name">Full name</label>
+            <input id="cf-name" name="name" type="text" autocomplete="name" required>
+          </div>
+          <div class="field">
+            <label for="cf-email">Email address</label>
+            <input id="cf-email" name="email" type="email" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="cf-phone">Phone number <span class="opt">(optional)</span></label>
+            <input id="cf-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel">
+          </div>
+          <div class="field">
+            <label for="cf-company">Company <span class="opt">(optional)</span></label>
+            <input id="cf-company" name="company" type="text" autocomplete="organization">
+          </div>
+          <div class="field field-select field-wide">
+            <label for="cf-type">Reach-out type</label>
+            <select id="cf-type" name="type">
+              <option value="general">General enquiry</option>
+              <option value="demo">Product demo</option>
+              <option value="partnership">Partnership</option>
+              <option value="contribute">Contribute to Maestro</option>
+              <option value="support">Product support</option>
+            </select>
+          </div>
+          <div class="field field-wide">
+            <label for="cf-message">Message</label>
+            <textarea id="cf-message" name="message" rows="6" minlength="20" required></textarea>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="cf-website">Website</label>
+            <input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <label class="contact-consent">
+            <input type="checkbox" name="consent" required>
+            <span>I agree that Maestro may use these details to respond to this enquiry.</span>
+          </label>
+          <div class="contact-actions">
+            <button class="btn btn-solid" type="submit" data-contact-submit>Send enquiry</button>
+          </div>
+          <p class="form-status" role="status" data-contact-status></p>
+        </form>
+      </div>
+    </section>
   </main>
 
   <footer class="site-footer">
@@ -847,6 +1000,7 @@
         <a href="#capabilities">Capabilities</a>
         <a href="#run">Workflow</a>
         <a href="#principles">Principles</a>
+        <a href="#contact">Contact</a>
       </div>
       <div>
         <h2>Resources</h2>
