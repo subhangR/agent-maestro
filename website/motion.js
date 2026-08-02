@@ -494,6 +494,83 @@
       }
     }
 
+    /* ---------- the roster: the last beat of the overture ----------
+       Once the headline's voice wash has fully resolved "agents" to
+       solid ink (~3.25s after the overture downbeat) and the word has
+       sat plainly for about half a second, it gives way to the row of
+       model marks, holds, and trades back on a slow loop. The CSS keeps
+       a rest between them in both directions, so the word and the chips
+       are never visible together. This block only keeps time; all
+       easing lives in the CSS, and it never runs when the visitor
+       prefers reduced motion. */
+    (function(){
+      var swap = document.querySelector("[data-agents-swap]");
+      if (!swap) return;
+      var word = swap.querySelector(".agents-word");
+      var roster = swap.querySelector(".agents-roster");
+      var chips = roster ? [].slice.call(roster.querySelectorAll(".chip")) : [];
+      if (!word || !roster || !chips.length) return;
+
+      var timers = [], running = false;
+      function at(fn, ms){ timers.push(setTimeout(fn, ms)); }
+      function clearAll(){ timers.forEach(clearTimeout); timers = []; }
+
+      // Word and chips never share the layout: the word is display:none while the
+      // roster is shown and vice versa, so they can never overlap in any browser.
+      function toRoster(){
+        word.classList.add("out");                 // word fades + blurs out
+        at(function(){
+          word.style.display = "none";             // word fully removed from the line
+          roster.classList.add("show");            // chips take the chair
+          void roster.offsetWidth;                 // reflow so the chip transitions run
+          chips.forEach(function(c, i){ at(function(){ c.classList.add("in"); }, i * 110); });
+        }, 430);                                   // word gone (350ms) + a short rest
+      }
+      function toWord(){
+        chips.forEach(function(c){ c.classList.remove("in"); });   // chips fade out
+        at(function(){
+          roster.classList.remove("show");         // roster removed from the line
+          word.style.display = "";                 // word returns
+          void word.offsetWidth;
+          word.classList.remove("out");            // word fades back in
+        }, 520);
+      }
+      function reset(){
+        clearAll();
+        chips.forEach(function(c){ c.classList.remove("in"); });
+        roster.classList.remove("show");
+        word.style.display = "";
+        word.classList.remove("out");
+      }
+      function loop(){
+        if (reduced()){ running = false; reset(); return; }
+        toRoster();
+        at(function(){ toWord(); at(loop, 1500); }, 4600);  // hold roster, trade back, hold word
+      }
+      function start(){
+        if (running || reduced()) return;
+        running = true;
+        at(loop, 650);   // plain-ink "agents." sits ~0.65s after it resolves, then the beat begins
+      }
+
+      // Anchor the beat to the ACTUAL end of the headline's ink resolve, so the chips
+      // can never appear while the word is still washing (this held on any load speed).
+      var supportsClip = window.CSS && CSS.supports &&
+        (CSS.supports("background-clip", "text") || CSS.supports("-webkit-background-clip", "text"));
+      var inkAnim = supportsClip ? "voice-ink" : "rise";
+      var lines = document.querySelectorAll(".hl-in");
+      var last = lines.length ? lines[lines.length - 1] : null;
+      if (last) last.addEventListener("animationend", function(e){ if (e.animationName === inkAnim) start(); });
+      at(start, 5200);   // fallback if that animationend never fires
+
+      function onChange(){
+        if (reduced()){ running = false; reset(); }
+        else if (!running){ start(); }
+      }
+      if (mqRM.addEventListener) mqRM.addEventListener("change", onChange);
+      else if (mqRM.addListener) mqRM.addListener(onChange);
+    })();
+
     /* ---------- cue the overture (syncs CSS delays with the canvas bloom) ---------- */
     window.requestAnimationFrame(function(){
       docEl.classList.add("overture");

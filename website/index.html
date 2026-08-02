@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,340..800,0..100,0..1;1,9..144,340..700,0..100,0..1&amp;family=Schibsted+Grotesk:ital,wght@0,400..800;1,400&amp;family=Fragment+Mono:ital@0;1&amp;display=swap" rel="stylesheet">
   <title>Maestro · Conduct your coding agents</title>
-  <script src="boot.js"></script>
+  <script src="boot.js?v=202608021732"></script>
   <style>
     /* ============================================================
        MAESTRO · concert programme for software
@@ -44,6 +44,7 @@
       --bg-3:#241a20;
       --bg-rgb:22,16,20;
       --ink:#f0e9dd;
+      --ink-rgb:240,233,221;
       --dim:#b6aa9d;
       --mute:#8c8175;
       --line:rgba(240,233,221,.13);
@@ -75,6 +76,7 @@
         --bg-3:#241a20;
         --bg-rgb:22,16,20;
         --ink:#f0e9dd;
+        --ink-rgb:240,233,221;
         --dim:#b6aa9d;
         --mute:#8c8175;
         --line:rgba(240,233,221,.13);
@@ -102,6 +104,7 @@
         --bg-3:#e5dbc7;
         --bg-rgb:244,238,225;
         --ink:#221a1f;
+        --ink-rgb:34,26,31;
         --dim:#584d43;
         --mute:#6b5f52;
         --line:rgba(34,26,31,.2);
@@ -128,6 +131,7 @@
       --bg-3:#241a20;
       --bg-rgb:22,16,20;
       --ink:#f0e9dd;
+      --ink-rgb:240,233,221;
       --dim:#b6aa9d;
       --mute:#8c8175;
       --line:rgba(240,233,221,.13);
@@ -153,6 +157,7 @@
       --bg-3:#e5dbc7;
       --bg-rgb:244,238,225;
       --ink:#221a1f;
+      --ink-rgb:34,26,31;
       --dim:#584d43;
       --mute:#6b5f52;
       --line:rgba(34,26,31,.2);
@@ -309,6 +314,14 @@
       background:linear-gradient(to bottom,rgba(var(--bg-rgb),0),var(--bg));
     }
     .hero-shell{position:relative;z-index:2;padding:9rem 0 7rem}
+    /* the tempo marking: an italic direction over bar one, not a label */
+    .hero-tempo{
+      font-family:var(--f-display);font-style:italic;
+      font-size:clamp(1rem,.92rem + .4vw,1.14rem);font-weight:430;
+      letter-spacing:.012em;line-height:1.5;color:var(--dim);
+      font-variation-settings:"SOFT" 60,"WONK" 0;
+      max-width:36rem;
+    }
     .hero h1{
       font-size:clamp(2.7rem,6.6vw,5.1rem);
       line-height:1.04;letter-spacing:-.018em;font-weight:600;
@@ -317,6 +330,26 @@
     }
     .hl{display:block;overflow:hidden;padding-bottom:.06em;margin-bottom:-.06em}
     .hl-in{display:block}
+    /* the roster slot: "agents." and the row of model marks share one
+       reserved grid cell, so the line never moves when they trade places.
+       Every mark is normalised into the same circular chip: one diameter,
+       a hairline ring, a faint tonal ground, artwork inset and centred.
+       Without JS (or with reduced motion) only the word renders. */
+    .agents-swap{white-space:nowrap;vertical-align:baseline}
+    .agents-word{white-space:nowrap}
+    .agents-roster{
+      display:none;align-items:center;
+      gap:.13em;flex-wrap:wrap;max-width:100%;
+      vertical-align:middle;position:relative;top:-.08em;
+    }
+    .chip{
+      width:.78em;height:.78em;flex:none;border-radius:50%;
+      object-fit:contain;padding:.13em;
+      background:rgba(var(--ink-rgb),.08);
+      border:1px solid var(--line);
+    }
+    /* single-ink marks (e.g. the Codex glyph) flip to ivory on the lit stage */
+    :root[data-theme="dark"] .chip-mono{filter:invert(1) brightness(.92)}
     .hero-lede{color:var(--dim);font-size:1.08rem;max-width:34rem}
     .hero-actions{display:flex;align-items:center;gap:1.6rem;margin-top:2.4rem;flex-wrap:wrap}
     .btn{
@@ -615,24 +648,78 @@
       .js .hero-scroll::after{animation:bow 2.6s ease-in-out infinite}
       @keyframes bow{0%,100%{transform:scaleY(.35);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}}
 
-      /* --- the downbeat: page-load sequence --- */
-      .js .hl-in{transform:translateY(112%)}
+      /* --- the downbeat: page-load sequence ---
+         The tempo marking arrives first: a slow, quiet settle up into
+         place, like a direction being pencilled over bar one. Each
+         headline line then rises out of its mask on a long expo tail
+         while the four voices tint the letters; the tint drifts through
+         the words like a bow stroke, then ink floods over it, so the
+         title arrives coloured by the ensemble and resolves to plain
+         ink. Lede, actions, facts, and header follow; the whole opening
+         resolves in a little over three seconds. */
+      .js .hl-in{transform:translateY(116%)}
+      .js .hl{opacity:0}
       .js .o-fade{opacity:0}
-      .js .o-cue::before{transform:scaleX(0);transform-origin:left}
-      .js.overture .hl-in{animation:rise 1s var(--ease-out) forwards}
-      .js.overture .hl:nth-child(1) .hl-in{animation-delay:.55s}
-      .js.overture .hl:nth-child(2) .hl-in{animation-delay:.67s}
-      .js.overture .o-cue{animation:fadein .7s ease forwards .12s}
-      .js.overture .o-cue::before{animation:drawx .8s var(--ease-out) forwards .15s}
-      .js.overture .o-lede{animation:fadeup .9s var(--ease-out) forwards .95s}
-      .js.overture .o-actions{animation:fadeup .9s var(--ease-out) forwards 1.08s}
-      .js.overture .o-facts{animation:fadeup .9s var(--ease-out) forwards 1.22s}
-      .js.overture .o-header{animation:fadein 1s ease forwards 1.3s}
-      .js .o-cue{opacity:0}
+      .js .o-tempo{opacity:0}
+      .js.overture .o-tempo{animation:tempo-in 1.25s cubic-bezier(.22,1,.36,1) forwards .08s}
+      .js.overture .hl-in{animation:rise 1.7s cubic-bezier(.19,1,.22,1) forwards}
+      .js.overture .hl{animation:settle 1.5s ease forwards}
+      /* the voices thread the title: each line rises wearing a soft
+         wash of the four voice colours, which slides through the words
+         and settles to ink. If a browser cannot clip a background to
+         text, the line simply rises in plain ink as before. */
+      @supports ((-webkit-background-clip:text) or (background-clip:text)){
+        .js.overture .hl-in{
+          background-image:linear-gradient(93deg,var(--v1) 6%,var(--v2) 34%,var(--v3) 62%,var(--v4) 90%);
+          background-size:180% 100%;
+          -webkit-background-clip:text;
+          background-clip:text;
+          animation:rise 1.7s cubic-bezier(.19,1,.22,1) forwards,voice-ink 2.3s ease forwards;
+        }
+      }
+      .js.overture .hl:nth-child(1),
+      .js.overture .hl:nth-child(1) .hl-in{animation-delay:.65s}
+      .js.overture .hl:nth-child(2),
+      .js.overture .hl:nth-child(2) .hl-in{animation-delay:.95s}
+      .js.overture .o-lede{animation:fadeup 1s var(--ease-out) forwards 1.7s}
+      .js.overture .o-actions{animation:fadeup 1s var(--ease-out) forwards 1.86s}
+      .js.overture .o-facts{animation:fadeup 1s var(--ease-out) forwards 2.02s}
+      .js.overture .o-header{animation:fadein 1.1s ease forwards 2.2s}
       @keyframes rise{to{transform:none}}
+      @keyframes settle{
+        from{opacity:0;filter:blur(7px)}
+        60%{opacity:1;filter:blur(0)}
+        to{opacity:1;filter:blur(0)}
+      }
+      @keyframes voice-ink{
+        0%{color:rgba(var(--ink-rgb),0);background-position:100% 0}
+        45%{color:rgba(var(--ink-rgb),0)}
+        100%{color:rgba(var(--ink-rgb),1);background-position:0% 0}
+      }
+      @keyframes tempo-in{
+        from{opacity:0;transform:translateY(14px) scale(.97)}
+        to{opacity:1;transform:none}
+      }
       @keyframes fadein{to{opacity:1}}
       @keyframes fadeup{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
-      @keyframes drawx{to{transform:scaleX(1)}}
+
+      /* --- the last beat: the roster ---
+         Once the title has resolved to ink (~3.25s) and held a breath,
+         the word "agents" breathes fully out; only after the chair is
+         empty (a ~0.2s rest) do the six model marks take it one by one,
+         each a small circular chip drifting up into place. The row holds,
+         breathes fully out, the chair rests empty again, and the word
+         returns. Word and chips are never on stage in the same frame;
+         motion.js only keeps time, all easing lives here.
+         Trade-out (class added):  word out 0–.45s · rest · chips in from .65s
+         Trade-back (class removed): chips out 0–.35s · rest · word in .55–1s */
+      /* display-swap roster: the word OR the chips occupy the line, never both
+         (Safari-safe; no inline-grid stacking). JS toggles .show / .in / .out. */
+      .js .agents-roster.show{display:inline-flex}
+      .js .agents-roster .chip{opacity:0;transform:translateY(.16em) scale(.6);transition:opacity .45s ease,transform .5s var(--ease-out)}
+      .js .agents-roster .chip.in{opacity:1;transform:none}
+      .js .agents-word{transition:opacity .35s ease,filter .35s ease}
+      .js .agents-word.out{opacity:0;filter:blur(4px)}
 
       /* --- scroll choreography --- */
       .js [data-cue]{opacity:0;transform:translateY(26px);transition:opacity .8s ease,transform 1s var(--ease-out);transition-delay:var(--d,0s)}
@@ -700,10 +787,10 @@
     <section class="hero" id="top" aria-label="Introduction">
       <canvas id="score" aria-hidden="true"></canvas>
       <div class="shell hero-shell">
-        <p class="cue o-cue" style="--vc:var(--v1)">Local-first agent orchestration</p>
+        <p class="hero-tempo o-tempo">A score for every voice you bring, played on your machine</p>
         <h1>
           <span class="hl"><span class="hl-in">One command center</span></span>
-          <span class="hl"><span class="hl-in">for your coding agents.</span></span>
+          <span class="hl"><span class="hl-in">for your coding <span class="agents-swap" data-agents-swap><span class="agents-word">agents.</span><span class="agents-roster" aria-hidden="true"><img class="chip" src="assets/agent-icons/claude-code-icon.png" alt="" title="Claude Code" width="28" height="28" decoding="async"><img class="chip chip-mono" src="assets/agent-icons/openai-codex-icon.png" alt="" title="OpenAI Codex" width="28" height="28" decoding="async"><img class="chip" src="assets/agent-icons/gemini-logo.png" alt="" title="Gemini" width="28" height="28" decoding="async"><img class="chip" src="assets/agent-icons/kimi-icon.svg" alt="" title="Kimi" width="28" height="28" decoding="async"><img class="chip" src="assets/agent-icons/glm-icon.svg" alt="" title="GLM" width="28" height="28" decoding="async"><img class="chip" src="assets/agent-icons/hermes-agent-icon.svg" alt="" title="Hermes" width="28" height="28" decoding="async"></span></span></span></span>
         </h1>
         <div class="hero-copy">
           <p class="hero-lede o-fade o-lede">Maestro turns parallel coding sessions into a team you can actually read. You plan the work and hand it to Claude, Codex, or Gemini; then you watch what each one changes instead of babysitting a wall of terminals.</p>
@@ -1022,6 +1109,6 @@
     </div>
   </footer>
 
-  <script src="motion.js" defer></script>
+  <script src="motion.js?v=202608021732" defer></script>
 </body>
 </html>
