@@ -562,6 +562,119 @@ export function registerTeamMemberCommands(program: Command) {
             }
         });
 
+    memory.command('edit <teamMemberId> <index>')
+        .description('Edit a single memory entry in place (index is 1-based, as shown by "memory list")')
+        .requiredOption('--entry <text>', 'New text for the memory entry')
+        .action(async (teamMemberId: string, index: string, cmdOpts: { entry: string }) => {
+            await guardCommand('team-member:memory:edit');
+            const globalOpts = program.opts();
+            const isJson = globalOpts.json;
+            const projectId = globalOpts.project || config.projectId;
+
+            if (!projectId) {
+                const err = { message: 'No project context found. Use --project <id> or set MAESTRO_PROJECT_ID.' };
+                if (isJson) { outputErrorJSON(err); process.exit(1); }
+                else { console.error(err.message); process.exit(1); }
+            }
+
+            const parsed = Number(index);
+            if (!Number.isInteger(parsed) || parsed < 1) {
+                const err = { message: `Invalid index "${index}". Must be a positive integer (1-based, as shown by "memory list").` };
+                if (isJson) { outputErrorJSON(err); process.exit(1); }
+                else { console.error(err.message); process.exit(1); }
+            }
+
+            const trimmedEntry = cmdOpts.entry.trim();
+            if (!trimmedEntry) {
+                const err = { message: 'Memory entry cannot be empty.' };
+                if (isJson) { outputErrorJSON(err); process.exit(1); }
+                else { console.error(err.message); process.exit(1); }
+            }
+
+            const spinner = !isJson ? ora('Updating memory entry...').start() : null;
+
+            try {
+                // API is 0-based; CLI index is 1-based to match list output.
+                const member = await api.patch<TeamMemberResponse>(
+                    `/api/team-members/${teamMemberId}/memory/${parsed - 1}`,
+                    { projectId, entry: trimmedEntry },
+                );
+
+                spinner?.succeed('Memory entry updated');
+
+                if (isJson) {
+                    outputJSON(member);
+                } else {
+                    const memoryList = member.memory || [];
+                    outputKeyValue('ID', member.id);
+                    outputKeyValue('Name', `${member.avatar} ${member.name}`);
+                    outputKeyValue('Memory entries', String(memoryList.length));
+                    if (memoryList.length > 0) {
+                        console.log('\nMemory:');
+                        memoryList.forEach((entry: string, i: number) => {
+                            console.log(`  ${i + 1}. ${entry}`);
+                        });
+                    }
+                }
+            } catch (err) {
+                spinner?.stop();
+                handleError(err, isJson);
+            }
+        });
+
+    memory.command('remove <teamMemberId> <index>')
+        .description('Remove a single memory entry (index is 1-based, as shown by "memory list")')
+        .action(async (teamMemberId: string, index: string) => {
+            await guardCommand('team-member:memory:remove');
+            const globalOpts = program.opts();
+            const isJson = globalOpts.json;
+            const projectId = globalOpts.project || config.projectId;
+
+            if (!projectId) {
+                const err = { message: 'No project context found. Use --project <id> or set MAESTRO_PROJECT_ID.' };
+                if (isJson) { outputErrorJSON(err); process.exit(1); }
+                else { console.error(err.message); process.exit(1); }
+            }
+
+            const parsed = Number(index);
+            if (!Number.isInteger(parsed) || parsed < 1) {
+                const err = { message: `Invalid index "${index}". Must be a positive integer (1-based, as shown by "memory list").` };
+                if (isJson) { outputErrorJSON(err); process.exit(1); }
+                else { console.error(err.message); process.exit(1); }
+            }
+
+            const spinner = !isJson ? ora('Removing memory entry...').start() : null;
+
+            try {
+                // API is 0-based; CLI index is 1-based to match list output.
+                const member = await api.delete<TeamMemberResponse>(
+                    `/api/team-members/${teamMemberId}/memory/${parsed - 1}?projectId=${projectId}`,
+                );
+
+                spinner?.succeed('Memory entry removed');
+
+                if (isJson) {
+                    outputJSON(member);
+                } else {
+                    const memoryList = member.memory || [];
+                    outputKeyValue('ID', member.id);
+                    outputKeyValue('Name', `${member.avatar} ${member.name}`);
+                    outputKeyValue('Memory entries', String(memoryList.length));
+                    if (memoryList.length > 0) {
+                        console.log('\nMemory:');
+                        memoryList.forEach((entry: string, i: number) => {
+                            console.log(`  ${i + 1}. ${entry}`);
+                        });
+                    } else {
+                        console.log('\nNo memory entries remaining.');
+                    }
+                }
+            } catch (err) {
+                spinner?.stop();
+                handleError(err, isJson);
+            }
+        });
+
     memory.command('clear <teamMemberId>')
         .description('Clear all memory entries for a team member')
         .action(async (teamMemberId: string) => {

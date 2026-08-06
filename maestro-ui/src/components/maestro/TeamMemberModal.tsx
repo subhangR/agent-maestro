@@ -343,6 +343,14 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
     // the profile at spawn (raw model below is the fallback for "Custom").
     const [modelProfileId, setModelProfileId] = useState<string | null>(null);
 
+    // Memory editing state (edit mode). Local mirror of teamMember.memory so per-entry
+    // edit/delete give immediate feedback while persisting to the server.
+    const [memoryEntries, setMemoryEntries] = useState<string[]>([]);
+    const [editingMemoryIndex, setEditingMemoryIndex] = useState<number | null>(null);
+    const [editingMemoryText, setEditingMemoryText] = useState('');
+    const [memorySavingIndex, setMemorySavingIndex] = useState<number | null>(null);
+    const [memoryError, setMemoryError] = useState<string | null>(null);
+
     // Auto-save tracking
     const [changeVersion, setChangeVersion] = useState(0);
     const bumpVersion = useCallback(() => setChangeVersion(v => v + 1), []);
@@ -434,6 +442,7 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
             setSoundInstrument(teamMember.soundInstrument || 'piano');
             setScope(teamMember.scope || 'project');
             setModelProfileId(teamMember.modelProfileId || null);
+            setMemoryEntries(teamMember.memory || []);
         } else {
             // Create mode defaults — auto-assign a random instrument for variety
             setName("");
@@ -458,9 +467,14 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
             setSoundInstrument(assignRandomInstrument(existingInstruments));
             setScope('project');
             setModelProfileId(null);
+            setMemoryEntries([]);
         }
         setError(null);
         setActiveTab(null);
+        setEditingMemoryIndex(null);
+        setEditingMemoryText('');
+        setMemorySavingIndex(null);
+        setMemoryError(null);
         setExpandedGroups(new Set());
         setShowLaunchDropdown(false);
         setActiveLaunchTool(teamMember?.agentTool || "claude-code");
@@ -643,7 +657,55 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
         }
     };
 
-    const memoryEntries = teamMember?.memory || [];
+    // ─── Memory entry handlers (edit mode) ────────────────────────────
+    const handleMemoryEditStart = useCallback((index: number) => {
+        setEditingMemoryIndex(index);
+        setEditingMemoryText(memoryEntries[index] ?? '');
+        setMemoryError(null);
+    }, [memoryEntries]);
+
+    const handleMemoryEditCancel = useCallback(() => {
+        setEditingMemoryIndex(null);
+        setEditingMemoryText('');
+        setMemoryError(null);
+    }, []);
+
+    const handleMemoryEditSave = useCallback(async (index: number) => {
+        if (!teamMember) return;
+        const trimmed = editingMemoryText.trim();
+        if (!trimmed) { setMemoryError('Memory entry cannot be empty.'); return; }
+        if (trimmed === memoryEntries[index]) { handleMemoryEditCancel(); return; }
+        const next = memoryEntries.map((e, i) => (i === index ? trimmed : e));
+        setMemorySavingIndex(index);
+        setMemoryError(null);
+        try {
+            await updateTeamMember(teamMember.id, projectId, { memory: next });
+            setMemoryEntries(next);
+            setEditingMemoryIndex(null);
+            setEditingMemoryText('');
+        } catch (e) {
+            setMemoryError(e instanceof Error ? e.message : 'Failed to update memory entry.');
+        } finally {
+            setMemorySavingIndex(null);
+        }
+    }, [teamMember, editingMemoryText, memoryEntries, projectId, updateTeamMember, handleMemoryEditCancel]);
+
+    const handleMemoryDelete = useCallback(async (index: number) => {
+        if (!teamMember) return;
+        const next = memoryEntries.filter((_, i) => i !== index);
+        setMemorySavingIndex(index);
+        setMemoryError(null);
+        try {
+            await updateTeamMember(teamMember.id, projectId, { memory: next });
+            setMemoryEntries(next);
+            if (editingMemoryIndex === index) { setEditingMemoryIndex(null); setEditingMemoryText(''); }
+        } catch (e) {
+            setMemoryError(e instanceof Error ? e.message : 'Failed to delete memory entry.');
+        } finally {
+            setMemorySavingIndex(null);
+        }
+    }, [teamMember, memoryEntries, projectId, updateTeamMember, editingMemoryIndex]);
+
     const launchConfig = useMemo(
         () => createLaunchConfigFromLegacy(agentTool, model, undefined, permissionMode) || null,
         [agentTool, model, permissionMode],
@@ -904,36 +966,6 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                         )}
                     </div>
 
-                    {/* Memory (edit mode only) */}
-                    {isEditMode && (
-                        <div className="pn-fld">
-                            <span className="pn-flabel">
-                                Memory
-                                <span className="pn-mtab__n">{memoryEntries.length} {memoryEntries.length === 1 ? 'entry' : 'entries'}</span>
-                            </span>
-                            <div style={{ border: '1px solid var(--pn-line)', borderRadius: 'var(--pn-r-sm)', background: 'var(--pn-surface)', padding: 10 }}>
-                                {memoryEntries.length > 0 ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                        {memoryEntries.map((entry, i) => (
-                                            <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, lineHeight: 1.5 }}>
-                                                <span style={{ fontFamily: 'var(--pn-mono)', color: 'var(--pn-ink-4)', flexShrink: 0 }}>{i + 1}</span>
-                                                <span style={{ color: 'var(--pn-ink-2)' }}>{entry}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="pn-fhint">No memory entries yet. Memory is managed by the agent via CLI.</div>
-                                )}
-                                <div className="pn-fhint" style={{ marginTop: 8 }}>
-                                    Use{' '}
-                                    <code style={{ fontFamily: 'var(--pn-mono)', fontSize: '10px', padding: '1px 4px', background: 'var(--pn-brand-soft)', border: '1px solid var(--pn-line-2)', borderRadius: 3 }}>
-                                        maestro team-member memory append
-                                    </code>{' '}
-                                    to add entries
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 {/* ── Tab Bar ───────────────────────────────────────── */}
@@ -945,6 +977,16 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                     >
                         <Icon name="shield" /> Capabilities
                     </button>
+                    {isEditMode && (
+                        <button
+                            type="button"
+                            className={`pn-mtab ${activeTab === 'memory' ? 'pn-mtab--active' : ''}`}
+                            onClick={() => toggleTab('memory')}
+                        >
+                            <Icon name="doc" /> Memory
+                            {memoryEntries.length > 0 && <span className="pn-mtab__n">{memoryEntries.length}</span>}
+                        </button>
+                    )}
                     <button
                         type="button"
                         className={`pn-mtab ${activeTab === 'skills' ? 'pn-mtab--active' : ''}`}
@@ -1095,6 +1137,72 @@ export function TeamMemberModal({ isOpen, onClose, projectId, teamMember }: Team
                                 </div>
                                 )}
                             </>
+                        )}
+
+                        {activeTab === 'memory' && (
+                            <div className="pn-fld">
+                                <span className="pn-flabel">
+                                    Memory
+                                    <span className="pn-mtab__n">{memoryEntries.length} {memoryEntries.length === 1 ? 'entry' : 'entries'}</span>
+                                </span>
+                                <div className="pn-fhint" style={{ marginBottom: 8 }}>
+                                    Persistent notes the agent remembers across sessions. Edit or remove entries individually.
+                                </div>
+                                {memoryError && (
+                                    <div className="pn-fhint" style={{ color: 'var(--pn-danger, #d64545)', marginBottom: 8 }}>{memoryError}</div>
+                                )}
+                                {memoryEntries.length > 0 ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        {memoryEntries.map((entry, i) => {
+                                            const isEditing = editingMemoryIndex === i;
+                                            const isRowSaving = memorySavingIndex === i;
+                                            return (
+                                                <div
+                                                    key={i}
+                                                    style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '8px 10px', border: '1px solid var(--pn-line)', borderRadius: 'var(--pn-r-sm)', background: 'var(--pn-surface)' }}
+                                                >
+                                                    <span style={{ fontFamily: 'var(--pn-mono)', fontSize: 11, color: 'var(--pn-ink-4)', flexShrink: 0, lineHeight: '22px' }}>{i + 1}</span>
+                                                    {isEditing ? (
+                                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                            <textarea
+                                                                className="pn-textarea"
+                                                                style={{ minHeight: 56, resize: 'vertical', fontSize: 12 }}
+                                                                value={editingMemoryText}
+                                                                autoFocus
+                                                                maxLength={500}
+                                                                disabled={isRowSaving}
+                                                                onChange={(e) => setEditingMemoryText(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleMemoryEditSave(i); }
+                                                                    else if (e.key === 'Escape') { e.preventDefault(); handleMemoryEditCancel(); }
+                                                                }}
+                                                            />
+                                                            <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                                                <button type="button" className="pn-btn pn-btn--ghost" style={{ fontSize: 11, padding: '3px 10px' }} disabled={isRowSaving} onClick={handleMemoryEditCancel}>Cancel</button>
+                                                                <button type="button" className="pn-btn pn-btn--primary" style={{ fontSize: 11, padding: '3px 10px' }} disabled={isRowSaving || !editingMemoryText.trim()} onClick={() => handleMemoryEditSave(i)}>{isRowSaving ? 'Saving…' : 'Save'}</button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <span style={{ flex: 1, color: 'var(--pn-ink-2)', fontSize: 12, lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{entry}</span>
+                                                            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                                                                <button type="button" className="pn-btn pn-btn--ghost" style={{ padding: 4 }} title="Edit entry" aria-label="Edit memory entry" disabled={isRowSaving} onClick={() => handleMemoryEditStart(i)}>
+                                                                    <Icon name="pen" size={13} />
+                                                                </button>
+                                                                <button type="button" className="pn-btn pn-btn--ghost" style={{ padding: 4 }} title="Delete entry" aria-label="Delete memory entry" disabled={isRowSaving} onClick={() => handleMemoryDelete(i)}>
+                                                                    <Icon name="trash" size={13} />
+                                                                </button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="pn-fhint">No memory entries yet. Entries are added by the agent via <code style={{ fontFamily: 'var(--pn-mono)', fontSize: '10px', padding: '1px 4px', background: 'var(--pn-brand-soft)', border: '1px solid var(--pn-line-2)', borderRadius: 3 }}>maestro team-member memory append</code>.</div>
+                                )}
+                            </div>
                         )}
 
                         {activeTab === 'skills' && (

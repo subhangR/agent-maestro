@@ -108,6 +108,8 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -233,6 +235,8 @@ Good pattern:
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
@@ -355,6 +359,8 @@ Good pattern:
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
@@ -508,6 +514,8 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -648,6 +656,8 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -790,6 +800,8 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -932,6 +944,8 @@ Report progress at important milestones and escalate blockers promptly using mae
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -1053,6 +1067,8 @@ Good pattern:
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
@@ -1171,6 +1187,8 @@ Good pattern:
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro team {list|get|create|edit|delete|archive|unarchive|add-member|remove-member|add-sub-team|remove-sub-team|tree} - Team management
     maestro show {modal} - UI display
@@ -1320,6 +1338,8 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -1456,6 +1476,8 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -1594,6 +1616,8 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction
@@ -1732,6 +1756,8 @@ exports[`prompt-composer > identity-kernel v2 matrix > renders mode=worker scena
     maestro team-member {create|list|get|edit|archive|unarchive|delete|reset|update-identity} - Team member management
     maestro team-member memory append <teamMemberId> --entry "<text to remember>" - Append an entry to team member memory
     maestro team-member memory list <teamMemberId> - List team member memory entries
+    maestro team-member memory edit <teamMemberId> <index> --entry "<new text>" - Edit a single team member memory entry in place
+    maestro team-member memory remove <teamMemberId> <index> - Remove a single team member memory entry
     maestro team-member memory clear <teamMemberId> - Clear team member memory
     maestro show {modal} - UI display
     maestro modal {events} - Modal interaction

@@ -119,6 +119,8 @@ const COMMAND_DEFINITIONS: Array<Omit<CommandCatalogEntry, 'syntax'>> = [
   { id: 'team-member:update-identity', description: 'Update own identity/persona (self-awareness)', group: 'team-member', allowedModes: ALL_MODES },
   { id: 'team-member:memory:append', description: 'Append an entry to team member memory', group: 'team-member', allowedModes: ALL_MODES },
   { id: 'team-member:memory:list', description: 'List team member memory entries', group: 'team-member', allowedModes: ALL_MODES },
+  { id: 'team-member:memory:edit', description: 'Edit a single team member memory entry in place', group: 'team-member', allowedModes: ALL_MODES },
+  { id: 'team-member:memory:remove', description: 'Remove a single team member memory entry', group: 'team-member', allowedModes: ALL_MODES },
   { id: 'team-member:memory:clear', description: 'Clear team member memory', group: 'team-member', allowedModes: ALL_MODES },
 
   // Team commands
@@ -248,6 +250,8 @@ const COMMAND_SYNTAX_MAP: Record<string, string> = {
   'team-member:update-identity': 'maestro team-member update-identity <teamMemberId> --identity "<new instructions>"',
   'team-member:memory:append': 'maestro team-member memory append <teamMemberId> --entry "<text to remember>"',
   'team-member:memory:list': 'maestro team-member memory list <teamMemberId>',
+  'team-member:memory:edit': 'maestro team-member memory edit <teamMemberId> <index> --entry "<new text>"',
+  'team-member:memory:remove': 'maestro team-member memory remove <teamMemberId> <index>',
   'team-member:memory:clear': 'maestro team-member memory clear <teamMemberId>',
 
   // Team commands

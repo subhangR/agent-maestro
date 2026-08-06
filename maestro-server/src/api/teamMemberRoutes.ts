@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { TeamMemberService } from '../application/services/TeamMemberService';
 import { handleRouteError } from './middleware/errorHandler';
-import { validateBody, validateParams, validateQuery, idParamSchema, createTeamMemberSchema, updateTeamMemberSchema, paginationQuerySchema, extractPagination, paginate } from './validation';
+import { validateBody, validateParams, validateQuery, idParamSchema, createTeamMemberSchema, updateTeamMemberSchema, memoryEntryParamSchema, editMemoryEntrySchema, paginationQuerySchema, extractPagination, paginate } from './validation';
 
 /**
  * Create team member routes using the TeamMemberService.
@@ -205,6 +205,48 @@ export function createTeamMemberRoutes(teamMemberService: TeamMemberService) {
       }
 
       const member = await teamMemberService.appendMemory(projectId, id, validEntries);
+      res.json(member);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  /**
+   * PATCH /team-members/:id/memory/:index
+   * Edit a single memory entry in place, addressed by its 0-based index.
+   */
+  router.patch('/team-members/:id/memory/:index', validateParams(memoryEntryParamSchema), validateBody(editMemoryEntrySchema), async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const index = Number(req.params.index);
+      const { projectId, entry } = req.body;
+
+      const member = await teamMemberService.editMemoryEntry(projectId, id, index, entry);
+      res.json(member);
+    } catch (err: unknown) {
+      handleRouteError(err, res);
+    }
+  });
+
+  /**
+   * DELETE /team-members/:id/memory/:index?projectId=X
+   * Remove a single memory entry, addressed by its 0-based index.
+   */
+  router.delete('/team-members/:id/memory/:index', validateParams(memoryEntryParamSchema), async (req: Request, res: Response) => {
+    try {
+      const id = req.params.id as string;
+      const index = Number(req.params.index);
+      const projectId = req.query.projectId as string;
+
+      if (!projectId) {
+        return res.status(400).json({
+          error: true,
+          message: 'projectId query parameter is required',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+
+      const member = await teamMemberService.removeMemoryEntry(projectId, id, index);
       res.json(member);
     } catch (err: unknown) {
       handleRouteError(err, res);
