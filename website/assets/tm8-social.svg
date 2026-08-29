@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">TM8 — Human control for multi-agent work</title>
+  <desc id="desc">A warm editorial graphic connecting a human decision to coordinated AI teammates</desc>
+  <rect width="1200" height="630" fill="#f3f0e7"/>
+  <circle cx="1050" cy="35" r="340" fill="#e7efe9"/>
+  <circle cx="1020" cy="53" r="250" fill="none" stroke="#15392e" stroke-opacity=".12" stroke-width="2"/>
+  <circle cx="1020" cy="53" r="160" fill="none" stroke="#15392e" stroke-opacity=".12" stroke-width="2"/>
+  <g transform="translate(72 66)">
+    <rect width="66" height="66" rx="20" fill="#15392e"/>
+    <path d="M33 32.7c-8.3 0-14.1-4.4-14.1-10.1 0-5.8 5.8-10.1 14.1-10.1s14.1 4.3 14.1 10.1c0 5.7-5.8 10.1-14.1 10.1Zm0-5.7c5 0 8-1.8 8-4.4 0-2.7-3-4.5-8-4.5s-8 1.8-8 4.5c0 2.6 3 4.4 8 4.4Z" fill="#fffdf7"/>
+    <path d="M33 53.5c-9.6 0-16.2-5-16.2-11.7 0-6.6 6.6-11.5 16.2-11.5s16.2 4.9 16.2 11.5c0 6.7-6.6 11.7-16.2 11.7Zm0-6c5.9 0 9.6-2.3 9.6-5.7s-3.7-5.6-9.6-5.6-9.6 2.2-9.6 5.6 3.7 5.7 9.6 5.7Z" fill="#ec6b4c"/>
+    <circle cx="50" cy="15" r="4.6" fill="#efbc4e" stroke="#15392e" stroke-width="2.5"/>
+    <text x="82" y="49" fill="#17221d" font-family="Avenir Next,Segoe UI,sans-serif" font-size="43" font-weight="800" letter-spacing="-3">tm8</text>
+  </g>
+  <text x="72" y="260" fill="#17221d" font-family="Avenir Next,Segoe UI,sans-serif" font-size="74" font-weight="650" letter-spacing="-5">Every agent in motion.</text>
+  <text x="72" y="342" fill="#c94f34" font-family="Avenir Next,Segoe UI,sans-serif" font-size="74" font-weight="600" letter-spacing="-5">Every decision in view.</text>
+  <text x="76" y="410" fill="#405047" font-family="Avenir Next,Segoe UI,sans-serif" font-size="24">The multi-agent meta-harness for visible, governable work.</text>
+  <g transform="translate(720 438)">
+    <path d="M74 26H194M194 26h120M314 26h120" fill="none" stroke="#17221d" stroke-opacity=".28" stroke-width="2"/>
+    <circle cx="44" cy="26" r="26" fill="#17221d"/>
+    <text x="44" y="34" fill="#fffdf7" text-anchor="middle" font-family="Avenir Next,Segoe UI,sans-serif" font-size="20" font-weight="800">Y</text>
+    <rect x="170" width="52" height="52" rx="16" fill="#ec6b4c"/>
+    <text x="196" y="34" fill="#fffdf7" text-anchor="middle" font-family="Avenir Next,Segoe UI,sans-serif" font-size="18" font-weight="800">P</text>
+    <rect x="290" width="52" height="52" rx="16" fill="#5579e8"/>
+    <text x="316" y="34" fill="#fffdf7" text-anchor="middle" font-family="Avenir Next,Segoe UI,sans-serif" font-size="18" font-weight="800">R</text>
+    <rect x="410" width="52" height="52" rx="16" fill="#efbc4e"/>
+    <text x="436" y="34" fill="#17221d" text-anchor="middle" font-family="Avenir Next,Segoe UI,sans-serif" font-size="18" font-weight="800">W</text>
+  </g>
+  <text x="74" y="566" fill="#69736d" font-family="SFMono-Regular,Consolas,monospace" font-size="15" font-weight="700" letter-spacing="2">ONE GRAPH · REAL TEAMMATES · ON THE RECORD</text>
+</svg>

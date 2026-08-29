@@ -1,8 +1,0 @@
-{
-  "$schema": "./site.schema.json",
-  "schemaVersion": 1,
-  "productName": "Maestro",
-  "eyebrow": "Local-first agent orchestration",
-  "heroDescription": "Maestro turns parallel coding sessions into a team you can actually read. You plan the work and hand it to Claude, Codex, or Gemini; then you watch what each one changes instead of babysitting a wall of terminals.",
-  "installCommand": "git clone https://github.com/subhangR/agent-maestro.git && cd agent-maestro && bun install && bun run dev:all"
-}

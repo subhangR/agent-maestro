@@ -1,0 +1,17 @@
+{
+  "name": "tm8 — The multi-agent meta-harness",
+  "short_name": "tm8",
+  "description": "The multi-agent meta-harness for coordinated, visible, human-governed work.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3f0e7",
+  "theme_color": "#15392e",
+  "icons": [
+    {
+      "src": "assets/tm8-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

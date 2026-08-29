@@ -1,0 +1,1510 @@
+{
+  "sourceRef": "84cbc7c071d339db887ee2a4832fd9d9e349388d",
+  "generatedAt": "2026-08-29",
+  "plateCount": 55,
+  "chapterCount": 10,
+  "chapters": [
+    {
+      "id": "0",
+      "number": "00",
+      "eyebrow": "Orientation",
+      "title": "What tm8 does",
+      "summary": "One conversation, one graph, and the three shapes that hold the work."
+    },
+    {
+      "id": "1",
+      "number": "01",
+      "eyebrow": "Arrival",
+      "title": "Getting going",
+      "summary": "Install, claim, diagnose, and invite another person in."
+    },
+    {
+      "id": "2",
+      "number": "02",
+      "eyebrow": "Foundation",
+      "title": "The graph",
+      "summary": "Entities, connections, collections, and the rules that keep them coherent."
+    },
+    {
+      "id": "3",
+      "number": "03",
+      "eyebrow": "Agency",
+      "title": "Teammates & sessions",
+      "summary": "Who works, where execution lives, and how identity carries through."
+    },
+    {
+      "id": "4",
+      "number": "04",
+      "eyebrow": "Practice",
+      "title": "Work",
+      "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+    },
+    {
+      "id": "5",
+      "number": "05",
+      "eyebrow": "Orchestration",
+      "title": "Coordination",
+      "summary": "Messages, handoffs, attention, and durable team awareness."
+    },
+    {
+      "id": "6",
+      "number": "06",
+      "eyebrow": "Depth",
+      "title": "Memory, loops & spells",
+      "summary": "Long-lived context and repeatable operating patterns."
+    },
+    {
+      "id": "7",
+      "number": "07",
+      "eyebrow": "Making",
+      "title": "Craft",
+      "summary": "Designing and publishing graphs as living entities."
+    },
+    {
+      "id": "8",
+      "number": "08",
+      "eyebrow": "Together",
+      "title": "Collaboration",
+      "summary": "Working across humans, teammates, sessions, and shared spaces."
+    },
+    {
+      "id": "A",
+      "number": "A",
+      "eyebrow": "Under the hood",
+      "title": "How tm8 is built",
+      "summary": "The catalog, the terminal stream, and the identities allowed to act."
+    }
+  ],
+  "plates": [
+    {
+      "number": 1,
+      "slug": "one-conversation-one-graph",
+      "title": "One conversation, one graph",
+      "lede": "A request becomes durable work while you watch. Drive the five-frame record: the thread and the graph are two views of the same tm8 run.",
+      "section": "0",
+      "provenance": {
+        "artifactId": "01a01e1d-1c94-7bb1-8574-9bc28ffa0458",
+        "revision": 1,
+        "sourceTaskId": "01a01e09-2f19-75b8-8194-413eae441083",
+        "sha256": "23152ce67d69950c947549e126f7dc1541f595ee2ecbd3c1827164ca9194b59c",
+        "bytes": 57181
+      },
+      "chapter": {
+        "id": "0",
+        "number": "00",
+        "eyebrow": "Orientation",
+        "title": "What tm8 does",
+        "summary": "One conversation, one graph, and the three shapes that hold the work."
+      },
+      "capability": "A request becomes a task, a live work session joins it, context attaches, and the worker reply becomes another message in the same entity graph.",
+      "interaction": "Five-frame Play / Step / keyboard-scrubbable replay; synchronized task-thread and graph views; animated entity and edge arrivals.",
+      "claim": "One request becomes durable, inspectable work—conversation and graph are two views of one run.",
+      "risk": "The Space connector is a shared-space projection, not a registered edge. The displayed Northlake record is harvested evidence, but the public derivative should not expose real-looking ids as customer data.",
+      "captured": "One conversation, one graph"
+    },
+    {
+      "number": 2,
+      "slug": "three-shapes-of-the-same-thing",
+      "title": "Three shapes of the same thing",
+      "lede": "A tm8 Server does not change its nature when its address changes. Drive the switch to see one node unfold, become a shared hub, then join named routes to other complete nodes.",
+      "section": "A",
+      "provenance": {
+        "artifactId": "01a01e1b-da8e-769a-8b0e-2a096d41e68c",
+        "revision": 3,
+        "sourceTaskId": "01a01e09-2f16-744f-813d-b602351888df",
+        "sha256": "f5c01d7fb62060ce71fcb89d654b58fd7dfabe25f504b0585c87ce315924f8f7",
+        "bytes": 55579
+      },
+      "chapter": {
+        "id": "A",
+        "number": "A",
+        "eyebrow": "Under the hood",
+        "title": "How tm8 is built",
+        "summary": "The catalog, the terminal stream, and the identities allowed to act."
+      },
+      "capability": "The same Server can run locally, as a shared hub, or behind named routes to several complete nodes; CLI, UI, PTY, Postgres, members, and teammates retain their roles.",
+      "interaction": "Solo / Hub / Connected tabs, keyboard selection, clickable component explanations, and an SVG topology transition.",
+      "claim": "Start local, share a hub, or address several tm8 nodes without changing the core system.",
+      "risk": "Named routes are not replication or graph transfer. `bridge` is reserved and has no public command; never imply cross-node synchronization.",
+      "captured": null
+    },
+    {
+      "number": 3,
+      "slug": "one-catalog-three-doors",
+      "title": "One catalog, three doors",
+      "lede": "Choose an action, then enter through CLI, UI, or Chat. You will watch the surface-specific gesture become one catalog operation, one graph transaction, and one durable event.",
+      "section": "A",
+      "provenance": {
+        "artifactId": "01a01e1b-0da4-7e42-a0e1-8f779a918960",
+        "revision": 4,
+        "sourceTaskId": "01a01e09-2f16-744d-b40f-91a177997114",
+        "sha256": "247e2515295a2f397c2801e9c227181758d32c750616218e682340648e95f0a2",
+        "bytes": 52779
+      },
+      "chapter": {
+        "id": "A",
+        "number": "A",
+        "eyebrow": "Under the hood",
+        "title": "How tm8 is built",
+        "summary": "The catalog, the terminal stream, and the identities allowed to act."
+      },
+      "capability": "CLI, UI, and Chat gestures resolve to one operation-catalog entry, one authorized graph mutation, and one durable event.",
+      "interaction": "Action and surface selectors, live-shaped UI form, six-phase Play / Step / scrub replay, plus input/output toggle.",
+      "claim": "Three doors—CLI, UI, and Chat—operate on the same graph and durable operation catalog.",
+      "risk": "Chat includes an interpreter hop; CLI is not a live subscribed view. Response examples are representative fields with exact shapes, not a production capture for every path.",
+      "captured": null
+    },
+    {
+      "number": 4,
+      "slug": "a-real-terminal-streamed",
+      "title": "A real terminal, streamed",
+      "lede": "An agent is a real process in a server-hosted terminal. Drive the recorded sequence to see the same ordered bytes arrive in the browser — no copied transcript, no second execution.",
+      "section": "A",
+      "provenance": {
+        "artifactId": "01a01e35-542e-7d65-a2bc-0e2bb60dd21e",
+        "revision": 3,
+        "sourceTaskId": "01a01e2c-941e-7284-91fe-40f881f23692",
+        "sha256": "633e0e198670c56815642facd5ba3a5ab2d771e074fbc178fb71e04da043410e",
+        "bytes": 56739
+      },
+      "chapter": {
+        "id": "A",
+        "number": "A",
+        "eyebrow": "Under the hood",
+        "title": "How tm8 is built",
+        "summary": "The catalog, the terminal stream, and the identities allowed to act."
+      },
+      "capability": "A work session is a real process in a server-hosted PTY; the browser receives and decodes the same ordered byte stream with reconnect offsets.",
+      "interaction": "Eight-frame Play / Step / Restart / scrub replay comparing source PTY and browser terminal byte ranges.",
+      "claim": "Agents run as real processes; the browser watches the real terminal stream, not a copied transcript or second execution.",
+      "risk": "The replay uses captured CLI text cut at teaching-friendly line boundaries; real WebSocket frames may split elsewhere. PTY replay bytes are not graph-event history.",
+      "captured": null
+    },
+    {
+      "number": 5,
+      "slug": "who-gets-to-act",
+      "title": "Who gets to act",
+      "lede": "A Server begins with one claim, admits people by invitation, and gives a running session exactly one teammate identity. Drive the ledger to see each actor enter the graph.",
+      "section": "A",
+      "provenance": {
+        "artifactId": "01a01e38-9a40-72c1-be4e-12471a12e395",
+        "revision": 3,
+        "sourceTaskId": "01a01e2c-93ea-750d-96c2-a2efb479e461",
+        "sha256": "37824c7d583ceba27f5d30b855a6ca6f8a16bdf000118602560c9b16707b5ec1",
+        "bytes": 54903
+      },
+      "chapter": {
+        "id": "A",
+        "number": "A",
+        "eyebrow": "Under the hood",
+        "title": "How tm8 is built",
+        "summary": "The catalog, the terminal stream, and the identities allowed to act."
+      },
+      "capability": "One-time node claim preserves the existing owner identity; invitations admit scoped members; a running session acts as exactly one durable teammate identity.",
+      "interaction": "Claim / Invite / Session panels, token rotation and invite-redeem controls, plus a six-stage Play-once / Back / Next / scrub actor ledger.",
+      "claim": "Every person and agent enters deliberately, with explicit identity and bounded authority.",
+      "risk": "Northlake actors and tokens are illustrative. Remote password transport requires TLS; invitations cannot grant node admin or ownership.",
+      "captured": null
+    },
+    {
+      "number": 6,
+      "slug": "from-zero-to-claimed",
+      "title": "From zero to claimed",
+      "lede": "Drive one representative Linux service install from a fresh checkout to a claimed tm8 node. The terminal carries source-shaped output; the plate beside it shows what each line makes true.",
+      "section": "1",
+      "provenance": {
+        "artifactId": "01a01e3c-810c-79b0-8049-8e82799d4007",
+        "revision": 3,
+        "sourceTaskId": "01a01e2c-93f0-7ad2-b0d9-88c6a1e2a229",
+        "sha256": "ba953249d210979be74372d7dd0298f9b1568ee9cfb00f124255c7df563ed6f1",
+        "bytes": 64778
+      },
+      "chapter": {
+        "id": "1",
+        "number": "01",
+        "eyebrow": "Arrival",
+        "title": "Getting going",
+        "summary": "Install, claim, diagnose, and invite another person in."
+      },
+      "capability": "A representative Linux install checks prerequisites, provisions Postgres, builds server and UI, migrates, verifies heartbeat, starts service, issues a claim token, and claims the existing owner.",
+      "interaction": "Ten-step Play / Step / scrub terminal-and-system-diagram replay.",
+      "claim": "Go from a fresh checkout to a verified, claimed tm8 node with the server, database, UI, and starting roster in place.",
+      "risk": "Source-shaped representative Linux output—not a recording from the visitor’s machine. Avoid “works everywhere in one click” language.",
+      "captured": null
+    },
+    {
+      "number": 7,
+      "slug": "the-doctors-office",
+      "title": "The doctor’s office",
+      "lede": "tm8 doctor asks eight concrete questions before you trust a node. Replay the healthy examination, then open any drawer to see the failure tm8 reports and the repair it prescribes.",
+      "section": "1",
+      "provenance": {
+        "artifactId": "01a01e36-59ac-7444-b243-a04ce7fa4068",
+        "revision": 2,
+        "sourceTaskId": "01a01e2c-940d-7bdf-a176-1229d492bbee",
+        "sha256": "074c439a966b483648a54d0d8d2d885bbc3ee8032f4d8de292cff385e22fbcfb",
+        "bytes": 62924
+      },
+      "chapter": {
+        "id": "1",
+        "number": "01",
+        "eyebrow": "Arrival",
+        "title": "Getting going",
+        "summary": "Install, claim, diagnose, and invite another person in."
+      },
+      "capability": "`tm8 doctor` checks two agent CLIs, authenticated Postgres, migrations, Git, checkout, data-directory writability, and an identified tm8 heartbeat, then prescribes repairs.",
+      "interaction": "Healthy-pass replay and eight keyboard-accessible diagnostic drawers that expose the failure and repair for each check.",
+      "claim": "Eight concrete checks tell you whether a node is trustworthy—and what to repair when it is not.",
+      "risk": "This static replay does not inspect the viewer’s machine. It records a known environment-file gap and must not be presented as a browser-run diagnostic.",
+      "captured": null
+    },
+    {
+      "number": 8,
+      "slug": "the-invite",
+      "title": "The invite",
+      "lede": "One person mints a bearer code; another chooses the browser or CLI. Drive the exchange and watch exactly where the password, membership, and authority boundaries hold.",
+      "section": "1",
+      "provenance": {
+        "artifactId": "01a01e37-da00-7d21-b4a2-cf420a4faf5f",
+        "revision": 3,
+        "sourceTaskId": "01a01e2c-9422-744b-a5f6-46101ccd4a93",
+        "sha256": "d3ea28c48da622a21f38ec84a59b2ef03f06ea9ff92c3852c4636e41009378fb",
+        "bytes": 66190
+      },
+      "chapter": {
+        "id": "1",
+        "number": "01",
+        "eyebrow": "Arrival",
+        "title": "Getting going",
+        "summary": "Install, claim, diagnose, and invite another person in."
+      },
+      "capability": "An operator mints a bearer invite; the invitee previews the Space and joins through browser or CLI in one account/membership/sign-in transaction using a self-chosen password.",
+      "interaction": "Browser / CLI path switch, mint and join controls, plus five-frame Play / Step / scrub exchange.",
+      "claim": "Invite people without handling their password or handing out owner-level authority.",
+      "risk": "tm8 does not deliver the invite code; users must carry it safely and deploy remote flows over TLS. A Space invite may grant only its scoped Space role.",
+      "captured": null
+    },
+    {
+      "number": 9,
+      "slug": "the-graph-assembling",
+      "title": "The graph, assembling",
+      "lede": "Begin with an empty Space. Add five ordinary things. Watch a working context appear—one truthful link at a time.",
+      "section": "2",
+      "provenance": {
+        "artifactId": "01a01e7c-e494-7d50-90d3-2e1084d4a25d",
+        "revision": 2,
+        "sourceTaskId": "01a01e73-a6d0-76db-9f9c-878fca837f7d",
+        "sha256": "3912369f323c520204cdb2dcd6ab871fecc87f5d4b6291134690473f8b28fd44",
+        "bytes": 49228
+      },
+      "chapter": {
+        "id": "2",
+        "number": "02",
+        "eyebrow": "Foundation",
+        "title": "The graph",
+        "summary": "Entities, connections, collections, and the rules that keep them coherent."
+      },
+      "capability": "A Space gains a task, attached document, assigned teammate, working session, and anchored message through ordinary registered edges.",
+      "interaction": "Six-frame Play / Step / scrub graph assembly, clickable nodes, animated SVG edge drawing, keyboard and focus handling.",
+      "claim": "Build context one truthful entity and relationship at a time—no private context bundle to reconcile.",
+      "risk": "A Space is the authorization/event boundary, not a normal edge. Teammate and session remain separate nouns.",
+      "captured": null
+    },
+    {
+      "number": 10,
+      "slug": "an-agent-builds-its-context",
+      "title": "An agent builds its context",
+      "lede": "A task is only the first card. Drive the reading lens across its hierarchy and edges; watch the useful neighborhood gather into a bounded folio before the agent begins.",
+      "section": "2",
+      "provenance": {
+        "artifactId": "01a01e7e-3f55-72a1-baf9-bfeaf1ac50d6",
+        "revision": 3,
+        "sourceTaskId": "01a01e73-a68e-71eb-908e-f3e2f94de680",
+        "sha256": "769a584450b85d250b54c2dfff1ce2256e2f692a020e18228c8686043006a576",
+        "bytes": 113518
+      },
+      "chapter": {
+        "id": "2",
+        "number": "02",
+        "eyebrow": "Foundation",
+        "title": "The graph",
+        "summary": "Entities, connections, collections, and the rules that keep them coherent."
+      },
+      "capability": "A bounded context read starts at a task, traverses hierarchy and registered edges, marks inferences separately, and assembles a launch folio before work.",
+      "interaction": "Seven-frame context-lens Play / Step / scrub replay; the vendored document also contains the Help foundation’s two extra demo steppers and component playground.",
+      "claim": "Agents begin with a bounded, connected neighborhood of relevant work—not a blind task card or an unbounded dump.",
+      "risk": "Dashed structural relationships are inference, never stored edges; full-text search is unavailable. The plate accidentally includes a large design-foundation annex, so record only the opening context instrument.",
+      "captured": null
+    },
+    {
+      "number": 11,
+      "slug": "build-one",
+      "title": "Build one",
+      "lede": "The shared design layer every tm8 Help artifact is built on. This page is the spec and the living demo at once: every token, component, convention and motion rule below is rendered by the same foundation block you will copy into your artifact. Read it once; a fresh session with no other context should produce work indistinguishable in style from the rest of the fleet.",
+      "section": "2",
+      "provenance": {
+        "artifactId": "01a01e7a-f2da-76b5-bff0-a8d09421daa0",
+        "revision": 2,
+        "sourceTaskId": "01a01e73-a6cb-79f5-b5a9-8e14f52ab0f2",
+        "sha256": "6850b2f7e6027712e4fe9536a9c10b2633fb66672ec291ea31c619d46d28a598",
+        "bytes": 110583
+      },
+      "chapter": {
+        "id": "2",
+        "number": "02",
+        "eyebrow": "Foundation",
+        "title": "The graph",
+        "summary": "Entities, connections, collections, and the rules that keep them coherent."
+      },
+      "capability": "Users can compose graph nodes from registered kinds, position them, connect only legal source/target pairs, and optionally express hierarchy.",
+      "interaction": "Hands-on graph press with kind selector, Add / Remove / Reset, pointer dragging, legal-edge selection, and “Nest source under target”; foundation demo controls are also embedded.",
+      "claim": "Model work directly as typed entities, legal relationships, and hierarchy.",
+      "risk": "Document defect: two H1s and a prefixed design-foundation document. The registry lede is the foundation lede, not the intended “Make a small graph…” lede; do not reuse that shelf excerpt as marketing copy.",
+      "captured": null
+    },
+    {
+      "number": 12,
+      "slug": "shelves-not-folders",
+      "title": "Shelves, not folders",
+      "lede": "A collection gathers different kinds without moving or copying them. Drive the press once: assemble a shelf, slide the kind lens across it, then remove one membership without touching the entity.",
+      "section": "2",
+      "provenance": {
+        "artifactId": "01a01e7c-deec-768a-bb32-219256635c2e",
+        "revision": 2,
+        "sourceTaskId": "01a01e73-a6f0-758a-930f-e96dbbdebbdc",
+        "sha256": "a8230f33ccf4ceaeb02498a5dbd6e673225eac1f27642e9221d6083296c5c2c0",
+        "bytes": 62265
+      },
+      "chapter": {
+        "id": "2",
+        "number": "02",
+        "eyebrow": "Foundation",
+        "title": "The graph",
+        "summary": "Entities, connections, collections, and the rules that keep them coherent."
+      },
+      "capability": "Collections gather heterogeneous entities through membership edges; they can subdivide or curate other collections without moving or copying members.",
+      "interaction": "Eight-frame Play / Step / scrub shelf assembly; remove/restore membership demonstration and an expandable nesting explanation.",
+      "claim": "Organize work as flexible shelves, not folders—membership changes without moving or deleting the underlying entity.",
+      "risk": "A collection cannot contain itself; re-adding repositions its one membership edge rather than duplicating it.",
+      "captured": null
+    },
+    {
+      "number": 13,
+      "slug": "anatomy-of-a-teammate",
+      "title": "Anatomy of a teammate",
+      "lede": "A teammate is a durable team_member entity: identity outside, a mission inside, and one catalog model underneath. Change the model and tm8 stays tm8.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e8f-3367-72c8-8f40-3374c3bc47f0",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-52bf-7292-8f8a-5a865ea6028f",
+        "sha256": "513374380908e03da7ecb63288ad474169a6b0ce1af80afc6de0b0eccb4a5cf7",
+        "bytes": 59746
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "A teammate is a durable `team_member` with identity/mission, a catalog model, provider tool, graph edges, and the same teammate operations even when its mission is blank.",
+      "interaction": "Mission-present / blank comparison, model selector, and four-frame Play / Step / scrub anatomy replay.",
+      "claim": "Teammates are durable, model-agnostic identities—not disposable prompts or running processes.",
+      "risk": "There is no teammate-list CLI verb in this plate’s truth floor; the Settings credential store is built but spawn did not read it at publish time. Any model list is time-sensitive.",
+      "captured": null
+    },
+    {
+      "number": 14,
+      "slug": "a-teammate-equipped",
+      "title": "A teammate, equipped",
+      "lede": "A teammate is the durable identity. Its equipped skills become instructions in the next session’s launch manifest—so you can compose who works with how they work.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e95-b1ed-7f2f-8284-4468c792c7f7",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-560b-799e-bb26-5ba0608fe98f",
+        "sha256": "8b09200184eb8d7721ecf8b23a4d5ec83af181e3145ace1174df917b11426c98",
+        "bytes": 64655
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "`equips` attaches skills to a durable teammate and resolves them into the next session launch manifest; ordinary attachments remain context, not skills.",
+      "interaction": "Selectable skill/spell/doc/file cards, four-frame Play / Step / Reset / scrub launch preview, and Start preview session.",
+      "claim": "Compose who works with how they work by equipping reusable skills on durable teammates.",
+      "risk": "The preview writes nothing. Instructions are not authority; equipping does not change access or tools. Spell injection/casting is explicitly not wired.",
+      "captured": null
+    },
+    {
+      "number": 15,
+      "slug": "what-a-teammate-remembers",
+      "title": "What a teammate remembers",
+      "lede": "A teammate carries a durable working set through remembers edges. At spawn, you can add one-session memory with --memory; memories the task remembers arrive automatically after the persona working set.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e8e-462a-7f63-bd40-a8206d41b418",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-5983-7307-825c-fcd56264a707",
+        "sha256": "c1830e07ff5e330dec8847a6a902ec045e6bf44e1f2848e57980eeab79fb36de",
+        "bytes": 59561
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "Persona `remembers` edges, task memories, and session-only `--memory` inputs assemble into a defined working-set order at spawn.",
+      "interaction": "Five-frame Play / Step / scrub context assembly and “what it means / does not mean” switch.",
+      "claim": "Give teammates and tasks durable memory, while borrowing extra context for one run when needed.",
+      "risk": "`--memory` writes no graph edge; `remembers` associates context but does not certify truth or make it universal.",
+      "captured": null
+    },
+    {
+      "number": 16,
+      "slug": "the-house-teammates",
+      "title": "The house teammates",
+      "lede": "A Space begins with a small house roster: nine blank starting points, one per catalog model, plus two keepers with narrow jobs. Pick a name, then change the launch posture to see what belongs to the teammate—and what belongs only to its session.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e90-a360-75b0-ba43-806e8053a60d",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-5e5d-7932-acb7-f0255d00e967",
+        "sha256": "3afaa327f92874c22134488c40598cf79e107db6fae2d0f6a57ec497400f2626",
+        "bytes": 109572
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "A new Space seeds nine blank model teammates and two narrow keepers: Dispatcher routes work and Dreamer tends memory; launch mode belongs to sessions, not the teammate identity.",
+      "interaction": "Selectable house directory, worker/coordinator mode controls, and posture explanation; the vendored file also contains foundation demo steppers.",
+      "claim": "Begin with a ready bench of model choices plus dedicated routing and memory keepers.",
+      "risk": "The exact nine-model catalog is date-sensitive. Recruiter is ghost ink / not built. The file carries a duplicated foundation annex; do not record it as part of the product roster story.",
+      "captured": null
+    },
+    {
+      "number": 17,
+      "slug": "spawning",
+      "title": "Spawning",
+      "lede": "A teammate is who; a session is now. Drive a launch manifest through the one spawn path and see the real process that comes out.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e91-966d-7704-bbae-7514e9eb65f0",
+        "revision": 2,
+        "sourceTaskId": "01a01e7f-628c-7e47-a181-6aa4c0c8fd1a",
+        "sha256": "b36b52d82d50f672100ab1d3663059170fdfe8c3f3f7fa77d993f952077913ff",
+        "bytes": 62174
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "One launch manifest composes teammate, task, ordered memories, untrusted context, Server-computed workdir, mode, and access posture into a real server-hosted process.",
+      "interaction": "Clickable launch-tray inputs and ten-frame Play / Step / scrub spawn sequence.",
+      "claim": "Launch a real agent session from a transparent, inspectable manifest.",
+      "risk": "Session-only memory writes nothing; `--context` is untrusted material. At publish time machine-agent CLI auth was used and the in-product Settings credential store was not read by spawn.",
+      "captured": "Spawning"
+    },
+    {
+      "number": 18,
+      "slug": "the-life-of-a-session",
+      "title": "The life of a session",
+      "lede": "A teammate is durable; a session is one running instance of it. Drive this timeline from spawn to exit, then watch resume relaunch the same conversation.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e8e-767b-7e39-9048-0fc5ab4da99b",
+        "revision": 2,
+        "sourceTaskId": "01a01e7f-6640-780d-9c1d-8c253265181e",
+        "sha256": "ec87887349f4bbf5113e317e0a0e45948a2546d2317fab183c0ed838c31c62f3",
+        "bytes": 66439
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "A session can spawn, gain an isolated worktree, accumulate provider-native transcript turns, checkpoint WIP, exit, and resume the exact provider conversation.",
+      "interaction": "Eight lifecycle-stage selectors plus Play / Step / scrub timeline and synchronized terminal/ledger panels.",
+      "claim": "Sessions have a legible lifecycle—and can resume the same conversation after the process exits.",
+      "risk": "Resume is exact or refused: some tools may lack resume-by-id or a Codex rollout may be unavailable. Transcript is not terminal paint; displayed identifiers are illustrative.",
+      "captured": null
+    },
+    {
+      "number": 19,
+      "slug": "the-four-questions",
+      "title": "The four questions",
+      "lede": "A session is a real process, but no single field tells you its whole story. Ask four separate questions to learn whether it is alive, what it said, what it was told, and what tm8 commands it ran.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e9d-1b7f-73c6-82f0-49ba8d6d2d68",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-69b4-7072-8429-de5ccdc6fb9e",
+        "sha256": "230a5ffeba57b9ffad9b704a0d97a79f127ee85648c7974b6acc56d7df5896c8",
+        "bytes": 47441
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "Four distinct reads answer liveness, native transcript, captured launch manifest, and tm8 command journal; attach can observe or, for the spawning owner, drive the PTY.",
+      "interaction": "Four question cards, keyboard selection, View / Drive mode, and animated answer panel.",
+      "claim": "Inspect whether a session is alive, what it said, what it received, and which tm8 operations it ran—without conflating those records.",
+      "risk": "Journal is tm8 CLI crossings, not shell history or token spend. Tool arguments/output are absent from transcript. Drive authority is restricted.",
+      "captured": null
+    },
+    {
+      "number": 20,
+      "slug": "allowed-and-how-hard-to-think",
+      "title": "Allowed, and how hard to think",
+      "lede": "A session launch has two separate controls: its access posture and its reasoning effort. Set both, then drive the child-spawn sequence to see the one inheritance rule tm8 promises.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e8f-2cbe-72e9-b7ba-2d9869427056",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-6e7c-761d-a779-c3eb6370ef66",
+        "sha256": "042984fb410c3206ea8d4702b5016af533d831838d366908ac1dee838e574189",
+        "bytes": 104954
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "Launch access posture and model reasoning effort are independent controls; a child session inherits access only when its own access flag is omitted.",
+      "interaction": "Access and effort selectors with a four-frame Play / Step / scrub parent/child sequence; foundation demo players are also embedded.",
+      "claim": "Set what a session may do separately from how hard its model should reason.",
+      "risk": "Reasoning-effort inheritance is not promised and must not be claimed. Document `<title>` is incorrectly “Design foundation,” and a large foundation annex is appended.",
+      "captured": null
+    },
+    {
+      "number": 21,
+      "slug": "where-the-session-works",
+      "title": "Where the session works",
+      "lede": "Choose the ground under a session, then drive an isolated lane from --base-ref to a safe resting state. The server computes every path; you choose only the intent.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e98-4cb9-743e-a5c4-9d78107bc190",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-7301-781e-8fed-1a11a7494c77",
+        "sha256": "29f56772329f59fcf6dd2ca6ae4d42e43febdc628c4e4d578d4a3c885ed09192",
+        "bytes": 69096
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "Sessions can use a shared project checkout, a server-owned scratch desk, or an isolated worktree; base ref, checkpoint, rollback, and worktree evidence remain Server-governed.",
+      "interaction": "Three work-ground tabs and six-frame Play / Step / scrub isolated-lane sequence with animated graph/worktree linework.",
+      "claim": "Give every run the right ground—from shared checkout to an isolated, checkpointable lane.",
+      "risk": "A child does not inherit its parent’s launch project unless explicit. Reconciliation repairs allocation evidence but never infers merged/abandoned meaning.",
+      "captured": null
+    },
+    {
+      "number": 22,
+      "slug": "dispatch",
+      "title": "Dispatch",
+      "lede": "Give tm8 the work before you know who should take it. The space’s Dispatcher routes the entity, prepares the context, and records its reason; it does not do the work.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e8e-c5ae-768d-b331-b6deb6eb665d",
+        "revision": 2,
+        "sourceTaskId": "01a01e7f-7628-74ca-9cf5-91ed7e2cdac4",
+        "sha256": "b8a55a3f3ceadf13dbf47fdf744a769e1bb1e04eae97db0b67366c761c4cddec",
+        "bytes": 57238
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "Dispatch stores a request, lets the Space Dispatcher select an existing teammate and relevant memories, spawns or reuses a worker session, and records its reason.",
+      "interaction": "Six-frame Play routing / Next / scrub replay and command input/output toggle.",
+      "claim": "Hand tm8 the work before you know who should take it; keep the route and reason visible.",
+      "risk": "The command response acknowledges routing to Dispatcher—not a completed choice or started task. Dispatcher routes and explains; it never performs the work.",
+      "captured": null
+    },
+    {
+      "number": 23,
+      "slug": "the-dreamers-sweep",
+      "title": "The Dreamer’s sweep",
+      "lede": "Dreamer is a seeded teammate with an enabled every 1d loop. Each sweep marks suspect memories from pinned evidence, then consolidates the working set without erasing its history.",
+      "section": "3",
+      "provenance": {
+        "artifactId": "01a01e93-0b41-7704-bcf7-d83aa10217f2",
+        "revision": 1,
+        "sourceTaskId": "01a01e7f-799d-7213-857b-cd7d95504893",
+        "sha256": "6b8d13658be74aba476e6017a877ec1eb66859d78b066fea10bc184e46394921",
+        "bytes": 111841
+      },
+      "chapter": {
+        "id": "3",
+        "number": "03",
+        "eyebrow": "Agency",
+        "title": "Teammates & sessions",
+        "summary": "Who works, where execution lives, and how identity carries through."
+      },
+      "capability": "Dreamer’s scheduled sweep first marks evidence-backed disputes, then creates consolidated successors and moves active working-set edges without erasing history.",
+      "interaction": "MARK / CONSOLIDATE phase controls and six-frame Play / Step / scrub graph evolution; foundation demos are appended.",
+      "claim": "Memory maintenance stays evidence-backed and append-only instead of silently rewriting history.",
+      "risk": "A dispute requires evidence-shaped properties and pinned versions. The file includes a large foundation annex; isolate the opening sweep for any derivative.",
+      "captured": null
+    },
+    {
+      "number": 24,
+      "slug": "one-task-many-hands",
+      "title": "One task, many hands",
+      "lede": "A human and two agents work through different surfaces. Watch one task id and one version line move beneath all three—there are no private copies to reconcile.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01eac-b969-7761-b77b-f5b8c44f7430",
+        "revision": 3,
+        "sourceTaskId": "01a01ea4-0491-7e06-a863-29b384bd79fc",
+        "sha256": "de9454056be99d72b057454d12a0872bdfd7502a0f27c1db96026459b69b949f",
+        "bytes": 63574
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "A human and two agent sessions read and mutate one versioned task through different surfaces; shared status, acceptance, assignees, and relationships remain one object.",
+      "interaction": "Acceptance toggle, transition and context-read actions, plus four-frame Play / Step / scrub multi-surface sequence.",
+      "claim": "Humans and agents work on one shared task—no private copies to reconcile.",
+      "risk": "Northlake names are fictional. The plate follows the current kind/status/category/workflow model and deliberately does not teach retired task axes; `done` is guarded.",
+      "captured": "One task, many hands"
+    },
+    {
+      "number": 25,
+      "slug": "four-categories-your-words",
+      "title": "Four categories, your words",
+      "lede": "You name the statuses. Your workflow chooses the columns. Underneath, four categories keep every entity legible to tm8.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01eae-3fea-7511-b21f-ed7d7fc74655",
+        "revision": 3,
+        "sourceTaskId": "01a01ea4-08bc-7176-9bc9-336c63066fa2",
+        "sha256": "fe3787407526ee64cd77baf3bb980b7979c738808ce22c5e6d1c983929f15047",
+        "bytes": 71532
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "Teams name statuses and workflows while every status maps to one of four canonical categories: `to_do`, `in_progress`, `done`, or `cancelled`.",
+      "interaction": "Editable workflow/status workshop, category moves, birth-state and add/remove controls, plus four-frame Play / Step / scrub board proof.",
+      "claim": "Use your team’s words while tm8 preserves four stable meanings across workflows and views.",
+      "risk": "There is no fifth category; a workflow has one `to_do` birth state. The plate notes older deployed builds may still expose pre-workflow task axes.",
+      "captured": null
+    },
+    {
+      "number": 26,
+      "slug": "the-road-to-done",
+      "title": "The road to done",
+      "lede": "A transition moves work. Completion proves it is finished. Drive one task through three honest refusals, then let it earn done.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01eac-0818-7910-9aea-09cea53cb59b",
+        "revision": 3,
+        "sourceTaskId": "01a01ea4-0d61-70a5-89b6-3faeaf14683f",
+        "sha256": "1f48587465a92f10322509fa03308f5ab84df1da35f27051e44c4e6df767517e",
+        "bytes": 61609
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "Task transition changes ordinary work state; task completion separately enforces acceptance, optimistic version, optional PR gate, completion actor, terminal status, and durable receipts.",
+      "interaction": "Four gate selectors and eight-frame Play / Step / scrub sequence through three refusals and earned completion.",
+      "claim": "TM8 refuses premature “done” and records the proof when work earns completion.",
+      "risk": "The PR gate is optional and conditional. Only `task complete` may write `done`; avoid suggesting a generic status transition bypasses gates.",
+      "captured": null
+    },
+    {
+      "number": 27,
+      "slug": "same-work-three-views",
+      "title": "Same work, three views",
+      "lede": "Tree, board, and graph do not make copies. Change the projection and watch the same task entities move—their identity, work state, assignees, and relationships stay put.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01ead-c351-7bee-b0a7-c73c467487cb",
+        "revision": 2,
+        "sourceTaskId": "01a01ea4-1096-7bf1-9baa-05bc1472ebe4",
+        "sha256": "c16a87344102e9bfabfae28dceade17f41d7bed9b063e455defb7f38503e5ac7",
+        "bytes": 54043
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "Tree, board, and graph are projections of the same task entities; identity, state, assignees, and relationships persist as the visual arrangement changes.",
+      "interaction": "Tree / Board / Graph tabs, one-shot SVG motion, clickable task details, and expandable proof panel.",
+      "claim": "Switch views without copying or fragmenting the work.",
+      "risk": "Views do not mutate the entity contract; visual movement is projection only.",
+      "captured": null
+    },
+    {
+      "number": 28,
+      "slug": "assigned-by-name",
+      "title": "Assigned, by name",
+      "lede": "A task can name several people before anyone starts a session. Drive the handoff ledger to see durable assignment history stay put while the live worker changes.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01eac-376b-77cc-ae88-ae6a41d333a1",
+        "revision": 1,
+        "sourceTaskId": "01a01ea4-1402-7129-890b-4c4d577c4fd4",
+        "sha256": "16dfc3c8418ac1f867461622d29d786bd2a5a787abfb115f7ab368b72d59a6ef",
+        "bytes": 103252
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "Tasks retain a durable many-person assignment ledger while a separate live-session badge identifies who is actively working now; work can start directly or through Dispatcher.",
+      "interaction": "Six-frame Play / Step / scrub handoff ledger, assignment/live-state toggle, and foundation demo controls.",
+      "claim": "Know who owns the work over time—and who is actually running it now.",
+      "risk": "Document defect: duplicate H1 and appended design foundation. Assignment is durable intent, not proof that a named person has a live session.",
+      "captured": null
+    },
+    {
+      "number": 29,
+      "slug": "the-discussion-lives-on-the-task",
+      "title": "The discussion lives on the task",
+      "lede": "A tm8 task is not followed by a disposable chat room. The task is the conversational place: every turn becomes a durable message entity anchored back to it.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01eac-febc-7091-9d51-990784529f38",
+        "revision": 1,
+        "sourceTaskId": "01a01ea4-179c-7a72-b627-261f83216fde",
+        "sha256": "1ca08c71a23794f2a910fd5f4c6e7131f0e260dfb3401e5bd86cbf98f84a6d20",
+        "bytes": 63085
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "Every task turn is a versioned message entity anchored to the task; replies and graph projections grow around one stable task address.",
+      "interaction": "Five-frame Play / Step / scrub thread-to-graph replay, selectable messages/edges, and command input/output toggle.",
+      "claim": "Keep the discussion on the work itself—not in a disposable side chat.",
+      "risk": "The shared Northlake ids are fictional. Adding messages changes durable graph state but does not create a task axis or silently transition status.",
+      "captured": null
+    },
+    {
+      "number": 30,
+      "slug": "humans-and-agents-one-thread",
+      "title": "Humans and agents, one thread",
+      "lede": "Follow one task discussion as two members and one teammate speak under their own identities. The task keeps the thread; a live session carries each new human message into the agent’s next turn.",
+      "section": "4",
+      "provenance": {
+        "artifactId": "01a01eb0-862a-7ba6-9c14-98bc58fcb69d",
+        "revision": 3,
+        "sourceTaskId": "01a01ea4-1b4b-7b05-9325-5f185b8187d7",
+        "sha256": "34f2f62a00aa6150c8c16e51f9d6e0f4445cdf246e9df8fd573798cea2d3969c",
+        "bytes": 62269
+      },
+      "chapter": {
+        "id": "4",
+        "number": "04",
+        "eyebrow": "Practice",
+        "title": "Work",
+        "summary": "Tasks, projects, plans, launches, and delivery from one shared record."
+      },
+      "capability": "Human task messages route to every live session working on that task; agent answers return under teammate identity while human and agent counters remain distinct.",
+      "interaction": "Five-frame Play / Step / scrub task-thread, delivery, and reply replay.",
+      "claim": "Humans and agents share one durable thread without losing who said what.",
+      "risk": "Exited or unrelated live sessions do not receive the turn. Delivery is separate from persistence, and messaging never silently changes task status.",
+      "captured": null
+    },
+    {
+      "number": 31,
+      "slug": "the-wave",
+      "title": "The wave",
+      "lede": "A coordinator turns one large task into three isolated lanes. Drive the replay to see tasks, sessions, worktrees, messages, a blocker, a sibling reply, and one report move through the same graph.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01ed9-7f8a-7705-8662-4633bb0bffb7",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-613b-7877-b7b4-2dc6a2b173aa",
+        "sha256": "ca3344bec9c5151f098b86820a355d13e3aa0a005e0156d5b30a99631147b576",
+        "bytes": 62433
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "A coordinator decomposes a parent task into three child tasks, spawns isolated workers/worktrees, assigns through task messages, handles a blocker and sibling reply, then fans results into one parent report.",
+      "interaction": "Ten named beat selectors plus Play / Step / keyboard scrub; animated graph, task, worktree, terminal, message, blocker, and fan-in states.",
+      "claim": "Turn one brief into a coordinated wave of isolated agents—with blockers, questions, and results kept in one legible graph.",
+      "risk": "The replay is a faithful representative coordination trace, not a guarantee every plan auto-decomposes. Message bodies are untrusted material; structural author and route are authoritative.",
+      "captured": "The wave"
+    },
+    {
+      "number": 32,
+      "slug": "every-entity-is-a-place-to-talk",
+      "title": "Every entity is a place to talk",
+      "lede": "Put the discussion on the thing it is about. A result can live on a task, doc, session, or any other entity; replies stay beside the message they answer.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01ede-3b82-7f01-94e7-520f557a2764",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-687b-790d-ab43-bf775a138de8",
+        "sha256": "62c0f5b480b194584b68ec758d3e3c0a311cf30ad2f63ec3ab84aa1354b8b761",
+        "bytes": 56899
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Tasks, docs, sessions, and any other entities can anchor messages; replies derive the correct anchor, root, and parent from the source message.",
+      "interaction": "Entity destination selector and four-frame Play / Step / scrub anchoring/reply replay.",
+      "claim": "Every entity is a place to talk—put decisions beside the thing they concern.",
+      "risk": "Northlake ids are mock data. “Every entity” refers to graph-message anchoring, not an identical UI or schema for every kind.",
+      "captured": null
+    },
+    {
+      "number": 33,
+      "slug": "a-message-becomes-the-next-turn",
+      "title": "A message becomes the next turn",
+      "lede": "Send a durable message to a running session and watch the same stored record arrive inside its terminal as the agent’s next turn. The agent’s answer returns as a reply to the source message.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01ee0-ed4c-7f77-94eb-617e8837c9c7",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-6d0f-72e2-9eee-02cbee5efba5",
+        "sha256": "ed3b2c14e6623fcda5e734ebd4a42f6e684551e6181777a47057731616b21d28",
+        "bytes": 57043
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "A message to a live work-session id is persisted first, delivered as a bounded next-turn envelope, and answered through the source message’s derived reply route.",
+      "interaction": "Six beat selectors, Play once / Next beat / range scrubbing, thread and PTY synchronization.",
+      "claim": "Send a durable message into a running agent’s next turn—and get the answer back in the right thread.",
+      "risk": "Persistence and PTY delivery are separate; no duplicate message is created. Authored body remains untrusted data and cannot grant authority.",
+      "captured": null
+    },
+    {
+      "number": 34,
+      "slug": "one-session-many-voices",
+      "title": "One session, many voices",
+      "lede": "Mara, Theo, Callisto, and Dreamer all address the same running session. Juniper receives each message as a separate next turn and replies through that message’s own thread, while one session keeps one growing conversation history.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01eda-3f41-7b3b-a21f-326488021126",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-72ec-7cb2-ae22-3eb6f23ed260",
+        "sha256": "aacd71bd383ed55045934cd2125a939b5231e4c7641150895424aed63a656d31",
+        "bytes": 67571
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Several humans and teammates can independently message one running session; every message becomes a separate turn and each reply returns to its own source thread while native session history grows.",
+      "interaction": "Four selectable sender cards and nine-frame Play / Step / scrub switchboard.",
+      "claim": "Many voices can steer one running teammate without losing identity, thread, or conversation continuity.",
+      "risk": "There is no ambient “last sender” route; reply must use the delivered message id. One running mind does not become four sessions.",
+      "captured": null
+    },
+    {
+      "number": 35,
+      "slug": "different-tools-same-citizens",
+      "title": "Different tools, same citizens",
+      "lede": "A claude-code session and a codex session do not need a private bridge. Give one the other’s session ID and they can talk through the graph.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01ed7-1fc7-7545-8f4e-8f011d29afcc",
+        "revision": 2,
+        "sourceTaskId": "01a01ebe-76b2-74ce-9f46-a0855c1d5278",
+        "sha256": "388431695b1c4ff4f4f260b802dcc9186354088d14aaf1458089dadf6cea98af",
+        "bytes": 49163
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Claude Code and Codex work sessions share the same graph messaging contract and can address one another by session id.",
+      "interaction": "Copy-session-id and Back controls with a static, keyboard-friendly cross-tool handoff explanation.",
+      "claim": "Different agent tools remain first-class citizens of the same team and graph.",
+      "risk": "Names and ids are fictional. The message body cannot claim authorship; graph identity supplies it.",
+      "captured": null
+    },
+    {
+      "number": 36,
+      "slug": "human-or-agent-on-the-record",
+      "title": "Human or agent, on the record",
+      "lede": "A message does not merely look human or agent-authored. tm8 records who wrote it, where it belongs, and which parts an agent may trust as control.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01eda-737c-76cf-9182-df9ee6eca46e",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-7a4d-7228-8ec7-85c905813603",
+        "sha256": "82fe3ee9b710acd7ba318bc39d72c7873f8c30107a2e113ed54301592e769a23",
+        "bytes": 49890
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Messages store structural author kind/id, anchor and thread coordinates separately from user- or agent-authored content.",
+      "interaction": "Member / teammate author switch and five-layer Play / Next / scrub record inspection.",
+      "claim": "Human or agent, every contribution stays attributable and on the record.",
+      "risk": "Untrusted means material to act on, not content that may grant permission or rewrite trusted control; do not market this as ignoring user content.",
+      "captured": null
+    },
+    {
+      "number": 37,
+      "slug": "recursive-by-construction",
+      "title": "Recursive by construction",
+      "lede": "A coordinator can launch another coordinator, which can launch coordinated workers. Drive the lattice outward to see how a small set of launch modes composes into many organizational shapes.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01ed6-d63c-78ec-bc15-4ca2a846f790",
+        "revision": 4,
+        "sourceTaskId": "01a01ebe-7e26-76c4-955d-77ce254d32c0",
+        "sha256": "6323e2ff88bd76b262b2dc88db5a756e0969f18cb9ed119290866b57df37d483",
+        "bytes": 61609
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Coordinator and coordinated-worker launch modes compose recursively into two-level, wide-fan, and deep-branch organizations while identity and launch boundaries remain explicit.",
+      "interaction": "Shape tabs and four-frame Play / Step / scrub animated SVG lattice.",
+      "claim": "Compose recursive teams from a small set of transparent launch modes.",
+      "risk": "The plate teaches coordination shape, not session lifecycle. Authored material at every tier remains untrusted and does not gain launch authority.",
+      "captured": null
+    },
+    {
+      "number": 38,
+      "slug": "the-dispatcher",
+      "title": "The Dispatcher",
+      "lede": "You know the work needs doing, but not who should do it. Dispatch turns that uncertainty into a visible route: an existing teammate, the memories they need, a fresh work session, and a reason recorded on the task.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a02007-9145-79c1-a773-cdc68ff29652",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-81e4-7120-8f00-fb1052022e8b",
+        "sha256": "bfb6e13612667fbd4ef6d82407d2e206d72de9e1834f1806a5b8d09d462e69ea",
+        "bytes": 49697
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Dispatcher accepts a small task-centered request, inspects routed context and memory fit, reuses an existing teammate, spawns a fresh worker session, and records the choice and reason.",
+      "interaction": "Seven-frame Play route / Step / scrub replay plus command input/output toggle.",
+      "claim": "See why work was routed, which specialist was reused, what context followed, and which session started.",
+      "risk": "Dispatcher never does the work, and dispatch cannot guarantee that a suitable teammate exists.",
+      "captured": null
+    },
+    {
+      "number": 39,
+      "slug": "the-dreamer",
+      "title": "The Dreamer",
+      "lede": "Memories are useful because they enter future sessions. That is also why stale or contradictory memories can quietly poison every session that follows.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01f50-eccf-7f8f-8d48-c62b126c7a8a",
+        "revision": 2,
+        "sourceTaskId": "01a01ebe-871a-7144-8d75-93b40b54911b",
+        "sha256": "e23df2ea21d99a706356c29ed99a758843e8e0e887da82caddd8d8e9ce0a0dbe",
+        "bytes": 64911
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Dreamer exposes the cost of stale injected memory, requires evidence-bearing disputes, creates append-only successors, and moves the active working-set head without deleting predecessors.",
+      "interaction": "Append-only rule test plus four-frame Play / Next / scrub memory-chain replay.",
+      "claim": "Keep long-lived agent memory useful without erasing how it changed.",
+      "risk": "A dispute source must be a message or memory with pinned evidence. Do not claim autonomous truth determination beyond those evidence rules.",
+      "captured": null
+    },
+    {
+      "number": 40,
+      "slug": "ten-pipelines",
+      "title": "Ten pipelines",
+      "lede": "Pick a shape, then drive its messages one step at a time. Each setup shows who acts, where durable work lands, and the prompt language that keeps the handoffs legible.",
+      "section": "5",
+      "provenance": {
+        "artifactId": "01a01edb-5b7f-7345-a48a-7b9f65834248",
+        "revision": 1,
+        "sourceTaskId": "01a01ebe-8b54-781b-a75d-48a0b0c2ecd2",
+        "sha256": "46d865ee8c92463579b46cb33da1ba305b2bb6e0bb14f2ef54dc30fdb9b92223",
+        "bytes": 60637
+      },
+      "chapter": {
+        "id": "5",
+        "number": "05",
+        "eyebrow": "Orchestration",
+        "title": "Coordination",
+        "summary": "Messages, handoffs, attention, and durable team awareness."
+      },
+      "capability": "Ten representative coordination shapes reuse session spawn, task/session messages, threaded replies, bounded handoffs, and dispatch.",
+      "interaction": "Pipeline picker, four-frame Play / Step / scrub route, and Prompt language / Graph receipt toggle.",
+      "claim": "Use the same small verb surface for fan-out, review, ping-pong, routing, recursion, cross-tool checks, and human gates.",
+      "risk": "The ten are representative operating patterns with placeholder ids—not ten one-click workflow products or guarantees of automatic orchestration.",
+      "captured": null
+    },
+    {
+      "number": 41,
+      "slug": "memory-rides-along",
+      "title": "Memory rides along",
+      "lede": "Pin what a teammate or task must remember. When that entity enters a session, its memory arrives in context before the work begins.",
+      "section": "6",
+      "provenance": {
+        "artifactId": "01a0200b-dd9b-71b4-a063-8719b651942e",
+        "revision": 1,
+        "sourceTaskId": "01a02001-ef77-7516-9883-4c6957f94408",
+        "sha256": "b78b295c7416db8de29fec7f257304d642b19ca790a89fbe993423f0cb5b6922",
+        "bytes": 104840
+      },
+      "chapter": {
+        "id": "6",
+        "number": "06",
+        "eyebrow": "Depth",
+        "title": "Memory, loops & spells",
+        "summary": "Long-lived context and repeatable operating patterns."
+      },
+      "capability": "Teammate and task memories enter spawn context before work; comparing two runs shows remembered context preventing a repeated failure while one-session loans write nothing.",
+      "interaction": "Five-frame Play / Next / scrub two-run comparison; additional foundation demo steppers appear later in the file.",
+      "claim": "Memory rides into the next run so agents can avoid repeating known failures.",
+      "risk": "Document defect: duplicate H1 and appended design foundation. The memory edge supplies context, not truth; spell runtime shown in the annex remains ghost ink.",
+      "captured": "Memory rides along"
+    },
+    {
+      "number": 42,
+      "slug": "never-erased",
+      "title": "Never erased",
+      "lede": "Drive one repair through an append-only memory graph. Evidence disputes a wrong claim; one consolidated memory supersedes three overlaps; their durable remembers edges move without deleting the past.",
+      "section": "6",
+      "provenance": {
+        "artifactId": "01a02009-03a5-7919-91ee-04382b9c01ab",
+        "revision": 1,
+        "sourceTaskId": "01a02001-f3e5-7781-8324-be7543b14b63",
+        "sha256": "c0da952b8d5103c492a7974070543c0df6137e62bd6725fe73fcdaaadab44e9f",
+        "bytes": 55105
+      },
+      "chapter": {
+        "id": "6",
+        "number": "06",
+        "eyebrow": "Depth",
+        "title": "Memory, loops & spells",
+        "summary": "Long-lived context and repeatable operating patterns."
+      },
+      "capability": "Evidence disputes a wrong memory, one successor supersedes overlapping records, and active `remembers` edges move to the new head while predecessors remain inspectable.",
+      "interaction": "Six-frame Play / Step / scrub append-only repair and evidence-inspector replay.",
+      "claim": "Correct memory without erasing the record.",
+      "risk": "Memory, remembers, disputes, and supersedes are shipped graph vocabulary; spell casting and hooks are not.",
+      "captured": null
+    },
+    {
+      "number": 43,
+      "slug": "the-keepers-revisited",
+      "title": "The keepers, revisited",
+      "lede": "Memory work happens around the working agent, not inside its critical path. Drive one passage from spawn time to off-hours and watch Dispatcher and Dreamer divide the work.",
+      "section": "6",
+      "provenance": {
+        "artifactId": "01a0200f-2040-798e-95d5-cf6679f3afaf",
+        "revision": 1,
+        "sourceTaskId": "01a02001-f9db-7b19-b47e-6c230efd4dec",
+        "sha256": "7b2859f3205f0df445b959d3d58467224b4628d419cebb4ba9d46ac67e355837",
+        "bytes": 41934
+      },
+      "chapter": {
+        "id": "6",
+        "number": "06",
+        "eyebrow": "Depth",
+        "title": "Memory, loops & spells",
+        "summary": "Long-lived context and repeatable operating patterns."
+      },
+      "capability": "Dispatcher chooses/injects relevant context at spawn while Dreamer performs asynchronous evidence marking and consolidation off the working agent’s critical path.",
+      "interaction": "Six-frame Play passage / Step / Reset / scrub keeper handoff.",
+      "claim": "Keep memory selection and gardening around the work—not hidden inside the agent’s critical path.",
+      "risk": "Event-triggered hook injection is explicitly designed, not shipped. Keep the public story to current spawn-time and scheduled maintenance behavior.",
+      "captured": null
+    },
+    {
+      "number": 44,
+      "slug": "the-metronome",
+      "title": "The metronome",
+      "lede": "A loop keeps time in the graph. Drive five firings, then open any triggered_by edge: the fan itself is the run history.",
+      "section": "6",
+      "provenance": {
+        "artifactId": "01a0200e-9c45-73f2-ab51-be436fe6f7d6",
+        "revision": 1,
+        "sourceTaskId": "01a02001-ff12-7889-90c9-3a474aa1c1c5",
+        "sha256": "1a0aadb1b70180bfdc14528254d054a446f2552417df3a0d625d61093c471948",
+        "bytes": 48397
+      },
+      "chapter": {
+        "id": "6",
+        "number": "06",
+        "eyebrow": "Depth",
+        "title": "Memory, loops & spells",
+        "summary": "Long-lived context and repeatable operating patterns."
+      },
+      "capability": "A loop entity schedules repeated work sessions and records every run as a `triggered_by` edge, so the graph fan is the execution history.",
+      "interaction": "Five clickable run edges, Fire next beat, and six-position range; animated session fan with reduced-motion support.",
+      "claim": "Make recurring work inspectable: every scheduled run leaves a graph receipt.",
+      "risk": "This is loop scheduling and run history—not spell casting. Soft-deleting a loop stops future firings; no separate log table is implied.",
+      "captured": null
+    },
+    {
+      "number": 45,
+      "slug": "casting-a-spell",
+      "title": "Casting a spell",
+      "lede": "Follow one spell from a graph entity into a session’s working set. Then cross the ink line and inspect the intended cast without mistaking it for shipped behavior.",
+      "section": "6",
+      "provenance": {
+        "artifactId": "01a02009-6075-7f8e-a1a3-39ae2f37b9be",
+        "revision": 2,
+        "sourceTaskId": "01a02002-0459-70f6-9704-75df2c877b93",
+        "sha256": "cf99a423bec849a3a73e8534e534999d97d6d5c1fde748df2843d099186c8186",
+        "bytes": 55293
+      },
+      "chapter": {
+        "id": "6",
+        "number": "06",
+        "eyebrow": "Depth",
+        "title": "Memory, loops & spells",
+        "summary": "Long-lived context and repeatable operating patterns."
+      },
+      "capability": "Spell entities and `equips` / `pulled` graph plumbing can place reusable instruction material in a working set; the plate visibly separates that from a designed future hook/casting runtime.",
+      "interaction": "Five-frame Play / Step / scrub shipped-vs-future boundary plus input/output toggle.",
+      "claim": "Model reusable operating instructions as durable graph entities today.",
+      "risk": "Do not claim automated spell casting, hooks, GitHub-event firing, or session injection: the plate says none of that runtime ships.",
+      "captured": null
+    },
+    {
+      "number": 46,
+      "slug": "sketch-to-reality",
+      "title": "Sketch to reality",
+      "lede": "A Craft blueprint is a graph entity you can edit without changing the world. Approval lands in that graph’s thread; then agents materialize its specs as real entities and edges, with links back to the plan.",
+      "section": "7",
+      "provenance": {
+        "artifactId": "01a0202d-94b9-7b30-93b8-2c930a85ce8d",
+        "revision": 2,
+        "sourceTaskId": "01a02024-f90e-7bc4-a823-b9ca9e67de6e",
+        "sha256": "46a5f5a5168dff5104ef4ad3c917f5f593b9ccf9ddd6fb8d1204595b16cdbc54",
+        "bytes": 109563
+      },
+      "chapter": {
+        "id": "7",
+        "number": "07",
+        "eyebrow": "Making",
+        "title": "Craft",
+        "summary": "Designing and publishing graphs as living entities."
+      },
+      "capability": "A Craft blueprint is an editable graph entity with ref/spec nodes; approval is a durable message, then agents create real entities/edges and attach the results back to the plan.",
+      "interaction": "Clickable blueprint/result nodes and six-frame Play / Step / scrub handoff; foundation demos are appended.",
+      "claim": "Sketch work safely, approve it on the record, then let agents materialize the plan into the same graph.",
+      "risk": "Document defect: duplicate H1 and appended foundation. The server persists agent mutations but does not secretly execute blueprints; approval edge types were registered but inert in v1.",
+      "captured": null
+    },
+    {
+      "number": 47,
+      "slug": "many-hands-on-one-blueprint",
+      "title": "Many hands on one blueprint",
+      "lede": "Drive one plan from sketch to a coordinated wave: two real teammate sessions work its nodes at once while an orchestrator steers the same shared graph.",
+      "section": "7",
+      "provenance": {
+        "artifactId": "01a0202e-7c89-709f-ba90-0c43db4b3d45",
+        "revision": 3,
+        "sourceTaskId": "01a02024-f933-760b-a39a-66afe322832e",
+        "sha256": "23a50cf80c8e4b8dc6b268d12c4eae6e4e6d2311ee8a9d07b12862a12f428aaa",
+        "bytes": 55641
+      },
+      "chapter": {
+        "id": "7",
+        "number": "07",
+        "eyebrow": "Making",
+        "title": "Craft",
+        "summary": "Designing and publishing graphs as living entities."
+      },
+      "capability": "An orchestrator steers one shared blueprint while two teammate sessions materialize independent nodes in parallel and retain links to the plan.",
+      "interaction": "Six-frame Play / Next / scrub coordinated blueprint wave.",
+      "claim": "Put many agents on one approved blueprint without splitting the source of truth.",
+      "risk": "Materialization is agent-driven and follows approval; the server does not walk or execute the blueprint automatically.",
+      "captured": "Many hands on one blueprint"
+    },
+    {
+      "number": 48,
+      "slug": "ref-or-spec",
+      "title": "Ref or spec",
+      "lede": "A blueprint has two ways to name a node. Decide whether you are pointing at something that exists or sketching something that should be born.",
+      "section": "7",
+      "provenance": {
+        "artifactId": "01a0202b-9e45-7946-9868-e49503760a4e",
+        "revision": 2,
+        "sourceTaskId": "01a02024-f8c7-710e-bfd3-32ad2fc43cad",
+        "sha256": "b7bf688e2620092836fa40691d54772add418d5ac9865e5601df549cdd28d6ff",
+        "bytes": 43475
+      },
+      "chapter": {
+        "id": "7",
+        "number": "07",
+        "eyebrow": "Making",
+        "title": "Craft",
+        "summary": "Designing and publishing graphs as living entities."
+      },
+      "capability": "Blueprint nodes are either refs to existing graph entities or lean specs for entities that should be created later.",
+      "interaction": "Static decision press with existing/not-existing and full-body/lean-hint choices; no timed animation.",
+      "claim": "Point to what exists; sketch only what should be born.",
+      "risk": "A spec is not yet a task and should remain lean. Craft does not create a hidden execution system.",
+      "captured": null
+    },
+    {
+      "number": 49,
+      "slug": "the-plan-stays-attached",
+      "title": "The plan stays attached",
+      "lede": "A task can finish without losing the blueprint that called for it. Replay one materialization wave and inspect the durable trail before, during, and after work.",
+      "section": "7",
+      "provenance": {
+        "artifactId": "01a02036-5755-7ef9-865a-93bd20f6ef25",
+        "revision": 1,
+        "sourceTaskId": "01a02024-f8d2-7ce9-899c-157ea979a7b0",
+        "sha256": "95a8821f9de533ab40121f0026b78bc0e6f3e85b947606a541e6c83ba81a6316",
+        "bytes": 49249
+      },
+      "chapter": {
+        "id": "7",
+        "number": "07",
+        "eyebrow": "Making",
+        "title": "Craft",
+        "summary": "Designing and publishing graphs as living entities."
+      },
+      "capability": "Agent materialization creates a real task with a durable backlink to its blueprint node; that relation survives work and completion.",
+      "interaction": "Four-stage Play / Step / scrub materialization trail and Relationships / Record-shape toggle.",
+      "claim": "Finish the work without losing the plan that called for it.",
+      "risk": "The server does not materialize blueprints on its own; an agent performs the mutations. Ghost spec and real task must remain visually distinct.",
+      "captured": null
+    },
+    {
+      "number": 50,
+      "slug": "one-brain-many-users",
+      "title": "One brain, many users",
+      "lede": "Three people can steer the same running teammate without losing who asked what. Drive one exchange from durable discussion to identified session turns and threaded replies.",
+      "section": "8",
+      "provenance": {
+        "artifactId": "01a0202e-2f3a-7b72-9264-c31f10fa8d17",
+        "revision": 4,
+        "sourceTaskId": "01a02024-f940-7ac7-a4d9-739133998e42",
+        "sha256": "18904b465b83cafdce225c1516271c7646b2c25d188bf164e108c13e180d4aaa",
+        "bytes": 51336
+      },
+      "chapter": {
+        "id": "8",
+        "number": "08",
+        "eyebrow": "Together",
+        "title": "Collaboration",
+        "summary": "Working across humans, teammates, sessions, and shared spaces."
+      },
+      "capability": "Three people steer one running teammate through durable messages, identified session turns, and per-asker threaded replies while one PTY remains the execution surface.",
+      "interaction": "Seven-frame Play / Step / scrub shared-session exchange plus input/output toggle.",
+      "claim": "Many users can steer one agent without losing who asked what.",
+      "risk": "This plate proves the shipped session-message path, not a finished multi-agent channel UI or multiple agents inside one terminal.",
+      "captured": null
+    },
+    {
+      "number": 51,
+      "slug": "the-ladder",
+      "title": "The ladder",
+      "lede": "The shared design layer every tm8 Help artifact is built on. This page is the spec and the living demo at once: every token, component, convention and motion rule below is rendered by the same foundation block you will copy into your artifact. Read it once; a fresh session with no other context should produce work indistinguishable in style from the rest of the fleet.",
+      "section": "8",
+      "provenance": {
+        "artifactId": "01a0202b-b893-7a54-ac3a-e4b7e2e702d4",
+        "revision": 1,
+        "sourceTaskId": "01a02024-fe9a-74ee-9f2e-f246dd2a8ab9",
+        "sha256": "138ff86dfe5527b01b75566f1b9128c6a6199a71bdc26c7d7afd8f4eba319d60",
+        "bytes": 106963
+      },
+      "chapter": {
+        "id": "8",
+        "number": "08",
+        "eyebrow": "Together",
+        "title": "Collaboration",
+        "summary": "Working across humans, teammates, sessions, and shared spaces."
+      },
+      "capability": "The collaboration ladder distinguishes graph Chat, discussion beside a live session, agent-to-agent session messaging, and the graph substrate for multi-human/multi-agent channels.",
+      "interaction": "Four-frame Play / Step / scrub ladder plus embedded foundation demos.",
+      "claim": "Collaboration grows from identified messages to live-session coordination without flattening message, thread, session, and channel.",
+      "risk": "Document defect: two H1s, foundation prefixed, and registry lede points to the foundation. The plate calls composed Channel UI “next phase,” which conflicts with newer plate 55; use it only for the conceptual ladder, not current UI status.",
+      "captured": null
+    },
+    {
+      "number": 52,
+      "slug": "a-channel-is-a-graph-place",
+      "title": "A channel is a graph place",
+      "lede": "A channel is not a chat list. It is a durable entity where people, teammates, messages, subchannels, threads, and shared work keep their own identities and relationships.",
+      "section": "8",
+      "provenance": {
+        "artifactId": "01a02036-e5aa-79f2-9e38-d8d031f5a98c",
+        "revision": 1,
+        "sourceTaskId": "01a02024-f93c-749a-8357-ca09af1308a0",
+        "sha256": "92025e0c9d20f578f2ce0fc5ec814c76be5762248b7567e5274e33d287a8721c",
+        "bytes": 59638
+      },
+      "chapter": {
+        "id": "8",
+        "number": "08",
+        "eyebrow": "Together",
+        "title": "Collaboration",
+        "summary": "Working across humans, teammates, sessions, and shared spaces."
+      },
+      "capability": "A channel is a durable entity with membership, hierarchy, anchored messages, reply threads, and attached work that keep their separate identities and relationships.",
+      "interaction": "Stream / Identity map toggle and five-frame Play / Step / scrub graph-place build with animated SVG.",
+      "claim": "Channels are graph places—not chat lists—where people, agents, threads, and work stay connected.",
+      "risk": "This artifact labels its depicted interface as a designed proposal while treating server-side graph semantics as shipped; do not use its UI replica as proof of the current production UI.",
+      "captured": null
+    },
+    {
+      "number": 53,
+      "slug": "the-mention-that-acts",
+      "title": "The mention that acts",
+      "lede": "An @teammate mention is a durable message, an inbox signal, and—when sent from a channel—a route toward the teammate’s current work.",
+      "section": "8",
+      "provenance": {
+        "artifactId": "01a02035-4afd-7249-af6f-f76e0c236770",
+        "revision": 1,
+        "sourceTaskId": "01a02024-f888-7f3b-a4eb-bd779a0f8b33",
+        "sha256": "6f2bbfb39172212a102549ed08e695b0bc6b8a46464f63c86d33d4e0cd3f4999",
+        "bytes": 60254
+      },
+      "chapter": {
+        "id": "8",
+        "number": "08",
+        "eyebrow": "Together",
+        "title": "Collaboration",
+        "summary": "Working across humans, teammates, sessions, and shared spaces."
+      },
+      "capability": "An `@teammate` mention is one stored message plus inbox signal; depending on live-session state it can route toward current work or a new session while replies retain the source thread.",
+      "interaction": "Live/no-session switch, Open mention / Reply controls, six-frame Play / Step / scrub fork, and Deliver / Spawn actions.",
+      "claim": "A mention can become routed work while remaining a durable, threaded message.",
+      "risk": "The inbox does not expose the three depicted action buttons today; those controls are explanatory/ghost framing. Do not market them as current UI.",
+      "captured": null
+    },
+    {
+      "number": 54,
+      "slug": "same-room-own-identity",
+      "title": "Same room, own identity",
+      "lede": "The shared design layer every tm8 Help artifact is built on. This page is the spec and the living demo at once: every token, component, convention and motion rule below is rendered by the same foundation block you will copy into your artifact. Read it once; a fresh session with no other context should produce work indistinguishable in style from the rest of the fleet.",
+      "section": "8",
+      "provenance": {
+        "artifactId": "01a0202b-3eb2-7e1c-9462-ffdacd13a0e1",
+        "revision": 3,
+        "sourceTaskId": "01a02024-f93d-7d24-83df-afb357727b76",
+        "sha256": "57e4d57f4147497e1cd0c2ff3850adb074076c963a7082b357cb57e893ad9bb8",
+        "bytes": 101902
+      },
+      "chapter": {
+        "id": "8",
+        "number": "08",
+        "eyebrow": "Together",
+        "title": "Collaboration",
+        "summary": "Working across humans, teammates, sessions, and shared spaces."
+      },
+      "capability": "Two human members and one teammate share a graph-backed Chat conversation while every simultaneous root/reply keeps author, destination, and parent-thread coordinates.",
+      "interaction": "Five-frame Play / Step / scrub conversation replay; the file begins with a full foundation demo annex.",
+      "claim": "Share one room without becoming one anonymous voice.",
+      "risk": "Document defect: two H1s and incorrect foundation lede in the registry. The replica is Chat with one agent and two humans—not a multi-agent channel.",
+      "captured": null
+    },
+    {
+      "number": 55,
+      "slug": "six-rooms",
+      "title": "Six rooms",
+      "lede": "A channel is not one fixed ritual. Pick a room, then assemble its cast, session routes, shared entities, and durable message shape.",
+      "section": "8",
+      "provenance": {
+        "artifactId": "01a02038-df34-745a-88d9-33c96f025adb",
+        "revision": 1,
+        "sourceTaskId": "01a02024-fbf1-7fb7-855a-a4f0a0514985",
+        "sha256": "19e04f027d33875996bf4ca2cc15078fa21e0882bb9dd55bf61a3c01a9dedd1c",
+        "bytes": 62050
+      },
+      "chapter": {
+        "id": "8",
+        "number": "08",
+        "eyebrow": "Together",
+        "title": "Collaboration",
+        "summary": "Working across humans, teammates, sessions, and shared spaces."
+      },
+      "capability": "Six channel patterns—incident, release, research, support, standup, and pair review—compose members, teammates, live sessions, shared entities, subchannels, feeds, and threads on the same graph laws.",
+      "interaction": "Six room selectors, paper/night and still-motion controls, plus four-frame Play / Next / scrub assembly.",
+      "claim": "Shape a shared room around the way the team actually works, while keeping messages, threads, agents, and work durable.",
+      "risk": "The plate says current UI supports text-channel feed/composer/threads/pins/subchannels, but does not establish a dedicated voice-room UI. Thread replies do not themselves spawn or address sessions.",
+      "captured": null
+    }
+  ]
+}

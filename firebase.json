@@ -13,7 +13,7 @@
       "_video/**"
     ],
     "cleanUrls": true,
-    "trailingSlash": false,
+    "trailingSlash": true,
     "rewrites": [
       {
         "source": "/api/contact",
@@ -29,7 +29,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
           },
           {
             "key": "Referrer-Policy",
@@ -67,11 +67,11 @@
         ]
       },
       {
-        "source": "content/**",
+        "source": "**/*.@(mp4|jpg|jpeg|png|webp|svg)",
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=0, must-revalidate"
+            "value": "public, max-age=86400, must-revalidate"
           }
         ]
       },

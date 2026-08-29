@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">TM8</title>
+  <desc id="desc">Two connected loops representing a human and AI teammate</desc>
+  <rect width="64" height="64" rx="19" fill="#15392e"/>
+  <path d="M32 31.7c-8.3 0-14.1-4.4-14.1-10.1 0-5.8 5.8-10.1 14.1-10.1s14.1 4.3 14.1 10.1c0 5.7-5.8 10.1-14.1 10.1Zm0-5.7c5 0 8-1.8 8-4.4 0-2.7-3-4.5-8-4.5s-8 1.8-8 4.5c0 2.6 3 4.4 8 4.4Z" fill="#fffdf7"/>
+  <path d="M32 52.5c-9.6 0-16.2-5-16.2-11.7 0-6.6 6.6-11.5 16.2-11.5s16.2 4.9 16.2 11.5c0 6.7-6.6 11.7-16.2 11.7Zm0-6c5.9 0 9.6-2.3 9.6-5.7s-3.7-5.6-9.6-5.6-9.6 2.2-9.6 5.6 3.7 5.7 9.6 5.7Z" fill="#ec6b4c"/>
+  <circle cx="48.2" cy="14.8" r="4.6" fill="#efbc4e" stroke="#15392e" stroke-width="2.5"/>
+</svg>

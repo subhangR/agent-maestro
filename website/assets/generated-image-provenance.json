@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-08-29",
+  "generator": "OpenAI built-in image generation model",
+  "purpose": "Premium conceptual system portrait for the TM8 public website",
+  "promptSummary": "Editorial industrial system lattice with six distinct agent modules connected to one central orchestration hub and shared knowledge field, warm mineral-white material, restrained moss/coral/blue/gold accents, no text, no logos, no humanoid robots, no stock-dashboard treatment.",
+  "source": {
+    "workspacePath": "../../shared/hero-orchestration.png",
+    "width": 1672,
+    "height": 941,
+    "sha256": "bdadaa0525eb2e00c3b48269fb0866690ed95cf56f1b137d95c62598569e08a4"
+  },
+  "derivatives": [
+    {
+      "path": "tm8-orchestration.webp",
+      "role": "Visible responsive page artwork",
+      "width": 1400,
+      "height": 788,
+      "sha256": "580a99cf19d52174ec35ba8bfd13bb3c521b34cfcecd9938d322f93415052090"
+    },
+    {
+      "path": "tm8-orchestration-social.png",
+      "role": "Open Graph and PNG fallback",
+      "width": 1200,
+      "height": 630,
+      "sha256": "608257ed18738631cbda069f584fc776807b81a698c0a2deb06be512ee66440f"
+    }
+  ]
+}
