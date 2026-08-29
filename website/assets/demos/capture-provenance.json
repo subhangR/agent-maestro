@@ -1,0 +1,85 @@
+{
+  "captureKind": "silent visual recording of deterministic interactive Help replay",
+  "capturedAt": "2026-08-29",
+  "canonicalSource": {
+    "repository": "https://github.com/subhangR/tm8",
+    "commit": "84cbc7c071d339db887ee2a4832fd9d9e349388d",
+    "registry": "packages/tm8_ui_2.0/src/help/help-plates.ts",
+    "plateDirectory": "packages/tm8_ui_2.0/src/help/plates"
+  },
+  "captureSettings": {
+    "viewport": "1200x720",
+    "framesPerSecond": 8,
+    "videoCodec": "H.264",
+    "pixelFormat": "yuv420p",
+    "audio": false
+  },
+  "captures": [
+    {
+      "plate": 1,
+      "slug": "one-conversation-one-graph",
+      "title": "One conversation, one graph",
+      "artifactId": "01a01e1d-1c94-7bb1-8574-9bc28ffa0458",
+      "artifactRevision": 1,
+      "sourceSha256": "23152ce67d69950c947549e126f7dc1541f595ee2ecbd3c1827164ca9194b59c",
+      "video": "help-01-one-conversation-one-graph.mp4",
+      "videoSha256": "d8082d3ff4c845d51dde88a669ab4cee39ec8b0906c9522b155bc523a012d4bb",
+      "durationSeconds": 9.5
+    },
+    {
+      "plate": 17,
+      "slug": "spawning",
+      "title": "Spawning",
+      "artifactId": "01a01e91-966d-7704-bbae-7514e9eb65f0",
+      "artifactRevision": 2,
+      "sourceSha256": "b36b52d82d50f672100ab1d3663059170fdfe8c3f3f7fa77d993f952077913ff",
+      "video": "help-17-spawning.mp4",
+      "videoSha256": "ace5d9619a53613cecad91f36515c713ed40975397df772bdfc58473bc547da1",
+      "durationSeconds": 11.5
+    },
+    {
+      "plate": 24,
+      "slug": "one-task-many-hands",
+      "title": "One task, many hands",
+      "artifactId": "01a01eac-b969-7761-b77b-f5b8c44f7430",
+      "artifactRevision": 3,
+      "sourceSha256": "de9454056be99d72b057454d12a0872bdfd7502a0f27c1db96026459b69b949f",
+      "video": "help-24-one-task-many-hands.mp4",
+      "videoSha256": "2651a82059b9d3998bb22b535b55e0b3fbd12f57151e586a3e9a2505be34cbe9",
+      "durationSeconds": 7.5
+    },
+    {
+      "plate": 31,
+      "slug": "the-wave",
+      "title": "The wave",
+      "artifactId": "01a01ed9-7f8a-7705-8662-4633bb0bffb7",
+      "artifactRevision": 1,
+      "sourceSha256": "ca3344bec9c5151f098b86820a355d13e3aa0a005e0156d5b30a99631147b576",
+      "video": "help-31-the-wave.mp4",
+      "videoSha256": "97c8491a43f134fd3741afedf0b04e98d8a784bbab3a82a37c7b75fc5943c155",
+      "durationSeconds": 15.5
+    },
+    {
+      "plate": 41,
+      "slug": "memory-rides-along",
+      "title": "Memory rides along",
+      "artifactId": "01a0200b-dd9b-71b4-a063-8719b651942e",
+      "artifactRevision": 1,
+      "sourceSha256": "b78b295c7416db8de29fec7f257304d642b19ca790a89fbe993423f0cb5b6922",
+      "video": "help-41-memory-rides-along.mp4",
+      "videoSha256": "c23b715d5845889641b09ad8d8cff143d8cdf7d508b302b26fe30481edd18c7e",
+      "durationSeconds": 8.5
+    },
+    {
+      "plate": 47,
+      "slug": "many-hands-on-one-blueprint",
+      "title": "Many hands on one blueprint",
+      "artifactId": "01a0202e-7c89-709f-ba90-0c43db4b3d45",
+      "artifactRevision": 3,
+      "sourceSha256": "23a50cf80c8e4b8dc6b268d12c4eae6e4e6d2311ee8a9d07b12862a12f428aaa",
+      "video": "help-47-many-hands-on-one-blueprint.mp4",
+      "videoSha256": "063d94203bb4fe5855f838a81b6e0add7c01bd56ecc998d771e56d8981c35d5e",
+      "durationSeconds": 10.5
+    }
+  ]
+}
