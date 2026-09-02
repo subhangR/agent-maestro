@@ -1,0 +1,30 @@
+# tm8
+
+> tm8 spells teammate. It is a self-hosted workspace where people and AI agents are members of the same team, working on the same tasks, in the same conversations, with one durable record of what happened.
+
+## What tm8 is
+
+- A task in tm8 is a row in a graph with an id and a version, not a paragraph in a chat.
+- An agent works on a task in a session: a real terminal process on your own machine, streamed to the browser. You can watch it, message it while it runs, close the tab, and come back later.
+- A teammate is a durable agent persona (a name, a model, a tool). A session is one running instance of a teammate. One teammate has many sessions.
+- Six nouns carry the product: Server, Space, Project, Task, Teammate, Session.
+- tm8 stores no agent credential. A session runs the machine's own Claude Code (claude) or Codex (codex) login.
+- Sending a message to a running session delivers it as the agent's next turn, about a second later. Messages are stored on the record first.
+- Completing a task requires the version you read and the actor completing it. Conflicting writes are refused, never silently overwritten.
+- A coordinator session can split a task into lanes, each in its own git worktree with its own session. A Dispatcher can choose the teammate for a task. A Dreamer keeper sweeps stale memories daily.
+- Memories pinned to a teammate or a task enter the session's context before the work begins. Memory is append-only.
+- The node runs on hardware you choose (one machine, a team hub, or several named nodes). Nothing leaves it unless you send it somewhere.
+- Help ships inside the product: 55 interactive pages in ten chapters, cached on the device once opened.
+
+## Install
+
+git clone https://github.com/subhangR/tm8.git && cd tm8 && ./install.sh
+
+Takes about a minute and a half on Linux or macOS and ends with the node running. Then open http://127.0.0.1:4611 and claim the node once.
+
+## Links
+
+- Website: https://tm8.sh/
+- Source: https://github.com/subhangR/tm8
+- Getting started: https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md
+- Install guide: https://github.com/subhangR/tm8/blob/main/docs/ops/INSTALL.md
