@@ -40,8 +40,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="/styles.css">
-  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/styles.css?v=907cac66">
+  <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
+  <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
+  <script src="/app.js?v=56db3201" defer></script>
 
   <script type="application/ld+json">
   {
@@ -57,6 +59,11 @@
         "operatingSystem": "Linux, macOS",
         "description": "A self-hosted workspace where people and AI agents are members of the same team. Tasks live in a shared graph; agents work in real terminal sessions on your machine; every message and decision stays on the record.",
         "codeRepository": "https://github.com/subhangR/tm8",
+        "offers": [
+          { "@type": "Offer", "name": "Week", "price": "10", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed weekly. Card payments open soon; the first 100 sign-ups get a free seat." },
+          { "@type": "Offer", "name": "Month", "price": "30", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed monthly." },
+          { "@type": "Offer", "name": "Year", "price": "300", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed yearly; two months free against the monthly price." }
+        ],
         "featureList": [
           "Tasks, sessions, messages and documents in one shared graph",
           "Agent sessions as real terminals on your own machine",
@@ -85,6 +92,7 @@
           { "@type": "Question", "name": "What happens when two people change the same task?", "acceptedAnswer": { "@type": "Answer", "text": "The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it." } },
           { "@type": "Question", "name": "Can an agent work without touching my checkout?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Spawn with --workdir worktree and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking." } },
           { "@type": "Question", "name": "Does my data leave my machine?", "acceptedAnswer": { "@type": "Answer", "text": "The node and its database run on hardware you choose, and tm8 sends nothing of its own. The claude or codex CLI talks to its provider as it would on your laptop, and a linked pull request makes tm8 poll GitHub for its state." } },
+          { "@type": "Question", "name": "How much does it cost?", "acceptedAnswer": { "@type": "Answer", "text": "The hosted platform at tm8.sh is $10 a week, $30 a month or $300 a year. Card payments by Stripe open soon; until then the first 100 sign-ups get a free seat. Running it yourself from the source costs nothing." } },
           { "@type": "Question", "name": "Where is the code?", "acceptedAnswer": { "@type": "Answer", "text": "The repository is public on GitHub at github.com/subhangR/tm8, with the install guide, the getting-started walkthrough, and the design docs." } }
         ]
       }
@@ -137,21 +145,24 @@
     <nav class="nav" aria-label="Site">
       <a href="#what">Product</a>
       <a href="#runs">Watch</a>
+      <a href="#pricing">Pricing</a>
       <a href="#install">Install</a>
       <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Docs</a>
     </nav>
     <div class="nav-r">
       <a class="plain" href="https://github.com/subhangR/tm8">GitHub</a>
-      <a class="btn" href="#demo">Request a demo</a>
-      <a class="btn primary" href="#install">Install tm8</a>
+      <a class="btn" href="#account" data-show-signin>Sign in</a>
+      <a class="btn primary" href="#signup">Claim a free seat</a>
     </div>
     <details class="menu">
       <summary>Menu</summary>
       <div class="sheet">
         <a href="#what">Product</a>
         <a href="#runs">Watch</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#signup">Claim a free seat</a>
+        <a href="#account" data-show-signin>Sign in</a>
         <a href="#install">Install tm8</a>
-        <a href="#demo">Request a demo</a>
         <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Docs</a>
         <a href="https://github.com/subhangR/tm8">GitHub</a>
       </div>
@@ -170,12 +181,12 @@
           <svg class="face" aria-hidden="true" focusable="false"><use href="#face-mara"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-theo"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dispatcher"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dreamer"/></svg>
         </div>
         <h1>The task is the first instruction.</h1>
-        <p class="lede">A workspace where people and AI agents work the same task list. One command spawns a real agent on your machine, on Claude Code or Codex. Every turn on the record.</p>
+        <p class="lede">A workspace where people and AI agents work the same task list. One command spawns a real agent, on Claude Code or Codex, and every turn is on the record. Hosted at tm8.sh, or run it yourself.</p>
         <div class="actions">
-          <a class="btn primary" href="#install">Install tm8</a>
+          <a class="btn primary" href="#signup">Claim a free seat</a>
           <a class="btn" href="#top" data-watch>See it work</a>
         </div>
-        <p class="runs-with">Runs Claude Code and Codex, on Linux or macOS, with Postgres beside it.</p>
+        <p class="runs-with">First 100 seats free while Stripe payments are being set up. Runs Claude Code and Codex, on Linux or macOS.</p>
       </div>
       <div class="ribbon-wrap"><canvas data-ribbon width="560" height="700" aria-label="The tm8 mark, a Möbius ribbon shaped like an 8. Hover to turn it." role="img"></canvas></div>
     </div>
@@ -502,34 +513,103 @@
       <details><summary>What happens when two people change the same task?</summary><div class="a"><p>The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it.</p></div></details>
       <details><summary>Can an agent work without touching my checkout?</summary><div class="a"><p>Yes. Spawn with <code>--workdir worktree</code> and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking.</p></div></details>
       <details><summary>Does my data leave my machine?</summary><div class="a"><p>The node and its database run on hardware you choose, and tm8 sends nothing of its own. The <code>claude</code> or <code>codex</code> CLI talks to its provider as it would on your laptop, and a linked pull request makes tm8 poll GitHub for its state.</p></div></details>
+      <details><summary>How much does it cost?</summary><div class="a"><p>The hosted platform at tm8.sh is $10 a week, $30 a month or $300 a year. Card payments by Stripe open soon; until then the first 100 sign-ups get a free seat. Running it yourself from the source costs nothing.</p></div></details>
       <details><summary>Where is the code?</summary><div class="a"><p>The repository is public on GitHub at <a href="https://github.com/subhangR/tm8">github.com/subhangR/tm8</a>, with the install guide, the getting-started walkthrough, and the design docs.</p></div></details>
     </div>
   </div>
 </section>
 
-<!-- ============ request a demo ============ -->
-<section class="section" id="demo" style="background:var(--bg-2)">
+<!-- ============ pricing ============ -->
+<section class="section" id="pricing">
+  <div class="wrap">
+    <div class="head center">
+      <h2>Pricing</h2>
+      <p class="sub">Access to the hosted platform at tm8.sh. Card payments by Stripe open soon; until then the first 100 sign-ups get a free seat. Running it yourself from the source costs nothing.</p>
+    </div>
+    <div class="plans">
+      <div class="plan">
+        <div class="pname">Week</div>
+        <div class="price"><b>$10</b><span>per week</span></div>
+        <ul><li>Full platform access at tm8.sh</li><li>Every teammate on the roster, Claude Code and Codex</li><li>Stop any week</li></ul>
+        <a class="btn" href="#signup">Claim a free seat</a>
+        <small>Stripe checkout opens soon</small>
+      </div>
+      <div class="plan featured">
+        <div class="pname">Month <span class="tag gray">most people</span></div>
+        <div class="price"><b>$30</b><span>per month</span></div>
+        <ul><li>Full platform access at tm8.sh</li><li>Every teammate on the roster, Claude Code and Codex</li><li>Stop any month</li></ul>
+        <a class="btn primary" href="#signup">Claim a free seat</a>
+        <small>Stripe checkout opens soon</small>
+      </div>
+      <div class="plan">
+        <div class="pname">Year</div>
+        <div class="price"><s>$360</s><b>$300</b><span>per year</span></div>
+        <ul><li>Full platform access at tm8.sh</li><li>Every teammate on the roster, Claude Code and Codex</li><li>Two months free</li></ul>
+        <a class="btn" href="#signup">Claim a free seat</a>
+        <small>Stripe checkout opens soon</small>
+      </div>
+    </div>
+    <p class="pnote">Prices in US dollars. The first 100 accounts keep a free seat while payments are being set up.</p>
+  </div>
+</section>
+
+<!-- ============ sign up ============ -->
+<section class="section" id="signup" style="background:var(--bg-2)">
   <div class="wrap two">
     <div class="copy">
-      <h2>See it on your own repo</h2>
-      <p class="sub">Tell us which task you would hand to an agent first. We set up a node, put a teammate on it, and walk you through it live.</p>
-      <ul class="demo-facts">
-        <li><svg class="ki sm" aria-hidden="true"><use href="#ki-work_session"/></svg>Thirty minutes, on a call, with a real terminal</li>
-        <li><svg class="ki sm" aria-hidden="true"><use href="#ki-task"/></svg>Bring one task from your own backlog</li>
-        <li><svg class="ki sm" aria-hidden="true"><use href="#ki-member"/></svg>India, the Gulf and Europe hours covered</li>
-      </ul>
+      <h2>Claim a free seat</h2>
+      <p class="sub">Create an account with your email and verify it from the link we send. The first 100 seats are free while Stripe payments are being set up. Then request a demo, or open the platform at tm8.sh.</p>
+      <ol class="steps">
+        <li><b>1</b><span>Create your account and verify your email.</span></li>
+        <li><b>2</b><span>Request a demo, or go straight to the platform at <a href="https://tm8.sh">tm8.sh</a>.</span></li>
+        <li><b>3</b><span>Pay by card when Stripe opens; the first 100 seats stay free.</span></li>
+      </ol>
     </div>
-    <form class="formcard" method="post" action="/api/contact" data-demo-form data-inbox="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/inquiries.json" data-mail="manzilshaik95@gmail.com" novalidate>
-      <div class="frow">
-        <label><span>Your name</span><input name="name" type="text" autocomplete="name" required minlength="2" maxlength="100"></label>
-        <label><span>Work email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+    <div class="formcard" id="account" data-auth data-firebase='{"apiKey":"AIzaSyCnH1XXcLRVMPCvtjBGotCh_86hOJ2AV2E","authDomain":"lvlup-ff6fa.firebaseapp.com","projectId":"lvlup-ff6fa","appId":"1:504506746594:web:c853db2f5633257e5f80bb"}' data-signups="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/signups" data-inbox="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/inquiries.json" data-mail="manzilshaik95@gmail.com">
+      <div data-panel="create">
+        <h3>Create your account</h3>
+        <form data-create-form novalidate>
+          <label><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+          <label><span>Password <em>eight characters or more</em></span><input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="200"></label>
+          <div class="fact"><button class="btn primary" type="submit">Create account</button><p class="fstat" data-astat aria-live="polite"></p></div>
+        </form>
+        <p class="alt">Already have an account? <a href="#account" data-show="signin">Sign in</a></p>
       </div>
-      <label><span>Company or team <em>optional</em></span><input name="company" type="text" autocomplete="organization" maxlength="120"></label>
-      <label><span>The task you would hand over first</span><textarea name="message" rows="4" required minlength="20" maxlength="4000" placeholder="For example: fix the flaky login test, then open the PR."></textarea></label>
-      <label class="hp" aria-hidden="true"><span>Website</span><input name="website" type="text" tabindex="-1" autocomplete="off"></label>
-      <label class="check"><input name="consent" type="checkbox" value="yes" required><span>You may email me about this request.</span></label>
-      <div class="fact"><button class="btn primary" type="submit">Request a demo</button><p class="fstat" id="fstat" data-fstat aria-live="polite"></p><noscript><p class="fstat">This form needs JavaScript. Email <a href="mailto:manzilshaik95@gmail.com?subject=tm8%20demo%20request">manzilshaik95@gmail.com</a> instead.</p></noscript></div>
-    </form>
+      <div data-panel="signin" hidden>
+        <h3>Sign in</h3>
+        <form data-signin-form novalidate>
+          <label><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+          <label><span>Password</span><input name="password" type="password" autocomplete="current-password" required maxlength="200"></label>
+          <div class="fact"><button class="btn primary" type="submit">Sign in</button><p class="fstat" data-sstat aria-live="polite"></p></div>
+        </form>
+        <p class="alt">New here? <a href="#account" data-show="create">Create an account</a> · <a href="#account" data-reset>Forgot the password?</a></p>
+      </div>
+      <div data-panel="verify" hidden>
+        <h3>Check your inbox</h3>
+        <p>We sent a verification link to <b data-email></b>. Open it, then come back here.</p>
+        <div class="fact"><button class="btn primary" type="button" data-verified>I have verified</button><button class="btn" type="button" data-resend>Resend the link</button></div>
+        <p class="fstat" data-vstat aria-live="polite"></p>
+        <p class="alt"><a href="#account" data-signout>Use a different email</a></p>
+      </div>
+      <div data-panel="in" hidden>
+        <h3>You are in</h3>
+        <p><b data-email></b> is verified. Your seat: <b data-seat>free, one of the first 100</b>.</p>
+        <div class="fact"><a class="btn primary" href="https://tm8.sh">Open the platform →</a><a class="btn" href="#account" data-signout>Sign out</a></div>
+        <hr>
+        <h3>Want a walkthrough first?</h3>
+        <form data-demo-form novalidate>
+          <div class="frow">
+            <label><span>Your name</span><input name="name" type="text" autocomplete="name" required minlength="2" maxlength="100"></label>
+            <label><span>Company or team <em>optional</em></span><input name="company" type="text" autocomplete="organization" maxlength="120"></label>
+          </div>
+          <label><span>The task you would hand over first</span><textarea name="message" rows="4" required minlength="20" maxlength="4000" placeholder="For example: fix the flaky login test, then open the PR."></textarea></label>
+          <label class="hp" aria-hidden="true"><span>Website</span><input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+          <label class="check"><input name="consent" type="checkbox" value="yes" required><span>You may email me about this request.</span></label>
+          <div class="fact"><button class="btn primary" type="submit">Request a demo</button><p class="fstat" id="fstat" data-fstat aria-live="polite"></p></div>
+        </form>
+      </div>
+      <noscript><p class="fstat">Creating an account needs JavaScript. Email <a href="mailto:manzilshaik95@gmail.com?subject=tm8%20seat">manzilshaik95@gmail.com</a> instead.</p></noscript>
+    </div>
   </div>
 </section>
 
@@ -538,7 +618,7 @@
   <div class="wrap">
     <h2>Give one task to a teammate</h2>
     <a class="giant" href="#install">Install tm8 <span class="arr">→</span></a>
-    <p class="after">Self-hosted. Source on GitHub. <a href="#demo">Request a demo</a>, or read <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a> first.</p>
+    <p class="after">First 100 seats free. Source on GitHub. <a href="#signup">Claim a seat</a>, or read <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a> first.</p>
   </div>
 </section>
 
@@ -553,7 +633,7 @@
       </div>
       <div>
         <h3>Product</h3>
-        <ul><li><a href="https://github.com/subhangR/tm8/blob/main/docs/ops/INSTALL.md">Install guide</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a></li><li><a href="https://github.com/subhangR/tm8/tree/main/packages/tm8-ui/src/help/plates">Field guide (source), 55 plates</a></li><li><a href="/llms.txt">llms.txt</a></li></ul>
+        <ul><li><a href="#pricing">Pricing</a></li><li><a href="#signup">Claim a free seat</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/docs/ops/INSTALL.md">Install guide</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a></li><li><a href="https://github.com/subhangR/tm8/tree/main/packages/tm8-ui/src/help/plates">Field guide (source), 55 plates</a></li><li><a href="/llms.txt">llms.txt</a></li></ul>
       </div>
       <div>
         <h3>Source</h3>
