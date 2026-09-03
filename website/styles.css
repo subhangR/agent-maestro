@@ -586,3 +586,6 @@ html.video-mode .subs.on { opacity: 1; }
 .formcard .alt a { color: var(--brand-2); }
 .formcard hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
 .formcard [data-panel="in"] > p b[data-seat] { color: var(--run); }
+.formcard [data-panel][hidden] { display: none; }
+.formcard input[type="password"] { width: 100%; font: 400 16px/1.4 var(--ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; padding: 11px 12px; min-width: 0; }
+.formcard input[type="password"]:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
