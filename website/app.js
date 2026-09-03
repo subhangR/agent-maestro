@@ -210,6 +210,25 @@
     }
   }
 
+  /* ---------- the setup journey: the rail and the six steps play once on arrival, hold, and replay on tap ---------- */
+  var jt = document.querySelector('.jtile');
+  if (jt) {
+    var jstart = function () { jt.classList.add('play'); jt._playedAt = Date.now(); };
+    var jrestart = function () {
+      var w = jt.querySelector('.jplay'); if (!w) return;
+      var c = w.cloneNode(true); w.parentNode.replaceChild(c, w); jt._playedAt = Date.now();
+    };
+    if (reduced || !('IntersectionObserver' in window)) jstart();
+    else {
+      /* the block is taller than a phone screen, so a low threshold is what actually fires */
+      var jio = new IntersectionObserver(function (es) {
+        if (es.some(function (e) { return e.isIntersecting; })) { jstart(); jio.disconnect(); }
+      }, { threshold: 0.12 });
+      jio.observe(jt);
+      jt.addEventListener('click', function () { if (jt._playedAt && Date.now() - jt._playedAt > 2000) jrestart(); });
+    }
+  }
+
   /* ---------- video ---------- */
   Array.prototype.slice.call(document.querySelectorAll('[data-vid]')).forEach(function (btn) {
     btn.addEventListener('click', function () {

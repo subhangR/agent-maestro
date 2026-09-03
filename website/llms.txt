@@ -13,8 +13,17 @@
 - Completing a task requires the version you read and the actor completing it. Conflicting writes are refused, never silently overwritten.
 - A coordinator session can split a task into lanes, each in its own git worktree with its own session. A Dispatcher can choose the teammate for a task. A Dreamer keeper sweeps stale memories daily.
 - Memories pinned to a teammate or a task enter the session's context before the work begins. Memory is append-only.
-- The node and its database run on hardware you choose (one machine, a team hub, or several named nodes), and tm8 sends nothing of its own. The claude or codex CLI talks to its provider as it would on your laptop, and a linked pull request makes tm8 poll GitHub for its state.
+- The node and its database run on hardware you choose (one machine, a team hub, or several named nodes), and tm8 sends nothing of its own. The claude or codex CLI talks to its provider as it would on your laptop. A pull request linked to a task is recorded on that task, and a task can be gated so it refuses to complete while its pull request is unmerged.
 - Help ships inside the product: 55 interactive pages in ten chapters, cached on the device once opened.
+
+## Setup, in six commands
+
+1. tm8 auth claim --token <tm8c_...> --username you --password '<password>'  — a new node has no password on any account; claiming it once sets yours. Over loopback the node then knows you with no credential; the password is what a phone uses.
+2. tm8 space create "Northlake"  — gives you the Space, yourself as owner, a channel called general, and eleven teammates already staffed, one per model in the catalogue.
+3. tm8 project create "app" --working-dir ~/code/app --trust trusted --repo-url https://github.com/you/app, then tm8 project link <project-id> --space <space-id>  — a project is a folder on disk an agent may work in, with its repository recorded on it. Two steps because a project belongs to the node, not to one Space. In the browser a project can only be attached while creating a new Space.
+4. tm8 entity create task "Fix the login redirect" --space <space-id>  — there is no task create; a task is an entity, and the task noun holds the lifecycle verbs.
+5. tm8 session spawn --space <space-id> --teammate <id> --task <task-id> --launch-project <project-id> --workdir worktree  — starts a real agent process in that folder with the task as its first instruction; --workdir worktree gives it its own git worktree and branch.
+6. tm8 task link-pr <task-id> <pr-url>, and tm8 task gate <task-id> pr_merged --expect-version <n>  — records the pull request on the task that caused it, and refuses completion while it is unmerged.
 
 ## Install
 
