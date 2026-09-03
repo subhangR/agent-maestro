@@ -30,9 +30,13 @@
           brand: g('--brand'), run: g('--run'), info: g('--info'), mate: g('--mate') || '#6B4FD6', ui: g('--ui'), mono: g('--mono') };
     T.dark = /^#0|^#1/.test(T.bg);
   }
+  var RGBA = {}, DASH = [3, 4], DASH3 = [3, 3], NODASH = [];
   function rgba(hex, a) {
+    a = Math.round(a * 1000) / 1000;
+    var key = hex + '|' + a, v = RGBA[key]; if (v) return v;
     var h = hex.replace('#', ''); if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-    return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')';
+    v = 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' + parseInt(h.slice(4, 6), 16) + ',' + a + ')';
+    RGBA[key] = v; return v;
   }
 
   /* ---------- the kinds tm8 keeps ---------- */
@@ -48,6 +52,7 @@
     pr:         { r: 3.6, tone: 'ink3', label: 0, mass: 0.7,  name: 'PULL REQUEST' },
     commit:     { r: 2,   tone: 'ink4', label: 0, mass: 0.35, name: 'COMMIT' },
     doc:        { r: 3.4, tone: 'ink3', label: 0, mass: 0.6,  name: 'DOC' },
+    file:       { r: 3.4, tone: 'ink4', label: 0, mass: 0.6,  name: 'FILE' },
     memory:     { r: 4,   tone: 'ink2', label: 0, mass: 0.8,  name: 'MEMORY' },
     loop:       { r: 6.5, tone: 'brand', label: 1, mass: 1.6, name: 'LOOP' },
     collection: { r: 6.5, tone: 'ink3', label: 1, mass: 1.6,  name: 'COLLECTION' }
@@ -56,7 +61,7 @@
   var REST = { 'space-server': 185, 'member-space': 88, 'teammate-space': 94, 'project-space': 112, 'task-project': 62, 'task-member': 82,
                'task-teammate': 82, 'task-task': 72, 'session-task': 30, 'session-teammate': 118, 'message-session': 18, 'message-task': 20,
                'message-member': 92, 'message-teammate': 92, 'pr-task': 36, 'commit-task': 34, 'commit-pr': 14, 'doc-task': 24, 'memory-teammate': 46,
-               'memory-task': 42, 'memory-memory': 20, 'doc-memory': 38, 'loop-space': 104, 'session-loop': 38, 'collection-space': 108, 'collection-task': 56 };
+               'memory-task': 42, 'memory-memory': 20, 'doc-memory': 38, 'loop-space': 104, 'session-loop': 38, 'task-loop': 62, 'collection-space': 108, 'collection-task': 56, 'file-task': 24, 'message-memory': 40, 'session-session': 130 };
 
   var TASKS = ['Fix login redirect loop', 'Rotate the signing key', 'Add retry to the webhook', 'Trim the cold start', 'Migrate the audit table',
     'Cache the board query', 'Wire the invoice export', 'Split the settings page', 'Index the search terms', 'Batch the mail sender',
@@ -107,7 +112,7 @@
     }
     for (i = 0; i < nProj; i++) {
       var spIdx = Math.min(PROJECTS[i][1], nSp - 1), pj = add('project', PROJECTS[i][0], 12.6 + i * 0.45, spaces[spIdx], { sub: 'subhangR/' + PROJECTS[i][0] });
-      link(pj, spaces[spIdx], 'contains', 1); projects.push(pj);
+      link(pj, spaces[spIdx], 'in space'); projects.push(pj);
     }
     for (i = 0; i < nTask; i++) {
       var at = 15 + 11.5 * Math.pow(i / nTask, 0.65), pj2 = projects[Math.floor(rnd() * nProj)];
@@ -127,32 +132,38 @@
       var host = rnd() < 0.65 ? sessions[Math.floor(rnd() * nSess)] : tasks[Math.floor(rnd() * nTask)];
       var msg = add('message', host.kind === 'session' ? 'turn' : 'message', 30.5 + 10 * Math.pow(i / nMsg, 0.9), host);
       link(msg, host, 'anchored_to', 1);
-      if (i % 4 === 1) { var whom = rnd() < 0.5 ? mates[Math.floor(rnd() * nMate)] : members[Math.floor(rnd() * nMem)]; link(msg, whom, 'mentions', 1); }
+      if (i % 4 === 1) { var whom = rnd() < 0.5 ? mates[Math.floor(rnd() * nMate)] : members[Math.floor(rnd() * nMem)]; link(msg, whom, 'mentions'); }
     }
     for (i = 0; i < nPr; i++) {
       var s3 = sessions[Math.floor(i * nSess / nPr)], t3 = N[s3.task], pr = add('pr', '#' + (204 + i), 34.5 + i * 0.55, t3, { task: t3.id });
-      link(pr, t3, 'tracks', 1); t3.v = 3; prs.push(pr);
+      link(t3, pr, 'tracks', 1); t3.v = 3; prs.push(pr);
     }
-    for (i = 0; i < nCommit; i++) { var pr2 = prs[i % nPr], cm = add('commit', 'commit', 36.5 + i * 0.38, pr2); link(cm, N[pr2.task], 'tracks', 1); link(cm, pr2, 'in'); }
-    for (i = 0; i < nDoc; i++) { var tk5 = tasks[Math.floor(rnd() * nTask)], dc = add('doc', DOCS[i % DOCS.length], 41 + i * 0.35, tk5); link(dc, tk5, 'attached_to', 1); }
+    for (i = 0; i < nCommit; i++) { var pr2 = prs[i % nPr], cm = add('commit', 'commit', 36.5 + i * 0.38, pr2); link(N[pr2.task], cm, 'tracks', 1); link(cm, pr2, 'in'); }
+    for (i = 0; i < nDoc; i++) { var tk5 = tasks[Math.floor(rnd() * nTask)], dn = DOCS[i % DOCS.length], dc = add(/\.(md|txt)$/.test(dn) ? 'doc' : 'file', dn, 41 + i * 0.35, tk5); link(dc, tk5, 'attached_to', 1); }
     for (i = 0; i < nMem2; i++) {
       var owner = i % 3 === 2 ? tasks[Math.floor(rnd() * nTask)] : mates[i % nMate];
       var me = add('memory', MEMS[i % MEMS.length], 44 + i * 0.4, owner);
       link(owner, me, 'remembers', 1); mems.push(me);
       if (i >= 4 && i % 4 === 0) link(me, mems[i - 4], 'supersedes', 1);
     }
-    if (!P) { var ev = N.filter(function (q) { return q.kind === 'doc'; })[1]; if (ev) link(ev, mems[1], 'disputes', 1); }
+    if (!P) { var ev = N.filter(function (q) { return q.kind === 'message'; })[3]; if (ev) link(ev, mems[1], 'disputes', 1); }
+    /* two sessions on different tools talk through the graph: the registered messaged edge */
+    var sa = sessions.filter(function (q) { return q.sub === 'claude-code'; })[0], sb = sessions.filter(function (q) { return q.sub === 'codex'; })[0];
+    if (sa && sb) link(sa, sb, 'messaged', 1);
     for (i = 0; i < nLoop; i++) {
       var lp = add('loop', ['daily digest', 'nightly tests', 'weekly review'][i], 48.5 + i * 0.6, spaces[i % nSp], { sub: ['every 1d', 'every 1d', 'every 7d'][i] });
-      link(lp, spaces[i % nSp], 'contains', 1);
+      link(lp, spaces[i % nSp], 'in space');
       for (j = 0; j < 2; j++) {
-        var mt = mates[(i + j) % nMate], ls = add('session', mt.title, 49.6 + i * 0.6 + j * 0.3, lp, { sub: mt.sub, live: j === 0, task: -1 });
-        link(ls, lp, 'triggered_by', 1); link(ls, mt, 'runs as');
+        var mt = mates[(i + j) % nMate], fw = 49.6 + i * 0.6 + j * 0.4;
+        var lt = add('task', lp.title + ' run', fw, lp, { v: 1, who: mt });
+        link(lt, lp, 'triggered_by', 1); link(lt, mt, 'assigned_to', 1);
+        var ls = add('session', mt.title, fw + 0.25, lt, { sub: mt.sub, live: j === 0, task: lt.id });
+        link(ls, lp, 'triggered_by', 1); link(ls, lt, 'working_on', 1); link(ls, mt, 'runs as');
       }
     }
     for (i = 0; i < nColl; i++) {
       var co = add('collection', ['Launch', 'Auth', 'Q4'][i], 51.5 + i * 0.5, spaces[i % nSp]);
-      link(spaces[i % nSp], co, 'contains', 1);
+      link(co, spaces[i % nSp], 'in space');
       for (j = 0; j < (P ? 3 : 5); j++) { var tk4 = tasks[Math.floor(rnd() * nTask)]; if (tk4.coll !== co.id) { tk4.coll = co.id; link(co, tk4, 'contains', 1); } }
     }
     /* and it keeps growing: the record never holds still */
@@ -179,11 +190,11 @@
     [12.6, 'Projects carry repositories.'],
     [15, 'Tasks. Each has an id, a version, someone it is assigned to, and the tasks it depends on.'],
     [26.5, 'Run puts a teammate on a task. A session is a real process, and it is running.'],
-    [30.5, 'Messages are stored on the task or the session, then delivered as the next turn. A mention reaches whoever it names.'],
+    [30.5, 'Messages are stored on the task or the session, then delivered as the next turn. Two sessions on different tools can message each other the same way.'],
     [34.5, 'Pull requests and commits are tracked on the task they came from.'],
     [41, 'Docs and files attach to the work.'],
     [44, 'Memory rides along. A teammate carries what it remembers into every session, and a newer memory can supersede an older one.'],
-    [48.5, 'Loops keep time in the graph. Every firing spawns a session with a triggered_by edge, so the fan is the run history.'],
+    [48.5, 'Loops keep time in the graph. A firing derives a task and spawns a session, both edged back with triggered_by, so the fan is the run history.'],
     [51.5, 'Collections gather what belongs together.'],
     [54, 'One connected graph. The board, the tree, and the context an agent reads are all drawn from it.'],
     [59, 'Still growing. Every command writes another entry, and nothing is ever removed.'],
@@ -204,14 +215,17 @@
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cv.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    glowGrad = ctx.createRadialGradient(CX, CY, 10, CX, CY, Math.max(W, H) * 0.55);
+    glowGrad.addColorStop(0, rgba(T.brand, 1)); glowGrad.addColorStop(1, rgba(T.brand, 0));
   }
+  var glowGrad = null;
 
   /* ---------- the simulation ---------- */
   var alive = [], born = 0, simT = 0, rndPos;
   function reset() {
     build();
     rndPos = prng(11);
-    alive = []; born = 0; simT = 0;
+    alive = []; born = 0; simT = 0; hover = -1; cv.style.cursor = '';
     N.forEach(function (n) { n.on = false; n.vx = 0; n.vy = 0; });
   }
   function insert(n) {
@@ -274,17 +288,13 @@
     var fade = t > HOLD ? 1 - ease((t - HOLD) / (LOOP - HOLD)) : 1;
     ctx.clearRect(0, 0, W, H);
     var glow = ease((t - 2) / 6);
-    if (glow > 0) {
-      var gr = ctx.createRadialGradient(CX, CY, 10, CX, CY, Math.max(W, H) * 0.55);
-      gr.addColorStop(0, rgba(T.brand, (T.dark ? 0.09 : 0.05) * glow)); gr.addColorStop(1, rgba(T.brand, 0));
-      ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
-    }
+    if (glow > 0 && glowGrad) { ctx.globalAlpha = (T.dark ? 0.09 : 0.05) * glow * fade; ctx.fillStyle = glowGrad; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = fade;
     if (t < 2.4 && !calm) {
       var ping = (t * 0.9) % 1;
       ctx.beginPath(); ctx.arc(CX, CY, (24 + ping * 70) * S, 0, 6.2832); ctx.strokeStyle = rgba(T.brand, 0.45 * (1 - ping)); ctx.lineWidth = 1.5; ctx.stroke();
     }
-    var hov = hover >= 0 ? N[hover] : null, hn = {};
+    var hov = hover >= 0 && N[hover] && N[hover].on ? N[hover] : null, hn = {};
     if (hov) { hn[hov.id] = 1; E.forEach(function (e) { if (e.a === hov.id) hn[e.b] = 1; if (e.b === hov.id) hn[e.a] = 1; }); }
     /* edges */
     var i, e, a, b, k, nEdges = 0, nLive = 0;
@@ -293,13 +303,14 @@
       k = ease((t - e.at) / 0.9); if (k <= 0) continue;
       nEdges++;
       var lit = hov && (e.a === hov.id || e.b === hov.id), dim = hov && !lit ? 0.3 : 1;
-      var col = (a.kind === 'session' && a.live) ? T.run : (a.kind === 'collection' || e.label === 'triggered_by' || e.label === 'depends_on') ? T.brand : T.ink;
+      var col = (a.kind === 'session' && a.live) || e.label === 'messaged' ? T.run : (a.kind === 'collection' || e.label === 'triggered_by' || e.label === 'depends_on') ? T.brand : T.ink;
       var base = (a.kind === 'session' && a.live) ? 0.30 : (a.kind === 'collection' || e.label === 'triggered_by') ? 0.30 : e.label === 'depends_on' ? 0.22 : T.dark ? 0.16 : 0.12;
       ctx.strokeStyle = rgba(col, Math.min(0.9, base * k * dim * (lit ? 2.6 : 1)));
       ctx.lineWidth = lit ? 1.6 : (a.mass >= 3 || b.mass >= 3 ? 1.15 : 0.9);
-      if (a.kind === 'collection' || e.label === 'supersedes' || e.label === 'disputes') ctx.setLineDash([3, 4]);
+      var dashed = a.kind === 'collection' || e.label === 'supersedes' || e.label === 'disputes' || e.label === 'messaged';
+      if (dashed) ctx.setLineDash(DASH);
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k); ctx.stroke();
-      ctx.setLineDash([]);
+      if (dashed) ctx.setLineDash(NODASH);
       if (lit && !phone) {
         var lx = (a.x + b.x) / 2, ly = (a.y + b.y) / 2;
         ctx.font = (e.code ? '500 10px ' + T.mono : '500 10.5px ' + T.ui); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -340,8 +351,8 @@
       }
       if (a.kind === 'space' || a.kind === 'collection') {
         ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.fillStyle = T.card; ctx.fill();
-        ctx.strokeStyle = c; ctx.lineWidth = a.kind === 'space' ? 2 : 1.4; if (a.kind === 'collection') ctx.setLineDash([3, 3]);
-        ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = c; ctx.lineWidth = a.kind === 'space' ? 2 : 1.4; if (a.kind === 'collection') ctx.setLineDash(DASH3);
+        ctx.stroke(); if (a.kind === 'collection') ctx.setLineDash(NODASH);
         ctx.beginPath(); ctx.arc(a.x, a.y, r * 0.32, 0, 6.2832); ctx.fillStyle = c; ctx.fill();
       } else if (a.kind === 'loop') {
         ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.fillStyle = T.card; ctx.fill(); ctx.strokeStyle = rgba(c, 0.35); ctx.lineWidth = 1.4; ctx.stroke();
@@ -350,7 +361,7 @@
         ctx.beginPath(); ctx.arc(a.x, a.y, 1.8 * S, 0, 6.2832); ctx.fillStyle = c; ctx.fill();
       } else if (a.kind === 'session' && !a.live) {
         ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.fillStyle = T.card; ctx.fill(); ctx.strokeStyle = c; ctx.lineWidth = 1.5; ctx.stroke();
-      } else if (a.kind === 'doc') {
+      } else if (a.kind === 'doc' || a.kind === 'file') {
         ctx.fillStyle = c; ctx.fillRect(a.x - r, a.y - r, r * 2, r * 2);
       } else if (a.kind === 'memory') {
         ctx.beginPath(); ctx.moveTo(a.x, a.y - r * 1.25); ctx.lineTo(a.x + r * 1.25, a.y); ctx.lineTo(a.x, a.y + r * 1.25); ctx.lineTo(a.x - r * 1.25, a.y); ctx.closePath();
@@ -395,21 +406,25 @@
   }
 
   /* ---------- run ---------- */
-  var raf = null, t0 = null, onScreen = false, last = 0, paused = false;
+  var raf = null, t0 = null, last = 0, lastRaw = 0, paused = false, inView = !('IntersectionObserver' in window);
   function frame(now) {
-    if (t0 === null) t0 = now - last * 1000;
-    var t = ((now - t0) / 1000) % LOOP;
+    if (t0 === null) { t0 = now - last * 1000; lastRaw = last; }
+    var raw = (now - t0) / 1000;
+    /* a stall (hidden tab, locked phone) resumes where it left off; it never catches up in one frame */
+    if (raw - lastRaw > 1.5) { t0 += (raw - lastRaw - 1 / 60) * 1000; raw = lastRaw + 1 / 60; }
+    lastRaw = raw;
+    var t = raw % LOOP;
     if (t < last) reset();
     last = t;
     advance(t); draw(t);
-    raf = onScreen ? requestAnimationFrame(frame) : null;
+    raf = requestAnimationFrame(frame);
   }
-  function run() { if (raf === null && !paused) { onScreen = true; t0 = null; raf = requestAnimationFrame(frame); } }
-  function stop() { onScreen = false; if (raf) { cancelAnimationFrame(raf); raf = null; } }
+  function run() { if (raf === null && !paused && inView && !document.hidden) { t0 = null; raf = requestAnimationFrame(frame); } }
+  function stop() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
   function still(t) { reset(); for (var s = 0; s <= t; s += 0.5) advance(s); last = t; draw(t); }
   function pick(x, y) {
     var best = -1, bd = 16 * S;
-    for (var i = 0; i < alive.length; i++) { var a = alive[i], d = Math.hypot(a.x - x, a.y - y) - a.r * S; if (d < bd) { bd = d; best = a.id; } }
+    for (var i = 0; i < alive.length; i++) { var a = alive[i]; if (a.at > 0 && last - a.born < 0.35) continue; var d = Math.hypot(a.x - x, a.y - y) - a.r * S; if (d < bd) { bd = d; best = a.id; } }
     return best;
   }
   layout(); reset(); advance(0); draw(0);
@@ -430,17 +445,25 @@
   window.addEventListener('resize', function () {
     clearTimeout(rt);
     rt = setTimeout(function () {
-      var ow = W, oh = H; layout();
-      N.forEach(function (n) { n.x = n.x / ow * W; n.y = n.y / oh * H; });
-      if (raf === null) draw(last);
+      var ow = W, oh = H, wasPhone = phone; layout();
+      if (phone !== wasPhone) { reset(); last = 0; t0 = null; advance(0); }
+      else N.forEach(function (n) { n.x = n.x / ow * W; n.y = n.y / oh * H; });
+      draw(last);
     }, 160);
   });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) stop(); else run(); });
+  if (window.matchMedia) {
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq && mq.addEventListener) mq.addEventListener('change', function () { layout(); draw(last); });
+  }
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(function (es) {
-      es.forEach(function (e) { if (e.isIntersecting) run(); else stop(); });
+      es.forEach(function (e) { inView = e.isIntersecting; if (inView) run(); else stop(); });
     }, { threshold: 0.12 }).observe(cv);
   } else run();
-  /* capture hooks, harmless on the live page */
-  window.__meshNodes = function () { return alive.map(function (n) { return { id: n.id, kind: n.kind, x: n.x, y: n.y, title: n.title }; }); };
-  window.__meshSeek = function (t, hx, hy) { stop(); still(t); if (hx != null) { hover = pick(hx, hy); draw(t); } return alive.length; };
+  /* capture hooks, only when the page is opened with ?capture=1: seeking is synchronous and heavy */
+  if (/[?&]capture\b/.test(location.search)) {
+    window.__meshNodes = function () { return alive.map(function (n) { return { id: n.id, kind: n.kind, x: n.x, y: n.y, title: n.title }; }); };
+    window.__meshSeek = function (t, hx, hy) { stop(); still(t); if (hx != null) { hover = pick(hx, hy); draw(t); } return alive.length; };
+  }
 })();
