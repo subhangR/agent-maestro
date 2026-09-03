@@ -801,3 +801,41 @@ html.video-mode .subs.on { opacity: 1; }
 .caps b { font-size: 15px; font-weight: 600; }
 .caps span { font-size: 14px; color: var(--ink-3); line-height: 1.4; }
 @media (max-width: 720px) { .real .callouts { grid-template-columns: minmax(0, 1fr); } .caps { grid-template-columns: minmax(0, 1fr); } .caps li:nth-child(2) { border-top: 1px solid var(--line); } }
+
+/* session to session: the product's Sessions panel, with one real exchange moving along the tree */
+.s2s { margin-top: 30px; }
+.s2s-head { text-align: center; margin-bottom: 18px; }
+.s2s-head h3 { font: 600 clamp(24px, 2.6vw, 34px)/1.1 var(--ui); letter-spacing: -0.03em; margin: 0; }
+.s2s-head p { color: var(--ink-2); margin: 10px auto 0; max-width: 60ch; font-size: 16px; }
+.sess { position: relative; max-width: 760px; margin: 0 auto; background: var(--card); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: var(--sh-frame); overflow: hidden; }
+.sess-bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--bg-2); font-size: 14px; }
+.sess-bar b { font-weight: 600; }
+.sess-bar .chips { display: flex; gap: 6px; margin-left: auto; font: 500 11.5px var(--mono); color: var(--ink-3); }
+.sess-bar .chips span { padding: 3px 8px; border-radius: 6px; border: 1px solid var(--line); }
+.sess-bar .chips .on { color: var(--ink); background: var(--card); }
+.sess .wire { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; overflow: visible; }
+.sess .wire path { stroke: var(--brand); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: 0.55; }
+.sess .wire circle { fill: var(--brand); opacity: 0; filter: drop-shadow(0 0 6px rgba(181, 98, 31, 0.6)); transition: opacity 0.2s; }
+.sess .tree, .sess .tree ul { list-style: none; margin: 0; padding: 0; }
+.sess .tree { padding: 10px 14px 6px; }
+.sess .tree ul { margin-left: 26px; border-left: 1px solid var(--line-2); padding-left: 10px; }
+.sess .row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-size: 14.5px; min-width: 0; transition: background 0.25s, box-shadow 0.25s; }
+.sess .row b { font-weight: 600; white-space: nowrap; }
+.sess .row code { font: 500 12px var(--mono); color: var(--ink-3); margin-left: auto; white-space: nowrap; }
+.sess .row small { font: 500 10.5px var(--mono); color: var(--mate); border: 1px solid var(--mate-soft); background: var(--mate-soft); border-radius: 6px; padding: 2px 6px; }
+.sess .badge { width: 22px; height: 22px; border-radius: 6px; background: var(--mate); color: #fff; font: 600 11.5px/22px var(--mono); text-align: center; flex-shrink: 0; }
+.sess .badge.keeper { background: var(--card); color: var(--mate); border: 1.5px dashed var(--mate); line-height: 19px; }
+.sess .live { width: 8px; height: 8px; border-radius: 50%; background: var(--run); box-shadow: 0 0 0 3px var(--run-soft); flex-shrink: 0; }
+.sess .row.lit { background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); }
+.sess .bubble { display: grid; gap: 4px; margin: 2px 10px 8px 42px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 12px; background: var(--bg); font-size: 13.5px; line-height: 1.45; color: var(--ink); max-height: 0; opacity: 0; overflow: hidden; padding-top: 0; padding-bottom: 0; margin-bottom: 0; border-width: 0; transition: max-height 0.5s ease, opacity 0.4s ease, padding 0.4s, margin 0.4s; }
+.sess .bubble.on { max-height: 220px; opacity: 1; padding: 10px 12px; margin-bottom: 8px; border-width: 1px; }
+.sess .bubble .from { font: 500 10.5px var(--mono); color: var(--ink-3); letter-spacing: 0.02em; }
+.sess .bubble .from em { font-style: normal; color: var(--run); }
+.sess .cap { margin: 0; padding: 12px 16px 14px; border-top: 1px solid var(--line); font: 500 14px/1.5 var(--ui); color: var(--ink-2); min-height: 4.2em; }
+@media (max-width: 720px) {
+  .sess .row { flex-wrap: wrap; gap: 6px 8px; font-size: 13.5px; }
+  .sess .row code { margin-left: 0; width: 100%; order: 5; }
+  .sess .tree ul { margin-left: 14px; padding-left: 8px; }
+  .sess .bubble { margin-left: 18px; font-size: 13px; }
+  .sess-bar .chips span:not(.on) { display: none; }
+}

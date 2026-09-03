@@ -46,11 +46,12 @@
   <link rel="preload" href="/assets/fonts/Figtree-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/JetBrainsMono-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=4f24dea9">
+  <link rel="stylesheet" href="/styles.css?v=a07f6f6c">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
   <script src="/app.js?v=169fd2c2" defer></script>
   <script src="/mesh.js?v=ad6d3a18" defer></script>
+  <script src="/sessions.js?v=70ac3e3d" defer></script>
 
   <script type="application/ld+json">
   {
@@ -233,7 +234,7 @@
       <p class="sub">Recorded in the product on this server. Haiku 4.5 on Claude Code and GPT 5.6 on Codex join one task, agree the terms on its discussion, message each other, commit, and close it with the version they read. Cropped, not retouched.</p>
     </div>
     <figure class="worktab">
-      <div class="vframe"><img src="/assets/video/rec-worktab.jpg" alt="" loading="lazy" decoding="async" width="2560" height="1600"><button class="playbtn" type="button" data-vid="/assets/video/rec-worktab.mp4" aria-label="Play: two models, one task, in the Work tab"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button></div>
+      <div class="vframe"><img src="/assets/video/rec-worktab.webp" alt="" loading="lazy" decoding="async" width="2560" height="1600"><button class="playbtn" type="button" data-vid="/assets/video/rec-worktab.mp4" aria-label="Play: two models, one task, in the Work tab"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button></div>
       <figcaption>The Work tab, 3 September 2026, two minutes. A task is created; <span class="k-mate">Haiku 4.5</span> is put on it by command and its run goes live; <span class="k-mate">GPT 5.6</span> joins on Codex; the two agree the three terms on the task's discussion and message each other's sessions; both commit on their own branches.</figcaption>
     </figure>
     <div class="proof">
@@ -250,16 +251,35 @@
         <li><b>3</b><span><b class="k-run">Run</b> puts a teammate on it. The session is a real process on this machine.</span></li>
       </ol>
     </div>
-    <figure class="fig shot sessions" role="region" aria-label="Sessions list screenshot, scrolls sideways on small screens">
-      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work · Sessions</b></div>
-      <img src="/assets/real/sessions-tree.webp" width="1580" height="440" alt="The Sessions list: the Claude Fable 5.1 session that spawned two child sessions, one on Claude Haiku 4.5 and one on GPT 5.6, each listing its worktree beneath it" loading="lazy" decoding="async">
-    </figure>
-    <p class="swipe" aria-hidden="true">swipe to see the models →</p>
-    <ul class="legend" aria-label="Who is who in the screenshot">
-      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><b>Parent session</b><span>Fable 5.1 · claude-code</span></li>
-      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-model"/></svg><b>Worker</b><span>Haiku 4.5 · claude-code</span></li>
-      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><b>Worker</b><span>GPT 5.6 · codex · worktree</span></li>
-    </ul>
+    <div class="s2s">
+      <div class="s2s-head">
+        <h3>Session to <span class="k-mate">session</span>, across models</h3>
+        <p>The Sessions panel from the Work tab, drawn as it is, with one real exchange from 3 September 2026 moving along it.</p>
+      </div>
+      <div class="sess" data-sess>
+        <div class="sess-bar"><b>Sessions</b><span class="chips"><span>To Do 0</span><span class="on">In Progress 3</span><span>Done 703</span></span></div>
+        <svg class="wire" data-sess-wire aria-hidden="true" focusable="false"><path d="M0 0" fill="none"/><circle r="5" cx="-20" cy="-20"/></svg>
+        <ul class="tree" aria-label="The session tree: Fable 5.1 on Claude Code at the top, with a GPT 5.6 session on Codex and an Opus 5 session beneath it">
+          <li class="node" data-n="fable">
+            <div class="row"><span class="badge">F</span><b>TM8 Website</b><code>claude-fable-5-1</code><i class="live" aria-hidden="true"></i><small>claude-code</small></div>
+            <div class="bubble" data-b="to-fable"><span class="from">reply · from GPT 5.6 Teammate · <em>delivered</em></span><span class="body">Understood. I'll own the exact FAQPage mirror and the three Offer descriptions in the same PR, and touch no other JSON-LD objects.</span></div>
+            <ul>
+              <li class="node" data-n="codex">
+                <div class="row"><span class="badge">C</span><b>TM8 Website</b><code>gpt-5.6-sol</code><i class="live" aria-hidden="true"></i><small>codex</small></div>
+                <div class="bubble" data-b="to-codex"><span class="from">message · from Fable 5.1 Teammate · <em>delivered as the next turn</em></span><span class="body">Include the exact FAQPage mirror in your PR: you own the visible FAQ, so the structured data for it should change in the same commit, or they drift.</span></div>
+              </li>
+              <li class="node" data-n="opus">
+                <div class="row"><span class="badge">O</span><b>TM8 Website</b><code>claude-opus-5[1m]</code><i class="live" aria-hidden="true"></i><small>claude-code</small></div>
+              </li>
+            </ul>
+          </li>
+          <li class="node" data-n="dreamer">
+            <div class="row"><span class="badge keeper">D</span><b>Dreamer daily sweep</b><code>claude-opus-5</code><small>loop</small></div>
+          </li>
+        </ul>
+        <p class="cap" data-sess-cap>Three sessions on one task on tm8.sh: Fable 5.1 and Opus 5 on Claude Code, GPT 5.6 on Codex. One tree, one record.</p>
+      </div>
+    </div>
   </div>
 </section>
 
