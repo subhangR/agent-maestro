@@ -72,25 +72,26 @@
     'Check the status feed', 'Mirror the docs to llms.txt', 'Order the feed by seq', 'Guard the complete command', 'Time the spawn path',
     'Throttle the digest loop', 'Show liveness on the card', 'Attach the crash log', 'Unstick the scroll', 'Tag the first hundred',
     'Write the Codex profile', 'Bind the dispatch key', 'Probe the sandbox', 'Redact secrets in transcripts', 'Reconcile worktrees',
-    'Trust the workspace once', 'Preflight the network', 'Checkout the branch', 'Log the launch manifest', 'Name the Hermes profile',
-    'Route Gemini models', 'Settle the prompt signal', 'Snapshot the profile pin', 'Count the refusals', 'Ship the mesh',
+    'Trust the workspace once', 'Preflight the network', 'Checkout the branch', 'Log the launch manifest', 'Rotate the node token',
+    'Route by model name', 'Settle the prompt signal', 'Snapshot the profile pin', 'Count the refusals', 'Ship the mesh',
     'Cap the effort tier', 'Inherit the posture', 'Expire the handoff', 'Fan out the loop', 'Pin the memory'];
   var MEMBERS = ['Mara Voss', 'Theo Iwu', 'Priya Nair', 'Jonas Lindqvist', 'Amal Haddad', 'Sunita Rao'];
-  var MATES = [['Haiku 4.5', 'claude-code'], ['Opus 5', 'claude-code'], ['GPT 5.6', 'codex'], ['Gemini 3', 'gemini'], ['Hermes 4', 'hermes']];
+  var MATES = [['Haiku 4.5', 'claude-code'], ['Opus 5', 'claude-code'], ['GPT 5.6 Sol', 'codex'], ['Fable 5', 'claude-code'], ['GPT 5.6 Terra', 'codex']];
   var SPACES = ['Northlake', 'Platform', 'Design'];
   var PROJECTS = [['tm8', 0], ['tm8-ui', 0], ['api', 1], ['docs', 1], ['website', 2]];
   var MEMS = ['Return path empty means loop', 'Guard must be idempotent', 'Release is signed on Fridays', 'Board query is cached 30s',
     'Fonts are self-hosted', 'CSP allows self only', 'Seats are tagged tm8site', 'PTY host restarts clean', 'Version 3 is current',
-    'Digest posts at 09:17 UTC', 'Codex needs network preflight', 'Worktrees reconcile on spawn', 'Handoffs expire in a day', 'Hermes maps by name'];
+    'Digest posts at 09:17 UTC', 'Codex needs network preflight', 'Worktrees reconcile on spawn', 'Handoffs expire in a day', 'Tool follows the model name'];
   var DOCS = ['auth-notes.md', 'crash.log', 'design.fig', 'pricing.csv', 'runbook.md', 'spec.pdf', 'trace.json', 'mock.png',
     'release.txt', 'schema.sql', 'brief.md', 'audit.csv', 'notes.md', 'diff.patch', 'plan.md', 'evidence.png'];
 
   /* ---------- build the graph and its schedule. Slow at first, then it pours in. ---------- */
-  var N = [], E = [], PATHS = [], phone = false, LOOP = 68, HOLD = 66, FULL = 62;
+  var N = [], E = [], ORDER = [], PATHS = [], phone = false, stacked = false, LOOP = 68, HOLD = 66, FULL = 62;
   function build() {
-    var rnd = prng(phone ? 7 : 3), i, j, n;
+    var rnd = prng(stacked ? 7 : 3), i, j, n;
     N = []; E = []; PATHS = [];
     function add(kind, title, at, parent, extra) {
+      if (parent && at < parent.at + 0.15) at = parent.at + 0.15;
       n = { id: N.length, kind: kind, title: title, at: at, parent: parent, x: 0, y: 0, vx: 0, vy: 0, on: false, born: 0, r: 0, mass: 1, lab: 0,
             sub: null, v: 0, who: null, live: false, task: -1, coll: -1, session: null };
       if (extra) for (var k in extra) n[k] = extra[k];
@@ -98,7 +99,7 @@
     }
     /* code:1 marks an edge name tm8 really uses; the rest are plain descriptions */
     function link(a, b, label, code) { E.push({ a: a.id, b: b.id, label: label, code: !!code, at: Math.max(a.at, b.at), key: a.kind + '-' + b.kind }); }
-    var P = phone;
+    var P = stacked;
     var nSp = P ? 2 : 3, nMem = P ? 4 : 6, nMate = P ? 3 : 5, nProj = P ? 3 : 5, nTask = P ? 26 : 60, nSess = P ? 9 : 20, nMsg = P ? 20 : 48,
         nPr = P ? 6 : 14, nCommit = P ? 8 : 20, nDoc = P ? 7 : 16, nMem2 = P ? 6 : 14, nLoop = P ? 2 : 3, nColl = P ? 2 : 3;
     var server = add('server', 'tm8.sh', 0, null);
@@ -180,6 +181,7 @@
       }
     }
     N.forEach(function (q) { q.r = KIND[q.kind].r; q.mass = KIND[q.kind].mass; q.lab = KIND[q.kind].label ? 1 : 0; });
+    ORDER = N.slice().sort(function (p, q) { return p.at - q.at; });
   }
 
   /* ---------- the caption under the canvas ---------- */
@@ -187,7 +189,7 @@
     [0, 'One server. Yours, or hosted at tm8.sh.'],
     [2.4, 'Spaces. Each one is a team, with its own members and its own work.'],
     [6.0, 'People join a Space.'],
-    [9.6, 'So do AI teammates. tm8 reads the model name and launches the right tool: Claude Code, Codex, Gemini or Hermes.'],
+    [9.6, 'So do AI teammates. tm8 reads the model name and launches the right tool: Claude Code for Claude models, Codex for GPT models.'],
     [12.6, 'Projects carry repositories.'],
     [15, 'Tasks. Each has an id, a version, someone it is assigned to, and the tasks it depends on.'],
     [26.5, 'Run puts a teammate on a task. A session is a real process, and it is running.'],
@@ -198,7 +200,7 @@
     [48.5, 'Loops keep time in the graph. A firing derives a task and spawns a session, both edged back with triggered_by, so the fan is the run history.'],
     [51.5, 'Collections gather what belongs together.'],
     [54, 'One connected graph. The board, the tree, and the context an agent reads are all drawn from it.'],
-    [59, 'Still growing. Every command writes another entry, and nothing is ever removed.'],
+    [59, 'Still growing. Every command writes another entry, and the history stays on the record.'],
     [HOLD, '']
   ];
 
@@ -207,11 +209,10 @@
   function layout() {
     tokens();
     var cssW = cv.parentNode.clientWidth || 1160;
-    phone = cssW < 640;
-    W = cssW; H = phone ? Math.round(cssW * 1.3) : Math.round(Math.max(560, Math.min(760, cssW * 0.52)));
-    if (H < 420) H = 420;
-    S = phone ? 0.8 : Math.max(0.82, Math.min(1.05, cssW / 1240));
-    CX = phone ? W / 2 : W * 0.57; CY = H / 2;
+    phone = cssW < 640; stacked = cssW < 900;
+    W = cssW; H = phone ? Math.round(cssW * 1.3) : stacked ? Math.round(cssW * 0.9) : Math.round(Math.max(560, Math.min(760, cssW * 0.52)));
+    S = phone ? 0.8 : stacked ? 0.9 : Math.max(0.82, Math.min(1.05, cssW / 1240));
+    CX = stacked ? W / 2 : W * 0.57; CY = H / 2;
     var dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cv.style.height = H + 'px';
@@ -262,20 +263,23 @@
         a = alive[i];
         if (a.kind === 'server') { a.x = CX; a.y = CY; a.vx = a.vy = 0; continue; }
         if (!calm) { a.vx += Math.sin(simT * 0.7 + a.id * 1.3) * 0.05 * S / a.mass; a.vy += Math.cos(simT * 0.5 + a.id * 0.7) * 0.05 * S / a.mass; }
-        a.vx += (CX - a.x) * G / Math.sqrt(a.mass); a.vy += (CY - a.y) * G * (phone ? 0.7 : 2.6) / Math.sqrt(a.mass);
+        a.vx += (CX - a.x) * G / Math.sqrt(a.mass); a.vy += (CY - a.y) * G * (phone ? 0.7 : stacked ? 1.0 : 2.6) / Math.sqrt(a.mass);
         var m = (KIND[a.kind].label ? 46 : 22) * S + a.r;
         if (a.x < m) a.vx += (m - a.x) * 0.08; if (a.x > W - m) a.vx -= (a.x - W + m) * 0.08;
         if (a.y < m) a.vy += (m - a.y) * 0.08; if (a.y > H - m) a.vy -= (a.y - H + m) * 0.08;
         a.vx *= DAMP; a.vy *= DAMP;
         var v = Math.sqrt(a.vx * a.vx + a.vy * a.vy); if (v > VMAX) { a.vx *= VMAX / v; a.vy *= VMAX / v; }
         a.x += a.vx; a.y += a.vy;
+        var lim = a.r * S + 3;
+        if (a.x < lim) a.x = lim; else if (a.x > W - lim) a.x = W - lim;
+        if (a.y < lim) a.y = lim; else if (a.y > H - lim) a.y = H - lim;
       }
     }
   }
   /* advance the world to time t, inserting whatever is due */
   function advance(t) {
     if (t < simT) reset();
-    while (born < N.length && N[born].at <= t) { insert(N[born]); born++; }
+    while (born < ORDER.length && ORDER[born].at <= t) { insert(ORDER[born]); born++; }
     if (t - simT > 0.25) simT = t - 0.25;
     var frames = Math.min(15, Math.round((t - simT) * 60));
     physics(Math.max(1, frames) * 2);
@@ -389,6 +393,8 @@
     if (nNodes > 1) {
       var cnt = nNodes + ' entities · ' + nEdges + ' edges' + (nLive ? ' · ' + nLive + ' running' : '');
       ctx.font = '500 ' + (phone ? 9.5 : 10.5) + 'px ' + T.mono; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      var cw = ctx.measureText(cnt).width;
+      ctx.fillStyle = rgba(T.bg, 0.85); ctx.fillRect(W - 14 - cw - 5, 10, cw + 10, 16);
       ctx.fillStyle = T.ink3; ctx.fillText(cnt, W - 14, 12);
     }
     /* tooltip */
@@ -436,13 +442,26 @@
       if (paused) stop(); else run();
     });
   }
-  function point(ev) {
-    var r = cv.getBoundingClientRect(), h = pick(ev.clientX - r.left, ev.clientY - r.top);
-    if (h !== hover) { hover = h; cv.style.cursor = h >= 0 ? 'pointer' : ''; if (raf === null) draw(last); }
-  }
-  cv.addEventListener('pointermove', point);
-  cv.addEventListener('pointerdown', point);
-  cv.addEventListener('pointerleave', function () { hover = -1; cv.style.cursor = ''; if (raf === null) draw(last); });
+  var stage = cv.parentNode;
+  function setHover(h) { if (h !== hover) { hover = h; stage.style.cursor = h >= 0 ? 'pointer' : ''; if (raf === null) draw(last); } }
+  function under(ev) { var r = cv.getBoundingClientRect(); return pick(ev.clientX - r.left, ev.clientY - r.top); }
+  stage.addEventListener('pointermove', function (ev) { if (ev.pointerType !== 'touch') setHover(under(ev)); });
+  stage.addEventListener('pointerdown', function (ev) {
+    if (playBtn && (ev.target === playBtn || playBtn.contains(ev.target))) return;
+    var h = under(ev); setHover(ev.pointerType === 'touch' && h === hover ? -1 : h);
+  });
+  stage.addEventListener('pointerleave', function (ev) { if (ev.pointerType !== 'touch') setHover(-1); });
+  stage.addEventListener('pointercancel', function () { setHover(-1); });
+  cv.setAttribute('tabindex', '0');
+  cv.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') { setHover(-1); return; }
+    if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+    ev.preventDefault();
+    var list = alive.filter(function (n) { return n.lab; }), i = -1, k;
+    if (!list.length) return;
+    for (k = 0; k < list.length; k++) if (list[k].id === hover) i = k;
+    setHover(list[ev.key === 'ArrowRight' ? (i + 1) % list.length : (i - 1 + list.length) % list.length].id);
+  });
   var rt = 0;
   window.addEventListener('resize', function () {
     clearTimeout(rt);
