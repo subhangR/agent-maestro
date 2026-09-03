@@ -87,11 +87,15 @@
     'release.txt', 'schema.sql', 'brief.md', 'audit.csv', 'notes.md', 'diff.patch', 'plan.md', 'evidence.png'];
 
   /* ---------- build the graph and its schedule. Slow at first, then it pours in. ---------- */
-  var N = [], E = [], ORDER = [], PATHS = [], phone = false, stacked = false, LOOP = 68, HOLD = 66, FULL = 62;
+  /* the schedule: the first fifteen seconds of the old timeline now take about seven, so a person, a Space,
+     a task, a teammate and a running session are on screen early; everything after keeps its pace */
+  function SCH(x) { return x <= 15 ? x * 0.48 : x - 7.8; }
+  var N = [], E = [], ORDER = [], PATHS = [], phone = false, stacked = false, LOOP = SCH(68), HOLD = SCH(66), FULL = SCH(62);
   function build() {
     var rnd = prng(stacked ? 7 : 3), i, j, n;
     N = []; E = []; PATHS = [];
     function add(kind, title, at, parent, extra) {
+      at = SCH(at);
       if (parent && at < parent.at + 0.15) at = parent.at + 0.15;
       n = { id: N.length, kind: kind, title: title, at: at, parent: parent, x: 0, y: 0, vx: 0, vy: 0, on: false, born: 0, r: 0, mass: 1, lab: 0,
             sub: null, v: 0, who: null, live: false, task: -1, coll: -1, session: null };
@@ -203,7 +207,7 @@
     [54, 'One connected graph. The board, the tree, and the context an agent reads are all drawn from it.'],
     [59, 'Still growing. Every command that changes something writes another entry, and the history stays on the record.'],
     [HOLD, '']
-  ];
+  ].map(function (b, i, arr) { return i === arr.length - 1 ? b : [SCH(b[0]), b[1]]; });
 
   /* ---------- size ---------- */
   var W = 1160, H = 673, S = 1, CX = 580, CY = 336;
@@ -212,7 +216,7 @@
     var cssW = cv.parentNode.clientWidth || 1160;
     var mq = function (q, fb) { return window.matchMedia ? window.matchMedia(q).matches : fb; };
     phone = mq('(max-width: 639px)', cssW < 640); stacked = mq('(max-width: 899px)', cssW < 900);
-    W = cssW; H = phone ? Math.round(cssW * 1.3) : stacked ? Math.round(cssW * 0.9) : Math.round(Math.max(560, Math.min(760, cssW * 0.52)));
+    W = cssW; H = phone ? Math.round(cssW * 1.05) : stacked ? Math.round(cssW * 0.9) : Math.round(Math.max(520, Math.min(660, cssW * 0.46)));
     S = phone ? 0.8 : stacked ? 0.9 : Math.max(0.82, Math.min(1.05, cssW / 1240));
     CX = stacked ? W / 2 : W * 0.57; CY = H / 2;
     var dpr = Math.min(phone ? 1.5 : 2, window.devicePixelRatio || 1);
@@ -296,10 +300,10 @@
   function draw(t) {
     var fade = t > HOLD ? 1 - ease((t - HOLD) / (LOOP - HOLD)) : 1;
     ctx.clearRect(0, 0, W, H);
-    var glow = ease((t - 2) / 6);
+    var glow = ease((t - SCH(2)) / 3);
     if (glow > 0 && glowGrad) { ctx.globalAlpha = (T.dark ? 0.09 : 0.05) * glow * fade; ctx.fillStyle = glowGrad; ctx.fillRect(0, 0, W, H); }
     ctx.globalAlpha = fade;
-    if (t < 2.4 && !calm) {
+    if (t < SCH(2.4) && !calm) {
       var ping = (t * 0.9) % 1;
       ctx.beginPath(); ctx.arc(CX, CY, (24 + ping * 70) * S, 0, 6.2832); ctx.strokeStyle = rgba(T.brand, 0.45 * (1 - ping)); ctx.lineWidth = 1.5; ctx.stroke();
     }
@@ -329,7 +333,7 @@
       }
     }
     /* packets: a message goes to the task, then into the session as its next turn */
-    if (t >= 31 && t < HOLD && PATHS.length && !calm) {
+    if (t >= SCH(31) && t < HOLD && PATHS.length && !calm) {
       var slot = Math.floor(t / 0.55);
       for (var q = 0; q < 4; q++) {
         var sl = slot - q, u = (t - sl * 0.55) / 2.0; if (u < 0 || u > 1) continue;
