@@ -26,7 +26,7 @@
   <meta property="og:image" content="https://tm8.sh/assets/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="A tm8 task with its thread and the agent's terminal beside it.">
+  <meta property="og:image:alt" content="tm8. The task is the first instruction. People and AI agents on one team, one graph, one record.">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="en_IN">
   <meta property="og:locale:alternate" content="en_AE">
@@ -81,7 +81,7 @@
         "mainEntity": [
           { "@type": "Question", "name": "Which agents can tm8 run?", "acceptedAnswer": { "@type": "Answer", "text": "Claude Code and Codex today. A session runs the CLI login that is already on the machine; tm8 doctor reports whether each one is installed and signed in." } },
           { "@type": "Question", "name": "Does tm8 store my API keys?", "acceptedAnswer": { "@type": "Answer", "text": "tm8 keeps no model key in its database. A spawned session runs on the node's own claude or codex login. A member who connects their own vendor login keeps that token as a file inside tm8's data directory on the node." } },
-          { "@type": "Question", "name": "Do I need a cloud account?", "acceptedAnswer": { "@type": "Answer", "text": "Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; tm8 doctor says whether you do." } },
+          { "@type": "Question", "name": "Do I need a cloud account?", "acceptedAnswer": { "@type": "Answer", "text": "Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; tm8 doctor says whether you have one." } },
           { "@type": "Question", "name": "What happens when two people change the same task?", "acceptedAnswer": { "@type": "Answer", "text": "The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it." } },
           { "@type": "Question", "name": "Can an agent work without touching my checkout?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Spawn with --workdir worktree and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking." } },
           { "@type": "Question", "name": "Does my data leave my machine?", "acceptedAnswer": { "@type": "Answer", "text": "The node and its database run on hardware you choose, and tm8 sends nothing of its own. The claude or codex CLI talks to its provider as it would on your laptop, and a linked pull request makes tm8 poll GitHub for its state." } },
@@ -166,8 +166,8 @@
   <div class="wrap">
     <div class="hero-grid">
       <div class="copy">
-        <div class="cast" aria-label="The demo team: two people, two agents, and the two keepers every Space starts with">
-          <svg class="face"><use href="#face-mara"/></svg><svg class="face"><use href="#face-theo"/></svg><svg class="face"><use href="#face-juniper"/></svg><svg class="face"><use href="#face-callisto"/></svg><svg class="face"><use href="#face-dispatcher"/></svg><svg class="face"><use href="#face-dreamer"/></svg>
+        <div class="cast" role="img" aria-label="The demo team: two people, two agents, and the two keepers every Space starts with">
+          <svg class="face" aria-hidden="true" focusable="false"><use href="#face-mara"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-theo"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dispatcher"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dreamer"/></svg>
         </div>
         <h1>The task is the first instruction.</h1>
         <p class="lede">A workspace where people and AI agents work the same task list. One command spawns a real agent on your machine, on Claude Code or Codex. Every turn on the record.</p>
@@ -248,10 +248,10 @@
               <span class="slot"><span class="agent chip"><svg class="face sm"><use href="#face-juniper"/></svg>Juniper <small>claude-code</small></span></span>
               <span class="livewrap"><i></i></span>
             </div>
-            <div class="row"><span class="btn sm press">Run ▸</span></div>
+            <div class="row"><span class="btn sm press">Run ▸</span><span class="btn sm press2">Launch ▸</span></div>
           </div>
         </div>
-        <div class="txt"><h3>Give a task to a teammate</h3><p>One click starts a real agent process on your machine, in your project, with the task as its first instruction.</p></div>
+        <div class="txt"><h3>Give a task to a teammate</h3><p>Run, then Launch: a real agent process starts on your machine, in your project, with the task as its first instruction.</p></div>
       </div>
 
 <div class="tile wide t7">
@@ -285,7 +285,7 @@
             </div>
           </div>
         </div>
-        <div class="txt"><h3>Say something mid-run</h3><p>It lands in the terminal as the next turn, about a second when the agent is idle. The answer comes back on the thread.</p></div>
+        <div class="txt"><h3>Say something mid-run</h3><p>It lands in the terminal as the next turn: about a second when the agent is idle, up to a minute when it is busy. When the agent replies, the reply is on the same thread.</p></div>
       </div>
 
 <div class="tile t8">
@@ -389,19 +389,18 @@
   <div class="wrap">
     <div class="head center">
       <h2>Two models, one team</h2>
-      <p class="sub">The real screen: one coordinator, two workers, Haiku 4.5 on Claude Code and GPT 5.6 on Codex, each in its own worktree. Cropped, not retouched.</p>
+      <p class="sub">The real screen: one parent session, two workers, Haiku 4.5 on Claude Code and GPT 5.6 on Codex, each with its own worktree lane. Cropped, not retouched.</p>
     </div>
-    <figure class="fig">
-      <img src="/assets/real/sessions-tree.webp" width="1580" height="440" alt="The Sessions list: a coordinator session on Claude Fable 5.1 with two child sessions, one on Claude Haiku 4.5 and one on GPT 5.6, each with its own worktree" loading="lazy">
+    <figure class="fig" role="region" aria-label="Sessions list screenshot, scrolls sideways on small screens">
+      <img src="/assets/real/sessions-tree.webp" width="1580" height="440" alt="The Sessions list: the Claude Fable 5.1 session that spawned two child sessions, one on Claude Haiku 4.5 and one on GPT 5.6, each listing its worktree lane beneath it" loading="lazy">
     </figure>
     <p class="swipe" aria-hidden="true">swipe to see the models →</p>
     <ul class="legend" aria-label="Who is who in the screenshot">
-      <li><svg class="face sm"><use href="#face-juniper"/></svg><b>Coordinator</b><span>Fable 5.1 · claude-code</span></li>
-      <li><svg class="face sm"><use href="#face-mara"/></svg><b>Worker</b><span>Haiku 4.5 · claude-code · worktree</span></li>
-      <li><svg class="face sm"><use href="#face-callisto"/></svg><b>Worker</b><span>GPT 5.6 · codex · worktree</span></li>
+      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><b>Parent session</b><span>Fable 5.1 · claude-code</span></li>
+      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-mara"/></svg><b>Worker</b><span>Haiku 4.5 · claude-code</span></li>
+      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><b>Worker</b><span>GPT 5.6 · codex · worktree</span></li>
     </ul>
     <div class="shots">
-      <figure><img src="/assets/real/term-claude.webp" width="1231" height="1702" alt="Live terminal of the Haiku 4.5 worker writing docs/glossary.md, committing, and reporting the task complete" loading="lazy"><figcaption>Haiku writes the glossary, commits, says so.</figcaption></figure>
       <figure><img src="/assets/real/term-codex.webp" width="1231" height="1702" alt="Live terminal of the GPT 5.6 worker listing its allowed actions and completing the task with the expected version" loading="lazy"><figcaption>GPT 5.6 checks what it may do, then completes with the exact version.</figcaption></figure>
       <figure><img src="/assets/real/task-faq.webp" width="1231" height="1702" alt="The task afterwards: state done, assignee GPT 5.6 Teammate, version 3" loading="lazy"><figcaption>The task after: done, assignee GPT 5.6, version 3.</figcaption></figure>
     </div>
@@ -416,7 +415,7 @@
       <p class="sub">An agent is a real process in a terminal on your machine. The same bytes arrive in your browser as they happen. No transcript, no second run.</p>
     </div>
     <div class="darkterm t2" aria-hidden="true">
-      <div class="strip"><svg class="face sm"><use href="#face-juniper"/></svg><b>Juniper</b><span>claude-code</span><span class="live"></span><span class="tag">drawn from Help</span></div>
+      <div class="strip"><svg class="face sm"><use href="#face-juniper"/></svg><b>Juniper</b><span>claude-code</span><span class="live"></span><span class="tag">illustration</span></div>
       <div class="canvas"><span class="ln ln1"><span class="d">09:42:10</span> <span class="p">task</span> Fix login redirect loop</span><span class="ln ln2"><span class="d">09:42:14</span> <span class="in">Reading Auth notes before I touch anything.</span></span><span class="ln ln3"><span class="d">09:42:16</span> <span class="d">Read src/auth/callback.ts</span></span><span class="ln ln4"><span class="d">09:44:02</span> <span class="d">Edit src/auth/callback.ts</span></span><span class="ln ln5"><span class="d">09:51:08</span> <span class="ok">✓ 14 tests pass</span></span><span class="ln ln6"><span class="d">09:52:02</span> <span class="ok">PR #212 opened · linked to the task</span></span><span class="caret"></span></div>
     </div>
     <div class="facts">
@@ -433,7 +432,7 @@
   <div class="wrap">
     <div class="head">
       <h2>Recorded from this node</h2>
-      <p class="sub">Commands run on this node on 2 September 2026, output captured word for word, replayed here at typing speed.</p>
+      <p class="sub">Commands run on this node on 2 September 2026, output captured word for word; long outputs are cut to their first 16 lines here, replayed at typing speed.</p>
     </div>
     <div class="recs">
       <div class="rec"><div class="vframe"><img src="/assets/video/rec-cross-model.jpg" alt=""><button class="playbtn" type="button" data-vid="/assets/video/rec-cross-model.mp4" aria-label="Play: Two models, one board"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button></div><div class="txt"><small>REAL CLI · CROSS-MODEL</small><h3>Two models, one board</h3><p>Two tasks, two spawns: Haiku 4.5 on Claude Code, GPT 5.6 on Codex. One liveness call shows both.</p></div></div>
@@ -463,8 +462,8 @@
       <li class="chip">GPT 5.6 <small>codex</small></li>
       <li class="chip">GPT 5.6 Terra <small>codex</small></li>
       <li class="chip">GPT 5.6 Luna <small>codex</small></li>
-      <li class="chip keeper"><svg class="face"><use href="#face-dispatcher"/></svg>Dispatcher <small>routes work</small></li>
-      <li class="chip keeper"><svg class="face"><use href="#face-dreamer"/></svg>Dreamer <small>sweeps memory</small></li>
+      <li class="chip keeper"><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dispatcher"/></svg>Dispatcher <small>routes work</small></li>
+      <li class="chip keeper"><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dreamer"/></svg>Dreamer <small>sweeps memory</small></li>
     </ul>
   </div>
 </section>
@@ -484,11 +483,10 @@
       <div class="strip"><b>your shell</b><span>bash · zsh</span><button class="copy" type="button" data-copy="install-cmd">Copy</button></div>
       <div class="body"><span class="p">$ </span><code id="install-cmd">git clone https://github.com/subhangR/tm8.git &amp;&amp; cd tm8 &amp;&amp; ./install.sh</code>
 <span class="d">…</span>
+<span class="d">[11/11] Verify</span>
+<span class="d">starting tm8 — server on 4610, UI on 4611 (Ctrl-C stops both)</span>
       <span class="ok">✓</span> tm8 is up and healthy on 4610
-      <span class="ok">✓</span> open http://127.0.0.1:4611
-
-<span class="ok">✓</span> tm8 installed
-  <span class="d">open http://127.0.0.1:4611  ·  server 127.0.0.1:4610  ·  db tm8_dev</span></div>
+      <span class="ok">✓</span> open http://127.0.0.1:4611</div>
     </div>
   </div>
 </section>
@@ -500,7 +498,7 @@
     <div class="faq">
       <details><summary>Which agents can tm8 run?</summary><div class="a"><p>Claude Code and Codex today. A session runs the CLI login that is already on the machine; <code>tm8 doctor</code> reports whether each one is installed and signed in.</p></div></details>
       <details><summary>Does tm8 store my API keys?</summary><div class="a"><p>tm8 keeps no model key in its database. A spawned session runs on the node's own <code>claude</code> or <code>codex</code> login. A member who connects their own vendor login keeps that token as a file inside tm8's data directory on the node.</p></div></details>
-      <details><summary>Do I need a cloud account?</summary><div class="a"><p>Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; <code>tm8 doctor</code> says whether you do.</p></div></details>
+      <details><summary>Do I need a cloud account?</summary><div class="a"><p>Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; <code>tm8 doctor</code> says whether you have one.</p></div></details>
       <details><summary>What happens when two people change the same task?</summary><div class="a"><p>The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it.</p></div></details>
       <details><summary>Can an agent work without touching my checkout?</summary><div class="a"><p>Yes. Spawn with <code>--workdir worktree</code> and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking.</p></div></details>
       <details><summary>Does my data leave my machine?</summary><div class="a"><p>The node and its database run on hardware you choose, and tm8 sends nothing of its own. The <code>claude</code> or <code>codex</code> CLI talks to its provider as it would on your laptop, and a linked pull request makes tm8 poll GitHub for its state.</p></div></details>
@@ -514,14 +512,14 @@
   <div class="wrap two">
     <div class="copy">
       <h2>See it on your own repo</h2>
-      <p class="sub">Tell us which task you would hand to an agent first. We set up a node, put a teammate on it, and walk you through it live, in your time zone.</p>
+      <p class="sub">Tell us which task you would hand to an agent first. We set up a node, put a teammate on it, and walk you through it live.</p>
       <ul class="demo-facts">
         <li><svg class="ki sm" aria-hidden="true"><use href="#ki-work_session"/></svg>Thirty minutes, on a call, with a real terminal</li>
         <li><svg class="ki sm" aria-hidden="true"><use href="#ki-task"/></svg>Bring one task from your own backlog</li>
         <li><svg class="ki sm" aria-hidden="true"><use href="#ki-member"/></svg>India, the Gulf and Europe hours covered</li>
       </ul>
     </div>
-    <form class="formcard" data-demo-form data-mail="manzilshaik95@gmail.com" novalidate>
+    <form class="formcard" method="post" action="/api/contact" data-demo-form data-mail="manzilshaik95@gmail.com" novalidate>
       <div class="frow">
         <label><span>Your name</span><input name="name" type="text" autocomplete="name" required minlength="2" maxlength="100"></label>
         <label><span>Work email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
@@ -530,7 +528,7 @@
       <label><span>The task you would hand over first</span><textarea name="message" rows="4" required minlength="20" maxlength="4000" placeholder="For example: fix the flaky login test, then open the PR."></textarea></label>
       <label class="hp" aria-hidden="true"><span>Website</span><input name="website" type="text" tabindex="-1" autocomplete="off"></label>
       <label class="check"><input name="consent" type="checkbox" value="yes" required><span>You may email me about this request.</span></label>
-      <div class="fact"><button class="btn primary" type="submit">Request a demo</button><p class="fstat" data-fstat aria-live="polite"></p></div>
+      <div class="fact"><button class="btn primary" type="submit">Request a demo</button><p class="fstat" id="fstat" data-fstat aria-live="polite"></p><noscript><p class="fstat">This form needs JavaScript. Email <a href="mailto:manzilshaik95@gmail.com?subject=tm8%20demo%20request">manzilshaik95@gmail.com</a> instead.</p></noscript></div>
     </form>
   </div>
 </section>
@@ -554,15 +552,15 @@
         <p class="q">tm8 spells teammate. A workspace where you and a set of AI agents are members of the same team, working on the same things.</p>
       </div>
       <div>
-        <h6>Product</h6>
-        <ul><li><a href="https://github.com/subhangR/tm8/blob/main/docs/ops/INSTALL.md">Install guide</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a></li><li><a href="https://github.com/subhangR/tm8/tree/main/packages/tm8-ui/src/help">Field guide, 55 pages</a></li><li><a href="/llms.txt">llms.txt</a></li></ul>
+        <h3>Product</h3>
+        <ul><li><a href="https://github.com/subhangR/tm8/blob/main/docs/ops/INSTALL.md">Install guide</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a></li><li><a href="https://github.com/subhangR/tm8/tree/main/packages/tm8-ui/src/help/plates">Field guide (source), 55 plates</a></li><li><a href="/llms.txt">llms.txt</a></li></ul>
       </div>
       <div>
-        <h6>Source</h6>
+        <h3>Source</h3>
         <ul><li><a href="https://github.com/subhangR/tm8">GitHub</a></li><li><a href="https://github.com/subhangR/tm8/tree/main/docs">Design docs</a></li><li><a href="https://github.com/subhangR/tm8/tree/main/docs/api-and-cli">API and CLI</a></li></ul>
       </div>
       <div>
-        <h6>Help chapters</h6>
+        <h3>Help chapters (source)</h3>
         <ul><li><a href="https://github.com/subhangR/tm8/blob/main/packages/tm8-ui/src/help/plates/01-one-conversation-one-graph.html">What tm8 does</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/packages/tm8-ui/src/help/plates/13-anatomy-of-a-teammate.html">Teammates and sessions</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/packages/tm8-ui/src/help/plates/24-one-task-many-hands.html">Coordination</a></li><li><a href="https://github.com/subhangR/tm8/blob/main/packages/tm8-ui/src/help/plates/41-memory-rides-along.html">Memory, loops and spells</a></li></ul>
       </div>
     </div>

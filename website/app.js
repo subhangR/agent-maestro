@@ -216,7 +216,7 @@
       var v = document.createElement('video');
       v.src = btn.getAttribute('data-vid'); v.controls = true; v.autoplay = true; v.muted = true; v.playsInline = true; v.loop = true;
       v.setAttribute('aria-label', btn.getAttribute('aria-label') || 'Recording');
-      var host = btn.closest('.vframe'); host.innerHTML = ''; host.appendChild(v); v.play().catch(function () {});
+      var host = btn.closest('.vframe'); host.innerHTML = ''; host.appendChild(v); v.tabIndex = 0; v.focus(); v.play().catch(function () {});
     });
   });
   if (staticCopy) Array.prototype.slice.call(document.querySelectorAll('[data-live-link]')).forEach(function (a) { a.hidden = true; });
@@ -236,7 +236,7 @@
   if (form) {
     var fstat = form.querySelector('[data-fstat]');
     var mailTo = form.getAttribute('data-mail') || '';
-    var mailHref = function (d) { return 'mailto:' + mailTo + '?subject=' + encodeURIComponent('tm8 demo request · ' + d.name) + '&body=' + encodeURIComponent(d.message + '\n\n' + d.name + ' · ' + d.email + (d.company ? ' · ' + d.company : '')); };
+    var mailHref = function (d) { return 'mailto:' + mailTo + '?subject=' + encodeURIComponent('tm8 demo request · ' + d.name) + '&body=' + encodeURIComponent((d.message + '\n\n' + d.name + ' · ' + d.email + (d.company ? ' · ' + d.company : '')).replace(/\r?\n/g, '\r\n')); };
     var fallback = function (d, err) {
       fstat.textContent = (err ? err + ' ' : 'The form could not reach the server. ') + 'Send it by email instead: ';
       var a = document.createElement('a'); a.href = mailHref(d); a.textContent = 'open your mail app →'; fstat.appendChild(a);
@@ -245,18 +245,22 @@
       e.preventDefault();
       var fd = new FormData(form);
       var d = { name: String(fd.get('name') || '').trim(), email: String(fd.get('email') || '').trim(), company: String(fd.get('company') || '').trim(), message: String(fd.get('message') || '').trim(), type: 'demo', consent: !!fd.get('consent'), website: String(fd.get('website') || '') };
-      if (d.name.length < 2) { fstat.textContent = 'Your name, please.'; form.name.focus(); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) { fstat.textContent = 'That email does not look right.'; form.email.focus(); return; }
-      if (d.message.length < 20) { fstat.textContent = 'Say a little more about the task, twenty characters or so.'; form.message.focus(); return; }
-      if (!d.consent) { fstat.textContent = 'Tick the box so we may reply.'; return; }
+      var bad = function (field, msg) { fstat.textContent = ''; fstat.textContent = msg; field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', 'fstat'); field.focus(); };
+      if (d.name.length < 2) { bad(form.name, 'Your name, please.'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) { bad(form.email, 'That email does not look right.'); return; }
+      if (d.message.length < 20) { bad(form.message, 'Say a little more about the task, twenty characters or so.'); return; }
+      if (!d.consent) { bad(form.consent, 'Tick the box so we may reply.'); return; }
       var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; fstat.textContent = 'Sending…';
       fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: b }; }); })
         .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.b && x.b.reference ? x.b.reference : 'sent') + '. We reply by email.'; form.reset(); } else { fallback(d, x.b && x.b.error); } })
         .catch(function () { fallback(d); })
-        .then(function () { btn.disabled = false; });
+        .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
     });
+    Array.prototype.slice.call(form.querySelectorAll('input, textarea')).forEach(function (f) { f.addEventListener('input', function () { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); }); });
   }
+  var fig = document.querySelector('.real .fig');
+  if (fig) { var figTab = function () { if (fig.scrollWidth > fig.clientWidth + 1) fig.tabIndex = 0; else fig.removeAttribute('tabindex'); }; figTab(); window.addEventListener('resize', figTab); }
   var menu = document.querySelector('details.menu');
   if (menu) menu.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'A') menu.removeAttribute('open'); });
 })();
