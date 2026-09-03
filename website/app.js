@@ -262,14 +262,24 @@
     var show = function (name) { Object.keys(panels).forEach(function (k) { panels[k].hidden = k !== name; }); };
     var setEmail = function (e) { Array.prototype.slice.call(acct.querySelectorAll('[data-email]')).forEach(function (el) { el.textContent = e || ''; }); };
     var say = function (sel, msg) { var el = acct.querySelector(sel); if (el) { el.textContent = ''; el.textContent = msg; } };
+    var setSeat = function (msg) { var el = acct.querySelector('[data-seat]'); if (el) el.textContent = msg || ''; };
+    var markBad = function (field, sel, msg) {
+      var status = acct.querySelector(sel); say(sel, msg); field.setAttribute('aria-invalid', 'true');
+      if (status && status.id && !field.getAttribute('aria-errormessage')) {
+        var ids = (field.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        if (ids.indexOf(status.id) < 0) ids.push(status.id);
+        field.setAttribute('aria-describedby', ids.join(' '));
+      }
+      field.focus();
+    };
     var words = function (err) {
       var c = (err && err.code) || '';
       if (c === 'auth/email-already-in-use') return 'That email already has an account. Sign in instead.';
-      if (c === 'auth/invalid-email') return 'That email does not look right.';
-      if (c === 'auth/weak-password' || c === 'auth/password-does-not-meet-requirements') return 'Use eight characters or more.';
-      if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') return 'Email or password did not match.';
-      if (c === 'auth/too-many-requests') return 'Too many tries. Wait a minute and try again.';
-      if (c === 'auth/network-request-failed') return 'No connection. Try again.';
+      if (c === 'auth/invalid-email') return 'Enter a complete email address, for example name@example.com.';
+      if (c === 'auth/weak-password' || c === 'auth/password-does-not-meet-requirements') return 'Enter at least 8 characters for your password.';
+      if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') return 'Check the email and password, then try again.';
+      if (c === 'auth/too-many-requests') return 'Wait a minute before trying again.';
+      if (c === 'auth/network-request-failed') return 'Check your connection, then try again.';
       return 'Something went wrong. Try again.';
     };
     var fields = function (f) { var fd = new FormData(f); return { email: String(fd.get('email') || '').trim(), password: String(fd.get('password') || '') }; };
@@ -293,10 +303,14 @@
       return attempt(false);
     };
     var render = function (user) {
-      if (!user) { setEmail(''); show('create'); return; }
+      if (!user) { setEmail(''); setSeat(''); show('create'); return; }
       setEmail(user.email);
-      if (!user.emailVerified) { show('verify'); return; }
-      show('in'); reserve(user).catch(function () {});
+      if (!user.emailVerified) { setSeat(''); show('verify'); return; }
+      show('in'); setSeat('Recording your place on the launch list…');
+      reserve(user).then(function (rec) {
+        if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
+        setSeat(rec ? 'Your launch-list place is recorded. The first 100 verified accounts keep a free seat; later accounts use a paid plan when Stripe opens.' : 'We could not record your place. Check your connection, then sign out and sign in again.');
+      }).catch(function () { if (auth.currentUser && auth.currentUser.uid === user.uid) setSeat('We could not record your place. Check your connection, then sign out and sign in again.'); });
     };
     auth.onAuthStateChanged(render);
     Array.prototype.slice.call(document.querySelectorAll('[data-show], [data-show-signin]')).forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); var u = auth.currentUser; if (a.hasAttribute('data-show-signin') && u) { render(u); } else { show(a.getAttribute('data-show') || 'signin'); } acct.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); }); });
@@ -304,22 +318,26 @@
     var createForm = acct.querySelector('[data-create-form]');
     createForm.addEventListener('submit', function (e) {
       e.preventDefault(); var v = fields(createForm);
-      if (!emailOk(v.email)) { say('[data-astat]', 'That email does not look right.'); createForm.email.focus(); return; }
-      if (v.password.length < 8) { say('[data-astat]', 'Use eight characters or more.'); createForm.password.focus(); return; }
+      if (!v.email) { markBad(createForm.email, '[data-astat]', 'Enter your email address.'); return; }
+      if (!emailOk(v.email)) { markBad(createForm.email, '[data-astat]', 'Enter a complete email address, for example name@example.com.'); return; }
+      if (!v.password) { markBad(createForm.password, '[data-astat]', 'Enter a password.'); return; }
+      if (v.password.length < 8) { markBad(createForm.password, '[data-astat]', 'Enter at least 8 characters for your password.'); return; }
       say('[data-astat]', 'Creating your account…');
       auth.createUserWithEmailAndPassword(v.email, v.password)
         .then(function (cred) { return cred.user.sendEmailVerification().then(function () { say('[data-astat]', ''); say('[data-vstat]', 'Sent. The email comes from noreply@' + fbcfg.authDomain + '; check spam if it is slow.'); }); })
-        .catch(function (err) { say('[data-astat]', words(err)); });
+        .catch(function (err) { var c = (err && err.code) || ''; if (c === 'auth/email-already-in-use' || c === 'auth/invalid-email') markBad(createForm.email, '[data-astat]', words(err)); else if (c === 'auth/weak-password' || c === 'auth/password-does-not-meet-requirements') markBad(createForm.password, '[data-astat]', words(err)); else say('[data-astat]', words(err)); });
     });
     var signinForm = acct.querySelector('[data-signin-form]');
     signinForm.addEventListener('submit', function (e) {
       e.preventDefault(); var v = fields(signinForm);
-      if (!emailOk(v.email)) { say('[data-sstat]', 'That email does not look right.'); signinForm.email.focus(); return; }
+      if (!v.email) { markBad(signinForm.email, '[data-sstat]', 'Enter your email address.'); return; }
+      if (!emailOk(v.email)) { markBad(signinForm.email, '[data-sstat]', 'Enter a complete email address, for example name@example.com.'); return; }
+      if (!v.password) { markBad(signinForm.password, '[data-sstat]', 'Enter your password.'); return; }
       say('[data-sstat]', 'Signing in…');
-      auth.signInWithEmailAndPassword(v.email, v.password).then(function () { say('[data-sstat]', ''); }).catch(function (err) { say('[data-sstat]', words(err)); });
+      auth.signInWithEmailAndPassword(v.email, v.password).then(function () { say('[data-sstat]', ''); }).catch(function (err) { var c = (err && err.code) || ''; if (c === 'auth/invalid-email') markBad(signinForm.email, '[data-sstat]', words(err)); else if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') { signinForm.password.setAttribute('aria-invalid', 'true'); markBad(signinForm.email, '[data-sstat]', words(err)); } else say('[data-sstat]', words(err)); });
     });
     var resetLink = acct.querySelector('[data-reset]');
-    if (resetLink) resetLink.addEventListener('click', function (e) { e.preventDefault(); var v = fields(signinForm); if (!emailOk(v.email)) { say('[data-sstat]', 'Type your email above first, then tap this again.'); signinForm.email.focus(); return; } auth.sendPasswordResetEmail(v.email).then(function () { say('[data-sstat]', 'Reset link sent to ' + v.email + '.'); }).catch(function (err) { say('[data-sstat]', words(err)); }); });
+    if (resetLink) resetLink.addEventListener('click', function (e) { e.preventDefault(); var v = fields(signinForm); if (!v.email) { markBad(signinForm.email, '[data-sstat]', 'Enter your email address, then tap “Forgot the password?” again.'); return; } if (!emailOk(v.email)) { markBad(signinForm.email, '[data-sstat]', 'Enter a complete email address, for example name@example.com.'); return; } auth.sendPasswordResetEmail(v.email).then(function () { say('[data-sstat]', 'Reset link sent to ' + v.email + '.'); }).catch(function (err) { say('[data-sstat]', words(err)); }); });
     acct.querySelector('[data-verified]').addEventListener('click', function () { var u = auth.currentUser; if (!u) { show('create'); return; } say('[data-vstat]', 'Checking…'); u.reload().then(function () { if (auth.currentUser && auth.currentUser.emailVerified) { return auth.currentUser.getIdToken(true).catch(function () {}).then(function () { say('[data-vstat]', ''); render(auth.currentUser); }); } say('[data-vstat]', 'Not verified yet. Open the link in the email, then tap again.'); }).catch(function (err) { say('[data-vstat]', words(err)); }); });
     acct.querySelector('[data-resend]').addEventListener('click', function () { var u = auth.currentUser; if (!u) return; u.sendEmailVerification().then(function () { say('[data-vstat]', 'Sent again to ' + u.email + '.'); }).catch(function (err) { say('[data-vstat]', words(err)); }); });
     /* demo request, from a verified account; the mail draft is the fallback */
@@ -331,10 +349,9 @@
       var u = auth.currentUser; if (!u || !u.emailVerified) { show(u ? 'verify' : 'create'); return; }
       var fd = new FormData(form);
       var d = { name: String(fd.get('name') || '').trim(), email: u.email, company: String(fd.get('company') || '').trim(), message: String(fd.get('message') || '').trim(), consent: !!fd.get('consent'), website: String(fd.get('website') || '') };
-      var bad = function (field, msg) { fstat.textContent = ''; fstat.textContent = msg; field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', 'fstat'); field.focus(); };
-      if (d.name.length < 2) { bad(form.name, 'Your name, please.'); return; }
-      if (d.message.length < 20) { bad(form.message, 'Say a little more about the task, twenty characters or so.'); return; }
-      if (!d.consent) { bad(form.consent, 'Tick the box so we may reply.'); return; }
+      if (d.name.length < 2) { markBad(form.name, '[data-fstat]', 'Enter at least 2 characters for your name.'); return; }
+      if (d.message.length < 20) { markBad(form.message, '[data-fstat]', 'Describe the first task in at least 20 characters.'); return; }
+      if (!d.consent) { markBad(form.consent, '[data-fstat]', 'Tick “You may email me” so we can reply.'); return; }
       var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; fstat.textContent = 'Sending…';
       var post = function (force) {
         return u.getIdToken(force)
@@ -347,7 +364,12 @@
         .catch(function () { fallback(d); })
         .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
     });
-    Array.prototype.slice.call(acct.querySelectorAll('input, textarea')).forEach(function (f) { f.addEventListener('input', function () { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); }); });
+    Array.prototype.slice.call(acct.querySelectorAll('input, textarea')).forEach(function (f) { f.addEventListener('input', function () {
+      var wasBad = f.getAttribute('aria-invalid') === 'true'; f.removeAttribute('aria-invalid');
+      var ids = (f.getAttribute('aria-describedby') || '').split(/\s+/).filter(function (id) { return id && id !== 'fstat'; });
+      if (ids.length) f.setAttribute('aria-describedby', ids.join(' ')); else f.removeAttribute('aria-describedby');
+      if (wasBad && f.form) { var status = f.form.querySelector('.fstat'); if (status) status.textContent = ''; }
+    }); });
   } else if (acct) {
     var offline = acct.querySelector('[data-astat]'); if (offline) offline.textContent = 'Sign-up is unavailable right now. Email ' + (acct.getAttribute('data-mail') || '') + ' instead.';
   }

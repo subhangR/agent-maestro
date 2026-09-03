@@ -46,11 +46,11 @@
   <link rel="preload" href="/assets/fonts/Figtree-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/JetBrainsMono-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=c11b8eaa">
+  <link rel="stylesheet" href="/styles.css?v=4f24dea9">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
-  <script src="/app.js?v=4589f619" defer></script>
-  <script src="/mesh.js?v=e1f27739" defer></script>
+  <script src="/app.js?v=169fd2c2" defer></script>
+  <script src="/mesh.js?v=ad6d3a18" defer></script>
 
   <script type="application/ld+json">
   {
@@ -68,9 +68,9 @@
         "keywords": "AI agents, AI teammates, multi-agent workspace, knowledge graph, task graph, Claude Code, Codex, harness engineering, context engineering, loop engineering, self-hosted, source on GitHub",
         "codeRepository": "https://github.com/subhangR/tm8",
         "offers": [
-          { "@type": "Offer", "name": "Week", "price": "10", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed weekly. Card payments open soon; the first 100 sign-ups get a free seat." },
-          { "@type": "Offer", "name": "Month", "price": "30", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed monthly." },
-          { "@type": "Offer", "name": "Year", "price": "300", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed yearly; two months free against the monthly price." }
+          { "@type": "Offer", "name": "Week", "price": "10", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "One hosted seat at tm8.sh for seven days. Card checkout through Stripe opens soon." },
+          { "@type": "Offer", "name": "Month", "price": "30", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "One hosted seat at tm8.sh for one month. Card checkout through Stripe opens soon." },
+          { "@type": "Offer", "name": "Year", "price": "300", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "One hosted seat at tm8.sh for one year, $60 less than twelve monthly payments. Card checkout through Stripe opens soon." }
         ],
         "featureList": [
           "One connected graph of tasks, sessions, messages, documents, memory, loops and collections",
@@ -88,6 +88,7 @@
       },
       { "@type": "Organization", "@id": "https://tm8-site.web.app/#org", "name": "tm8", "url": "https://tm8-site.web.app/", "logo": "https://tm8-site.web.app/assets/favicon.svg", "sameAs": ["https://github.com/subhangR/tm8"], "areaServed": ["IN", "AE", "SA", "QA", "US", "GB"], "contactPoint": { "@type": "ContactPoint", "contactType": "sales", "url": "https://tm8-site.web.app/#demo", "availableLanguage": ["en"] } },
       { "@type": "WebSite", "@id": "https://tm8-site.web.app/#site", "url": "https://tm8-site.web.app/", "name": "tm8", "inLanguage": "en", "about": { "@id": "https://tm8-site.web.app/#app" } },
+      { "@type": "VideoObject", "@id": "https://tm8-site.web.app/#rec-worktab", "name": "Two models, one task, in the Work tab", "description": "Recorded in the tm8 Work tab on 3 September 2026: a task is created, Haiku 4.5 on Claude Code is put on it by command, GPT 5.6 on Codex joins, the two agree the terms on the task discussion and message each other, both commit, and the task is completed with the version read.", "thumbnailUrl": "https://tm8-site.web.app/assets/video/rec-worktab.jpg", "contentUrl": "https://tm8-site.web.app/assets/video/rec-worktab.mp4", "uploadDate": "2026-09-03", "duration": "PT2M4S" },
       { "@type": "VideoObject", "@id": "https://tm8-site.web.app/#rec-cross-model", "name": "Two models, one board", "description": "Real tm8 command output: two tasks, two spawns, Haiku 4.5 on Claude Code and GPT 5.6 on Codex, one liveness call showing both.", "thumbnailUrl": "https://tm8-site.web.app/assets/video/rec-cross-model.jpg", "contentUrl": "https://tm8-site.web.app/assets/video/rec-cross-model.mp4", "uploadDate": "2026-09-02" },
       { "@type": "VideoObject", "@id": "https://tm8-site.web.app/#rec-sibling", "name": "Session to session", "description": "Real tm8 command output: a Codex session is told its sibling session's id and replies in the thread.", "thumbnailUrl": "https://tm8-site.web.app/assets/video/rec-sibling.jpg", "contentUrl": "https://tm8-site.web.app/assets/video/rec-sibling.mp4", "uploadDate": "2026-09-02" },
       { "@type": "VideoObject", "@id": "https://tm8-site.web.app/#rec-done-is-earned", "name": "Done is earned", "description": "Real tm8 command output: a transition to done is refused, a stale version is refused, the right version is accepted.", "thumbnailUrl": "https://tm8-site.web.app/assets/video/rec-done-is-earned.jpg", "contentUrl": "https://tm8-site.web.app/assets/video/rec-done-is-earned.mp4", "uploadDate": "2026-09-02" },
@@ -96,13 +97,19 @@
         "@type": "FAQPage",
         "@id": "https://tm8-site.web.app/#faq",
         "mainEntity": [
+          { "@type": "Question", "name": "What does a hosted seat include?", "acceptedAnswer": { "@type": "Answer", "text": "Hosted at tm8.sh means you use tm8 in the browser instead of installing its server and Postgres yourself. A seat includes the full tm8 platform and its current teammate roster. Claude Code and Codex are the two launch tools." } },
+          { "@type": "Question", "name": "What happens after the first 100 free seats?", "acceptedAnswer": { "@type": "Answer", "text": "The first 100 verified accounts in the launch allocation keep their hosted seat free. After the allocation fills, new accounts use the $10 weekly, $30 monthly or $300 yearly plan when Stripe checkout opens." } },
+          { "@type": "Question", "name": "Which payment methods and currencies can I use?", "acceptedAnswer": { "@type": "Answer", "text": "Prices are in US dollars. Card checkout through Stripe opens soon. Supported cards and any local-currency display are coming with Stripe." } },
+          { "@type": "Question", "name": "Can I cancel a paid seat?", "acceptedAnswer": { "@type": "Answer", "text": "The cancellation controls and when a cancellation takes effect are coming with Stripe checkout. No refund or prorating terms have been published." } },
+          { "@type": "Question", "name": "Where does my data live?", "acceptedAnswer": { "@type": "Answer", "text": "On a self-hosted install, the tm8 server and Postgres run on hardware you choose. The hosted offer runs at tm8.sh; it does not yet name a data region or promise data residency." } },
+          { "@type": "Question", "name": "What latency should I expect from India or the Gulf?", "acceptedAnswer": { "@type": "Answer", "text": "Regional network measurements have not been published yet, so we do not quote a number. The agent-message timings shown elsewhere measure when a running agent receives a turn, not network round-trip time." } },
+          { "@type": "Question", "name": "When is support available?", "acceptedAnswer": { "@type": "Answer", "text": "Demo requests are read every working day. Live-support hours have not been published." } },
           { "@type": "Question", "name": "Which agents can tm8 run?", "acceptedAnswer": { "@type": "Answer", "text": "Claude Code and Codex. The launch manifest picks the tool from the model name: Claude models run on Claude Code, GPT models on Codex. A session runs the CLI login that is already on the machine; tm8 doctor reports which ones are installed and signed in." } },
-          { "@type": "Question", "name": "Does tm8 store my API keys?", "acceptedAnswer": { "@type": "Answer", "text": "tm8 keeps no model key in its database. A spawned session runs on the node's own claude or codex login. A member who connects their own vendor login keeps that token as a file inside tm8's data directory on the node." } },
-          { "@type": "Question", "name": "Do I need a cloud account?", "acceptedAnswer": { "@type": "Answer", "text": "Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; tm8 doctor says whether you have one." } },
+          { "@type": "Question", "name": "Does tm8 store my model API keys?", "acceptedAnswer": { "@type": "Answer", "text": "tm8 keeps no model key in its database. A session uses a Claude Code or Codex login available on the node." } },
+          { "@type": "Question", "name": "Can I run tm8 on my own machine?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The source is on GitHub and the installer supports Linux and macOS with Node.js 22, Bun and Postgres 16. Agent sessions still need a Claude Code or Codex login." } },
           { "@type": "Question", "name": "What happens when two people change the same task?", "acceptedAnswer": { "@type": "Answer", "text": "The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it." } },
           { "@type": "Question", "name": "Can an agent work without touching my checkout?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Spawn with --workdir worktree and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking." } },
-          { "@type": "Question", "name": "Does my data leave my machine?", "acceptedAnswer": { "@type": "Answer", "text": "The node and its database run on hardware you choose, and tm8 sends nothing of its own. The claude or codex CLI talks to its provider as it would on your laptop, and a linked pull request makes tm8 poll GitHub for its state." } },
-          { "@type": "Question", "name": "How much does it cost?", "acceptedAnswer": { "@type": "Answer", "text": "The hosted platform at tm8.sh is $10 a week, $30 a month or $300 a year. Card payments by Stripe open soon; until then the first 100 sign-ups get a free seat. Running it yourself from the source costs nothing." } },
+          { "@type": "Question", "name": "Does self-hosting keep everything on my machine?", "acceptedAnswer": { "@type": "Answer", "text": "The tm8 server and its database stay on the hardware you choose. The claude and codex CLIs still talk to their providers as they would on your laptop." } },
           { "@type": "Question", "name": "Where is the code?", "acceptedAnswer": { "@type": "Answer", "text": "The repository is public on GitHub at github.com/subhangR/tm8, with the install guide, the getting-started walkthrough, and the design docs." } }
         ]
       }
@@ -155,7 +162,7 @@
     <nav class="nav" aria-label="Site">
       <a href="#what">Product</a>
       <a href="#graph">The graph</a>
-      <a href="#runs">Watch</a>
+      <a href="#real">Watch</a>
       <a href="#pricing">Pricing</a>
       <a href="#install">Install</a>
       <a href="#journey">Setup</a>
@@ -190,7 +197,7 @@
   <div class="mstage" id="graph">
     <div class="mtext">
       <h1><span class="k-member">People</span>, <span class="k-mate">AI teammates</span>, <span class="k-task">tasks</span> and <span class="k-run">running sessions</span> are one live graph.</h1>
-      <p class="sub">This is tm8 drawn as the graph it is stored in: one node, then Spaces, then every kind of entity, joined by the edges tm8 really uses. <span class="mhover">Hover or tap anything to see what it is; the arrow keys move between the named nodes.</span></p>
+      <p class="sub">Put an AI teammate on a task and watch it work in a real terminal. Everything it does joins the same graph as your team's people, tasks and sessions, drawn here as tm8 stores it. <span class="mhover">Hover or tap anything to see what it is; the arrow keys move between the named nodes.</span></p>
       <div class="actions">
         <a class="btn primary" href="#signup">Claim a free seat</a>
         <a class="btn" href="#story" data-watch>See it work</a>
@@ -214,6 +221,44 @@
       <li><i class="i-mem"></i>memory</li>
       <li><i class="i-doc"></i>doc or file</li>
       <li><i class="i-rest"></i>Space, project, message, pull request, commit, loop, collection</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ real screens ============ -->
+<section class="section real" id="real">
+  <div class="wrap">
+    <div class="head center">
+      <h2>Two <span class="k-mate">models</span>, one task, on the record</h2>
+      <p class="sub">Recorded in the product on this server. Haiku 4.5 on Claude Code and GPT 5.6 on Codex join one task, agree the terms on its discussion, message each other, commit, and close it with the version they read. Cropped, not retouched.</p>
+    </div>
+    <figure class="worktab">
+      <div class="vframe"><img src="/assets/video/rec-worktab.jpg" alt="" loading="lazy" decoding="async" width="2560" height="1600"><button class="playbtn" type="button" data-vid="/assets/video/rec-worktab.mp4" aria-label="Play: two models, one task, in the Work tab"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg></button></div>
+      <figcaption>The Work tab, 3 September 2026, two minutes. A task is created; <span class="k-mate">Haiku 4.5</span> is put on it by command and its run goes live; <span class="k-mate">GPT 5.6</span> joins on Codex; the two agree the three terms on the task's discussion and message each other's sessions; both commit on their own branches.</figcaption>
+    </figure>
+    <div class="proof">
+      <figure class="fig shot work-shot">
+        <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work</b></div>
+        <picture>
+          <source media="(max-width: 720px)" srcset="/assets/real/hero-work-m.webp">
+          <img src="/assets/real/hero-work.webp" width="2880" height="1560" alt="The Work screen in tm8: the task list on the left, and on the right the open task with its state, priority, assignee, description and acceptance criteria." loading="lazy" decoding="async">
+        </picture>
+      </figure>
+      <ol class="callouts" aria-label="What the Work screen shows">
+        <li><b>1</b><span>The task list, with state, priority and who has it.</span></li>
+        <li><b>2</b><span>The open <span class="k-task">task</span>: description, acceptance, its runs and its git.</span></li>
+        <li><b>3</b><span><b class="k-run">Run</b> puts a teammate on it. The session is a real process on this machine.</span></li>
+      </ol>
+    </div>
+    <figure class="fig shot sessions" role="region" aria-label="Sessions list screenshot, scrolls sideways on small screens">
+      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work · Sessions</b></div>
+      <img src="/assets/real/sessions-tree.webp" width="1580" height="440" alt="The Sessions list: the Claude Fable 5.1 session that spawned two child sessions, one on Claude Haiku 4.5 and one on GPT 5.6, each listing its worktree beneath it" loading="lazy" decoding="async">
+    </figure>
+    <p class="swipe" aria-hidden="true">swipe to see the models →</p>
+    <ul class="legend" aria-label="Who is who in the screenshot">
+      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><b>Parent session</b><span>Fable 5.1 · claude-code</span></li>
+      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-model"/></svg><b>Worker</b><span>Haiku 4.5 · claude-code</span></li>
+      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><b>Worker</b><span>GPT 5.6 · codex · worktree</span></li>
     </ul>
   </div>
 </section>
@@ -280,7 +325,7 @@
 <!-- ============ explainers ============ -->
 <section class="section" id="what">
   <div class="wrap">
-    <div class="head center"><h2>Eight things it does today</h2></div>
+    <div class="head center"><h2>What a <span class="k-mate">teammate</span> can do</h2></div>
     <div class="tiles">
 
       <div class="tile wide t1" style="--tint: var(--brand-soft)">
@@ -298,23 +343,6 @@
         </div>
         <div class="txt"><h3>Give a <span class="k-task">task</span> to a <span class="k-mate">teammate</span></h3><p>Run, then Launch: a real agent process starts on your machine, in your project, with the task as its first instruction.</p></div>
       </div>
-
-<div class="tile wide t7" style="--tint: var(--mate-soft)">
-  <div class="stage" aria-hidden="true">
-    <div class="duo">
-      <div class="term">
-        <div class="strip"><svg class="face sm"><use href="#face-juniper"/></svg><b>Juniper</b><span>claude-code</span><span class="live"></span></div>
-        <div class="canvas"><span class="ln ln1"><span class="p">task</span> Write the glossary</span><span class="ln ln2"><span class="in">Three terms drafted: Space, Task, Session.</span></span><span class="ln ln5"><span class="p">message</span> from Callisto · reply available</span><span class="ln ln6"><span class="in">Reply landed in the thread. Carrying on.</span></span></div>
-      </div>
-      <div class="link"><span class="tag gray">message send --to &lt;session&gt;</span><svg viewBox="0 0 72 24"><path class="wire" d="M4,12 H68" pathLength="1"/><circle class="pkt" r="4" cy="12"/></svg><span class="tag gray">next turn</span></div>
-      <div class="term">
-        <div class="strip"><svg class="face sm"><use href="#face-callisto"/></svg><b>Callisto</b><span>codex</span><span class="live"></span></div>
-        <div class="canvas"><span class="ln ln1"><span class="p">task</span> Write the FAQ</span><span class="ln ln3"><span class="in">Sibling 01a063d9…95ee is writing the glossary.</span></span><span class="ln ln4"><span class="d">$ tm8 message reply 01a063d9…87db "Understood. No glossary edits."</span></span><span class="ln ln7"><span class="ok">✓ delivered · next turn</span></span></div>
-      </div>
-    </div>
-  </div>
-  <div class="txt"><h3>Claude Code and Codex, talking through the graph</h3><p>Message either session by its id, from a person or from the other session. The reply stays on the record.</p></div>
-</div>
 
       <div class="tile t3" style="--tint: var(--run-soft)">
         <div class="stage" aria-hidden="true">
@@ -349,20 +377,7 @@
   <div class="txt"><h3>A <span class="k-mate">coordinator</span>, <span class="k-mate">workers</span> in worktrees</h3><p>A session can spawn workers, each on its own branch in its own worktree, and gather their reports on the task.</p></div>
 </div>
 
-
-<div class="tile t9" style="--tint: var(--mate-soft)">
-  <div class="stage" aria-hidden="true">
-    <div class="bigcard">
-      <div class="t">Add rate limits to /export</div>
-      <div class="row"><span class="pill">Open</span><span>v1</span><span class="tag gray dsp">tm8 session dispatch</span></div>
-      <div class="row"><span class="chip route"><svg class="face sm"><use href="#face-dispatcher"/></svg>Dispatcher <small>routing</small></span><span class="arrow">→</span><span class="chip picked"><svg class="face sm"><use href="#face-callisto"/></svg>Callisto <small>codex</small></span></div>
-      <div class="row"><span class="reason">reason, on the task: API work; Callisto holds the export memory.</span></div>
-    </div>
-  </div>
-  <div class="txt"><h3>Let the <span class="k-mate">Dispatcher</span> choose</h3><p>The Dispatcher reads the roster and the memory graph, spawns the right teammate, and writes why on the task.</p></div>
-</div>
-
-      <div class="tile t4" style="--tint: var(--brand-soft)">
+      <div class="tile wide t4" style="--tint: var(--brand-soft)">
         <div class="stage" aria-hidden="true">
           <div class="bigcard">
             <div class="t">Fix login redirect loop</div>
@@ -382,101 +397,20 @@
         <div class="txt"><h3><span class="k-run">Done</span> is earned</h3><p>Only task complete writes done, with the version you read and who finished. A stale write is refused, never overwritten.</p></div>
       </div>
 
-      <div class="tile t5">
-        <div class="stage" aria-hidden="true">
-          <svg viewBox="0 0 480 300">
-            <path class="e e1" d="M240,64 V118" pathLength="1"/><text class="el l1" x="248" y="96">working_on</text>
-            <path class="e e2" d="M100,150 H170" pathLength="1"/><text class="el l2" x="135" y="142" text-anchor="middle">attached_to</text>
-            <path class="e e3" d="M120,236 V196 H170" pathLength="1"/><text class="el l3" x="128" y="222">anchored_to</text>
-            <path class="e e4" d="M360,236 V196 H310" pathLength="1"/><text class="el l4" x="316" y="222">authored_from</text>
-            <g transform="translate(150,20)"><g class="n n1"><rect width="180" height="44" rx="10"/><text x="14" y="20">Fix login redirect loop</text><text class="k" x="14" y="35">task · v4</text></g></g>
-            <g transform="translate(170,118)"><g class="n n2 live"><rect width="140" height="44" rx="10"/><text x="14" y="20">Juniper</text><text class="k" x="14" y="35">session</text></g></g>
-            <g transform="translate(0,128)"><g class="n n3"><rect width="100" height="44" rx="10"/><text x="14" y="20">Auth notes</text><text class="k" x="14" y="35">doc</text></g></g>
-            <g transform="translate(20,236)"><g class="n n4"><rect width="200" height="44" rx="10"/><text x="14" y="20">Keep the guard idempotent.</text><text class="k" x="14" y="35">message · Theo</text></g></g>
-            <g transform="translate(260,236)"><g class="n n5"><rect width="200" height="44" rx="10"/><text x="14" y="20">Redirect fixed, guard added.</text><text class="k" x="14" y="35">message · Juniper</text></g></g>
-          </svg>
-        </div>
-        <div class="txt"><h3>One record, every view</h3><p>Sessions, docs and messages hang off the task. Tree, board and graph draw the same record.</p></div>
-      </div>
-
-      <div class="tile t6" style="--tint: var(--info-soft)">
-        <div class="stage" aria-hidden="true">
-          <svg viewBox="0 0 480 300">
-            <rect class="box" x="140" y="70" width="200" height="130" rx="14"/>
-            <rect class="inner" x="158" y="92" width="164" height="36" rx="8"/><text x="172" y="115">tm8 server</text>
-            <rect class="inner" x="158" y="140" width="164" height="36" rx="8"/><text x="172" y="163">Postgres</text>
-            <text class="k" x="140" y="220">YOUR MACHINE</text>
-            <g class="dev d1"><rect class="inner" x="20" y="120" width="60" height="100" rx="12"/><text class="k" x="26" y="240">PHONE</text></g>
-            <path class="link k1" d="M80,170 H140"/>
-            <g class="dev d2"><rect class="inner" x="380" y="110" width="84" height="56" rx="8"/><rect class="inner" x="370" y="166" width="104" height="8" rx="3"/><text class="k" x="376" y="196">LAPTOP</text></g>
-            <path class="link k2" d="M340,140 H380"/>
-            <g class="lock"><rect x="112" y="244" width="256" height="28" rx="14"/><text x="128" y="263">server and database stay here</text></g>
-          </svg>
-        </div>
-        <div class="txt"><h3>Your phone gets in with the password you set</h3><p>The server and Postgres run where you install them. Other devices sign in with your password, over HTTPS.</p></div>
-      </div>
-
     </div>
     <p class="also-l">Also in the box</p>
-    <ul class="also" aria-label="Also in the box">
-      <li><svg class="ki" aria-hidden="true"><use href="#ki-memory"/></svg><b>Memory</b><span>rides into the session</span></li>
-      <li><svg class="ki" aria-hidden="true"><use href="#ki-loop"/></svg><b>Loops</b><span>a schedule that spawns</span></li>
-      <li><svg class="ki" aria-hidden="true"><use href="#ki-artifact"/></svg><b>Artifacts</b><span>pages agents build, sandboxed</span></li>
-      <li><svg class="ki" aria-hidden="true"><use href="#ki-custom"/></svg><b>Custom kinds</b><span>new types at runtime</span></li>
-      <li><svg class="ki" aria-hidden="true"><use href="#ki-work_session"/></svg><b>Resume</b><span>a session comes back</span></li>
-      <li><svg class="ki" aria-hidden="true"><use href="#ki-worktree"/></svg><b>Git per session</b><span>checkpoint, merge, roll back</span></li>
+    <ul class="caps" aria-label="Also in the box">
+      <li><b>Claude Code and Codex, talking through the graph</b><span>Message either session by its id, from a person or from the other session. The reply stays on the record.</span></li>
+      <li><b>Let the <span class="k-mate">Dispatcher</span> choose</b><span>It reads the roster and the memory graph, spawns the right teammate, and writes why on the task.</span></li>
+      <li><b>One record, every view</b><span>Sessions, docs and messages hang off the task. Tree, board and graph draw the same record.</span></li>
+      <li><b>Your phone gets in with the password you set</b><span>The server and Postgres run where you install them. Other devices sign in over HTTPS.</span></li>
+      <li><b>Memory</b><span>rides into the session before the work begins</span></li>
+      <li><b>Loops</b><span>a schedule that spawns, with the run history as edges</span></li>
+      <li><b>Artifacts</b><span>pages agents build, sandboxed</span></li>
+      <li><b>Custom kinds</b><span>new entity types at runtime</span></li>
+      <li><b>Resume</b><span>a session comes back with its conversation</span></li>
+      <li><b>Git per session</b><span>checkpoint, merge, roll back</span></li>
     </ul>
-  </div>
-</section>
-
-<!-- ============ real screens ============ -->
-<section class="section real" id="real">
-  <div class="wrap">
-    <div class="head center">
-      <h2>Two models, one team</h2>
-      <p class="sub">The real screen: one parent session, two workers, Haiku 4.5 on Claude Code and GPT 5.6 on Codex, each in its own worktree. Cropped, not retouched.</p>
-    </div>
-    <figure class="fig shot sessions" role="region" aria-label="Sessions list screenshot, scrolls sideways on small screens">
-      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work · Sessions</b></div>
-      <img src="/assets/real/sessions-tree.webp" width="1580" height="440" alt="The Sessions list: the Claude Fable 5.1 session that spawned two child sessions, one on Claude Haiku 4.5 and one on GPT 5.6, each listing its worktree lane beneath it" loading="lazy">
-    </figure>
-    <p class="swipe" aria-hidden="true">swipe to see the models →</p>
-    <ul class="legend" aria-label="Who is who in the screenshot">
-      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><b>Parent session</b><span>Fable 5.1 · claude-code</span></li>
-      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-model"/></svg><b>Worker</b><span>Haiku 4.5 · claude-code</span></li>
-      <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><b>Worker</b><span>GPT 5.6 · codex · worktree</span></li>
-    </ul>
-    <figure class="fig shot work-shot">
-      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work</b></div>
-      <picture>
-        <source media="(max-width: 720px)" srcset="/assets/real/hero-work-m.webp">
-        <img src="/assets/real/hero-work.webp" width="2880" height="1560" alt="The Work screen in tm8: the task list on the left, and on the right the open task with its state, priority, assignee, description and acceptance criteria." loading="lazy" decoding="async">
-      </picture>
-    </figure>
-    <div class="shots">
-      <figure><img src="/assets/real/term-codex.webp" width="1231" height="1702" alt="Live terminal of the GPT 5.6 worker listing its allowed actions and completing the task with the expected version" loading="lazy"><figcaption>GPT 5.6 checks what it may do, then completes with the exact version.</figcaption></figure>
-      <figure><img src="/assets/real/task-faq.webp" width="1231" height="1702" alt="The task afterwards: state done, assignee GPT 5.6 Teammate, version 3" loading="lazy"><figcaption>The task after: done, assignee GPT 5.6, version 3.</figcaption></figure>
-    </div>
-  </div>
-</section>
-
-<!-- ============ the black section: the terminal ============ -->
-<section class="dark" id="terminal">
-  <div class="wrap">
-    <div class="head">
-      <h2>A real terminal, streamed</h2>
-      <p class="sub">An agent is a real process in a terminal on your machine. The same bytes arrive in your browser as they happen. Not a replay and not a summary: the bytes the agent writes, as it writes them.</p>
-    </div>
-    <div class="darkterm t2" aria-hidden="true">
-      <div class="strip"><svg class="face sm"><use href="#face-juniper"/></svg><b class="k-mate">Juniper</b><span>claude-code</span><span class="live"></span><span class="tag">illustration</span></div>
-      <div class="canvas"><span class="ln ln1"><span class="d">09:42:10</span> <span class="p k-task">task</span> Fix login redirect loop</span><span class="ln ln2"><span class="d">09:42:14</span> <span class="in">Reading Auth notes before I touch anything.</span></span><span class="ln ln3"><span class="d">09:42:16</span> <span class="d">Read src/auth/callback.ts</span></span><span class="ln ln4"><span class="d">09:44:02</span> <span class="d">Edit src/auth/callback.ts</span></span><span class="ln ln5"><span class="d">09:51:08</span> <span class="ok">✓ 14 tests pass</span></span><span class="ln ln6"><span class="d">09:52:02</span> <span class="ok">PR #212 opened · linked to the task</span></span><span class="caret"></span></div>
-    </div>
-    <div class="facts">
-      <div><code>tm8 session liveness</code><span>Is anything running right now?</span></div>
-      <div><code>tm8 session transcript</code><span>What has the agent said?</span></div>
-      <div><code>tm8 session launch</code><span>What was it told at spawn?</span></div>
-      <div><code>tm8 session journal</code><span>Which tm8 commands has it run?</span></div>
-    </div>
   </div>
 </section>
 
@@ -569,17 +503,80 @@
       </div>
 
       <ol class="jsteps">
-        <li class="jstep s1"><span class="jn">1</span><div class="jbody"><h3>Claim the node</h3><p>Use its one-time setup link to choose your name and password. Other devices sign in over HTTPS.</p></div></li>
-        <li class="jstep s2"><span class="jn">2</span><div class="jbody"><h3>Make a Space</h3><p>It starts with you, <code>general</code>, eleven model teammates, Dispatcher and Dreamer.</p></div></li>
-        <li class="jstep s3"><span class="jn">3</span><div class="jbody"><h3>Link your repository</h3><p>A project records the folder an agent may use and the repository it belongs to.</p></div></li>
-        <li class="jstep s4"><span class="jn">4</span><div class="jbody"><h3>Create the task</h3><p>Give the work a state, assignee and acceptance checks. The task becomes the first instruction.</p></div></li>
-        <li class="jstep s5"><span class="jn">5</span><div class="jbody"><h3>Start a teammate</h3><p>Choose the task and project. A worktree gives the session its own checkout and branch.</p></div></li>
-        <li class="jstep s6"><span class="jn">6</span><div class="jbody"><h3>Bring back the pull request</h3><p>Link it to the task. An optional gate can refuse completion until the pull request is merged.</p></div></li>
+        <li class="jstep s1">
+          <span class="jn">1</span>
+          <div class="jbody">
+            <h3>Claim the node</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 auth claim --token &lt;tm8c_…&gt; \
+  --username you \
+  --password '&lt;password&gt;'</code></div>
+            <p>Use the setup link printed by the server to set your name and password. After the claim, loopback access needs no sign-in; a phone or another laptop signs in over HTTPS.</p>
+          </div>
+        </li>
+
+        <li class="jstep s2">
+          <span class="jn">2</span>
+          <div class="jbody">
+            <h3>Make a Space</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 space create "Northlake"</code></div>
+            <p>A Space starts with you as owner, a <code>general</code> channel, eleven model teammates, Dispatcher and Dreamer.</p>
+          </div>
+        </li>
+
+        <li class="jstep s3">
+          <span class="jn">3</span>
+          <div class="jbody">
+            <h3>Point a project at your repository</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 project create "app" \
+  --working-dir ~/code/app \
+  --trust trusted \
+  --repo-url https://github.com/you/app</code></div>
+            <div class="jcmd"><span class="p">$</span><code>tm8 project link &lt;project-id&gt; \
+  --space &lt;space-id&gt;</code></div>
+            <p>A project records the folder an agent may use and the repository it belongs to. It belongs to the node, so the same project can be linked to more than one Space.</p>
+            <p class="jnote">In the browser, attach a project while creating a Space. Linking one to an existing Space uses the CLI today.</p>
+          </div>
+        </li>
+
+        <li class="jstep s4">
+          <span class="jn">4</span>
+          <div class="jbody">
+            <h3>Raise the work as tasks</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 entity create task \
+  "Fix the login redirect" \
+  --space &lt;space-id&gt;</code></div>
+            <p>Tasks use the same entity command as every other kind. The <code>task</code> commands handle what follows: transition, complete, gate and link-pr.</p>
+          </div>
+        </li>
+
+        <li class="jstep s5">
+          <span class="jn">5</span>
+          <div class="jbody">
+            <h3>Start a teammate in that project</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 session spawn --space &lt;space-id&gt; \
+  --teammate &lt;id&gt; --task &lt;task-id&gt; \
+  --launch-project &lt;project-id&gt; \
+  --workdir worktree</code></div>
+            <p>A real agent process starts in the project with the task as its first instruction. <code>--workdir worktree</code> gives the session a separate checkout and branch. The teammate supplies the default model; <code>--model</code> can change it for this session.</p>
+          </div>
+        </li>
+
+        <li class="jstep s6">
+          <span class="jn">6</span>
+          <div class="jbody">
+            <h3>Link the pull request to the task</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 task link-pr &lt;task-id&gt; &lt;pr-url&gt;</code></div>
+            <div class="jcmd"><span class="p">$</span><code>tm8 task gate &lt;task-id&gt; pr_merged \
+  --expect-version &lt;n&gt;</code></div>
+            <p>The first command records the pull request on the task. The second adds a rule: the task refuses completion while its linked pull request is unmerged.</p>
+          </div>
+        </li>
       </ol>
      </div>
     </div>
 
-    <div class="jfoot"><p>The walkthrough has the exact commands and shows what each one returns.</p><a class="btn" href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Read Getting started <span class="arr">→</span></a></div>
+    <p class="jfoot">These commands match the CLI catalogue and the
+      <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a> guide, which also shows what each one returns.</p>
   </div>
 </section>
 
@@ -592,7 +589,7 @@
     </div>
     <div class="faq">
       <details><summary>What does a hosted seat include?</summary><div class="a"><p>Hosted at tm8.sh means you use tm8 in the browser instead of installing its server and Postgres yourself. A seat includes the full tm8 platform and its current teammate roster. Claude Code and Codex are the two launch tools.</p></div></details>
-      <details><summary>What happens after the first 100 free seats?</summary><div class="a"><p>The first 100 verified accounts keep their launch seat free. After seat 100, new accounts use the $10 weekly, $30 monthly or $300 yearly plan when Stripe checkout opens.</p></div></details>
+      <details><summary>What happens after the first 100 free seats?</summary><div class="a"><p>The first 100 verified accounts in the launch allocation keep their hosted seat free. After the allocation fills, new accounts use the $10 weekly, $30 monthly or $300 yearly plan when Stripe checkout opens.</p></div></details>
       <details><summary>Which payment methods and currencies can I use?</summary><div class="a"><p>Prices are in US dollars. Card checkout through Stripe opens soon. Supported cards and any local-currency display are coming with Stripe.</p></div></details>
       <details><summary>Can I cancel a paid seat?</summary><div class="a"><p>The cancellation controls and when a cancellation takes effect are coming with Stripe checkout. No refund or prorating terms have been published.</p></div></details>
       <details><summary>Where does my data live?</summary><div class="a"><p>On a self-hosted install, the tm8 server and Postgres run on hardware you choose. The hosted offer runs at tm8.sh; it does not yet name a data region or promise data residency.</p></div></details>
@@ -647,7 +644,7 @@
         <small>Card checkout through Stripe opens soon</small>
       </div>
     </div>
-    <p class="pnote"><strong>First 100:</strong> verified accounts in the launch allocation keep a free seat. After seat 100, new accounts use one of the paid plans above when Stripe checkout opens. Prices are in US dollars.</p>
+    <p class="pnote"><strong>Launch allocation:</strong> the first 100 verified accounts keep a free hosted seat. After it fills, new accounts use one of the paid plans above when Stripe checkout opens. Prices are in US dollars.</p>
   </div>
 </section>
 
@@ -656,11 +653,11 @@
   <div class="wrap two">
     <div class="copy">
       <h2>Create your hosted account</h2>
-      <p class="sub">The first 100 verified accounts keep a free launch seat. Later accounts use a paid plan when Stripe checkout opens. Demo requests are read every working day.</p>
+      <p class="sub">Verified accounts join the launch list. The first 100 keep a free hosted seat; later accounts use a paid plan when Stripe checkout opens. Demo requests are read every working day.</p>
       <ol class="steps">
         <li><b>1</b><span>Create an account with an email address you can open now.</span></li>
         <li><b>2</b><span>Open the verification link, return here and tap “I’ve verified my email.”</span></li>
-        <li><b>3</b><span>Open <a href="https://tm8.sh">tm8.sh</a>, or request a walkthrough from the verified account panel.</span></li>
+        <li><b>3</b><span>Your launch-list place is recorded. Request a walkthrough from the verified account panel.</span></li>
       </ol>
     </div>
     <div class="formcard" id="account" data-auth data-firebase='{"apiKey":"AIzaSyCnH1XXcLRVMPCvtjBGotCh_86hOJ2AV2E","authDomain":"lvlup-ff6fa.firebaseapp.com","projectId":"lvlup-ff6fa","appId":"1:504506746594:web:c853db2f5633257e5f80bb"}' data-signups="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/signups" data-inbox="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/inquiries.json" data-mail="manzilshaik95@gmail.com">
@@ -693,10 +690,10 @@
         <h3>Your account is ready</h3>
         <p><b data-email></b> is verified.</p>
         <p class="seatstat" data-seat aria-live="polite">Checking your place on the launch list…</p>
-        <div class="fact"><a class="btn primary" href="https://tm8.sh">Open the platform →</a><a class="btn" href="#account" data-signout>Sign out</a></div>
+        <div class="fact"><a class="btn primary" href="#demo-request">Request a walkthrough ↓</a><a class="btn" href="#account" data-signout>Sign out</a></div>
         <hr>
-        <h3>Want a walkthrough first?</h3>
-        <form data-demo-form method="post" action="#account" novalidate>
+        <h3 id="demo-request">Want a walkthrough?</h3>
+        <form data-demo-form method="post" action="#account" novalidate aria-labelledby="demo-request">
           <div class="frow">
             <label><span>Your name</span><input name="name" type="text" autocomplete="name" enterkeyhint="next" required minlength="2" maxlength="100"></label>
             <label><span>Company or team <em>optional</em></span><input name="company" type="text" autocomplete="organization" enterkeyhint="next" maxlength="120"></label>
@@ -720,7 +717,7 @@
       <a class="giant" href="#signup">Create a hosted account <span class="arr">→</span></a>
       <a class="giant secondary" href="#install">Install from GitHub <span class="arr">→</span></a>
     </div>
-    <p class="after">The first 100 hosted seats stay free. Later seats use a paid plan when Stripe checkout opens. Read <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a> before you install.</p>
+    <p class="after">The 100-seat launch allocation is free. Later seats use a paid plan when Stripe checkout opens. Read <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a> before you install.</p>
   </div>
 </section>
 
@@ -735,7 +732,7 @@
       </div>
       <div>
         <h3>Product</h3>
-        <ul><li><a href="#pricing">Hosted plans</a></li><li><a href="#signup">Create an account</a></li><li><a href="https://tm8.sh">Open tm8.sh</a></li><li><a href="#models">Launch models</a></li><li><a href="#faq">Questions and answers</a></li></ul>
+        <ul><li><a href="#pricing">Hosted plans</a></li><li><a href="#signup">Create an account</a></li><li><a href="#models">Launch models</a></li><li><a href="#faq">Questions and answers</a></li></ul>
       </div>
       <div>
         <h3>Learn and install</h3>
