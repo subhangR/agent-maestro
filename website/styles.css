@@ -560,3 +560,29 @@ html.video-mode .subs.on { opacity: 1; }
 .formcard .fstat a { color: var(--brand-2); }
 .formcard button[disabled] { opacity: 0.6; cursor: default; }
 @media (max-width: 720px) { .frow { grid-template-columns: minmax(0, 1fr); } .formcard { padding: 18px; } }
+
+/* pricing */
+.plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; max-width: 980px; margin: 0 auto; }
+.plan { min-width: 0; background: var(--card); border: 1px solid var(--line-2); border-radius: var(--r-lg); padding: 24px 24px 22px; display: grid; gap: 14px; align-content: start; }
+.plan.featured { border-color: var(--ink); box-shadow: var(--sh-card); }
+.plan .pname { font: 600 15px var(--ui); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.plan .price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.plan .price b { font: 600 clamp(36px, 4vw, 44px)/1 var(--ui); letter-spacing: -0.04em; }
+.plan .price s { color: var(--ink-3); font: 500 18px var(--ui); text-decoration-thickness: 2px; }
+.plan .price span { color: var(--ink-3); font-size: 14px; }
+.plan ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.plan li { font-size: 14.5px; color: var(--ink-2); padding-left: 18px; position: relative; }
+.plan li::before { content: ""; position: absolute; left: 0; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--run); }
+.plan .btn { justify-self: start; }
+.plan small { font: 500 12px var(--mono); color: var(--ink-3); letter-spacing: 0.02em; }
+.pnote { text-align: center; color: var(--ink-3); font-size: 13.5px; margin-top: 22px; }
+@media (max-width: 860px) { .plans { grid-template-columns: minmax(0, 1fr); max-width: 520px; } }
+
+/* account card */
+.formcard form, .formcard [data-panel] { display: grid; gap: 14px; }
+.formcard h3 { font: 600 20px/1.2 var(--ui); letter-spacing: -0.02em; }
+.formcard p { font-size: 15px; color: var(--ink-2); }
+.formcard .alt { font-size: 14px; color: var(--ink-3); }
+.formcard .alt a { color: var(--brand-2); }
+.formcard hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
+.formcard [data-panel="in"] > p b[data-seat] { color: var(--run); }

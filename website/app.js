@@ -231,39 +231,93 @@
       else done(false);
     });
   });
-  /* ---------- request a demo: same-origin POST, mail fallback ---------- */
-  var form = document.querySelector('[data-demo-form]');
-  if (form) {
-    var fstat = form.querySelector('[data-fstat]');
-    var mailTo = form.getAttribute('data-mail') || '';
-    var inbox = form.getAttribute('data-inbox') || '';
-    var mailHref = function (d) { return 'mailto:' + mailTo + '?subject=' + encodeURIComponent('tm8 demo request · ' + d.name) + '&body=' + encodeURIComponent((d.message + '\n\n' + d.name + ' · ' + d.email + (d.company ? ' · ' + d.company : '')).replace(/\r?\n/g, '\r\n')); };
-    var fallback = function (d, err) {
-      fstat.textContent = (err ? err + ' ' : 'The form could not reach the server. ') + 'Send it by email instead: ';
-      var a = document.createElement('a'); a.href = mailHref(d); a.textContent = 'open your mail app →'; fstat.appendChild(a);
+  /* ---------- account: create, verify by email, reserve a seat, request a demo ---------- */
+  var acct = document.getElementById('account');
+  var mailHrefFor = function (mailTo, d) { return 'mailto:' + mailTo + '?subject=' + encodeURIComponent('tm8 demo request · ' + d.name) + '&body=' + encodeURIComponent((d.message + '\n\n' + d.name + ' · ' + d.email + (d.company ? ' · ' + d.company : '')).replace(/\r?\n/g, '\r\n')); };
+  if (acct && window.firebase && firebase.auth) {
+    var fbcfg = JSON.parse(acct.getAttribute('data-firebase'));
+    firebase.initializeApp(fbcfg);
+    var auth = firebase.auth();
+    var SIGNUPS = acct.getAttribute('data-signups'), INBOX = acct.getAttribute('data-inbox'), MAIL = acct.getAttribute('data-mail') || '';
+    var panels = {}; Array.prototype.slice.call(acct.querySelectorAll('[data-panel]')).forEach(function (p) { panels[p.getAttribute('data-panel')] = p; });
+    var show = function (name) { Object.keys(panels).forEach(function (k) { panels[k].hidden = k !== name; }); };
+    var setEmail = function (e) { Array.prototype.slice.call(acct.querySelectorAll('[data-email]')).forEach(function (el) { el.textContent = e || ''; }); };
+    var say = function (sel, msg) { var el = acct.querySelector(sel); if (el) { el.textContent = ''; el.textContent = msg; } };
+    var words = function (err) {
+      var c = (err && err.code) || '';
+      if (c === 'auth/email-already-in-use') return 'That email already has an account. Sign in instead.';
+      if (c === 'auth/invalid-email') return 'That email does not look right.';
+      if (c === 'auth/weak-password' || c === 'auth/password-does-not-meet-requirements') return 'Use eight characters or more.';
+      if (c === 'auth/wrong-password' || c === 'auth/invalid-credential' || c === 'auth/user-not-found' || c === 'auth/invalid-login-credentials') return 'Email or password did not match.';
+      if (c === 'auth/too-many-requests') return 'Too many tries. Wait a minute and try again.';
+      if (c === 'auth/network-request-failed') return 'No connection. Try again.';
+      return 'Something went wrong. Try again.';
     };
+    var fields = function (f) { var fd = new FormData(f); return { email: String(fd.get('email') || '').trim(), password: String(fd.get('password') || '') }; };
+    var emailOk = function (e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); };
+    var reserve = function (user) {
+      return user.getIdToken().then(function (t) {
+        var url = SIGNUPS + '/' + user.uid + '.json?auth=' + encodeURIComponent(t);
+        return fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (rec) {
+          if (rec) return rec;
+          return fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email, plan: 'free-100', source: 'tm8-site', createdAt: { '.sv': 'timestamp' } }) }).then(function (r) { return r.ok ? r.json() : null; });
+        });
+      });
+    };
+    var render = function (user) {
+      if (!user) { setEmail(''); show('create'); return; }
+      setEmail(user.email);
+      if (!user.emailVerified) { show('verify'); return; }
+      show('in'); reserve(user).catch(function () {});
+    };
+    auth.onAuthStateChanged(render);
+    Array.prototype.slice.call(document.querySelectorAll('[data-show], [data-show-signin]')).forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); var u = auth.currentUser; if (a.hasAttribute('data-show-signin') && u) { render(u); } else { show(a.getAttribute('data-show') || 'signin'); } acct.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); }); });
+    Array.prototype.slice.call(acct.querySelectorAll('[data-signout]')).forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); auth.signOut(); }); });
+    var createForm = acct.querySelector('[data-create-form]');
+    createForm.addEventListener('submit', function (e) {
+      e.preventDefault(); var v = fields(createForm);
+      if (!emailOk(v.email)) { say('[data-astat]', 'That email does not look right.'); createForm.email.focus(); return; }
+      if (v.password.length < 8) { say('[data-astat]', 'Use eight characters or more.'); createForm.password.focus(); return; }
+      say('[data-astat]', 'Creating your account…');
+      auth.createUserWithEmailAndPassword(v.email, v.password)
+        .then(function (cred) { return cred.user.sendEmailVerification().then(function () { say('[data-astat]', ''); say('[data-vstat]', 'Sent. The email comes from noreply@' + fbcfg.authDomain + '; check spam if it is slow.'); }); })
+        .catch(function (err) { say('[data-astat]', words(err)); });
+    });
+    var signinForm = acct.querySelector('[data-signin-form]');
+    signinForm.addEventListener('submit', function (e) {
+      e.preventDefault(); var v = fields(signinForm);
+      if (!emailOk(v.email)) { say('[data-sstat]', 'That email does not look right.'); signinForm.email.focus(); return; }
+      say('[data-sstat]', 'Signing in…');
+      auth.signInWithEmailAndPassword(v.email, v.password).then(function () { say('[data-sstat]', ''); }).catch(function (err) { say('[data-sstat]', words(err)); });
+    });
+    var resetLink = acct.querySelector('[data-reset]');
+    if (resetLink) resetLink.addEventListener('click', function (e) { e.preventDefault(); var v = fields(signinForm); if (!emailOk(v.email)) { say('[data-sstat]', 'Type your email above first, then tap this again.'); signinForm.email.focus(); return; } auth.sendPasswordResetEmail(v.email).then(function () { say('[data-sstat]', 'Reset link sent to ' + v.email + '.'); }).catch(function (err) { say('[data-sstat]', words(err)); }); });
+    acct.querySelector('[data-verified]').addEventListener('click', function () { var u = auth.currentUser; if (!u) { show('create'); return; } say('[data-vstat]', 'Checking…'); u.reload().then(function () { if (auth.currentUser && auth.currentUser.emailVerified) { say('[data-vstat]', ''); render(auth.currentUser); } else { say('[data-vstat]', 'Not verified yet. Open the link in the email, then tap again.'); } }).catch(function (err) { say('[data-vstat]', words(err)); }); });
+    acct.querySelector('[data-resend]').addEventListener('click', function () { var u = auth.currentUser; if (!u) return; u.sendEmailVerification().then(function () { say('[data-vstat]', 'Sent again to ' + u.email + '.'); }).catch(function (err) { say('[data-vstat]', words(err)); }); });
+    /* demo request, from a verified account; the mail draft is the fallback */
+    var form = acct.querySelector('[data-demo-form]');
+    var fstat = form.querySelector('[data-fstat]');
+    var fallback = function (d, err) { fstat.textContent = (err ? err + ' ' : 'The request could not be sent. ') + 'Send it by email instead: '; var a = document.createElement('a'); a.href = mailHrefFor(MAIL, d); a.textContent = 'open your mail app →'; fstat.appendChild(a); };
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      var u = auth.currentUser; if (!u || !u.emailVerified) { show(u ? 'verify' : 'create'); return; }
       var fd = new FormData(form);
-      var d = { name: String(fd.get('name') || '').trim(), email: String(fd.get('email') || '').trim(), company: String(fd.get('company') || '').trim(), message: String(fd.get('message') || '').trim(), type: 'demo', consent: !!fd.get('consent'), website: String(fd.get('website') || '') };
+      var d = { name: String(fd.get('name') || '').trim(), email: u.email, company: String(fd.get('company') || '').trim(), message: String(fd.get('message') || '').trim(), consent: !!fd.get('consent'), website: String(fd.get('website') || '') };
       var bad = function (field, msg) { fstat.textContent = ''; fstat.textContent = msg; field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', 'fstat'); field.focus(); };
       if (d.name.length < 2) { bad(form.name, 'Your name, please.'); return; }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) { bad(form.email, 'That email does not look right.'); return; }
       if (d.message.length < 20) { bad(form.message, 'Say a little more about the task, twenty characters or so.'); return; }
       if (!d.consent) { bad(form.consent, 'Tick the box so we may reply.'); return; }
       var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; fstat.textContent = 'Sending…';
-      /* The inbox is the site's own write-only database (validated by its rules); the /api/contact function is the alternative when no inbox is configured. */
-      var req = inbox
-        ? fetch(inbox, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name, email: d.email, company: d.company, message: d.message, type: 'demo', consent: true, website: d.website, source: 'tm8-site', page: location.href.slice(0, 200), userAgent: navigator.userAgent.slice(0, 300), createdAt: { '.sv': 'timestamp' } }) })
-            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: { reference: b && b.name ? String(b.name).slice(-6).toUpperCase() : undefined, error: r.ok ? undefined : 'The request was refused.' } }; }); })
-        : fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
-            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: b }; }); });
-      req
-        .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.b && x.b.reference ? x.b.reference : 'sent') + '. We reply by email.'; form.reset(); } else { fallback(d, x.b && x.b.error); } })
+      u.getIdToken()
+        .then(function (t) { return fetch(INBOX + '?auth=' + encodeURIComponent(t), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name, email: u.email, uid: u.uid, company: d.company, message: d.message, type: 'demo', consent: true, website: d.website, source: 'tm8-site', page: location.href.slice(0, 200), userAgent: navigator.userAgent.slice(0, 300), createdAt: { '.sv': 'timestamp' } }) }); })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, ref: b && b.name ? String(b.name).slice(-6).toUpperCase() : undefined }; }); })
+        .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.ref || 'sent') + '. We reply to ' + u.email + '.'; form.reset(); } else { fallback(d, 'The request was refused.'); } })
         .catch(function () { fallback(d); })
         .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
     });
-    Array.prototype.slice.call(form.querySelectorAll('input, textarea')).forEach(function (f) { f.addEventListener('input', function () { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); }); });
+    Array.prototype.slice.call(acct.querySelectorAll('input, textarea')).forEach(function (f) { f.addEventListener('input', function () { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); }); });
+  } else if (acct) {
+    var offline = acct.querySelector('[data-astat]'); if (offline) offline.textContent = 'Sign-up is unavailable right now. Email ' + (acct.getAttribute('data-mail') || '') + ' instead.';
   }
   var fig = document.querySelector('.real .fig');
   if (fig) { var figTab = function () { if (fig.scrollWidth > fig.clientWidth + 1) fig.tabIndex = 0; else fig.removeAttribute('tabindex'); }; figTab(); window.addEventListener('resize', figTab); }
