@@ -91,7 +91,8 @@
     var rnd = prng(phone ? 7 : 3), i, j, n;
     N = []; E = []; PATHS = [];
     function add(kind, title, at, parent, extra) {
-      n = { id: N.length, kind: kind, title: title, at: at, parent: parent, x: 0, y: 0, vx: 0, vy: 0, on: false };
+      n = { id: N.length, kind: kind, title: title, at: at, parent: parent, x: 0, y: 0, vx: 0, vy: 0, on: false, born: 0, r: 0, mass: 1, lab: 0,
+            sub: null, v: 0, who: null, live: false, task: -1, coll: -1, session: null };
       if (extra) for (var k in extra) n[k] = extra[k];
       N.push(n); return n;
     }
@@ -178,7 +179,7 @@
         var hs = sessions[(i * 5) % nSess], nm = add('message', 'turn', when, hs); link(nm, hs, 'anchored_to', 1);
       }
     }
-    N.forEach(function (q) { q.r = KIND[q.kind].r; q.mass = KIND[q.kind].mass; });
+    N.forEach(function (q) { q.r = KIND[q.kind].r; q.mass = KIND[q.kind].mass; q.lab = KIND[q.kind].label ? 1 : 0; });
   }
 
   /* ---------- the caption under the canvas ---------- */
@@ -244,7 +245,7 @@
           dx = b.x - a.x; dy = b.y - a.y; d2 = dx * dx + dy * dy;
           if (d2 > RANGE) continue;
           if (d2 < 1) { dx = 0.5; dy = 0.3; d2 = 0.34; }
-          f = REP * a.mass * b.mass / (d2 + 30 * S); if (KIND[a.kind].label && KIND[b.kind].label) f *= 2.4;
+          f = REP * a.mass * b.mass / (d2 + 30 * S); if (a.lab && b.lab) f *= 2.4;
           d = Math.sqrt(d2); dx /= d; dy /= d;
           a.vx -= dx * f / a.mass; a.vy -= dy * f / a.mass; b.vx += dx * f / b.mass; b.vy += dy * f / b.mass;
         }
@@ -275,7 +276,8 @@
   function advance(t) {
     if (t < simT) reset();
     while (born < N.length && N[born].at <= t) { insert(N[born]); born++; }
-    var frames = Math.min(240, Math.round((t - simT) * 60));
+    if (t - simT > 0.25) simT = t - 0.25;
+    var frames = Math.min(15, Math.round((t - simT) * 60));
     physics(Math.max(1, frames) * 2);
     simT = t;
   }
@@ -421,7 +423,7 @@
   }
   function run() { if (raf === null && !paused && inView && !document.hidden) { t0 = null; raf = requestAnimationFrame(frame); } }
   function stop() { if (raf) { cancelAnimationFrame(raf); raf = null; } }
-  function still(t) { reset(); for (var s = 0; s <= t; s += 0.5) advance(s); last = t; draw(t); }
+  function still(t) { reset(); for (var s = 0; s <= t; s += 0.25) advance(s); last = t; draw(t); }
   function pick(x, y) {
     var best = -1, bd = 16 * S;
     for (var i = 0; i < alive.length; i++) { var a = alive[i]; if (a.at > 0 && last - a.born < 0.35) continue; var d = Math.hypot(a.x - x, a.y - y) - a.r * S; if (d < bd) { bd = d; best = a.id; } }
