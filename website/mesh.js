@@ -8,7 +8,8 @@
   var cv = document.querySelector('[data-mesh]');
   if (!cv) return;
   var cap = document.querySelector('[data-mesh-cap]');
-  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var playBtn = document.querySelector('[data-mesh-play]');
   var ctx = cv.getContext('2d');
 
   /* ---------- deterministic randomness, so every visitor sees the same graph ---------- */
@@ -80,7 +81,7 @@
     'release.txt', 'schema.sql', 'brief.md', 'audit.csv', 'notes.md', 'diff.patch', 'plan.md', 'evidence.png'];
 
   /* ---------- build the graph and its schedule. Slow at first, then it pours in. ---------- */
-  var N = [], E = [], PATHS = [], phone = false, LOOP = 72, HOLD = 70, FULL = 58;
+  var N = [], E = [], PATHS = [], phone = false, LOOP = 68, HOLD = 66, FULL = 62;
   function build() {
     var rnd = prng(phone ? 7 : 3), i, j, n;
     N = []; E = []; PATHS = [];
@@ -154,6 +155,18 @@
       link(spaces[i % nSp], co, 'contains', 1);
       for (j = 0; j < (P ? 3 : 5); j++) { var tk4 = tasks[Math.floor(rnd() * nTask)]; if (tk4.coll !== co.id) { tk4.coll = co.id; link(co, tk4, 'contains', 1); } }
     }
+    /* and it keeps growing: the record never holds still */
+    for (i = 0; i < (P ? 6 : 12); i++) {
+      var when = 54.5 + i * (P ? 1.6 : 0.85);
+      if (i % 4 === 3) {
+        var ntk = add('task', TASKS[(nTask + i) % TASKS.length], when, projects[i % nProj], { v: 1, who: mates[i % nMate] });
+        link(ntk, projects[i % nProj], 'in_project', 1); link(ntk, mates[i % nMate], 'assigned_to', 1);
+        var nss = add('session', mates[i % nMate].title, when + 0.5, ntk, { sub: mates[i % nMate].sub, live: true, task: ntk.id });
+        link(nss, ntk, 'working_on', 1); link(nss, mates[i % nMate], 'runs as'); PATHS.push([mates[i % nMate].id, ntk.id, nss.id]);
+      } else {
+        var hs = sessions[(i * 5) % nSess], nm = add('message', 'turn', when, hs); link(nm, hs, 'anchored_to', 1);
+      }
+    }
     N.forEach(function (q) { q.r = KIND[q.kind].r; q.mass = KIND[q.kind].mass; });
   }
 
@@ -173,6 +186,7 @@
     [48.5, 'Loops keep time in the graph. Every firing spawns a session with a triggered_by edge, so the fan is the run history.'],
     [51.5, 'Collections gather what belongs together.'],
     [54, 'One connected graph. The board, the tree, and the context an agent reads are all drawn from it.'],
+    [59, 'Still growing. Every command writes another entry, and nothing is ever removed.'],
     [HOLD, '']
   ];
 
@@ -182,10 +196,10 @@
     tokens();
     var cssW = cv.parentNode.clientWidth || 1160;
     phone = cssW < 640;
-    W = cssW; H = phone ? Math.round(cssW * 1.3) : Math.round(cssW * 0.58);
+    W = cssW; H = phone ? Math.round(cssW * 1.3) : Math.round(Math.max(560, Math.min(760, cssW * 0.52)));
     if (H < 420) H = 420;
-    S = phone ? 0.8 : Math.max(0.82, Math.min(1, cssW / 1160));
-    CX = W / 2; CY = H / 2;
+    S = phone ? 0.8 : Math.max(0.82, Math.min(1.05, cssW / 1240));
+    CX = phone ? W / 2 : W * 0.57; CY = H / 2;
     var dpr = Math.min(2, window.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cv.style.height = H + 'px';
@@ -232,8 +246,9 @@
       for (i = 0; i < alive.length; i++) {
         a = alive[i];
         if (a.kind === 'server') { a.x = CX; a.y = CY; a.vx = a.vy = 0; continue; }
+        if (!calm) { a.vx += Math.sin(simT * 0.7 + a.id * 1.3) * 0.05 * S / a.mass; a.vy += Math.cos(simT * 0.5 + a.id * 0.7) * 0.05 * S / a.mass; }
         a.vx += (CX - a.x) * G / Math.sqrt(a.mass); a.vy += (CY - a.y) * G * (phone ? 0.7 : 2.6) / Math.sqrt(a.mass);
-        var m = 22 * S + a.r;
+        var m = (KIND[a.kind].label ? 46 : 22) * S + a.r;
         if (a.x < m) a.vx += (m - a.x) * 0.08; if (a.x > W - m) a.vx -= (a.x - W + m) * 0.08;
         if (a.y < m) a.vy += (m - a.y) * 0.08; if (a.y > H - m) a.vy -= (a.y - H + m) * 0.08;
         a.vx *= DAMP; a.vy *= DAMP;
@@ -265,6 +280,10 @@
       ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
     }
     ctx.globalAlpha = fade;
+    if (t < 2.4 && !calm) {
+      var ping = (t * 0.9) % 1;
+      ctx.beginPath(); ctx.arc(CX, CY, (24 + ping * 70) * S, 0, 6.2832); ctx.strokeStyle = rgba(T.brand, 0.45 * (1 - ping)); ctx.lineWidth = 1.5; ctx.stroke();
+    }
     var hov = hover >= 0 ? N[hover] : null, hn = {};
     if (hov) { hn[hov.id] = 1; E.forEach(function (e) { if (e.a === hov.id) hn[e.b] = 1; if (e.b === hov.id) hn[e.a] = 1; }); }
     /* edges */
@@ -290,7 +309,7 @@
       }
     }
     /* packets: a message goes to the task, then into the session as its next turn */
-    if (t >= 31 && t < HOLD && PATHS.length && !reduced) {
+    if (t >= 31 && t < HOLD && PATHS.length && !calm) {
       var slot = Math.floor(t / 0.55);
       for (var q = 0; q < 4; q++) {
         var sl = slot - q, u = (t - sl * 0.55) / 2.0; if (u < 0 || u > 1) continue;
@@ -313,7 +332,7 @@
       var K = KIND[a.kind], r = a.r * S * (0.3 + 0.7 * k), c = tone(K.tone), dim2 = hov && !hn[a.id] ? 0.3 : 1;
       ctx.globalAlpha = fade * k * dim2;
       if (a.kind === 'session' && a.live) {
-        var pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(t * 3.4 + a.id);
+        var pulse = calm ? 0.5 : 0.5 + 0.5 * Math.sin(t * 3.4 + a.id);
         ctx.beginPath(); ctx.arc(a.x, a.y, r + (4 + 5 * pulse) * S, 0, 6.2832); ctx.fillStyle = rgba(T.run, 0.10 + 0.12 * (1 - pulse)); ctx.fill();
       }
       if (a.kind === 'server') {
@@ -326,7 +345,7 @@
         ctx.beginPath(); ctx.arc(a.x, a.y, r * 0.32, 0, 6.2832); ctx.fillStyle = c; ctx.fill();
       } else if (a.kind === 'loop') {
         ctx.beginPath(); ctx.arc(a.x, a.y, r, 0, 6.2832); ctx.fillStyle = T.card; ctx.fill(); ctx.strokeStyle = rgba(c, 0.35); ctx.lineWidth = 1.4; ctx.stroke();
-        var sweep = reduced ? 0.7 : ((t * 0.35 + a.id * 0.2) % 1);
+        var sweep = calm ? 0.7 : ((t * 0.35 + a.id * 0.2) % 1);
         ctx.beginPath(); ctx.arc(a.x, a.y, r, -1.5708, -1.5708 + sweep * 6.2832); ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.stroke();
         ctx.beginPath(); ctx.arc(a.x, a.y, 1.8 * S, 0, 6.2832); ctx.fillStyle = c; ctx.fill();
       } else if (a.kind === 'session' && !a.live) {
@@ -376,7 +395,7 @@
   }
 
   /* ---------- run ---------- */
-  var raf = null, t0 = null, onScreen = false, last = 0, settled = false;
+  var raf = null, t0 = null, onScreen = false, last = 0, paused = false;
   function frame(now) {
     if (t0 === null) t0 = now - last * 1000;
     var t = ((now - t0) / 1000) % LOOP;
@@ -385,22 +404,21 @@
     advance(t); draw(t);
     raf = onScreen ? requestAnimationFrame(frame) : null;
   }
-  function run() { if (raf === null && !reduced) { onScreen = true; t0 = null; raf = requestAnimationFrame(frame); } }
+  function run() { if (raf === null && !paused) { onScreen = true; t0 = null; raf = requestAnimationFrame(frame); } }
   function stop() { onScreen = false; if (raf) { cancelAnimationFrame(raf); raf = null; } }
-  /* the finished graph, computed in small idle slices so nothing blocks the page */
-  function settle(done) {
-    reset(); while (born < N.length) { insert(N[born]); born++; }
-    var left = 260;
-    (function slice() { physics(14); left -= 14; if (left > 0) setTimeout(slice, 0); else { settled = true; last = FULL; done(); } })();
-  }
   function still(t) { reset(); for (var s = 0; s <= t; s += 0.5) advance(s); last = t; draw(t); }
   function pick(x, y) {
     var best = -1, bd = 16 * S;
     for (var i = 0; i < alive.length; i++) { var a = alive[i], d = Math.hypot(a.x - x, a.y - y) - a.r * S; if (d < bd) { bd = d; best = a.id; } }
     return best;
   }
-  layout(); reset();
-  if (!reduced) { advance(0); draw(0); }
+  layout(); reset(); advance(0); draw(0);
+  if (playBtn) {
+    playBtn.addEventListener('click', function () {
+      paused = !paused; playBtn.setAttribute('aria-pressed', paused ? 'true' : 'false'); playBtn.textContent = paused ? 'Play' : 'Pause';
+      if (paused) stop(); else run();
+    });
+  }
   function point(ev) {
     var r = cv.getBoundingClientRect(), h = pick(ev.clientX - r.left, ev.clientY - r.top);
     if (h !== hover) { hover = h; cv.style.cursor = h >= 0 ? 'pointer' : ''; if (raf === null) draw(last); }
@@ -419,12 +437,9 @@
   });
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(function (es) {
-      es.forEach(function (e) {
-        if (!e.isIntersecting) { stop(); return; }
-        if (reduced) { if (!settled) settle(function () { draw(FULL); }); } else run();
-      });
+      es.forEach(function (e) { if (e.isIntersecting) run(); else stop(); });
     }, { threshold: 0.12 }).observe(cv);
-  } else if (reduced) settle(function () { draw(FULL); }); else run();
+  } else run();
   /* capture hooks, harmless on the live page */
   window.__meshNodes = function () { return alive.map(function (n) { return { id: n.id, kind: n.kind, x: n.x, y: n.y, title: n.title }; }); };
   window.__meshSeek = function (t, hx, hy) { stop(); still(t); if (hx != null) { hover = pick(hx, hy); draw(t); } return alive.length; };
