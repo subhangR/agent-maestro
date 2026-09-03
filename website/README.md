@@ -1,6 +1,6 @@
 # tm8 public website
 
-The static marketing site for tm8, published by Firebase Hosting (site `maestro-web-fleet`, project `maestro-5f3fc`).
+The static marketing site for tm8. It is live at https://tm8-site.web.app, Firebase Hosting site `tm8-site` in project `lvlup-ff6fa`, deployed with the repository-root `firebase.tm8-site.json` (the root `firebase.json` belongs to the Maestro project and its validator).
 
 - `index.html`, `404.html`, `styles.css`, `app.js` — the page. No framework, no tracking, no third-party scripts; the Geist fonts come from Google Fonts.
 - `content/site.json` + `site.schema.json` — the fields the deploy validator checks, plus `contactEmail` for the form's mail fallback.
@@ -23,3 +23,14 @@ python3 -m http.server 4173 --directory website
 ```
 
 Then open http://localhost:4173. `node scripts/validate-website.mjs` from the repository root runs the deploy validator.
+
+## Deploy
+
+The `deploy-tm8-site` jobs in `.github/workflows/deploy-website.yml` publish a preview channel on every pull request that touches `website/` and deploy live on every merge to `main`, using the repository secret `FIREBASE_SERVICE_ACCOUNT_LVLUP_FF6FA` (the JSON key of a service account with the Firebase Hosting Admin role on lvlup-ff6fa). By hand, from a machine with that key:
+
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/lvlup-ff6fa-key.json \
+npx firebase-tools deploy --only hosting --project lvlup-ff6fa --config firebase.tm8-site.json
+```
+
+`/api/contact` falls back to a mail draft until `submitWebsiteInquiry` is deployed to lvlup-ff6fa and a `rewrites` entry is added to `firebase.tm8-site.json`.

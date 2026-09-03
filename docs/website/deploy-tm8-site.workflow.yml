@@ -1,0 +1,70 @@
+# Jobs to append under `jobs:` in .github/workflows/deploy-website.yml.
+# They deploy website/ to Firebase Hosting site tm8-site in project lvlup-ff6fa
+# (https://tm8-site.web.app) using firebase.tm8-site.json, gated on the repository
+# secret FIREBASE_SERVICE_ACCOUNT_LVLUP_FF6FA. Also add "firebase.tm8-site.json" to
+# both `paths:` lists at the top of that workflow.
+#
+# This file is not a workflow itself: the token that opened the pull request cannot
+# write under .github/workflows (no `workflow` scope), so a maintainer moves it.
+
+  # The tm8 site: Firebase Hosting site tm8-site in project lvlup-ff6fa, https://tm8-site.web.app.
+  # Uses the repository-root firebase.tm8-site.json so the Maestro hosting config above stays untouched.
+  tm8-site-config:
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.credentials.outputs.ready }}
+    steps:
+      - name: Check the lvlup-ff6fa deployment credential
+        id: credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LVLUP_FF6FA }}
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=tm8-site deployment not configured::Add repository secret FIREBASE_SERVICE_ACCOUNT_LVLUP_FF6FA (service-account JSON with Firebase Hosting Admin on lvlup-ff6fa). Website validation passed; the tm8-site deployment was skipped."
+          fi
+
+  deploy-tm8-site-preview:
+    if: github.event_name == 'pull_request' && needs.tm8-site-config.outputs.ready == 'true'
+    needs: [validate, tm8-site-config]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publish a preview channel for this pull request
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LVLUP_FF6FA }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/lvlup-ff6fa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/lvlup-ff6fa.json"
+          npx --yes firebase-tools@14 hosting:channel:deploy "pr-${{ github.event.pull_request.number }}" \
+            --project lvlup-ff6fa --config firebase.tm8-site.json --expires 7d --non-interactive --json \
+            | tee "$RUNNER_TEMP/preview.json"
+          node -e 'const r=JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP+"/preview.json","utf8")); const s=r.result&&r.result["tm8-site"]; if(s&&s.url) console.log("::notice title=tm8-site preview::"+s.url);'
+          rm -f "$RUNNER_TEMP/lvlup-ff6fa.json"
+
+  deploy-tm8-site-live:
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.tm8-site-config.outputs.ready == 'true'
+    needs: [validate, tm8-site-config]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy website/ to tm8-site
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LVLUP_FF6FA }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/lvlup-ff6fa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/lvlup-ff6fa.json"
+          npx --yes firebase-tools@14 deploy --only hosting --project lvlup-ff6fa --config firebase.tm8-site.json \
+            --non-interactive -m "main @ ${{ github.sha }}"
+          rm -f "$RUNNER_TEMP/lvlup-ff6fa.json"
+          echo "::notice title=tm8-site live::https://tm8-site.web.app"
