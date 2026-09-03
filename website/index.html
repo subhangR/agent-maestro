@@ -40,7 +40,7 @@
   <meta name="twitter:image" content="https://tm8-site.web.app/assets/og.png">
 
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=88b3a29c">
+  <link rel="stylesheet" href="/styles.css?v=a4610f76">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
   <script src="/app.js?v=4589f619" defer></script>
@@ -179,35 +179,17 @@
 
 <main id="main">
 
-<!-- ============ hero ============ -->
-<section class="hero" id="top">
-  <div class="wrap">
-    <div class="hero-c">
-      <div class="ribbon-wrap"><canvas data-ribbon width="560" height="700" aria-label="The tm8 mark, a Möbius ribbon shaped like an 8. Hover to turn it." role="img"></canvas></div>
-      <h1>The task is the first instruction.</h1>
-      <p class="lede">A workspace where people and AI agents work the same task list. One command spawns a real agent, on Claude Code or Codex, and every turn is on the record. Hosted at tm8.sh, or run it yourself.</p>
+<!-- ============ the mesh ============ -->
+<section class="section mesh" id="top">
+  <div class="mstage" id="graph">
+    <div class="mtext">
+      <h1><span class="k-member">People</span>, <span class="k-mate">AI teammates</span>, <span class="k-task">tasks</span> and <span class="k-run">running sessions</span> are one live graph.</h1>
+      <p class="sub">This is the whole of tm8, drawn the way it is stored. It starts with one server and grows, one truthful link at a time, into the context an agent reads. <span class="mhover">Hover anything to see what it is.</span></p>
       <div class="actions">
         <a class="btn primary" href="#signup">Claim a free seat</a>
         <a class="btn" href="#story" data-watch>See it work</a>
       </div>
       <p class="runs-with">First 100 seats free while Stripe payments are being set up. Runs Claude Code and Codex, on Linux or macOS.</p>
-    </div>
-    <figure class="shot hero-shot">
-      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work</b></div>
-      <picture>
-        <source media="(max-width: 720px)" srcset="/assets/real/hero-work-m.webp">
-        <img src="/assets/real/hero-work.webp" width="2880" height="1560" alt="The Work screen in tm8: the task list on the left, and on the right the open task with its state, priority, assignee, description, acceptance criteria and discussion" fetchpriority="high">
-      </picture>
-    </figure>
-  </div>
-</section>
-
-<!-- ============ the mesh ============ -->
-<section class="section mesh" id="graph">
-  <div class="mstage">
-    <div class="mtext">
-      <h2><span class="k-member">People</span>, <span class="k-mate">AI teammates</span>, <span class="k-task">tasks</span> and <span class="k-run">running sessions</span> are one live graph.</h2>
-      <p class="sub">This is the whole of tm8, drawn the way it is stored. It starts with one server and grows, one truthful link at a time, into the context an agent reads. <span class="mhover">Hover anything to see what it is.</span></p>
       <p class="mcap" data-mesh-cap>One server. Yours, or hosted at tm8.sh.</p>
     </div>
     <div class="mfade" aria-hidden="true"></div>
@@ -232,7 +214,7 @@
 <section class="section story" id="story">
   <div class="wrap">
     <div class="head center">
-      <h2>One task, open to done</h2>
+      <h2>The task is the first instruction.</h2>
       <p class="sub">Drawn from the product. Mara puts Juniper on a task, Theo writes to it mid-run, the pull request links itself, and the task is completed with the version she read.</p>
     </div>
     <div class="frame-wrap">
@@ -456,6 +438,13 @@
       <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-mara"/></svg><b>Worker</b><span>Haiku 4.5 · claude-code</span></li>
       <li><svg class="face sm" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><b>Worker</b><span>GPT 5.6 · codex · worktree</span></li>
     </ul>
+    <figure class="fig shot work-shot">
+      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work</b></div>
+      <picture>
+        <source media="(max-width: 720px)" srcset="/assets/real/hero-work-m.webp">
+        <img src="/assets/real/hero-work.webp" width="2880" height="1560" alt="The Work screen in tm8: the task list on the left, and on the right the open task with its state, priority, assignee, description and acceptance criteria." loading="lazy" decoding="async">
+      </picture>
+    </figure>
     <div class="shots">
       <figure><img src="/assets/real/term-codex.webp" width="1231" height="1702" alt="Live terminal of the GPT 5.6 worker listing its allowed actions and completing the task with the expected version" loading="lazy"><figcaption>GPT 5.6 checks what it may do, then completes with the exact version.</figcaption></figure>
       <figure><img src="/assets/real/task-faq.webp" width="1231" height="1702" alt="The task afterwards: state done, assignee GPT 5.6 Teammate, version 3" loading="lazy"><figcaption>The task after: done, assignee GPT 5.6, version 3.</figcaption></figure>
