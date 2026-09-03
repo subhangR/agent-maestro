@@ -42,7 +42,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="/styles.css?v=907cac66">
+  <link rel="stylesheet" href="/styles.css?v=440be9c1">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
   <script src="/app.js?v=4f6afe90" defer></script>
@@ -177,22 +177,33 @@
 <!-- ============ hero ============ -->
 <section class="hero" id="top">
   <div class="wrap">
-    <div class="hero-grid">
-      <div class="copy">
-        <div class="cast" role="img" aria-label="The demo team: two people, two agents, and the two keepers every Space starts with">
-          <svg class="face" aria-hidden="true" focusable="false"><use href="#face-mara"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-theo"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-juniper"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-callisto"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dispatcher"/></svg><svg class="face" aria-hidden="true" focusable="false"><use href="#face-dreamer"/></svg>
-        </div>
-        <h1>The task is the first instruction.</h1>
-        <p class="lede">A workspace where people and AI agents work the same task list. One command spawns a real agent, on Claude Code or Codex, and every turn is on the record. Hosted at tm8.sh, or run it yourself.</p>
-        <div class="actions">
-          <a class="btn primary" href="#signup">Claim a free seat</a>
-          <a class="btn" href="#top" data-watch>See it work</a>
-        </div>
-        <p class="runs-with">First 100 seats free while Stripe payments are being set up. Runs Claude Code and Codex, on Linux or macOS.</p>
-      </div>
+    <div class="hero-c">
       <div class="ribbon-wrap"><canvas data-ribbon width="560" height="700" aria-label="The tm8 mark, a Möbius ribbon shaped like an 8. Hover to turn it." role="img"></canvas></div>
+      <h1>The task is the first instruction.</h1>
+      <p class="lede">A workspace where people and AI agents work the same task list. One command spawns a real agent, on Claude Code or Codex, and every turn is on the record. Hosted at tm8.sh, or run it yourself.</p>
+      <div class="actions">
+        <a class="btn primary" href="#signup">Claim a free seat</a>
+        <a class="btn" href="#story" data-watch>See it work</a>
+      </div>
+      <p class="runs-with">First 100 seats free while Stripe payments are being set up. Runs Claude Code and Codex, on Linux or macOS.</p>
     </div>
+    <figure class="shot hero-shot">
+      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work</b></div>
+      <picture>
+        <source media="(max-width: 720px)" srcset="/assets/real/hero-work-m.webp">
+        <img src="/assets/real/hero-work.webp" width="2880" height="1560" alt="The Work screen in tm8: the task list on the left, and on the right the open task with its state, priority, assignee, description, acceptance criteria and discussion" fetchpriority="high">
+      </picture>
+    </figure>
+  </div>
+</section>
 
+<!-- ============ the story ============ -->
+<section class="section story" id="story">
+  <div class="wrap">
+    <div class="head center">
+      <h2>One task, open to done</h2>
+      <p class="sub">Drawn from the product. Mara puts Juniper on a task, Theo writes to it mid-run, the pull request links itself, and the task is completed with the version she read.</p>
+    </div>
     <div class="frame-wrap">
       <div class="frame ws" data-scene role="img" aria-label="A tm8 task. Mara puts Juniper, an agent, on it; Juniper's terminal streams; Theo's message reaches the terminal as its next turn; Juniper links a pull request; Mara completes the task.">
         <div class="topbar" aria-hidden="true">
@@ -404,7 +415,8 @@
       <h2>Two models, one team</h2>
       <p class="sub">The real screen: one parent session, two workers, Haiku 4.5 on Claude Code and GPT 5.6 on Codex, each with its own worktree lane. Cropped, not retouched.</p>
     </div>
-    <figure class="fig" role="region" aria-label="Sessions list screenshot, scrolls sideways on small screens">
+    <figure class="fig shot" role="region" aria-label="Sessions list screenshot, scrolls sideways on small screens">
+      <div class="bar" aria-hidden="true"><span></span><span></span><span></span><b>tm8.sh · Work · Sessions</b></div>
       <img src="/assets/real/sessions-tree.webp" width="1580" height="440" alt="The Sessions list: the Claude Fable 5.1 session that spawned two child sessions, one on Claude Haiku 4.5 and one on GPT 5.6, each listing its worktree lane beneath it" loading="lazy">
     </figure>
     <p class="swipe" aria-hidden="true">swipe to see the models →</p>
