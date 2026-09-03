@@ -19,14 +19,14 @@
 ## The graph
 
 - Everything tm8 keeps is one connected graph: server, Spaces, members, teammates, projects, tasks, sessions, messages, pull requests, commits, docs and files, memory, loops and collections. The board, the tree and the context an agent reads are all drawn from the same record.
-- Edges carry their real names: assigned_to, in_project, depends_on, relates_to, working_on, anchored_to, mentions, tracks, attached_to, contains, remembers, supersedes, disputes, triggered_by.
+- Edges carry their real names: assigned_to, in_project, depends_on, relates_to, working_on, anchored_to, messaged, tracks, attached_to, contains, remembers, supersedes, disputes, triggered_by.
 - The website draws this graph live at https://tm8-site.web.app/#graph: it starts with one server and grows, in the order the commands that write it run, into a mesh of about two hundred entities.
 
 ## How it is engineered
 
 - Prompt: the task is the agent's first instruction. A persona and an interaction profile shape tone and priorities; they cannot grant access.
 - Context: tm8 entity context returns an entity's summary, hierarchy, recent messages and allowed actions with the current version in one bounded call. Memory pinned to a teammate or a task arrives in context before the work begins, through remembers edges.
-- Harness: one spawn path. The launch manifest reads the model name and picks the tool: Claude Code for Claude models, Codex for GPT models, Gemini for Gemini models, Hermes for Hermes models. Each session has an access posture (safe, acceptEdits, auto, plan, fullAccess) and a reasoning effort (low to max). A Claude Code session and a Codex session need no private bridge: given each other's session id they talk through the graph.
+- Harness: one spawn path. The launch manifest reads the model name and picks the tool: Claude Code for Claude models, Codex for GPT models. Those two launch today; the manifest also recognises gemini and hermes model names, but no launcher ships for them. Each session has an access posture (safe, acceptEdits, auto, plan, fullAccess) and a reasoning effort (low to max). A Claude Code session and a Codex session need no private bridge: given each other's session id they talk through the graph.
 - Loop: a loop is an entity with a schedule such as every 1d. Every firing spawns a session with a triggered_by edge back to the loop, so the fan of edges is the run history. A Dispatcher routes new work and records its reason. Dreamer, a seeded teammate on a daily loop, consolidates memory without erasing history.
 
 ## Setup, in six commands
