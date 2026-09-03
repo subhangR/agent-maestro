@@ -40,11 +40,11 @@
   <meta name="twitter:image" content="https://tm8-site.web.app/assets/og.png">
 
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=40d1c084">
+  <link rel="stylesheet" href="/styles.css?v=dfdfa979">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
   <script src="/app.js?v=4589f619" defer></script>
-  <script src="/mesh.js?v=bd342509" defer></script>
+  <script src="/mesh.js?v=1e3ac35f" defer></script>
 
   <script type="application/ld+json">
   {
@@ -204,15 +204,17 @@
 
 <!-- ============ the mesh ============ -->
 <section class="section mesh" id="graph">
-  <div class="wrap">
-    <div class="head center">
+  <div class="mstage">
+    <div class="mtext">
       <h2><span class="k-member">People</span>, <span class="k-mate">AI teammates</span>, <span class="k-task">tasks</span> and <span class="k-run">running sessions</span> are one live graph.</h2>
       <p class="sub">This is the whole of tm8, drawn the way it is stored. It starts with one server and grows, one truthful link at a time, into the context an agent reads. Hover anything to see what it is.</p>
+      <p class="mcap" data-mesh-cap aria-live="polite">One server. Yours, or hosted at tm8.sh.</p>
     </div>
-    <div class="mstage">
-      <canvas data-mesh role="img" aria-label="The tm8 graph assembling itself: one server, then Spaces, then people and AI teammates joining them, projects with repositories, dozens of tasks assigned to members, sessions lighting up as they run, messages travelling into sessions as their next turn, pull requests and commits recorded on their tasks, loops on a schedule and collections gathering tasks, until it is one dense connected mesh."></canvas>
-    </div>
-    <p class="mcap" data-mesh-cap aria-live="polite">One server. Yours, or hosted at tm8.sh.</p>
+    <div class="mfade" aria-hidden="true"></div>
+    <canvas data-mesh role="img" aria-label="The tm8 graph assembling itself: one server, then Spaces, then people and AI teammates joining them, projects with repositories, dozens of tasks assigned to members, sessions lighting up as they run, messages travelling into sessions as their next turn, pull requests and commits recorded on their tasks, docs, memory, loops on a schedule and collections gathering tasks, until it is one dense connected mesh that keeps growing."></canvas>
+    <button class="mplay" type="button" data-mesh-play aria-pressed="false" aria-label="Pause or play the graph animation">Pause</button>
+  </div>
+  <div class="wrap">
     <ul class="mkey" aria-label="What the colours mean">
       <li><i class="i-member"></i>person</li>
       <li><i class="i-mate"></i>AI teammate</li>
