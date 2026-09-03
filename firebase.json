@@ -1,35 +1,23 @@
 {
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
   "hosting": {
-    "site": "maestro-web-fleet",
+    "site": "tm8-site",
     "public": "website",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/README.md",
-      "_video/**"
+      "**/index.template.html",
+      "**/artifact.html"
     ],
     "cleanUrls": true,
     "trailingSlash": false,
-    "rewrites": [
-      {
-        "source": "/api/contact",
-        "function": {
-          "functionId": "submitWebsiteInquiry",
-          "region": "asia-southeast1"
-        }
-      }
-    ],
     "headers": [
       {
         "source": "**",
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
           },
           {
             "key": "Referrer-Policy",
@@ -50,10 +38,6 @@
           {
             "key": "Cross-Origin-Opener-Policy",
             "value": "same-origin"
-          },
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=0, must-revalidate"
           }
         ]
       },
@@ -62,7 +46,16 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=3600, must-revalidate"
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800, stale-while-revalidate=86400"
           }
         ]
       },
@@ -83,26 +76,31 @@
             "value": "public, max-age=0, must-revalidate"
           }
         ]
+      },
+      {
+        "source": "/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/@(llms.txt|robots.txt|sitemap.xml|site.webmanifest)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
       }
     ]
   },
-  "database": {
-    "rules": "database.rules.json"
-  },
-  "functions": [
+  "database": [
     {
-      "source": "functions",
-      "codebase": "notifications",
-      "predeploy": [
-        "bun run --cwd functions build"
-      ],
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "src/**/*.test.ts"
-      ]
+      "instance": "tm8-site-inquiries",
+      "rules": "database.tm8-site-inquiries.rules.json"
     }
   ]
 }

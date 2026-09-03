@@ -215,7 +215,7 @@
     W = cssW; H = phone ? Math.round(cssW * 1.3) : stacked ? Math.round(cssW * 0.9) : Math.round(Math.max(560, Math.min(760, cssW * 0.52)));
     S = phone ? 0.8 : stacked ? 0.9 : Math.max(0.82, Math.min(1.05, cssW / 1240));
     CX = stacked ? W / 2 : W * 0.57; CY = H / 2;
-    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var dpr = Math.min(phone ? 1.5 : 2, window.devicePixelRatio || 1);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     cv.style.height = H + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
