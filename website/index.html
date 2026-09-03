@@ -40,11 +40,11 @@
   <meta name="twitter:image" content="https://tm8-site.web.app/assets/og.png">
 
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=a4610f76">
+  <link rel="stylesheet" href="/styles.css?v=4a0ebad7">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
   <script src="/app.js?v=4589f619" defer></script>
-  <script src="/mesh.js?v=d5f2b2c1" defer></script>
+  <script src="/mesh.js?v=cea7c195" defer></script>
 
   <script type="application/ld+json">
   {
@@ -184,7 +184,7 @@
   <div class="mstage" id="graph">
     <div class="mtext">
       <h1><span class="k-member">People</span>, <span class="k-mate">AI teammates</span>, <span class="k-task">tasks</span> and <span class="k-run">running sessions</span> are one live graph.</h1>
-      <p class="sub">This is the whole of tm8, drawn the way it is stored. It starts with one server and grows, one truthful link at a time, into the context an agent reads. <span class="mhover">Hover anything to see what it is.</span></p>
+      <p class="sub">This is tm8 drawn as the graph it is stored in: one node, then Spaces, then every kind of entity, joined by the edges tm8 really uses. <span class="mhover">Hover or tap anything to see what it is; the arrow keys move between the named nodes.</span></p>
       <div class="actions">
         <a class="btn primary" href="#signup">Claim a free seat</a>
         <a class="btn" href="#story" data-watch>See it work</a>
@@ -193,8 +193,10 @@
       <p class="mcap" data-mesh-cap>One server. Yours, or hosted at tm8.sh.</p>
     </div>
     <div class="mfade" aria-hidden="true"></div>
-    <noscript><img class="mstill" src="/assets/graph-still.webp" alt="The finished tm8 graph: about two hundred and forty entities joined by their edges." width="1440" height="749" decoding="async"></noscript>
-    <canvas data-mesh role="img" aria-label="The tm8 graph assembling itself: one server, then Spaces, then people and AI teammates joining them, projects with repositories, dozens of tasks assigned to members, sessions lighting up as they run, messages travelling into sessions as their next turn, pull requests and commits recorded on their tasks, docs, memory, loops on a schedule and collections gathering tasks, until it is one dense connected mesh that keeps growing."></canvas>
+    <noscript><picture><source srcset="/assets/graph-still-dark.webp" media="(prefers-color-scheme: dark)"><img class="mstill" src="/assets/graph-still.webp" alt="The finished tm8 graph: about two hundred and forty nodes joined by their edges." width="1440" height="749" decoding="async"></picture></noscript>
+    <canvas data-mesh role="img" aria-keyshortcuts="ArrowLeft ArrowRight Escape" aria-label="The tm8 graph assembling itself: one server, then Spaces, then people and AI teammates joining them, projects with repositories, dozens of tasks assigned to members, sessions lighting up as they run, messages travelling into sessions as their next turn, pull requests and commits recorded on their tasks, docs, memory, loops on a schedule and collections gathering tasks, until it is one dense connected mesh that keeps growing."></canvas>
+    <div class="mtip" data-mesh-tip hidden aria-hidden="true"><b data-mesh-tip-kind></b><span data-mesh-tip-title></span></div>
+    <p class="vh" data-mesh-live aria-live="polite"></p>
     <button class="mplay" type="button" data-mesh-play aria-pressed="false" aria-label="Pause or play the graph animation">Pause</button>
   </div>
   <div class="wrap">
