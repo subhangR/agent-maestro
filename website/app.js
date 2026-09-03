@@ -236,6 +236,7 @@
   if (form) {
     var fstat = form.querySelector('[data-fstat]');
     var mailTo = form.getAttribute('data-mail') || '';
+    var inbox = form.getAttribute('data-inbox') || '';
     var mailHref = function (d) { return 'mailto:' + mailTo + '?subject=' + encodeURIComponent('tm8 demo request · ' + d.name) + '&body=' + encodeURIComponent((d.message + '\n\n' + d.name + ' · ' + d.email + (d.company ? ' · ' + d.company : '')).replace(/\r?\n/g, '\r\n')); };
     var fallback = function (d, err) {
       fstat.textContent = (err ? err + ' ' : 'The form could not reach the server. ') + 'Send it by email instead: ';
@@ -251,8 +252,13 @@
       if (d.message.length < 20) { bad(form.message, 'Say a little more about the task, twenty characters or so.'); return; }
       if (!d.consent) { bad(form.consent, 'Tick the box so we may reply.'); return; }
       var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; fstat.textContent = 'Sending…';
-      fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
-        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: b }; }); })
+      /* The inbox is the site's own write-only database (validated by its rules); the /api/contact function is the alternative when no inbox is configured. */
+      var req = inbox
+        ? fetch(inbox, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name, email: d.email, company: d.company, message: d.message, type: 'demo', consent: true, website: d.website, source: 'tm8-site', page: location.href.slice(0, 200), userAgent: navigator.userAgent.slice(0, 300), createdAt: { '.sv': 'timestamp' } }) })
+            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: { reference: b && b.name ? String(b.name).slice(-6).toUpperCase() : undefined, error: r.ok ? undefined : 'The request was refused.' } }; }); })
+        : fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
+            .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: b }; }); });
+      req
         .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.b && x.b.reference ? x.b.reference : 'sent') + '. We reply by email.'; form.reset(); } else { fallback(d, x.b && x.b.error); } })
         .catch(function () { fallback(d); })
         .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
