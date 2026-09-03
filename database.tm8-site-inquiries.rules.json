@@ -1,0 +1,38 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "signups": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid && auth.token.email_verified == true && !data.exists()",
+        ".validate": "newData.hasChildren(['email', 'plan', 'source', 'createdAt'])",
+        "email": { ".validate": "newData.isString() && newData.val() == auth.token.email" },
+        "plan": { ".validate": "newData.val() == 'free-100'" },
+        "source": { ".validate": "newData.val() == 'tm8-site'" },
+        "name": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "createdAt": { ".validate": "newData.val() == now" },
+        "$other": { ".validate": false }
+      }
+    },
+    "inquiries": {
+      ".read": false,
+      "$id": {
+        ".write": "auth != null && auth.token.email_verified == true && !data.exists() && $id.matches(/^-[A-Za-z0-9_-]{19}$/) && newData.hasChildren(['name', 'email', 'uid', 'message', 'type', 'consent', 'website', 'source', 'createdAt'])",
+        "name": { ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 100" },
+        "email": { ".validate": "newData.isString() && newData.val() == auth.token.email" },
+        "uid": { ".validate": "newData.val() == auth.uid" },
+        "company": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "message": { ".validate": "newData.isString() && newData.val().length >= 20 && newData.val().length <= 4000" },
+        "type": { ".validate": "newData.val() == 'demo'" },
+        "consent": { ".validate": "newData.val() == true" },
+        "website": { ".validate": "newData.val() == ''" },
+        "source": { ".validate": "newData.val() == 'tm8-site'" },
+        "page": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "userAgent": { ".validate": "newData.isString() && newData.val().length <= 300" },
+        "createdAt": { ".validate": "newData.val() == now" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

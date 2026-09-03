@@ -89,5 +89,11 @@
         ]
       }
     ]
-  }
+  },
+  "database": [
+    {
+      "instance": "tm8-site-inquiries",
+      "rules": "database.tm8-site-inquiries.rules.json"
+    }
+  ]
 }
