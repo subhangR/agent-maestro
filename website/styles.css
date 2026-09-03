@@ -519,44 +519,55 @@ html.video-mode .subs.on { opacity: 1; }
 /* ---------- the setup journey: a rail that assembles, six steps that arrive with it ---------- */
 .journey { background: var(--bg-2); }
 .jtile { margin-top: 8px; }
-.jtile .jrail *, .jtile .jstep { animation-play-state: paused; }
-.jtile.play .jrail *, .jtile.play .jstep { animation-play-state: running; }
+.jtile .jrail *, .jtile .jstep, .jtile .jstep .jn { animation-play-state: paused; }
+.jtile.play .jrail *, .jtile.play .jstep, .jtile.play .jstep .jn { animation-play-state: running; }
 
 .jrail { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap;
   padding: 20px 16px; margin-bottom: 34px; background: var(--card); border: 1px solid var(--line);
   border-radius: var(--r); box-shadow: var(--sh-card); }
 .jnode { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
   border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 13px; background: var(--card);
-  font: 500 13px var(--ui); color: var(--ink); opacity: 0; transform: translateY(6px) scale(.96);
-  animation: jpop 11s 1 forwards; }
+  font: 500 13px var(--ui); color: var(--ink); }
 .jnode small { font: 500 10.5px var(--mono); color: var(--ink-3); letter-spacing: .02em; }
 .jdot { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); flex: none; }
 .jdot.live { background: var(--run); animation: pulse 1.6s ease-in-out infinite; }
 .jwire { width: 46px; height: 10px; flex: none; overflow: visible; }
 .jwire path { fill: none; stroke: var(--line-2); stroke-width: 1.5; stroke-linecap: round;
-  stroke-dasharray: 1; stroke-dashoffset: 1; animation: jdraw 11s 1 forwards; }
-.jpkt { fill: var(--brand); opacity: 0; animation: jpkt 11s 1 forwards; }
+  stroke-dasharray: 1; stroke-dashoffset: 0; }
+.jpkt { fill: var(--brand); opacity: 0; }
 .jpkt.back { fill: var(--run); }
 
 @keyframes jpop { 0% { opacity: 0; transform: translateY(6px) scale(.96); } 100% { opacity: 1; transform: none; } }
 @keyframes jdraw { 0% { stroke-dashoffset: 1; } 100% { stroke-dashoffset: 0; } }
 @keyframes jpkt { 0% { opacity: 0; } 100% { opacity: 0; } }
 
+/* Motion is an enhancement. Only a browser that runs scripts starts anything hidden, because only a
+   browser that runs scripts adds .play and brings it back. With scripting off the section is already
+   in its finished state: six readable cards, a drawn rail, every number lit. The CSP forbids inline
+   script, so this is the media query rather than a class on <html>. */
+@media (scripting: enabled) {
+  .jtile .jnode { opacity: 0; transform: translateY(6px) scale(.96); animation: jpop 11s 1 forwards; }
+  .jtile .jwire path { stroke-dashoffset: 1; animation: jdraw 11s 1 forwards; }
+  .jtile .jpkt { animation: jpkt 11s 1 forwards; }
+  .jtile .jstep { opacity: 0; transform: translateY(10px); animation: jpop .5s 1 forwards; }
+  .jtile .jn { background: var(--bg-3); color: var(--ink-3); animation: jlit 11s 1 forwards; }
+}
+
 /* the rail timeline: node, wire, node … each holds once it has arrived */
-.n1 { animation-delay: 0s; animation-duration: .5s; }
-.w1 path { animation-duration: .6s; animation-delay: .5s; }
-.n2 { animation-duration: .5s; animation-delay: 1.1s; }
-.w2 path { animation-duration: .6s; animation-delay: 1.6s; }
-.n3 { animation-duration: .5s; animation-delay: 2.2s; }
-.w3 path { animation-duration: .6s; animation-delay: 2.7s; }
-.n4 { animation-duration: .5s; animation-delay: 3.3s; }
-.w4 path { animation-duration: .6s; animation-delay: 3.8s; }
-.n5 { animation-duration: .5s; animation-delay: 4.4s; }
-.w5 path { animation-duration: .7s; animation-delay: 5.4s; }
-.n6 { animation-duration: .5s; animation-delay: 6.1s; }
+.jtile .n1 { animation-delay: 0s; animation-duration: .5s; }
+.jtile .w1 path { animation-duration: .6s; animation-delay: .5s; }
+.jtile .n2 { animation-duration: .5s; animation-delay: 1.1s; }
+.jtile .w2 path { animation-duration: .6s; animation-delay: 1.6s; }
+.jtile .n3 { animation-duration: .5s; animation-delay: 2.2s; }
+.jtile .w3 path { animation-duration: .6s; animation-delay: 2.7s; }
+.jtile .n4 { animation-duration: .5s; animation-delay: 3.3s; }
+.jtile .w4 path { animation-duration: .6s; animation-delay: 3.8s; }
+.jtile .n5 { animation-duration: .5s; animation-delay: 4.4s; }
+.jtile .w5 path { animation-duration: .7s; animation-delay: 5.4s; }
+.jtile .n6 { animation-duration: .5s; animation-delay: 6.1s; }
 /* one packet out to the session, one back with the pull request */
-.w4 .jpkt { animation-name: jride; animation-duration: .8s; animation-delay: 4.0s; animation-timing-function: cubic-bezier(.4,0,.3,1); }
-.w5 .jpkt { animation-name: jrideback; animation-duration: .9s; animation-delay: 5.5s; animation-timing-function: cubic-bezier(.4,0,.3,1); }
+.jtile .jtile .w4 .jpkt { animation-name: jride; animation-duration: .8s; animation-delay: 4.0s; animation-timing-function: cubic-bezier(.4,0,.3,1); }
+.jtile .jtile .w5 .jpkt { animation-name: jrideback; animation-duration: .9s; animation-delay: 5.5s; animation-timing-function: cubic-bezier(.4,0,.3,1); }
 @keyframes jride { 0% { opacity: 0; transform: translateX(2px); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(60px); } }
 @keyframes jrideback { 0% { opacity: 0; transform: translateX(60px); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateX(2px); } }
 
@@ -564,21 +575,19 @@ html.video-mode .subs.on { opacity: 1; }
 /* the cards are readable straight away — they arrive in under a second. The rail carries the
    explanation, and each number lights as its node lands on the rail, so the order stays legible. */
 .jstep { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: start;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 24px;
-  opacity: 0; transform: translateY(10px); animation: jpop .5s 1 forwards; }
-.s1 { animation-delay: .05s; } .s2 { animation-delay: .13s; } .s3 { animation-delay: .21s; }
-.s4 { animation-delay: .29s; } .s5 { animation-delay: .37s; } .s6 { animation-delay: .45s; }
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 22px 24px; }
+.jtile .s1 { animation-delay: .05s; } .s2 { animation-delay: .13s; } .s3 { animation-delay: .21s; }
+.jtile .s4 { animation-delay: .29s; } .s5 { animation-delay: .37s; } .s6 { animation-delay: .45s; }
 .jn { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%;
-  background: var(--bg-3); color: var(--ink-3); font: 600 13px var(--mono); flex: none;
-  animation: jlit 11s 1 forwards; }
+  background: var(--brand-soft); color: var(--brand-2); font: 600 13px var(--mono); flex: none; }
 @keyframes jlit { 0% { background: var(--bg-3); color: var(--ink-3); }
                   100% { background: var(--brand-soft); color: var(--brand-2); } }
-.s1 .jn { animation-duration: .45s; animation-delay: .05s; }
-.s2 .jn { animation-duration: .45s; animation-delay: 1.1s; }
-.s3 .jn { animation-duration: .45s; animation-delay: 2.2s; }
-.s4 .jn { animation-duration: .45s; animation-delay: 3.3s; }
-.s5 .jn { animation-duration: .45s; animation-delay: 4.4s; }
-.s6 .jn { animation-duration: .45s; animation-delay: 6.1s; }
+.jtile .s1 .jn { animation-duration: .45s; animation-delay: .05s; }
+.jtile .s2 .jn { animation-duration: .45s; animation-delay: 1.1s; }
+.jtile .s3 .jn { animation-duration: .45s; animation-delay: 2.2s; }
+.jtile .s4 .jn { animation-duration: .45s; animation-delay: 3.3s; }
+.jtile .s5 .jn { animation-duration: .45s; animation-delay: 4.4s; }
+.jtile .s6 .jn { animation-duration: .45s; animation-delay: 6.1s; }
 .jbody { display: grid; gap: 10px; min-width: 0; }
 .jstep h3 { font: 600 19px/1.25 var(--ui); letter-spacing: -0.02em; }
 .jstep p { color: var(--ink-2); font-size: 15.5px; line-height: 1.55; }
