@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://tm8.sh/sitemap.xml
+Sitemap: https://tm8-site.web.app/sitemap.xml
