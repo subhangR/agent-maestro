@@ -274,14 +274,23 @@
     };
     var fields = function (f) { var fd = new FormData(f); return { email: String(fd.get('email') || '').trim(), password: String(fd.get('password') || '') }; };
     var emailOk = function (e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); };
+    /* An ID token minted before the visitor opened the verification link still carries
+       email_verified:false, and the database rules read the TOKEN, not the account. reload()
+       refreshes the account object and never the token, so a visitor who has just verified is
+       shown as signed in while every write is refused until the old token expires — up to an
+       hour. Ask for a fresh token whenever a write is refused, then try once more. */
     var reserve = function (user) {
-      return user.getIdToken().then(function (t) {
-        var url = SIGNUPS + '/' + user.uid + '.json?auth=' + encodeURIComponent(t);
-        return fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (rec) {
-          if (rec) return rec;
-          return fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email, plan: 'free-100', source: 'tm8-site', createdAt: { '.sv': 'timestamp' } }) }).then(function (r) { return r.ok ? r.json() : null; });
+      var attempt = function (force) {
+        return user.getIdToken(force).then(function (t) {
+          var url = SIGNUPS + '/' + user.uid + '.json?auth=' + encodeURIComponent(t);
+          return fetch(url).then(function (r) { return r.ok ? r.json() : null; }).then(function (rec) {
+            if (rec) return rec;
+            return fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email, plan: 'free-100', source: 'tm8-site', createdAt: { '.sv': 'timestamp' } }) })
+              .then(function (r) { if (!r.ok && !force) return attempt(true); return r.ok ? r.json() : null; });
+          });
         });
-      });
+      };
+      return attempt(false);
     };
     var render = function (user) {
       if (!user) { setEmail(''); show('create'); return; }
@@ -311,7 +320,7 @@
     });
     var resetLink = acct.querySelector('[data-reset]');
     if (resetLink) resetLink.addEventListener('click', function (e) { e.preventDefault(); var v = fields(signinForm); if (!emailOk(v.email)) { say('[data-sstat]', 'Type your email above first, then tap this again.'); signinForm.email.focus(); return; } auth.sendPasswordResetEmail(v.email).then(function () { say('[data-sstat]', 'Reset link sent to ' + v.email + '.'); }).catch(function (err) { say('[data-sstat]', words(err)); }); });
-    acct.querySelector('[data-verified]').addEventListener('click', function () { var u = auth.currentUser; if (!u) { show('create'); return; } say('[data-vstat]', 'Checking…'); u.reload().then(function () { if (auth.currentUser && auth.currentUser.emailVerified) { say('[data-vstat]', ''); render(auth.currentUser); } else { say('[data-vstat]', 'Not verified yet. Open the link in the email, then tap again.'); } }).catch(function (err) { say('[data-vstat]', words(err)); }); });
+    acct.querySelector('[data-verified]').addEventListener('click', function () { var u = auth.currentUser; if (!u) { show('create'); return; } say('[data-vstat]', 'Checking…'); u.reload().then(function () { if (auth.currentUser && auth.currentUser.emailVerified) { return auth.currentUser.getIdToken(true).catch(function () {}).then(function () { say('[data-vstat]', ''); render(auth.currentUser); }); } say('[data-vstat]', 'Not verified yet. Open the link in the email, then tap again.'); }).catch(function (err) { say('[data-vstat]', words(err)); }); });
     acct.querySelector('[data-resend]').addEventListener('click', function () { var u = auth.currentUser; if (!u) return; u.sendEmailVerification().then(function () { say('[data-vstat]', 'Sent again to ' + u.email + '.'); }).catch(function (err) { say('[data-vstat]', words(err)); }); });
     /* demo request, from a verified account; the mail draft is the fallback */
     var form = acct.querySelector('[data-demo-form]');
@@ -327,8 +336,12 @@
       if (d.message.length < 20) { bad(form.message, 'Say a little more about the task, twenty characters or so.'); return; }
       if (!d.consent) { bad(form.consent, 'Tick the box so we may reply.'); return; }
       var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; fstat.textContent = 'Sending…';
-      u.getIdToken()
-        .then(function (t) { return fetch(INBOX + '?auth=' + encodeURIComponent(t), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name, email: u.email, uid: u.uid, company: d.company, message: d.message, type: 'demo', consent: true, website: d.website, source: 'tm8-site', page: location.href.slice(0, 200), userAgent: navigator.userAgent.slice(0, 300), createdAt: { '.sv': 'timestamp' } }) }); })
+      var post = function (force) {
+        return u.getIdToken(force)
+          .then(function (t) { return fetch(INBOX + '?auth=' + encodeURIComponent(t), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name, email: u.email, uid: u.uid, company: d.company, message: d.message, type: 'demo', consent: true, website: d.website, source: 'tm8-site', page: location.href.slice(0, 200), userAgent: navigator.userAgent.slice(0, 300), createdAt: { '.sv': 'timestamp' } }) }); })
+          .then(function (r) { if (!r.ok && !force) return post(true); return r; });
+      };
+      post(false)
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, ref: b && b.name ? String(b.name).slice(-6).toUpperCase() : undefined }; }); })
         .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.ref || 'sent') + ', filed under ' + u.email + '. Requests are read every working day.'; form.reset(); } else { fallback(d, 'The request was refused.'); } })
         .catch(function () { fallback(d); })
