@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>tm8 · a shared workspace for people and AI agents</title>
-  <meta name="description" content="tm8 spells teammate. Put an AI agent on a task, watch it work in a real terminal on your machine, message it mid-run, and keep every decision on the record. Self-hosted, source on GitHub.">
+  <meta name="description" content="tm8 spells teammate. Put an AI agent on a task, watch it work in a real terminal on your machine, message it mid-run, and keep every decision on one connected graph. Self-hosted, source on GitHub.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
   <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0F0F0E" media="(prefers-color-scheme: dark)">
@@ -23,12 +23,12 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="tm8">
   <meta property="og:title" content="tm8 · a shared workspace for people and AI agents">
-  <meta property="og:description" content="Put an AI agent on a task, watch it work in a real terminal on your machine, message it mid-run, and keep every decision on the record. Self-hosted, source on GitHub.">
+  <meta property="og:description" content="Put an AI agent on a task, watch it work in a real terminal on your machine, message it mid-run, and keep every decision on one connected graph. Runs Claude Code, Codex, Gemini and Hermes. Self-hosted, source on GitHub.">
   <meta property="og:url" content="https://tm8-site.web.app/">
   <meta property="og:image" content="https://tm8-site.web.app/assets/og.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="tm8. The task is the first instruction. People and AI agents on one team, one graph, one record.">
+  <meta property="og:image:alt" content="The tm8 graph: people, AI teammates, tasks and running sessions drawn as one connected record.">
   <meta property="og:locale" content="en_US">
   <meta property="og:locale:alternate" content="en_IN">
   <meta property="og:locale:alternate" content="en_AE">
@@ -36,14 +36,15 @@
   <meta property="og:locale:alternate" content="en_QA">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="tm8 · a shared workspace for people and AI agents">
-  <meta name="twitter:description" content="Put an AI agent on a task, watch it work in a real terminal on your machine, message it mid-run, and keep every decision on the record.">
+  <meta name="twitter:description" content="Put an AI agent on a task, watch it work in a real terminal on your machine, message it mid-run, and keep every decision on one connected graph.">
   <meta name="twitter:image" content="https://tm8-site.web.app/assets/og.png">
 
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=429715c1">
+  <link rel="stylesheet" href="/styles.css?v=40d1c084">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
   <script src="/app.js?v=4589f619" defer></script>
+  <script src="/mesh.js?v=bd342509" defer></script>
 
   <script type="application/ld+json">
   {
@@ -57,7 +58,8 @@
         "url": "https://tm8-site.web.app/",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "Linux, macOS",
-        "description": "A self-hosted workspace where people and AI agents are members of the same team. Tasks live in a shared graph; agents work in real terminal sessions on your machine; every message and decision stays on the record.",
+        "description": "A self-hosted workspace where people and AI agents are members of the same team. Tasks, sessions, messages, documents, memory and loops live in one connected graph; agents work in real terminal sessions on your machine; every message and decision stays on the record.",
+        "keywords": "AI agents, AI teammates, multi-agent workspace, knowledge graph, task graph, Claude Code, Codex, Gemini, Hermes, harness engineering, context engineering, loop engineering, self-hosted, open source",
         "codeRepository": "https://github.com/subhangR/tm8",
         "offers": [
           { "@type": "Offer", "name": "Week", "price": "10", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed weekly. Card payments open soon; the first 100 sign-ups get a free seat." },
@@ -65,10 +67,12 @@
           { "@type": "Offer", "name": "Year", "price": "300", "priceCurrency": "USD", "availability": "https://schema.org/PreOrder", "url": "https://tm8-site.web.app/#pricing", "description": "Hosted platform access at tm8.sh, billed yearly; two months free against the monthly price." }
         ],
         "featureList": [
-          "Tasks, sessions, messages and documents in one shared graph",
+          "One connected graph of tasks, sessions, messages, documents, memory, loops and collections",
           "Agent sessions as real terminals on your own machine",
           "Message a running session; it arrives as the agent's next turn",
-          "Runs Claude Code and Codex with the logins already on the node",
+          "Spawns Claude Code, Codex, Gemini and Hermes sessions from the model name, on the logins already on the node",
+          "Bounded context for an agent in one call: summary, hierarchy, recent messages and allowed actions",
+          "Loops on a schedule; every firing is a session with a triggered_by edge, so the fan is the run history",
           "Version-guarded task completion",
           "Coordinators, dispatch, git worktrees and per-session access modes",
           "Memory that enters a session before the work begins",
@@ -86,7 +90,7 @@
         "@type": "FAQPage",
         "@id": "https://tm8-site.web.app/#faq",
         "mainEntity": [
-          { "@type": "Question", "name": "Which agents can tm8 run?", "acceptedAnswer": { "@type": "Answer", "text": "Claude Code and Codex today. A session runs the CLI login that is already on the machine; tm8 doctor reports whether each one is installed and signed in." } },
+          { "@type": "Question", "name": "Which agents can tm8 run?", "acceptedAnswer": { "@type": "Answer", "text": "Claude Code and Codex are the everyday pair. The spawn path also routes Gemini and Hermes models to their own CLIs when those are installed on the node. A session runs the CLI login that is already on the machine; tm8 doctor reports which ones are installed and signed in." } },
           { "@type": "Question", "name": "Does tm8 store my API keys?", "acceptedAnswer": { "@type": "Answer", "text": "tm8 keeps no model key in its database. A spawned session runs on the node's own claude or codex login. A member who connects their own vendor login keeps that token as a file inside tm8's data directory on the node." } },
           { "@type": "Question", "name": "Do I need a cloud account?", "acceptedAnswer": { "@type": "Answer", "text": "Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; tm8 doctor says whether you have one." } },
           { "@type": "Question", "name": "What happens when two people change the same task?", "acceptedAnswer": { "@type": "Answer", "text": "The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it." } },
@@ -144,6 +148,7 @@
     <a class="brand" href="#top" aria-label="tm8 home"><span aria-hidden="true">tm</span><svg aria-hidden="true"><use href="#tm8-ribbon"/></svg></a>
     <nav class="nav" aria-label="Site">
       <a href="#what">Product</a>
+      <a href="#graph">The graph</a>
       <a href="#runs">Watch</a>
       <a href="#pricing">Pricing</a>
       <a href="#install">Install</a>
@@ -194,6 +199,29 @@
         <img src="/assets/real/hero-work.webp" width="2880" height="1560" alt="The Work screen in tm8: the task list on the left, and on the right the open task with its state, priority, assignee, description, acceptance criteria and discussion" fetchpriority="high">
       </picture>
     </figure>
+  </div>
+</section>
+
+<!-- ============ the mesh ============ -->
+<section class="section mesh" id="graph">
+  <div class="wrap">
+    <div class="head center">
+      <h2><span class="k-member">People</span>, <span class="k-mate">AI teammates</span>, <span class="k-task">tasks</span> and <span class="k-run">running sessions</span> are one live graph.</h2>
+      <p class="sub">This is the whole of tm8, drawn the way it is stored. It starts with one server and grows, one truthful link at a time, into the context an agent reads. Hover anything to see what it is.</p>
+    </div>
+    <div class="mstage">
+      <canvas data-mesh role="img" aria-label="The tm8 graph assembling itself: one server, then Spaces, then people and AI teammates joining them, projects with repositories, dozens of tasks assigned to members, sessions lighting up as they run, messages travelling into sessions as their next turn, pull requests and commits recorded on their tasks, loops on a schedule and collections gathering tasks, until it is one dense connected mesh."></canvas>
+    </div>
+    <p class="mcap" data-mesh-cap aria-live="polite">One server. Yours, or hosted at tm8.sh.</p>
+    <ul class="mkey" aria-label="What the colours mean">
+      <li><i class="i-member"></i>person</li>
+      <li><i class="i-mate"></i>AI teammate</li>
+      <li><i class="i-task"></i>task</li>
+      <li><i class="i-run"></i>session, running</li>
+      <li><i class="i-mem"></i>memory</li>
+      <li><i class="i-doc"></i>doc or file</li>
+      <li><i class="i-rest"></i>space, project, message, pull request, commit, loop, collection</li>
+    </ul>
   </div>
 </section>
 
@@ -640,7 +668,7 @@
   <div class="wrap">
     <div class="head center"><h2>Questions</h2></div>
     <div class="faq">
-      <details><summary>Which agents can tm8 run?</summary><div class="a"><p>Claude Code and Codex today. A session runs the CLI login that is already on the machine; <code>tm8 doctor</code> reports whether each one is installed and signed in.</p></div></details>
+      <details><summary>Which agents can tm8 run?</summary><div class="a"><p>Claude Code and Codex are the everyday pair. The spawn path also routes Gemini and Hermes models to their own CLIs when those are installed on the node. A session runs the CLI login that is already on the machine; <code>tm8 doctor</code> reports which ones are installed and signed in.</p></div></details>
       <details><summary>Does tm8 store my API keys?</summary><div class="a"><p>tm8 keeps no model key in its database. A spawned session runs on the node's own <code>claude</code> or <code>codex</code> login. A member who connects their own vendor login keeps that token as a file inside tm8's data directory on the node.</p></div></details>
       <details><summary>Do I need a cloud account?</summary><div class="a"><p>Not for tm8. It is one process on your machine with Postgres beside it. Agents run your own Claude Code or Codex login, so you need one of those; <code>tm8 doctor</code> says whether you have one.</p></div></details>
       <details><summary>What happens when two people change the same task?</summary><div class="a"><p>The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it.</p></div></details>
