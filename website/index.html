@@ -40,10 +40,10 @@
   <meta name="twitter:image" content="https://tm8-site.web.app/assets/og.png">
 
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=d61b323c">
-  <link rel="stylesheet" href="/styles.css?v=440be9c1">
+  <link rel="stylesheet" href="/styles.css?v=7419aaa8">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
-  <script src="/app.js?v=4f6afe90" defer></script>
+  <script src="/app.js?v=651a5ab7" defer></script>
 
   <script type="application/ld+json">
   {
@@ -147,6 +147,7 @@
       <a href="#runs">Watch</a>
       <a href="#pricing">Pricing</a>
       <a href="#install">Install</a>
+      <a href="#journey">Setup</a>
       <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Docs</a>
     </nav>
     <div class="nav-r">
@@ -163,6 +164,7 @@
         <a href="#signup">Claim a free seat</a>
         <a href="#account" data-show-signin>Sign in</a>
         <a href="#install">Install tm8</a>
+        <a href="#journey">Setup, step by step</a>
         <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Docs</a>
         <a href="https://github.com/subhangR/tm8">GitHub</a>
       </div>
@@ -499,7 +501,7 @@
       <ol class="steps">
         <li><b>1</b><span>Run the command on a machine with node 22, bun and Postgres 16. It creates the database, builds, and starts the node.</span></li>
         <li><b>2</b><span>Open <code>http://127.0.0.1:4611</code>, claim the node with the token the server printed, and set your name and password. Your phone gets in with that password over HTTPS, through a tailnet address or a reverse proxy you run.</span></li>
-        <li><b>3</b><span>Make a Space and put a teammate on a task. <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started, step by step.</a></span></li>
+        <li><b>3</b><span>Make a Space, point a project at your repository, and put a teammate on a task. <a href="#journey">The six commands are below.</a></span></li>
       </ol>
     </div>
     <div class="termcard">
@@ -511,6 +513,125 @@
       <span class="ok">✓</span> tm8 is up and healthy on 4610
       <span class="ok">✓</span> open http://127.0.0.1:4611</div>
     </div>
+  </div>
+</section>
+
+<!-- ============ the setup journey ============ -->
+<section class="section journey" id="journey">
+  <div class="wrap">
+    <div class="head center">
+      <h2>From an empty node to an agent in your repo</h2>
+      <p class="sub">Six commands, in order. This is the whole path: get in, make a Space, point a project at your
+        repository, raise the work as tasks, put a teammate on one, and take back the branch and the pull request.</p>
+    </div>
+
+    <div class="jtile">
+     <div class="jplay">
+      <div class="jrail" aria-hidden="true">
+        <span class="jnode n1"><i class="jdot"></i><b>you</b></span>
+        <svg class="jwire w1" viewBox="0 0 64 10" preserveAspectRatio="none"><path d="M1,5 H63" pathLength="1"/></svg>
+        <span class="jnode n2"><i class="jdot"></i><b>Space</b></span>
+        <svg class="jwire w2" viewBox="0 0 64 10" preserveAspectRatio="none"><path d="M1,5 H63" pathLength="1"/></svg>
+        <span class="jnode n3"><i class="jdot"></i><b>project</b><small>your repo</small></span>
+        <svg class="jwire w3" viewBox="0 0 64 10" preserveAspectRatio="none"><path d="M1,5 H63" pathLength="1"/></svg>
+        <span class="jnode n4"><i class="jdot"></i><b>task</b></span>
+        <svg class="jwire w4" viewBox="0 0 64 10" preserveAspectRatio="none"><path d="M1,5 H63" pathLength="1"/><circle class="jpkt" r="3.2" cy="5"/></svg>
+        <span class="jnode n5"><i class="jdot live"></i><b>session</b><small>worktree</small></span>
+        <svg class="jwire w5" viewBox="0 0 64 10" preserveAspectRatio="none"><path d="M1,5 H63" pathLength="1"/><circle class="jpkt back" r="3.2" cy="5"/></svg>
+        <span class="jnode n6"><i class="jdot"></i><b>pull request</b><small>back on the task</small></span>
+      </div>
+
+      <ol class="jsteps">
+        <li class="jstep s1">
+          <span class="jn">1</span>
+          <div class="jbody">
+            <h3>Claim the node, and get in</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 auth claim --token &lt;tm8c_…&gt; \
+  --username you \
+  --password '&lt;password&gt;'</code></div>
+            <p>A new node has no password on any account, so nobody can sign in from anywhere. Claiming it once sets
+              yours. After that the machine knows you over loopback with no credential at all; the password is what
+              your phone uses.</p>
+          </div>
+        </li>
+
+        <li class="jstep s2">
+          <span class="jn">2</span>
+          <div class="jbody">
+            <h3>Make a Space</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 space create "Northlake"</code></div>
+            <p>You get the Space, yourself as its owner, and a channel called <code>general</code>. It also arrives
+              staffed: eleven teammates, one per model in the catalogue, each with its model and agent tool already
+              set. There is nothing to configure before you can use one.</p>
+          </div>
+        </li>
+
+        <li class="jstep s3">
+          <span class="jn">3</span>
+          <div class="jbody">
+            <h3>Point a project at your repository</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 project create "app" \
+  --working-dir ~/code/app \
+  --trust trusted \
+  --repo-url https://github.com/you/app</code></div>
+            <div class="jcmd"><span class="p">$</span><code>tm8 project link &lt;project-id&gt; \
+  --space &lt;space-id&gt;</code></div>
+            <p>A project is a folder on disk an agent is allowed to work in, with the repository it belongs to
+              recorded on it. It takes two steps because a project belongs to the node, not to one Space — the same
+              folder can be linked into several. <b>Trusted</b> is the part that matters: an untrusted project needs
+              consent every time it hosts a session.</p>
+            <p class="jnote">In the browser, a project can only be attached while you are creating a new Space.
+              Adding one to a Space that already exists is a terminal job today.</p>
+          </div>
+        </li>
+
+        <li class="jstep s4">
+          <span class="jn">4</span>
+          <div class="jbody">
+            <h3>Raise the work as tasks</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 entity create task \
+  "Fix the login redirect" \
+  --space &lt;space-id&gt;</code></div>
+            <p>There is no <code>task create</code>. A task is an entity like every other kind; the <code>task</code>
+              noun holds the lifecycle verbs instead — transition, complete, gate, link-pr. Detail travels in
+              <code>--content</code> as JSON: description, priority, due date.</p>
+          </div>
+        </li>
+
+        <li class="jstep s5">
+          <span class="jn">5</span>
+          <div class="jbody">
+            <h3>Put a teammate on it, inside that project</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 session spawn --space &lt;space-id&gt; \
+  --teammate &lt;id&gt; --task &lt;task-id&gt; \
+  --launch-project &lt;project-id&gt; \
+  --workdir worktree</code></div>
+            <p>A real agent process starts on your machine, in that folder, with the task as its first instruction.
+              <code>--workdir worktree</code> gives it its own git worktree and branch instead of your working files.
+              You do not pick a model here — the teammate carries it. If you do not know who should take a job,
+              <code>tm8 session dispatch &lt;task-id&gt;</code> hands it to the Dispatcher to choose.</p>
+          </div>
+        </li>
+
+        <li class="jstep s6">
+          <span class="jn">6</span>
+          <div class="jbody">
+            <h3>The branch and the pull request come back to the task</h3>
+            <div class="jcmd"><span class="p">$</span><code>tm8 task link-pr &lt;task-id&gt; &lt;pr-url&gt;</code></div>
+            <div class="jcmd"><span class="p">$</span><code>tm8 task gate &lt;task-id&gt; pr_merged \
+  --expect-version &lt;n&gt;</code></div>
+            <p>The pull request is recorded on the task that caused it, so the change and the reason for it stay on
+              one row. The second command turns that into a rule: while the linked pull request is unmerged, the task
+              refuses to be completed.</p>
+          </div>
+        </li>
+      </ol>
+     </div>
+    </div>
+
+    <p class="jfoot">Every command above is the real one, read from the CLI's own catalogue and from
+      <a href="https://github.com/subhangR/tm8/blob/main/docs/GETTING-STARTED.md">Getting started</a>, which walks the
+      same path and shows what each command returns.</p>
   </div>
 </section>
 
