@@ -16,6 +16,19 @@
 - The node and its database run on hardware you choose (one machine, a team hub, or several named nodes), and tm8 sends nothing of its own. The claude or codex CLI talks to its provider as it would on your laptop. A pull request linked to a task is recorded on that task, and a task can be gated so it refuses to complete while its pull request is unmerged.
 - Help ships inside the product: 55 interactive pages in ten chapters, cached on the device once opened.
 
+## The graph
+
+- Everything tm8 keeps is one connected graph: server, Spaces, members, teammates, projects, tasks, sessions, messages, pull requests, commits, docs and files, memory, loops and collections. The board, the tree and the context an agent reads are all drawn from the same record.
+- Edges carry their real names: assigned_to, in_project, depends_on, relates_to, working_on, anchored_to, mentions, tracks, attached_to, contains, remembers, supersedes, disputes, triggered_by.
+- The website draws this graph live at https://tm8-site.web.app/#graph: it starts with one server and grows, in the order the commands that write it run, into a mesh of about two hundred entities.
+
+## How it is engineered
+
+- Prompt: the task is the agent's first instruction. A persona and an interaction profile shape tone and priorities; they cannot grant access.
+- Context: tm8 entity context returns an entity's summary, hierarchy, recent messages and allowed actions with the current version in one bounded call. Memory pinned to a teammate or a task arrives in context before the work begins, through remembers edges.
+- Harness: one spawn path. The launch manifest reads the model name and picks the tool: Claude Code for Claude models, Codex for GPT models, Gemini for Gemini models, Hermes for Hermes models. Each session has an access posture (safe, acceptEdits, auto, plan, fullAccess) and a reasoning effort (low to max). A Claude Code session and a Codex session need no private bridge: given each other's session id they talk through the graph.
+- Loop: a loop is an entity with a schedule such as every 1d. Every firing spawns a session with a triggered_by edge back to the loop, so the fan of edges is the run history. A Dispatcher routes new work and records its reason. Dreamer, a seeded teammate on a daily loop, consolidates memory without erasing history.
+
 ## Setup, in six commands
 
 1. tm8 auth claim --token <tm8c_...> --username you --password '<password>'  — a new node has no password on any account; claiming it once sets yours. Over loopback the node then knows you with no credential; the password is what a phone uses.

@@ -8,7 +8,7 @@
   --ink: #0F0E0C; --ink-2: #4A4741; --ink-3: #6B675E; --ink-4: #B0ACA3;
   --brand: #B5621F; --brand-2: #96501A; --brand-soft: #F8EBDD;
   --peach: #FBEADB; --mint: #E4F3E9; --lilac: #ECE7F8; --sky: #E4EEF8; --butter: #FBF2D7;
-  --run: #187045; --run-soft: rgba(31, 138, 84, 0.12); --block: #B33D2A; --block-soft: rgba(192, 67, 47, 0.10); --info: #2F6FEB;
+  --run: #187045; --run-soft: rgba(31, 138, 84, 0.12); --block: #B33D2A; --block-soft: rgba(192, 67, 47, 0.10); --info: #2F6FEB; --mate: #6B4FD6;
   --c-mara: #2F6FEB; --c-theo: #8B4FE8; --c-juniper: #0AA86C; --c-callisto: #F2711C; --c-keeper: #8A8478;
   --dark: #0B0B0A; --dark-2: #151412; --dark-line: #2A2925; --dark-ink: #F2EFE9; --dark-dim: #9A958B;
   --code-bg: #141311; --code-ink: #E7E2D8; --code-dim: #8C877D; --code-accent: #E0A45A; --code-run: #6FD39A;
@@ -28,7 +28,7 @@
     --ink: #F2EFE9; --ink-2: #C6C1B8; --ink-3: #8F8A81; --ink-4: #5B5850;
     --brand: #E0A45A; --brand-2: #C98A3E; --brand-soft: #3A2A1C;
     --peach: #3A2A1C; --mint: #1B3126; --lilac: #2A2438; --sky: #1E2A36; --butter: #35301E;
-    --run: #5CB381; --run-soft: rgba(92, 179, 129, 0.17); --block: #DA7D6A; --block-soft: rgba(218, 125, 106, 0.16); --info: #6F9FF0;
+    --run: #5CB381; --run-soft: rgba(92, 179, 129, 0.17); --block: #DA7D6A; --block-soft: rgba(218, 125, 106, 0.16); --info: #6F9FF0; --mate: #A99BF2;
     --sh-frame: 0 1px 2px rgba(0, 0, 0, 0.4), 0 30px 70px rgba(0, 0, 0, 0.5);
     --sh-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.35);
     color-scheme: dark;
@@ -39,7 +39,7 @@
   --ink: #F2EFE9; --ink-2: #C6C1B8; --ink-3: #8F8A81; --ink-4: #5B5850;
   --brand: #E0A45A; --brand-2: #C98A3E; --brand-soft: #3A2A1C;
   --peach: #3A2A1C; --mint: #1B3126; --lilac: #2A2438; --sky: #1E2A36; --butter: #35301E;
-  --run: #5CB381; --run-soft: rgba(92, 179, 129, 0.17); --block: #DA7D6A; --block-soft: rgba(218, 125, 106, 0.16); --info: #6F9FF0;
+  --run: #5CB381; --run-soft: rgba(92, 179, 129, 0.17); --block: #DA7D6A; --block-soft: rgba(218, 125, 106, 0.16); --info: #6F9FF0; --mate: #A99BF2;
   --sh-frame: 0 1px 2px rgba(0, 0, 0, 0.4), 0 30px 70px rgba(0, 0, 0, 0.5);
   --sh-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
@@ -703,3 +703,22 @@ html.video-mode .subs.on { opacity: 1; }
 .formcard [data-panel][hidden] { display: none; }
 .formcard input[type="password"] { width: 100%; font: 400 16px/1.4 var(--ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; padding: 11px 12px; min-width: 0; }
 .formcard input[type="password"]:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
+
+/* the mesh: the whole product as the one graph it is stored as */
+.mesh { padding-top: calc(var(--sec) * 0.55); }
+.mesh .head { margin-bottom: 30px; }
+.mesh h2 { font-size: clamp(36px, 5vw, 66px); max-width: 17ch; letter-spacing: -0.045em; text-wrap: balance; }
+.mesh .sub { max-width: 62ch; }
+.k-member { color: var(--info); } .k-mate { color: var(--mate); } .k-task { color: var(--brand); } .k-run { color: var(--run); }
+.mstage { border: 1px solid var(--line-2); border-radius: 22px; background: var(--bg); overflow: hidden; position: relative; }
+.mstage canvas { display: block; width: 100%; height: auto; aspect-ratio: 1160 / 673; touch-action: pan-y; }
+@media (max-width: 639px) { .mstage canvas { aspect-ratio: 1 / 1.3; } }
+.mcap { text-align: center; margin: 16px auto 0; max-width: 76ch; font: 500 15px/1.5 var(--ui); color: var(--ink-2); min-height: 1.5em; }
+.mkey { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: center; font-size: 13px; color: var(--ink-3); }
+.mkey li { display: flex; align-items: center; gap: 7px; }
+.mkey i { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.mkey .i-member { background: var(--info); } .mkey .i-mate { background: var(--mate); } .mkey .i-task { background: var(--brand); }
+.mkey .i-run { background: var(--run); box-shadow: 0 0 0 3px var(--run-soft); } .mkey .i-rest { background: var(--ink-3); }
+.mkey .i-mem { width: 8px; height: 8px; border: 1.5px solid var(--ink-2); border-radius: 1px; background: var(--card); transform: rotate(45deg); }
+.mkey .i-doc { border-radius: 1px; background: var(--ink-3); }
+@media (max-width: 720px) { .mesh h2 { font-size: clamp(32px, 9.4vw, 40px); } .mcap { font-size: 14px; } .mkey { gap: 6px 14px; font-size: 12px; } }
