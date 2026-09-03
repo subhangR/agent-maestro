@@ -311,7 +311,7 @@
       u.getIdToken()
         .then(function (t) { return fetch(INBOX + '?auth=' + encodeURIComponent(t), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: d.name, email: u.email, uid: u.uid, company: d.company, message: d.message, type: 'demo', consent: true, website: d.website, source: 'tm8-site', page: location.href.slice(0, 200), userAgent: navigator.userAgent.slice(0, 300), createdAt: { '.sv': 'timestamp' } }) }); })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, ref: b && b.name ? String(b.name).slice(-6).toUpperCase() : undefined }; }); })
-        .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.ref || 'sent') + '. We reply to ' + u.email + '.'; form.reset(); } else { fallback(d, 'The request was refused.'); } })
+        .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.ref || 'sent') + ', filed under ' + u.email + '. Requests are read every working day.'; form.reset(); } else { fallback(d, 'The request was refused.'); } })
         .catch(function () { fallback(d); })
         .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
     });

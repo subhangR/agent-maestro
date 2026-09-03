@@ -16,6 +16,8 @@
   <link rel="alternate" hreflang="en-QA" href="https://tm8-site.web.app/">
   <link rel="alternate" hreflang="x-default" href="https://tm8-site.web.app/">
   <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <noscript><style>#account form button[type="submit"] { display: none; }</style></noscript>
   <link rel="manifest" href="/site.webmanifest">
 
   <meta property="og:type" content="website">
@@ -43,7 +45,7 @@
   <link rel="stylesheet" href="/styles.css?v=907cac66">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
-  <script src="/app.js?v=56db3201" defer></script>
+  <script src="/app.js?v=4f6afe90" defer></script>
 
   <script type="application/ld+json">
   {
@@ -558,7 +560,7 @@
   <div class="wrap two">
     <div class="copy">
       <h2>Claim a free seat</h2>
-      <p class="sub">Create an account with your email and verify it from the link we send. The first 100 seats are free while Stripe payments are being set up. Then request a demo, or open the platform at tm8.sh.</p>
+      <p class="sub">Create an account with your email and verify it from the link we send. The first 100 seats are free while Stripe payments are being set up. Then request a demo, or open the platform at tm8.sh. Requests are read every working day.</p>
       <ol class="steps">
         <li><b>1</b><span>Create your account and verify your email.</span></li>
         <li><b>2</b><span>Request a demo, or go straight to the platform at <a href="https://tm8.sh">tm8.sh</a>.</span></li>
@@ -568,7 +570,7 @@
     <div class="formcard" id="account" data-auth data-firebase='{"apiKey":"AIzaSyCnH1XXcLRVMPCvtjBGotCh_86hOJ2AV2E","authDomain":"lvlup-ff6fa.firebaseapp.com","projectId":"lvlup-ff6fa","appId":"1:504506746594:web:c853db2f5633257e5f80bb"}' data-signups="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/signups" data-inbox="https://tm8-site-inquiries.asia-southeast1.firebasedatabase.app/inquiries.json" data-mail="manzilshaik95@gmail.com">
       <div data-panel="create">
         <h3>Create your account</h3>
-        <form data-create-form novalidate>
+        <form data-create-form method="post" action="#account" novalidate>
           <label><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
           <label><span>Password <em>eight characters or more</em></span><input name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="200"></label>
           <div class="fact"><button class="btn primary" type="submit">Create account</button><p class="fstat" data-astat aria-live="polite"></p></div>
@@ -577,7 +579,7 @@
       </div>
       <div data-panel="signin" hidden>
         <h3>Sign in</h3>
-        <form data-signin-form novalidate>
+        <form data-signin-form method="post" action="#account" novalidate>
           <label><span>Email</span><input name="email" type="email" autocomplete="email" required maxlength="254"></label>
           <label><span>Password</span><input name="password" type="password" autocomplete="current-password" required maxlength="200"></label>
           <div class="fact"><button class="btn primary" type="submit">Sign in</button><p class="fstat" data-sstat aria-live="polite"></p></div>
@@ -597,7 +599,7 @@
         <div class="fact"><a class="btn primary" href="https://tm8.sh">Open the platform →</a><a class="btn" href="#account" data-signout>Sign out</a></div>
         <hr>
         <h3>Want a walkthrough first?</h3>
-        <form data-demo-form novalidate>
+        <form data-demo-form method="post" action="#account" novalidate>
           <div class="frow">
             <label><span>Your name</span><input name="name" type="text" autocomplete="name" required minlength="2" maxlength="100"></label>
             <label><span>Company or team <em>optional</em></span><input name="company" type="text" autocomplete="organization" maxlength="120"></label>
