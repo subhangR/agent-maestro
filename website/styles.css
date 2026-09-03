@@ -14,8 +14,11 @@
   --code-bg: #141311; --code-ink: #E7E2D8; --code-dim: #8C877D; --code-accent: #E0A45A; --code-run: #6FD39A;
   --sh-frame: 0 1px 2px rgba(15, 14, 12, 0.06), 0 30px 70px rgba(15, 14, 12, 0.14);
   --sh-card: 0 1px 2px rgba(15, 14, 12, 0.05), 0 10px 28px rgba(15, 14, 12, 0.08);
-  --ui: 'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* The product's own two faces, self-hosted from its own files — see assets/fonts/fonts.css.
+     The bronze mark and the explainer tints stay: the site reads as the same family as the app
+     without going grey. */
+  --ui: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --column: 1160px; --r: 18px; --r-lg: 24px; --sec: 96px;
   color-scheme: light;
 }
