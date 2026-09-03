@@ -718,6 +718,11 @@ html.video-mode .subs.on { opacity: 1; }
 .mesh .sub { max-width: 44ch; margin-top: 16px; font-size: clamp(15px, 1.15vw, 17px); }
 .k-member { color: var(--info); } .k-mate { color: var(--mate); } .k-task { color: var(--brand); } .k-run { color: var(--run); }
 .mcap { margin: 18px 0 0; max-width: 44ch; font: 500 14px/1.5 var(--ui); color: var(--ink-3); min-height: 4.5em; }
+.mtip { position: absolute; left: 0; top: 0; z-index: 3; pointer-events: none; background: var(--card); border: 1px solid var(--line-2); border-radius: 8px; padding: 7px 11px 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.12); font: 600 12.5px/1.2 var(--ui); color: var(--ink); white-space: nowrap; }
+.mtip[hidden] { display: none; }
+.mtip b { display: block; font: 500 9.5px var(--mono); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 4px; }
+.mtip b.plain { text-transform: none; font-family: var(--ui); font-size: 11px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .mplay { position: absolute; right: 16px; bottom: 14px; z-index: 3; font: 500 12px var(--ui); color: var(--ink-2); background: var(--card); border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
 .mplay:hover { color: var(--ink); border-color: var(--ink-3); }
 .mplay:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }

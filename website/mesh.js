@@ -10,6 +10,7 @@
   var cap = document.querySelector('[data-mesh-cap]');
   var calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   var playBtn = document.querySelector('[data-mesh-play]');
+  var tip = document.querySelector('[data-mesh-tip]'), tipK = document.querySelector('[data-mesh-tip-kind]'), tipT = document.querySelector('[data-mesh-tip-title]'), live = document.querySelector('[data-mesh-live]');
   var ctx = cv.getContext('2d');
 
   /* ---------- deterministic randomness, so every visitor sees the same graph ---------- */
@@ -41,8 +42,8 @@
 
   /* ---------- the kinds tm8 keeps ---------- */
   var KIND = {
-    server:     { r: 19, tone: 'ink',   label: 1, mass: 6,    name: 'SERVER' },
-    space:      { r: 13, tone: 'ink',   label: 1, mass: 4,    name: 'SPACE' },
+    server:     { r: 19, tone: 'ink',   label: 1, mass: 6,    name: 'the server', plain: 1 },
+    space:      { r: 13, tone: 'ink',   label: 1, mass: 4,    name: 'a Space', plain: 1 },
     member:     { r: 7,  tone: 'info',  label: 1, mass: 2,    name: 'MEMBER' },
     teammate:   { r: 8,  tone: 'mate',  label: 1, mass: 2.2,  name: 'TEAMMATE' },
     project:    { r: 9.5, tone: 'ink3', label: 1, mass: 3,    name: 'PROJECT' },
@@ -180,7 +181,7 @@
         var hs = sessions[(i * 5) % nSess], nm = add('message', 'turn', when, hs); link(nm, hs, 'anchored_to', 1);
       }
     }
-    N.forEach(function (q) { q.r = KIND[q.kind].r; q.mass = KIND[q.kind].mass; q.lab = KIND[q.kind].label ? 1 : 0; });
+    N.forEach(function (q) { q.r = KIND[q.kind].r; q.mass = KIND[q.kind].mass; q.lab = KIND[q.kind].label ? 1 : 0; q.lw = q.lab ? Math.max(q.title.length, (q.sub || '').length * 0.85) * 6.4 : 0; });
     ORDER = N.slice().sort(function (p, q) { return p.at - q.at; });
   }
 
@@ -191,7 +192,7 @@
     [6.0, 'People join a Space.'],
     [9.6, 'So do AI teammates. tm8 reads the model name and launches the right tool: Claude Code for Claude models, Codex for GPT models.'],
     [12.6, 'Projects carry repositories.'],
-    [15, 'Tasks. Each has an id, a version, someone it is assigned to, and the tasks it depends on.'],
+    [15, 'Tasks. Each has an id and a version; it can be assigned to a person or a teammate, and can depend on other tasks.'],
     [26.5, 'Run puts a teammate on a task. A session is a real process, and it is running.'],
     [30.5, 'Messages are stored on the task or the session, then delivered as the next turn. Two sessions on different tools can message each other the same way.'],
     [34.5, 'Pull requests and commits are tracked on the task they came from.'],
@@ -200,7 +201,7 @@
     [48.5, 'Loops keep time in the graph. A firing derives a task and spawns a session, both edged back with triggered_by, so the fan is the run history.'],
     [51.5, 'Collections gather what belongs together.'],
     [54, 'One connected graph. The board, the tree, and the context an agent reads are all drawn from it.'],
-    [59, 'Still growing. Every command writes another entry, and the history stays on the record.'],
+    [59, 'Still growing. Every command that changes something writes another entry, and the history stays on the record.'],
     [HOLD, '']
   ];
 
@@ -209,7 +210,8 @@
   function layout() {
     tokens();
     var cssW = cv.parentNode.clientWidth || 1160;
-    phone = cssW < 640; stacked = cssW < 900;
+    var mq = function (q, fb) { return window.matchMedia ? window.matchMedia(q).matches : fb; };
+    phone = mq('(max-width: 639px)', cssW < 640); stacked = mq('(max-width: 899px)', cssW < 900);
     W = cssW; H = phone ? Math.round(cssW * 1.3) : stacked ? Math.round(cssW * 0.9) : Math.round(Math.max(560, Math.min(760, cssW * 0.52)));
     S = phone ? 0.8 : stacked ? 0.9 : Math.max(0.82, Math.min(1.05, cssW / 1240));
     CX = stacked ? W / 2 : W * 0.57; CY = H / 2;
@@ -223,11 +225,11 @@
   var glowGrad = null;
 
   /* ---------- the simulation ---------- */
-  var alive = [], born = 0, simT = 0, rndPos;
+  var alive = [], born = 0, simT = 0, acc = 0, rndPos;
   function reset() {
     build();
     rndPos = prng(11);
-    alive = []; born = 0; simT = 0; hover = -1; cv.style.cursor = '';
+    alive = []; born = 0; simT = 0; acc = 0; hover = -1; cv.style.cursor = '';
     N.forEach(function (n) { n.on = false; n.vx = 0; n.vy = 0; });
   }
   function insert(n) {
@@ -270,8 +272,8 @@
         a.vx *= DAMP; a.vy *= DAMP;
         var v = Math.sqrt(a.vx * a.vx + a.vy * a.vy); if (v > VMAX) { a.vx *= VMAX / v; a.vy *= VMAX / v; }
         a.x += a.vx; a.y += a.vy;
-        var lim = a.r * S + 3;
-        if (a.x < lim) a.x = lim; else if (a.x > W - lim) a.x = W - lim;
+        var lim = a.r * S + 3, limx = Math.max(lim, a.lw * S * 0.5 + 4);
+        if (a.x < limx) a.x = limx; else if (a.x > W - limx) a.x = W - limx;
         if (a.y < lim) a.y = lim; else if (a.y > H - lim) a.y = H - lim;
       }
     }
@@ -281,8 +283,9 @@
     if (t < simT) reset();
     while (born < ORDER.length && ORDER[born].at <= t) { insert(ORDER[born]); born++; }
     if (t - simT > 0.25) simT = t - 0.25;
-    var frames = Math.min(15, Math.round((t - simT) * 60));
-    physics(Math.max(1, frames) * 2);
+    acc += (t - simT) * 120;
+    var steps = Math.min(30, Math.floor(acc)); acc -= steps;
+    if (steps > 0) physics(steps);
     simT = t;
   }
 
@@ -391,23 +394,22 @@
     ctx.globalAlpha = fade;
     /* the count, top right: the mesh is as complex as the numbers say */
     if (nNodes > 1) {
-      var cnt = nNodes + ' entities · ' + nEdges + ' edges' + (nLive ? ' · ' + nLive + ' running' : '');
+      var cnt = nNodes + ' nodes · ' + nEdges + ' edges' + (nLive ? ' · ' + nLive + ' running' : '');
       ctx.font = '500 ' + (phone ? 9.5 : 10.5) + 'px ' + T.mono; ctx.textAlign = 'right'; ctx.textBaseline = 'top';
       var cw = ctx.measureText(cnt).width;
       ctx.fillStyle = rgba(T.bg, 0.85); ctx.fillRect(W - 14 - cw - 5, 10, cw + 10, 16);
       ctx.fillStyle = T.ink3; ctx.fillText(cnt, W - 14, 12);
     }
-    /* tooltip */
-    if (hov && t <= HOLD) {
-      var K2 = KIND[hov.kind], t1 = K2.name + (hov.kind === 'task' ? ' · v' + hov.v : hov.kind === 'session' ? (hov.live ? ' · RUNNING' : ' · DONE') : ''), t2 = hov.title + (hov.sub ? ' · ' + hov.sub : '');
-      ctx.font = '500 9.5px ' + T.mono; var w1 = ctx.measureText(t1).width; ctx.font = '600 12.5px ' + T.ui; var w2 = ctx.measureText(t2).width;
-      var bw = Math.max(w1, w2) + 22, bh = 40, bx = Math.min(W - bw - 6, Math.max(6, hov.x + 14)), by = hov.y - bh - 10; if (by < 6) by = hov.y + 14;
-      ctx.shadowColor = 'rgba(0,0,0,0.12)'; ctx.shadowBlur = 12; ctx.shadowOffsetY = 3;
-      ctx.fillStyle = T.card; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 8); else ctx.rect(bx, by, bw, bh); ctx.fill();
-      ctx.shadowColor = 'transparent'; ctx.strokeStyle = T.line; ctx.lineWidth = 1; ctx.stroke();
-      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-      ctx.font = '500 9.5px ' + T.mono; ctx.fillStyle = tone(K2.tone === 'ink4' ? 'ink3' : K2.tone); ctx.fillText(t1, bx + 11, by + 15);
-      ctx.font = '600 12.5px ' + T.ui; ctx.fillStyle = T.ink; ctx.fillText(t2, bx + 11, by + 31);
+    /* tooltip: a DOM layer above the fade and the statement, so it is never washed out and it reads aloud */
+    if (tip) {
+      if (hov && t <= HOLD) {
+        var K2 = KIND[hov.kind], t1 = K2.plain ? K2.name : K2.name + (hov.kind === 'task' ? ' · v' + hov.v : hov.kind === 'session' ? (hov.live ? ' · RUNNING' : ' · DONE') : ''), t2 = hov.title + (hov.sub ? ' · ' + hov.sub : '');
+        if (tipK.textContent !== t1) { tipK.textContent = t1; tipK.style.color = K2.plain ? T.ink3 : tone(K2.tone === 'ink4' ? 'ink3' : K2.tone); tipK.className = K2.plain ? 'plain' : ''; }
+        if (tipT.textContent !== t2) tipT.textContent = t2;
+        tip.hidden = false;
+        var bw = tip.offsetWidth, bh = tip.offsetHeight, bx = Math.min(W - bw - 6, Math.max(6, hov.x + 14)), by = hov.y - bh - 10; if (by < 6) by = hov.y + 14;
+        tip.style.transform = 'translate(' + Math.round(bx) + 'px,' + Math.round(by) + 'px)';
+      } else if (!tip.hidden) tip.hidden = true;
     }
     ctx.globalAlpha = 1;
     if (cap) { var bt = BEATS[0]; for (i = 0; i < BEATS.length; i++) if (t >= BEATS[i][0]) bt = BEATS[i]; if (cap.textContent !== bt[1]) cap.textContent = bt[1]; }
@@ -443,7 +445,12 @@
     });
   }
   var stage = cv.parentNode;
-  function setHover(h) { if (h !== hover) { hover = h; stage.style.cursor = h >= 0 ? 'pointer' : ''; if (raf === null) draw(last); } }
+  function setHover(h) {
+    if (h === hover) return;
+    hover = h; stage.style.cursor = h >= 0 ? 'pointer' : '';
+    if (live) { var n = h >= 0 ? N[h] : null; live.textContent = n ? (KIND[n.kind].plain ? KIND[n.kind].name : KIND[n.kind].name.toLowerCase()) + ', ' + n.title + (n.sub ? ', ' + n.sub : '') : ''; }
+    if (raf === null) draw(last);
+  }
   function under(ev) { var r = cv.getBoundingClientRect(); return pick(ev.clientX - r.left, ev.clientY - r.top); }
   stage.addEventListener('pointermove', function (ev) { if (ev.pointerType !== 'touch') setHover(under(ev)); });
   stage.addEventListener('pointerdown', function (ev) {

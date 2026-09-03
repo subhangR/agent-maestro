@@ -20,7 +20,7 @@
 
 - Everything tm8 keeps is one connected graph: server, Spaces, members, teammates, projects, tasks, sessions, messages, pull requests, commits, docs and files, memory, loops and collections. The board, the tree and the context an agent reads are all drawn from the same record.
 - Edges carry their real names: assigned_to, in_project, depends_on, relates_to, working_on, anchored_to, messaged, tracks, attached_to, contains, remembers, supersedes, disputes, triggered_by.
-- The website draws this graph live at https://tm8-site.web.app/#graph: it starts with one server and grows, in the order the commands that write it run, into a mesh of about two hundred entities.
+- The website draws this graph live at https://tm8-site.web.app/#graph: one node, then Spaces, then every kind of entity, joined by the edges tm8 really uses, growing in the order the commands that write it run into a mesh of about 245 nodes.
 
 ## How it is engineered
 
