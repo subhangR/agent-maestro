@@ -64,6 +64,8 @@ export function originAllowed(origin: string | undefined): boolean {
     return url.protocol === 'https:' && (
       url.hostname === 'tm8.sh'
       || url.hostname === 'www.tm8.sh'
+      || url.hostname === 'tm8-site.web.app'
+      || url.hostname === 'tm8-site.firebaseapp.com'
       || url.hostname === 'maestro-web-fleet.web.app'
       || url.hostname === 'maestro-web-fleet.firebaseapp.com'
       || /^maestro-web-fleet--[a-z0-9-]+\.web\.app$/.test(url.hostname)

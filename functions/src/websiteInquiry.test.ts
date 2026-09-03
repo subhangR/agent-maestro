@@ -5,6 +5,7 @@ import { originAllowed } from './websiteInquiry';
 test('originAllowed accepts the production, preview and local origins only', () => {
   assert.equal(originAllowed('https://tm8.sh'), true);
   assert.equal(originAllowed('https://www.tm8.sh'), true);
+  assert.equal(originAllowed('https://tm8-site.web.app'), true);
   assert.equal(originAllowed('https://maestro-web-fleet.web.app'), true);
   assert.equal(originAllowed('https://maestro-web-fleet.firebaseapp.com'), true);
   assert.equal(originAllowed('https://maestro-web-fleet--pr12-ab12cd34.web.app'), true);
