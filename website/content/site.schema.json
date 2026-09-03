@@ -1,15 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Maestro public website content",
+  "title": "tm8 public site content",
   "type": "object",
   "required": ["schemaVersion", "productName", "eyebrow", "heroDescription", "installCommand"],
   "properties": {
-    "$schema": { "type": "string" },
     "schemaVersion": { "const": 1 },
-    "productName": { "type": "string", "minLength": 1, "maxLength": 80 },
-    "eyebrow": { "type": "string", "minLength": 1, "maxLength": 100 },
-    "heroDescription": { "type": "string", "minLength": 1, "maxLength": 320 },
-    "installCommand": { "type": "string", "minLength": 1, "maxLength": 500 }
+    "productName": { "type": "string", "minLength": 1 },
+    "eyebrow": { "type": "string", "minLength": 1 },
+    "heroDescription": { "type": "string", "minLength": 1 },
+    "installCommand": { "type": "string", "minLength": 1 }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

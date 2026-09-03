@@ -1,195 +1,266 @@
+/* tm8 public site, v7. No framework, no tracking. */
 (function () {
-  "use strict";
+  'use strict';
 
-  var root = document.documentElement;
-  root.classList.add("js");
-  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var staticCopy = document.documentElement.hasAttribute('data-static-plates');
+  var videoMode = /[?&]video=1/.test(location.search);
+  if (videoMode) document.documentElement.classList.add('video-mode');
 
-  // ---- Logo reveal: end it after a beat, or on click ----
-  (function initIntro() {
-    var intro = document.querySelector("[data-intro]");
-    if (!intro || !root.classList.contains("intro-play")) return;
-    var done = false;
-    function end() {
-      if (done) return; done = true;
-      root.classList.remove("intro-play"); // reverts to base rule -> fades out
-    }
-    var timer = window.setTimeout(end, 2050);
-    intro.addEventListener("click", function () { window.clearTimeout(timer); end(); });
-  })();
-
-  // ---- Light / dark theme ----
-  (function initTheme() {
-    var media = window.matchMedia("(prefers-color-scheme: dark)");
-    function isDark() {
-      var t = root.getAttribute("data-theme");
-      if (t === "dark") return true;
-      if (t === "light") return false;
-      return media.matches;
-    }
-    function applyShots() {
-      var suffix = isDark() ? "-dark" : "";
-      document.querySelectorAll("[data-shot]").forEach(function (img) {
-        img.setAttribute("src", "assets/shots/" + img.getAttribute("data-shot") + suffix + ".jpg");
-      });
-    }
-    applyShots();
-    var toggle = document.querySelector("[data-theme-toggle]");
-    if (toggle) {
-      toggle.addEventListener("click", function () {
-        var next = isDark() ? "light" : "dark";
-        root.setAttribute("data-theme", next);
-        try { localStorage.setItem("maestro-theme", next); } catch (e) {}
-        applyShots();
-      });
-    }
-    var onSystem = function () { if (!root.getAttribute("data-theme")) applyShots(); };
-    if (media.addEventListener) media.addEventListener("change", onSystem);
-    else if (media.addListener) media.addListener(onSystem);
-  })();
-
-  // ---- Sticky header state ----
-  var header = document.querySelector("[data-header]");
-  function updateHeader() { if (header) header.classList.toggle("scrolled", window.scrollY > 12); }
-  updateHeader();
-  window.addEventListener("scroll", updateHeader, { passive: true });
-
-  // ---- Public content hydration (optional site.json) ----
-  function isString(v) { return typeof v === "string" && v.trim().length > 0; }
-  fetch("content/site.json", { headers: { "Accept": "application/json" }, cache: "no-cache" })
-    .then(function (r) { if (!r.ok) throw new Error("no content"); return r.json(); })
-    .then(function (c) {
-      if (!c || typeof c !== "object" || c.schemaVersion !== 1) return;
-      document.querySelectorAll("[data-content]").forEach(function (el) {
-        var k = el.getAttribute("data-content"); if (k && isString(c[k])) el.textContent = c[k];
-      });
-      document.querySelectorAll("[data-command-source]").forEach(function (el) {
-        var k = el.getAttribute("data-command-source"); if (k && isString(c[k])) el.setAttribute("data-command", c[k]);
-      });
-    })
-    .catch(function () {});
-
-  // ---- Mobile menu ----
-  var menuButton = document.querySelector("[data-menu-button]");
-  var menu = document.querySelector("[data-menu]");
-  if (menuButton && menu) {
-    menuButton.addEventListener("click", function () {
-      var open = menuButton.getAttribute("aria-expanded") === "true";
-      menuButton.setAttribute("aria-expanded", String(!open));
-      menu.classList.toggle("open", !open);
-      var sr = menuButton.querySelector(".sr-only");
-      if (sr) sr.textContent = open ? "Open navigation" : "Close navigation";
-    });
-    menu.addEventListener("click", function (e) {
-      if (e.target.closest("a")) { menuButton.setAttribute("aria-expanded", "false"); menu.classList.remove("open"); }
-    });
-  }
-
-  // ---- Copy install command ----
-  var copyButton = document.querySelector("[data-copy-command]");
-  var command = document.querySelector("[data-command]");
-  if (copyButton && command) {
-    copyButton.addEventListener("click", function () {
-      var value = command.getAttribute("data-command") || "";
-      if (!navigator.clipboard) { copyButton.textContent = "Select text"; return; }
-      navigator.clipboard.writeText(value).then(function () {
-        copyButton.textContent = "Copied";
-        window.setTimeout(function () { copyButton.textContent = "Copy"; }, 1600);
-      }).catch(function () { copyButton.textContent = "Select text"; });
-    });
-  }
-
-  // ---- Product tour tabs ----
-  var tourTabs = document.querySelectorAll("[data-shot-tab]");
-  var tourShots = document.querySelectorAll(".tour-shot [data-shot]");
-  var tourCaption = document.querySelector("[data-tour-caption]");
-  if (tourTabs.length && tourShots.length) {
-    tourTabs.forEach(function (tab) {
-      tab.addEventListener("click", function () {
-        var key = tab.getAttribute("data-shot-tab");
-        tourTabs.forEach(function (o) { o.setAttribute("aria-selected", String(o === tab)); });
-        tourShots.forEach(function (img) { img.hidden = img.getAttribute("data-shot") !== key; });
-        if (tourCaption) {
-          var num = tourCaption.querySelector("[data-tour-num]");
-          var title = tourCaption.querySelector("[data-tour-title]");
-          var text = tourCaption.querySelector("[data-tour-text]");
-          if (num) num.textContent = tab.getAttribute("data-num") || "";
-          if (title) title.textContent = tab.getAttribute("data-title") || "";
-          if (text) text.textContent = tab.getAttribute("data-caption") || "";
-        }
-      });
-    });
-  }
-
-  // ---- Contact form (graceful mailto fallback if the endpoint is unavailable) ----
-  var contactForm = document.querySelector("[data-contact-form]");
-  if (contactForm) {
-    contactForm.addEventListener("submit", function (event) {
-      event.preventDefault();
-      if (!contactForm.reportValidity()) return;
-      var submitButton = contactForm.querySelector("[data-contact-submit]");
-      var status = contactForm.querySelector("[data-contact-status]");
-      var fd = new FormData(contactForm);
-      var payload = {
-        name: fd.get("name"), email: fd.get("email"), phone: fd.get("phone"),
-        company: fd.get("company"), type: fd.get("type"), message: fd.get("message"),
-        website: fd.get("website"), consent: fd.get("consent") === "on"
-      };
-      submitButton.disabled = true; submitButton.textContent = "Sending…";
-      status.className = "form-status"; status.textContent = "Sending your enquiry securely.";
-
-      function mailtoHref() {
-        var lines = ["Name: " + (payload.name || ""), "Email: " + (payload.email || ""),
-          payload.phone ? "Phone: " + payload.phone : "", payload.company ? "Company: " + payload.company : "",
-          "Reach-out type: " + (payload.type || "general"), "", payload.message || ""]
-          .filter(function (l) { return l !== ""; });
-        return "mailto:manzilshaik95@gmail.com?subject=" +
-          encodeURIComponent("Maestro enquiry · " + (payload.type || "general") + " · " + (payload.name || "")) +
-          "&body=" + encodeURIComponent(lines.join("\n"));
+  /* ======================================================================
+     THE RIBBON — the product's Möbius figure-8, ported from RibbonMark.tsx
+     to a canvas. Turns once with the product's own spin-rewind curve, then
+     rests. Turns again on hover or tap.
+     ====================================================================== */
+  function ribbon(canvas) {
+    var TAU = Math.PI * 2;
+    var N = 150, W = 560, H = 700, S = 290, TILT = 9;
+    var ctx = canvas.getContext('2d');
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var cssW = canvas.clientWidth || 280, cssH = cssW * H / W;
+    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+    canvas.style.height = cssH + 'px';
+    var scale = canvas.width / W;
+    var inkCss = getComputedStyle(canvas).color;
+    var m = /(\d+)[,\s]+(\d+)[,\s]+(\d+)/.exec(inkCss);
+    var INK = m ? [+m[1], +m[2], +m[3]] : [181, 98, 31];
+    function vsub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+    function vcross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+    function vdot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+    function vnorm(a) { var l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; }
+    function curveP(t) { return [Math.sin(2 * t) * 0.4, -Math.sin(t) * 0.95, Math.cos(t) * 0.3]; }
+    var st = [];
+    (function () {
+      var w = 0.155, dt = 0.001;
+      for (var i = 0; i <= N; i++) {
+        var t = (i / N) * TAU, P = curveP(t);
+        var Tg = vnorm(vsub(curveP(t + dt), curveP(t - dt)));
+        var N1 = vnorm(vcross(Tg, [0, 0, 1])), N2 = vcross(Tg, N1);
+        var ph = t / 2 + Math.PI / 2;
+        var D = [N1[0] * Math.cos(ph) + N2[0] * Math.sin(ph), N1[1] * Math.cos(ph) + N2[1] * Math.sin(ph), N1[2] * Math.cos(ph) + N2[2] * Math.sin(ph)];
+        st.push({ A: [P[0] + D[0] * w, P[1] + D[1] * w, P[2] + D[2] * w], B: [P[0] - D[0] * w, P[1] - D[1] * w, P[2] - D[2] * w] });
       }
-      function offerFallback() {
-        contactForm.reset();
-        status.className = "form-status"; status.textContent = "Ready to send. We'll open a prefilled email for you. ";
-        var a = document.createElement("a");
-        a.className = "form-status-link"; a.href = mailtoHref(); a.textContent = "Open email to send →";
-        status.appendChild(a);
-        try { window.location.href = a.href; } catch (e) {}
+    })();
+    function shade(k) {
+      var r, g, b;
+      if (k < 0.5) { var f = (0.5 - k) * 2 * 0.78; r = INK[0] * (1 - f); g = INK[1] * (1 - f); b = INK[2] * (1 - f); }
+      else { var f2 = (k - 0.5) * 2 * 0.58; r = INK[0] + (255 - INK[0]) * f2; g = INK[1] + (255 - INK[1]) * f2; b = INK[2] + (255 - INK[2]) * f2; }
+      return 'rgb(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ')';
+    }
+    var easeInOutCubic = function (t) { return t < 0.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1; };
+    function animate(from, to, start, end, ease) { return function (t) { if (t <= start) return from; if (t >= end) return to; return from + (to - from) * ease((t - start) / (end - start)); }; }
+    function draw(T) {
+      var angle = animate(0, 360, 0, 1, easeInOutCubic)(T) + animate(0, -360, 1, 2, easeInOutCubic)(T);
+      var flow = ((T / 2) * 2) % 1;
+      var tilt = TILT + 2.5 * Math.sin((TAU * T) / 2);
+      var cA = Math.cos(angle * Math.PI / 180), sA = Math.sin(angle * Math.PI / 180);
+      var cB = Math.cos(tilt * Math.PI / 180), sB = Math.sin(tilt * Math.PI / 180);
+      var F = 2600, cx = W / 2, cy = H / 2, L = vnorm([-0.35, -0.5, 0.85]);
+      function tx(p) { var x = p[0] * S, y = p[1] * S, z = p[2] * S; var x1 = x * cA + z * sA, z1 = -x * sA + z * cA; return [x1, y * cB - z1 * sB, y * sB + z1 * cB]; }
+      function proj(p) { var f = F / (F - p[2]); return [cx + p[0] * f, cy + p[1] * f]; }
+      var quads = [], pA = tx(st[0].A), pB = tx(st[0].B);
+      for (var i = 0; i < N; i++) {
+        var A2 = tx(st[i + 1].A), B2 = tx(st[i + 1].B), u = (i + 0.5) / N;
+        var n = vnorm(vcross(vsub(A2, pA), vsub(pB, pA)));
+        var k = 0.24 + 0.76 * Math.abs(vdot(n, L)); k += 0.13 * Math.sin(TAU * (u * 2 - flow)); k = Math.max(0, Math.min(1, k));
+        quads.push({ z: (pA[2] + A2[2] + B2[2] + pB[2]) / 4, pts: [proj(pA), proj(A2), proj(B2), proj(pB)], fill: shade(k) });
+        pA = A2; pB = B2;
       }
-      fetch("/api/contact", {
-        method: "POST", headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(payload)
-      }).then(function (res) {
-        return res.json().catch(function () { return {}; }).then(function (body) {
-          if (res.status === 400 || res.status === 429) { var e = new Error(body.error || "Please review your enquiry."); e.handled = true; throw e; }
-          if (!res.ok) throw new Error("endpoint-unavailable");
-          return body;
+      quads.sort(function (a, b) { return a.z - b.z; });
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.lineJoin = 'round'; ctx.lineWidth = 1.2 * scale;
+      for (var q = 0; q < quads.length; q++) {
+        var p = quads[q].pts; ctx.beginPath(); ctx.moveTo(p[0][0] * scale, p[0][1] * scale);
+        for (var j = 1; j < 4; j++) ctx.lineTo(p[j][0] * scale, p[j][1] * scale);
+        ctx.closePath(); ctx.fillStyle = quads[q].fill; ctx.strokeStyle = quads[q].fill; ctx.fill(); ctx.stroke();
+      }
+    }
+    var running = false, t0 = 0;
+    function loop(now) {
+      if (!t0) t0 = now;
+      var T = (now - t0) / 1000;
+      if (T >= 2) { draw(0); running = false; t0 = 0; return; }
+      draw(T); requestAnimationFrame(loop);
+    }
+    function turn() { if (running || reduced) return; running = true; t0 = 0; requestAnimationFrame(loop); }
+    draw(0);
+    canvas.addEventListener('mouseenter', turn);
+    canvas.addEventListener('click', turn);
+    return turn;
+  }
+  var ribbonEl = document.querySelector('[data-ribbon]');
+  var turnRibbon = null;
+  if (ribbonEl) {
+    turnRibbon = ribbon(ribbonEl);
+    var last = 0;
+    window.addEventListener('resize', function () { clearTimeout(last); last = setTimeout(function () { turnRibbon = ribbon(ribbonEl); }, 200); });
+  }
+
+  /* ======================================================================
+     THE STORY — one task, open to done.
+     ====================================================================== */
+  var scene = document.querySelector('[data-scene]');
+  var playScene = null;
+  if (scene) {
+    var $ = function (sel) { return scene.querySelector(sel); };
+    var $$ = function (sel) { return Array.prototype.slice.call(scene.querySelectorAll(sel)); };
+    var cap = document.querySelector('[data-scene-cap]');
+    var subs = scene.querySelector('[data-subs]');
+    var replayBtn = document.querySelector('[data-scene-replay]');
+    var cur = { mara: $('.cur.mara'), theo: $('.cur.theo'), juniper: $('.cur.juniper') };
+    var canvas = $('.term .canvas');
+    var strip = $('.term .strip');
+    var composer = $('.composer');
+    var typed = $('.composer .typed');
+    var timers = [];
+    function at(ms, fn) { timers.push(setTimeout(fn, reduced ? Math.round(ms * 0.55) : ms)); }
+    function move(who, x, y) { if (!cur[who]) return; cur[who].style.setProperty('--x', x); cur[who].style.setProperty('--y', y); cur[who].classList.add('on'); }
+    function click(who) { if (!cur[who]) return; cur[who].classList.add('click'); setTimeout(function () { cur[who].classList.remove('click'); }, 160); }
+    function hide(who) { if (cur[who]) cur[who].classList.remove('on'); }
+    function show(sel) { $$(sel).forEach(function (el) { el.classList.add('on'); }); }
+    function say(text) { if (cap) cap.textContent = text; if (subs) { subs.textContent = text; subs.classList.toggle('on', !!text); } }
+    function line(html) { var el = document.createElement('span'); el.className = 'l'; el.innerHTML = html; canvas.appendChild(el); requestAnimationFrame(function () { el.classList.add('on'); }); canvas.scrollTop = canvas.scrollHeight; }
+    function setStatus(pill, text, ver) { var p = $('[data-task-pill]'); p.className = 'pill ' + pill; p.textContent = text; $('[data-task-ver]').textContent = ver; }
+    function typeInto(text, done) {
+      composer.classList.add('typing'); typed.textContent = '';
+      if (reduced) { typed.textContent = text; done(); return; }
+      var i = 0; var iv = setInterval(function () { typed.textContent = text.slice(0, ++i); if (i >= text.length) { clearInterval(iv); done(); } }, 34); timers.push(iv);
+    }
+    function reset() {
+      timers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); timers = [];
+      Object.keys(cur).forEach(function (k) { hide(k); });
+      $$('.fr').forEach(function (el) { el.classList.remove('on'); });
+      canvas.innerHTML = '<span class="l on empty">no session on this task yet</span>';
+      strip.innerHTML = '<span class="idle">no session</span>';
+      composer.classList.remove('typing'); typed.textContent = '';
+      setStatus('', 'Open', 'v1');
+      $('[data-assignee]').innerHTML = '';
+      $('[data-spawn]').classList.remove('pressed'); $('[data-complete]').classList.remove('pressed');
+      say('');
+    }
+    playScene = function () {
+      reset();
+      var s = 0;
+      at(s += 500, function () { move('mara', '22%', '30%'); say('Mara opens a task. It already has an id and a version.'); });
+      at(s += 1100, function () { move('mara', '26%', '36%'); });
+      at(s += 900, function () { click('mara'); $('[data-spawn]').classList.add('pressed'); say('Mara presses Run and picks Juniper: a real process on this machine, with the task as its first instruction.'); });
+      at(s += 600, function () {
+        strip.innerHTML = '<svg class="face sm"><use href="#face-juniper"/></svg><b>Juniper</b><span>claude-code</span><span class="live" aria-hidden="true"></span><span class="tag">running</span>';
+        canvas.innerHTML = '';
+        line('<span class="d">09:42:10</span> <span class="p">task</span> Fix login redirect loop');
+        setStatus('run', 'Working', 'v2');
+        $('[data-assignee]').innerHTML = '<svg class="face xs"><use href="#face-juniper"/></svg>Juniper';
+        show('[data-fr="session"]');
+        move('juniper', '84%', '34%');
+      });
+      at(s += 1000, function () { line('<span class="d">09:42:14</span> <span class="in">Reading Auth notes before I touch anything.</span>'); });
+      at(s += 1000, function () { line('<span class="d">09:42:16</span> <span class="d">Read src/auth/callback.ts</span>'); show('[data-fr="doc"]'); move('juniper', '86%', '48%'); });
+      at(s += 1100, function () { line('<span class="d">09:44:31</span> <span class="in">The loop starts when the return path is empty.</span>'); say('Everything Juniper does streams into the browser as it happens. Not a transcript. The terminal.'); });
+      at(s += 1300, function () { move('theo', '30%', '84%'); });
+      at(s += 800, function () {
+        click('theo');
+        typeInto('Keep the guard idempotent.', function () {
+          at(300, function () { composer.classList.remove('typing'); typed.textContent = ''; show('[data-fr="theo"]'); say('Theo writes on the task. The message is stored first, then handed to the running session as its next turn.'); move('theo', '34%', '70%'); });
+          at(1000, function () { line('<span class="d">09:47:20</span> <span class="p">message</span> from Theo Iwu · reply available'); line('<span class="d">        </span> <span class="in">Keep the guard idempotent.</span>'); });
+          at(2100, function () { line('<span class="d">09:47:41</span> <span class="in">Understood. Reworking the guard so a second callback is a no-op.</span>'); });
+          at(3600, function () { line('<span class="d">09:51:08</span> <span class="ok">✓ 14 tests pass</span>'); });
+          at(4400, function () { line('<span class="d">09:52:02</span> <span class="ok">PR #212 opened · linked to the task</span>'); show('[data-fr="reply"]'); show('[data-fr="pr"]'); setStatus('review', 'In review', 'v3'); say('Juniper replies on the same thread and links the PR. The task moves, with a new version.'); });
+          at(6000, function () { move('mara', '42%', '38%'); });
+          at(6800, function () { click('mara'); $('[data-complete]').classList.add('pressed'); setStatus('done', 'Done', 'v4'); show('[data-fr="done"]'); say('Mara completes it. Completion names the version she read and records who did it. One record, start to finish.'); });
+          at(7800, function () { hide('theo'); hide('juniper'); });
+          at(8400, function () { move('mara', '48%', '46%'); });
         });
-      }).then(function (body) {
-        contactForm.reset();
-        status.className = "form-status success";
-        status.textContent = "Message received. Reference " + (body && body.reference ? body.reference : "sent") + ".";
-      }).catch(function (err) {
-        if (err && err.handled) { status.className = "form-status error"; status.textContent = err.message; }
-        else offerFallback();
-      }).finally(function () {
-        submitButton.disabled = false; submitButton.textContent = "Send enquiry";
       });
+    };
+    if (replayBtn) replayBtn.addEventListener('click', playScene);
+    reset();
+    if (reduced && !videoMode) { playScene(); }
+    else if (videoMode) { setTimeout(playScene, 900); }
+    else {
+      var started = false;
+      var start = function () { if (!started) { started = true; setTimeout(playScene, 600); } };
+      if ('IntersectionObserver' in window) { var io = new IntersectionObserver(function (entries) { if (entries.some(function (e) { return e.isIntersecting; })) { start(); io.disconnect(); } }, { threshold: 0.2 }); io.observe(scene); }
+      else start();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (scene.getBoundingClientRect().top < window.innerHeight * 0.9) start(); });
+    }
+  }
+  var watch = document.querySelector('[data-watch]');
+  if (watch) watch.addEventListener('click', function (e) {
+    e.preventDefault();
+    var target = document.querySelector('.frame-wrap');
+    if (target) target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+    if (playScene) setTimeout(playScene, reduced ? 0 : 700);
+  });
+
+  /* ---------- explainers play once when they come on screen, hold their last frame, and replay on hover or tap ---------- */
+  var tiles = Array.prototype.slice.call(document.querySelectorAll('.tile, .darkterm'));
+  if (tiles.length) {
+    var restart = function (t) {
+      var stage = t.querySelector('.stage') || t.querySelector('.canvas'); if (!stage) return;
+      var clone = stage.cloneNode(true); stage.parentNode.replaceChild(clone, stage); t._playedAt = Date.now();
+    };
+    if (reduced || !('IntersectionObserver' in window)) tiles.forEach(function (t) { t.classList.add('play'); });
+    else {
+      var tio = new IntersectionObserver(function (entries) { entries.forEach(function (en) { if (en.isIntersecting && !en.target.classList.contains('play')) { en.target.classList.add('play'); en.target._playedAt = Date.now(); } }); }, { threshold: 0.35 });
+      tiles.forEach(function (t) {
+        tio.observe(t);
+        t.addEventListener('mouseenter', function () { if (t._playedAt && Date.now() - t._playedAt > 11000) restart(t); });
+        var s = t.querySelector('.stage'); if (s) s.addEventListener('click', function () { restart(t); });
+      });
+    }
+  }
+
+  /* ---------- video ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('[data-vid]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var v = document.createElement('video');
+      v.src = btn.getAttribute('data-vid'); v.controls = true; v.autoplay = true; v.muted = true; v.playsInline = true; v.loop = true;
+      v.setAttribute('aria-label', btn.getAttribute('aria-label') || 'Recording');
+      var host = btn.closest('.vframe'); host.innerHTML = ''; host.appendChild(v); v.tabIndex = 0; v.focus(); v.play().catch(function () {});
     });
-  }
+  });
+  if (staticCopy) Array.prototype.slice.call(document.querySelectorAll('[data-live-link]')).forEach(function (a) { a.hidden = true; });
 
-  // ---- Footer year ----
-  document.querySelectorAll("[data-year]").forEach(function (el) { el.textContent = String(new Date().getFullYear()); });
-
-  // ---- One quiet motion: gentle reveal on scroll ----
-  var reveals = document.querySelectorAll(".reveal");
-  if (reduceMotion || !("IntersectionObserver" in window)) {
-    reveals.forEach(function (el) { el.classList.add("is-visible"); });
-  } else {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (e) {
-        if (e.isIntersecting) { e.target.classList.add("is-visible"); io.unobserve(e.target); }
-      });
-    }, { rootMargin: "0px 0px -8%", threshold: 0.08 });
-    reveals.forEach(function (el) { io.observe(el); });
+  /* ---------- copy buttons ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('[data-copy]')).forEach(function (copy) {
+    var target = document.getElementById(copy.getAttribute('data-copy'));
+    copy.addEventListener('click', function () {
+      var text = target ? target.textContent.trim() : '';
+      function done(ok) { copy.setAttribute('data-state', ok ? 'done' : 'fail'); copy.textContent = ok ? 'Copied' : 'Select it'; setTimeout(function () { copy.removeAttribute('data-state'); copy.textContent = 'Copy'; }, 1800); }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      else done(false);
+    });
+  });
+  /* ---------- request a demo: same-origin POST, mail fallback ---------- */
+  var form = document.querySelector('[data-demo-form]');
+  if (form) {
+    var fstat = form.querySelector('[data-fstat]');
+    var mailTo = form.getAttribute('data-mail') || '';
+    var mailHref = function (d) { return 'mailto:' + mailTo + '?subject=' + encodeURIComponent('tm8 demo request · ' + d.name) + '&body=' + encodeURIComponent((d.message + '\n\n' + d.name + ' · ' + d.email + (d.company ? ' · ' + d.company : '')).replace(/\r?\n/g, '\r\n')); };
+    var fallback = function (d, err) {
+      fstat.textContent = (err ? err + ' ' : 'The form could not reach the server. ') + 'Send it by email instead: ';
+      var a = document.createElement('a'); a.href = mailHref(d); a.textContent = 'open your mail app →'; fstat.appendChild(a);
+    };
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fd = new FormData(form);
+      var d = { name: String(fd.get('name') || '').trim(), email: String(fd.get('email') || '').trim(), company: String(fd.get('company') || '').trim(), message: String(fd.get('message') || '').trim(), type: 'demo', consent: !!fd.get('consent'), website: String(fd.get('website') || '') };
+      var bad = function (field, msg) { fstat.textContent = ''; fstat.textContent = msg; field.setAttribute('aria-invalid', 'true'); field.setAttribute('aria-describedby', 'fstat'); field.focus(); };
+      if (d.name.length < 2) { bad(form.name, 'Your name, please.'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)) { bad(form.email, 'That email does not look right.'); return; }
+      if (d.message.length < 20) { bad(form.message, 'Say a little more about the task, twenty characters or so.'); return; }
+      if (!d.consent) { bad(form.consent, 'Tick the box so we may reply.'); return; }
+      var btn = form.querySelector('button[type="submit"]'); btn.disabled = true; fstat.textContent = 'Sending…';
+      fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(d) })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, b: b }; }); })
+        .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.b && x.b.reference ? x.b.reference : 'sent') + '. We reply by email.'; form.reset(); } else { fallback(d, x.b && x.b.error); } })
+        .catch(function () { fallback(d); })
+        .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
+    });
+    Array.prototype.slice.call(form.querySelectorAll('input, textarea')).forEach(function (f) { f.addEventListener('input', function () { f.removeAttribute('aria-invalid'); f.removeAttribute('aria-describedby'); }); });
   }
+  var fig = document.querySelector('.real .fig');
+  if (fig) { var figTab = function () { if (fig.scrollWidth > fig.clientWidth + 1) fig.tabIndex = 0; else fig.removeAttribute('tabindex'); }; figTab(); window.addEventListener('resize', figTab); }
+  var menu = document.querySelector('details.menu');
+  if (menu) menu.addEventListener('click', function (e) { if (e.target && e.target.tagName === 'A') menu.removeAttribute('open'); });
 })();

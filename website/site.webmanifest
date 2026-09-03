@@ -1,0 +1,10 @@
+{
+  "name": "tm8",
+  "short_name": "tm8",
+  "description": "A shared workspace where people and AI agents are one team.",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#F4F2EC",
+  "theme_color": "#F4F2EC",
+  "icons": [{ "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

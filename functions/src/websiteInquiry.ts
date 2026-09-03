@@ -55,14 +55,20 @@ function parseInquiry(value: unknown): { inquiry?: Inquiry; error?: string } {
   return { inquiry: { name, email, phone: phone || null, company: company || null, type, message } };
 }
 
-function originAllowed(origin: string | undefined): boolean {
+export function originAllowed(origin: string | undefined): boolean {
   if (!origin) return false;
   try {
     const url = new URL(origin);
+    // Production hosts (the canonical domain and the Firebase site), Firebase preview
+    // channels (SITE_ID--CHANNEL_ID-HASH.web.app), and local previews.
     return url.protocol === 'https:' && (
-      url.hostname === 'maestro-web-fleet.web.app'
+      url.hostname === 'tm8.sh'
+      || url.hostname === 'www.tm8.sh'
+      || url.hostname === 'tm8-site.web.app'
+      || url.hostname === 'tm8-site.firebaseapp.com'
+      || url.hostname === 'maestro-web-fleet.web.app'
       || url.hostname === 'maestro-web-fleet.firebaseapp.com'
-      || url.hostname.endsWith('--maestro-web-fleet.web.app')
+      || /^maestro-web-fleet--[a-z0-9-]+\.web\.app$/.test(url.hostname)
     ) || url.protocol === 'http:' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
   } catch {
     return false;
@@ -109,8 +115,9 @@ async function sendInquiryEmail(inquiry: Inquiry, referenceId: string): Promise<
 }
 
 function clientFingerprint(request: { ip?: string; headers: Record<string, unknown> }): string {
-  // request.ip is set by Cloud Functions infrastructure and cannot be spoofed.
-  // x-forwarded-for is a client-controlled header; fall back only when ip is absent.
+  // Under the functions framework's trust-proxy setting request.ip is the left-most
+  // X-Forwarded-For hop, which a caller can set; this key is best effort and is backed
+  // by a second bucket keyed on the submitted email address.
   const ip = request.ip ?? (() => {
     const forwarded = request.headers['x-forwarded-for'];
     return typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : 'unknown';
@@ -166,7 +173,8 @@ export const submitWebsiteInquiry = onRequest(
 
     try {
       const fingerprint = clientFingerprint(request);
-      if (!await consumeRateLimit(fingerprint)) {
+      const emailKey = createHash('sha256').update(`maestro-contact-email-v1|${parsed.inquiry.email}`).digest('hex');
+      if (!await consumeRateLimit(fingerprint) || !await consumeRateLimit(emailKey)) {
         response.status(429).json({ ok: false, error: 'Too many requests. Please try again later.' });
         return;
       }
