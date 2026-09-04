@@ -795,12 +795,17 @@ html.video-mode .subs.on { opacity: 1; }
 .real .callouts li > b { width: 26px; height: 26px; border-radius: 50%; background: var(--brand); color: #fff; font: 600 12.5px/26px var(--ui); text-align: center; }
 .real .callouts li b.k-run { font-weight: 600; }
 .real .sessions { margin-top: 18px; }
-.caps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 32px; }
-.caps li { display: grid; gap: 3px; padding: 14px 0; border-top: 1px solid var(--line); }
+.caps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 36px; }
+.caps li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
 .caps li:nth-child(-n+2) { border-top: 0; }
-.caps b { font-size: 15px; font-weight: 600; }
+.caps .ki { width: 30px; height: 30px; padding: 7px; border-radius: 9px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.caps .ki.k-mate { background: var(--mate-soft); color: var(--mate); }
+.caps .ki.k-task { background: var(--brand-soft); color: var(--brand); }
+.caps .ki.k-member { background: var(--info-soft); color: var(--info); }
+.caps .ki.k-run { background: var(--run-soft); color: var(--run); }
+.caps b { font-size: 14.5px; font-weight: 600; margin-right: 8px; }
 .caps span { font-size: 14px; color: var(--ink-3); line-height: 1.4; }
-@media (max-width: 720px) { .real .callouts { grid-template-columns: minmax(0, 1fr); } .caps { grid-template-columns: minmax(0, 1fr); } .caps li:nth-child(2) { border-top: 1px solid var(--line); } }
+@media (max-width: 720px) { .real .callouts { grid-template-columns: minmax(0, 1fr); } .caps { grid-template-columns: minmax(0, 1fr); } .caps li:nth-child(2) { border-top: 1px solid var(--line); } .caps b { display: block; margin: 0 0 2px; } }
 
 /* session to session: the product's Sessions panel, with one real exchange moving along the tree */
 .s2s { margin-top: 30px; }
