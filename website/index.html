@@ -46,10 +46,10 @@
   <link rel="preload" href="/assets/fonts/Figtree-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/JetBrainsMono-var-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/fonts/fonts.css?v=3b6833dc">
-  <link rel="stylesheet" href="/styles.css?v=81a3e70b">
+  <link rel="stylesheet" href="/styles.css?v=d0164d36">
   <script src="/assets/vendor/firebase-app-compat-12.18.0.js" defer></script>
   <script src="/assets/vendor/firebase-auth-compat-12.18.0.js" defer></script>
-  <script src="/app.js?v=169fd2c2" defer></script>
+  <script src="/app.js?v=2dbef933" defer></script>
   <script src="/mesh.js?v=ad6d3a18" defer></script>
   <script src="/sessions.js?v=70ac3e3d" defer></script>
 
@@ -706,13 +706,40 @@
         <p class="fstat" data-vstat aria-live="polite" aria-atomic="true"></p>
         <p class="alt"><a href="#account" data-signout>Use a different email</a></p>
       </div>
-      <div data-panel="in" hidden>
-        <h3>Your account is ready</h3>
-        <p><b data-email></b> is verified.</p>
-        <p class="seatstat" data-seat aria-live="polite">Checking your place on the launch list…</p>
-        <div class="fact"><a class="btn primary" href="#demo-request">Request a walkthrough ↓</a><a class="btn" href="#account" data-signout>Sign out</a></div>
-        <hr>
-        <h3 id="demo-request">Want a walkthrough?</h3>
+      <div data-panel="seat-pending" hidden>
+        <article class="receipt" aria-live="polite" aria-busy="true">
+          <p class="receipt-state pending">Verified account</p>
+          <h3>Recording your seat…</h3>
+          <p>We are attaching <strong data-email></strong> to the hosted launch list.</p>
+        </article>
+      </div>
+      <div data-panel="seat" hidden>
+        <article class="receipt" aria-labelledby="seat-title">
+          <p class="receipt-state">Seat recorded</p>
+          <h3 id="seat-title">Your seat is recorded</h3>
+          <p class="receipt-address">Filed under <strong data-email></strong></p>
+          <div class="receipt-next">
+            <h4>What happens next</h4>
+            <ol class="receipt-steps">
+              <li><span class="receipt-num">1</span><span><strong>Your verified address stays with this launch-list record.</strong></span></li>
+              <li><span class="receipt-num">2</span><span><strong>Keep an eye on this inbox for hosted-access updates.</strong> The list does not assign a numbered rank or publish an access date.</span></li>
+              <li><span class="receipt-num">3</span><span><strong>You can see tm8 before then.</strong> Request a 30-minute walkthrough with your task as the example.</span></li>
+            </ol>
+          </div>
+          <div class="fact receipt-actions"><a class="btn primary" href="#demo-request" data-show="demo">Request a walkthrough</a><a class="btn" href="#account" data-signout>Sign out</a></div>
+        </article>
+      </div>
+      <div data-panel="seat-error" hidden>
+        <article class="receipt" aria-labelledby="seat-error-title">
+          <p class="receipt-state error">Seat not recorded</p>
+          <h3 id="seat-error-title">We could not record your seat</h3>
+          <p>Your account is verified as <strong data-email></strong>. Check your connection and try again. If it still fails, sign out, sign in, and retry.</p>
+          <div class="fact receipt-actions"><button class="btn primary" type="button" data-seat-retry>Try again</button><a class="btn" href="#account" data-signout>Sign out</a></div>
+        </article>
+      </div>
+      <div data-panel="demo" hidden>
+        <h3 id="demo-request">Request a walkthrough</h3>
+        <p>Filed under <strong data-email></strong>. Tell us the first task you would hand over.</p>
         <form data-demo-form method="post" action="#account" novalidate aria-labelledby="demo-request">
           <div class="frow">
             <label><span>Your name</span><input name="name" type="text" autocomplete="name" enterkeyhint="next" required minlength="2" maxlength="100"></label>
@@ -721,8 +748,30 @@
           <label><span>The task you would hand over first</span><textarea name="message" rows="4" required minlength="20" maxlength="4000" enterkeyhint="done" placeholder="For example: fix the flaky login test, then open the PR." aria-describedby="demo-message-help"></textarea><small class="fieldhelp" id="demo-message-help">At least 20 characters.</small></label>
           <label class="hp" aria-hidden="true"><span>Website</span><input name="website" type="text" tabindex="-1" autocomplete="off"></label>
           <label class="check"><input name="consent" type="checkbox" value="yes" required><span>You may email me about this request.</span></label>
-          <div class="fact"><button class="btn primary" type="submit">Request a demo</button><p class="fstat" id="fstat" data-fstat aria-live="polite" aria-atomic="true"></p></div>
+          <div class="fact"><button class="btn primary" type="submit">Send walkthrough request</button><p class="fstat" id="fstat" data-fstat aria-live="polite" aria-atomic="true"></p></div>
         </form>
+        <p class="alt"><a href="#account" data-show="seat">Back to your seat</a> · <a href="#account" data-signout>Sign out</a></p>
+      </div>
+      <div data-panel="demo-done" hidden>
+        <article class="receipt" data-demo-confirmation tabindex="-1" aria-labelledby="demo-confirmation-title">
+          <p class="receipt-state">Request recorded</p>
+          <h3 id="demo-confirmation-title">Your walkthrough request is in</h3>
+          <div class="receipt-refbox">
+            <span class="receipt-ref-label">Reference</span>
+            <strong class="receipt-ref" data-demo-ref>TM8</strong>
+          </div>
+          <p class="receipt-address">Filed under <strong data-email></strong></p>
+          <div class="receipt-next">
+            <h4>What happens next</h4>
+            <ol class="receipt-steps">
+              <li><span class="receipt-num">1</span><span><strong>We read your task.</strong> A person reads every request, and requests are checked every working day.</span></li>
+              <li><span class="receipt-num">2</span><span><strong>We reply within 1 to 2 working days.</strong> We work in IST and Gulf hours and send two time slots.</span></li>
+              <li><span class="receipt-num">3</span><span><strong>We meet for 30 minutes on a real tm8 server.</strong> Your task is the example.</span></li>
+            </ol>
+          </div>
+          <p class="receipt-mail">A confirmation email is on its way to <strong data-email></strong>.</p>
+          <div class="fact receipt-actions"><a class="btn primary" href="#demo-request" data-demo-again>Request another</a><a class="btn" href="#account" data-signout>Sign out</a></div>
+        </article>
       </div>
       <noscript><p class="fstat">Creating an account needs JavaScript. Email <a href="mailto:manzilshaik95@gmail.com?subject=tm8%20seat">manzilshaik95@gmail.com</a> instead.</p></noscript>
     </div>

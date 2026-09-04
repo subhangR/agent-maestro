@@ -735,10 +735,38 @@ html.video-mode .subs.on { opacity: 1; }
 .formcard .alt { font-size: 14px; color: var(--ink-3); }
 .formcard .alt a { color: var(--brand-2); }
 .formcard hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; }
-.formcard .seatstat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg-2); color: var(--ink-2); font-size: 13.5px; }
 .formcard [data-panel][hidden] { display: none; }
 .formcard input[type="password"] { width: 100%; font: 400 16px/1.4 var(--ui); color: var(--ink); background: var(--bg); border: 1px solid var(--line-2); border-radius: 10px; padding: 11px 12px; min-width: 0; }
 .formcard input[type="password"]:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
+.formcard .receipt { display: grid; gap: 16px; min-width: 0; }
+.formcard .receipt:focus:not(:focus-visible) { outline: 0; }
+.formcard .receipt h3 { max-width: 18ch; font-size: clamp(25px, 3.2vw, 32px); line-height: 1.08; }
+.formcard .receipt-state { justify-self: start; display: inline-flex; align-items: center; gap: 8px; color: var(--run); font: 600 11.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.formcard .receipt-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px var(--run-soft); flex-shrink: 0; }
+.formcard .receipt-state.pending { color: var(--brand); }
+.formcard .receipt-state.pending::before { box-shadow: 0 0 0 4px var(--brand-soft); }
+.formcard .receipt-state.error { color: var(--block); }
+.formcard .receipt-state.error::before { box-shadow: 0 0 0 4px var(--block-soft); }
+.formcard .receipt-address { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--bg-2); overflow-wrap: anywhere; }
+.formcard .receipt-address strong, .formcard .receipt-mail strong, .formcard .receipt > p strong { color: var(--ink); }
+.formcard .receipt-refbox { display: grid; gap: 5px; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px 16px; background: var(--brand-soft); min-width: 0; }
+.formcard .receipt-ref-label { color: var(--ink-3); font: 600 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.formcard .receipt-ref { color: var(--brand-2); font: 600 clamp(27px, 4vw, 38px)/1.1 var(--mono); letter-spacing: 0.02em; overflow-wrap: anywhere; }
+.formcard .receipt-next { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 16px; }
+.formcard .receipt-next h4 { color: var(--ink-3); font: 600 10.5px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.formcard .receipt-steps { display: grid; gap: 13px; }
+.formcard .receipt-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 11px; align-items: start; color: var(--ink-2); font-size: 14px; }
+.formcard .receipt-steps li > span:last-child { min-width: 0; }
+.formcard .receipt-steps strong { color: var(--ink); font-weight: 600; }
+.formcard .receipt-num { width: 28px; height: 28px; border: 1px solid var(--line-2); border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); background: var(--bg-2); font: 500 11px var(--mono); }
+.formcard .receipt-mail { border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; background: var(--run-soft); color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
+.formcard .receipt-actions { padding-top: 2px; }
+@media (max-width: 720px) {
+  .formcard .receipt h3 { font-size: 26px; }
+  .formcard .receipt-ref { font-size: clamp(25px, 8.5vw, 34px); letter-spacing: 0.01em; }
+  .formcard .receipt-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .formcard .receipt-actions .btn { width: 100%; }
+}
 
 /* the mesh: the whole product as the one graph it is stored as. Full-bleed; the statement sits over a fade at the left. */
 .mesh { padding: 0 0 calc(var(--sec) * 0.7); }

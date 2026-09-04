@@ -262,7 +262,6 @@
     var show = function (name) { Object.keys(panels).forEach(function (k) { panels[k].hidden = k !== name; }); };
     var setEmail = function (e) { Array.prototype.slice.call(acct.querySelectorAll('[data-email]')).forEach(function (el) { el.textContent = e || ''; }); };
     var say = function (sel, msg) { var el = acct.querySelector(sel); if (el) { el.textContent = ''; el.textContent = msg; } };
-    var setSeat = function (msg) { var el = acct.querySelector('[data-seat]'); if (el) el.textContent = msg || ''; };
     var markBad = function (field, sel, msg) {
       var status = acct.querySelector(sel); say(sel, msg); field.setAttribute('aria-invalid', 'true');
       if (status && status.id && !field.getAttribute('aria-errormessage')) {
@@ -303,18 +302,20 @@
       return attempt(false);
     };
     var render = function (user) {
-      if (!user) { setEmail(''); setSeat(''); show('create'); return; }
+      if (!user) { setEmail(''); show('create'); return; }
       setEmail(user.email);
-      if (!user.emailVerified) { setSeat(''); show('verify'); return; }
-      show('in'); setSeat('Recording your place on the launch list…');
+      if (!user.emailVerified) { show('verify'); return; }
+      show('seat-pending');
       reserve(user).then(function (rec) {
         if (!auth.currentUser || auth.currentUser.uid !== user.uid) return;
-        setSeat(rec ? 'Your launch-list place is recorded. The first 100 verified accounts keep a free seat; later accounts use a paid plan when Stripe opens.' : 'We could not record your place. Check your connection, then sign out and sign in again.');
-      }).catch(function () { if (auth.currentUser && auth.currentUser.uid === user.uid) setSeat('We could not record your place. Check your connection, then sign out and sign in again.'); });
+        show(rec ? 'seat' : 'seat-error');
+      }).catch(function () { if (auth.currentUser && auth.currentUser.uid === user.uid) show('seat-error'); });
     };
     auth.onAuthStateChanged(render);
     Array.prototype.slice.call(document.querySelectorAll('[data-show], [data-show-signin]')).forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); var u = auth.currentUser; if (a.hasAttribute('data-show-signin') && u) { render(u); } else { show(a.getAttribute('data-show') || 'signin'); } acct.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); }); });
     Array.prototype.slice.call(acct.querySelectorAll('[data-signout]')).forEach(function (a) { a.addEventListener('click', function (e) { e.preventDefault(); auth.signOut(); }); });
+    var seatRetry = acct.querySelector('[data-seat-retry]');
+    if (seatRetry) seatRetry.addEventListener('click', function () { if (auth.currentUser) render(auth.currentUser); else show('create'); });
     var createForm = acct.querySelector('[data-create-form]');
     createForm.addEventListener('submit', function (e) {
       e.preventDefault(); var v = fields(createForm);
@@ -343,7 +344,11 @@
     /* demo request, from a verified account; the mail draft is the fallback */
     var form = acct.querySelector('[data-demo-form]');
     var fstat = form.querySelector('[data-fstat]');
-    var fallback = function (d, err) { fstat.textContent = (err ? err + ' ' : 'The request could not be sent. ') + 'Send it by email instead: '; var a = document.createElement('a'); a.href = mailHrefFor(MAIL, d); a.textContent = 'open your mail app →'; fstat.appendChild(a); };
+    var confirmation = acct.querySelector('[data-demo-confirmation]');
+    var confirmationRef = acct.querySelector('[data-demo-ref]');
+    var demoAgain = acct.querySelector('[data-demo-again]');
+    var fallback = function (d, err) { fstat.textContent = (err ? err + ' ' : 'We could not record this request. ') + 'Check your connection and try again. If it still fails, sign out, sign in, or send the same details by email: '; var a = document.createElement('a'); a.href = mailHrefFor(MAIL, d); a.textContent = 'open your mail app →'; fstat.appendChild(a); };
+    if (demoAgain) demoAgain.addEventListener('click', function (e) { e.preventDefault(); fstat.textContent = ''; form.reset(); show('demo'); acct.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' }); var first = form.querySelector('[name="name"]'); if (first) first.focus(); });
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var u = auth.currentUser; if (!u || !u.emailVerified) { show(u ? 'verify' : 'create'); return; }
@@ -359,8 +364,8 @@
           .then(function (r) { if (!r.ok && !force) return post(true); return r; });
       };
       post(false)
-        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, ref: b && b.name ? String(b.name).slice(-6).toUpperCase() : undefined }; }); })
-        .then(function (x) { if (x.ok) { fstat.textContent = 'Received. Reference ' + (x.ref || 'sent') + ', filed under ' + u.email + '. Requests are read every working day.'; form.reset(); } else { fallback(d, 'The request was refused.'); } })
+        .then(function (r) { return r.json().catch(function () { return {}; }).then(function (b) { return { ok: r.ok, ref: b && b.name ? 'TM8-' + String(b.name).slice(-6).toUpperCase() : 'TM8-RECORDED' }; }); })
+        .then(function (x) { if (x.ok) { fstat.textContent = ''; confirmationRef.textContent = x.ref; form.reset(); show('demo-done'); if (confirmation) confirmation.focus(); } else { fallback(d, 'We could not record this request.'); } })
         .catch(function () { fallback(d); })
         .then(function () { btn.disabled = false; if (document.activeElement === document.body) (fstat.querySelector('a') || btn).focus(); });
     });
