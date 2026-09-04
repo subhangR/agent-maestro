@@ -600,32 +600,6 @@
   </div>
 </section>
 
-<!-- ============ questions ============ -->
-<section class="section" id="faq">
-  <div class="wrap">
-    <div class="head center">
-      <h2>Questions before you choose</h2>
-      <p class="sub">Hosted seats, payment, data and the option to run your own node.</p>
-    </div>
-    <div class="faq">
-      <details><summary>What does a hosted seat include?</summary><div class="a"><p>Hosted at tm8.sh means you use tm8 in the browser instead of installing its server and Postgres yourself. A seat includes the full tm8 platform and its current teammate roster. Claude Code and Codex are the two launch tools.</p></div></details>
-      <details><summary>What happens after the first 100 free seats?</summary><div class="a"><p>The first 100 verified accounts in the launch allocation keep their hosted seat free. After the allocation fills, new accounts use the $10 weekly, $30 monthly or $300 yearly plan when Stripe checkout opens.</p></div></details>
-      <details><summary>Which payment methods and currencies can I use?</summary><div class="a"><p>Prices are in US dollars. Card checkout through Stripe opens soon. Supported cards and any local-currency display are coming with Stripe.</p></div></details>
-      <details><summary>Can I cancel a paid seat?</summary><div class="a"><p>The cancellation controls and when a cancellation takes effect are coming with Stripe checkout. No refund or prorating terms have been published.</p></div></details>
-      <details><summary>Where does my data live?</summary><div class="a"><p>On a self-hosted install, the tm8 server and Postgres run on hardware you choose. The hosted offer runs at tm8.sh; it does not yet name a data region or promise data residency.</p></div></details>
-      <details><summary>What latency should I expect from India or the Gulf?</summary><div class="a"><p>Regional network measurements have not been published yet, so we do not quote a number. The agent-message timings shown elsewhere measure when a running agent receives a turn, not network round-trip time.</p></div></details>
-      <details><summary>When is support available?</summary><div class="a"><p>Demo requests are read every working day. Live-support hours have not been published.</p></div></details>
-      <details><summary>Which agents can tm8 run?</summary><div class="a"><p>Claude Code and Codex. The launch manifest picks the tool from the model name: Claude models run on Claude Code, GPT models on Codex. A session runs the CLI login that is already on the machine; <code>tm8 doctor</code> reports which ones are installed and signed in.</p></div></details>
-      <details><summary>Does tm8 store my model API keys?</summary><div class="a"><p>tm8 keeps no model key in its database. A session uses a Claude Code or Codex login available on the node.</p></div></details>
-      <details><summary>Can I run tm8 on my own machine?</summary><div class="a"><p>Yes. The source is on GitHub and the installer supports Linux and macOS with Node.js 22, Bun and Postgres 16. Agent sessions still need a Claude Code or Codex login.</p></div></details>
-      <details><summary>What happens when two people change the same task?</summary><div class="a"><p>The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it.</p></div></details>
-      <details><summary>Can an agent work without touching my checkout?</summary><div class="a"><p>Yes. Spawn with <code>--workdir worktree</code> and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking.</p></div></details>
-      <details><summary>Does self-hosting keep everything on my machine?</summary><div class="a"><p>The tm8 server and its database stay on the hardware you choose. The <code>claude</code> and <code>codex</code> CLIs still talk to their providers as they would on your laptop.</p></div></details>
-      <details><summary>Where is the code?</summary><div class="a"><p>The repository is public on GitHub at <a href="https://github.com/subhangR/tm8">github.com/subhangR/tm8</a>, with the install guide, the getting-started walkthrough, and the design docs.</p></div></details>
-    </div>
-  </div>
-</section>
-
 <!-- ============ pricing ============ -->
 <section class="section" id="pricing">
   <div class="wrap">
@@ -665,6 +639,32 @@
       </div>
     </div>
     <p class="pnote"><strong>Launch allocation:</strong> the first 100 verified accounts keep a free hosted seat. After it fills, new accounts use one of the paid plans above when Stripe checkout opens. Prices are in US dollars.</p>
+  </div>
+</section>
+
+<!-- ============ questions ============ -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="head center">
+      <h2>Questions before you choose</h2>
+      <p class="sub">Hosted seats, payment, data and the option to run your own node.</p>
+    </div>
+    <div class="faq">
+      <details><summary>What does a hosted seat include?</summary><div class="a"><p>Hosted at tm8.sh means you use tm8 in the browser instead of installing its server and Postgres yourself. A seat includes the full tm8 platform and its current teammate roster. Claude Code and Codex are the two launch tools.</p></div></details>
+      <details><summary>What happens after the first 100 free seats?</summary><div class="a"><p>The first 100 verified accounts in the launch allocation keep their hosted seat free. After the allocation fills, new accounts use the $10 weekly, $30 monthly or $300 yearly plan when Stripe checkout opens.</p></div></details>
+      <details><summary>Which payment methods and currencies can I use?</summary><div class="a"><p>Prices are in US dollars. Card checkout through Stripe opens soon. Supported cards and any local-currency display are coming with Stripe.</p></div></details>
+      <details><summary>Can I cancel a paid seat?</summary><div class="a"><p>The cancellation controls and when a cancellation takes effect are coming with Stripe checkout. No refund or prorating terms have been published.</p></div></details>
+      <details><summary>Where does my data live?</summary><div class="a"><p>On a self-hosted install, the tm8 server and Postgres run on hardware you choose. The hosted offer runs at tm8.sh; it does not yet name a data region or promise data residency.</p></div></details>
+      <details><summary>What latency should I expect from India or the Gulf?</summary><div class="a"><p>Regional network measurements have not been published yet, so we do not quote a number. The agent-message timings shown elsewhere measure when a running agent receives a turn, not network round-trip time.</p></div></details>
+      <details><summary>When is support available?</summary><div class="a"><p>Demo requests are read every working day. Live-support hours have not been published.</p></div></details>
+      <details><summary>Which agents can tm8 run?</summary><div class="a"><p>Claude Code and Codex. The launch manifest picks the tool from the model name: Claude models run on Claude Code, GPT models on Codex. A session runs the CLI login that is already on the machine; <code>tm8 doctor</code> reports which ones are installed and signed in.</p></div></details>
+      <details><summary>Does tm8 store my model API keys?</summary><div class="a"><p>tm8 keeps no model key in its database. A session uses a Claude Code or Codex login available on the node.</p></div></details>
+      <details><summary>Can I run tm8 on my own machine?</summary><div class="a"><p>Yes. The source is on GitHub and the installer supports Linux and macOS with Node.js 22, Bun and Postgres 16. Agent sessions still need a Claude Code or Codex login.</p></div></details>
+      <details><summary>What happens when two people change the same task?</summary><div class="a"><p>The second write is refused instead of silently overwriting the first. Commands that change a task take the version you read, and completion also records who did it.</p></div></details>
+      <details><summary>Can an agent work without touching my checkout?</summary><div class="a"><p>Yes. Spawn with <code>--workdir worktree</code> and it works on its own branch in a separate checkout. An access mode bounds what it may do without asking.</p></div></details>
+      <details><summary>Does self-hosting keep everything on my machine?</summary><div class="a"><p>The tm8 server and its database stay on the hardware you choose. The <code>claude</code> and <code>codex</code> CLIs still talk to their providers as they would on your laptop.</p></div></details>
+      <details><summary>Where is the code?</summary><div class="a"><p>The repository is public on GitHub at <a href="https://github.com/subhangR/tm8">github.com/subhangR/tm8</a>, with the install guide, the getting-started walkthrough, and the design docs.</p></div></details>
+    </div>
   </div>
 </section>
 
